@@ -1,0 +1,13 @@
+data/
+**/__pycache__/
+*.pyc
+*.pyo
+*.log
+train_output/
+outputs/
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+.DS_Store
+.vscode/
