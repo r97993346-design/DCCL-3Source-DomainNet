@@ -42,6 +42,24 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
     """Get dataset and split."""
     is_mnist = "MNIST" in args.dataset
     dataset = vars(datasets)[args.dataset](args.data_dir)
+
+    if args.dataset == "DomainNet" and args.source_envs is not None and args.target_env is not None:
+        selected_envs = list(args.source_envs) + [args.target_env]
+        if len(set(selected_envs)) != len(selected_envs):
+            raise ValueError("--source_envs and --target_env must be disjoint.")
+        max_env_id = len(dataset) - 1
+        invalid_ids = [env for env in selected_envs if env < 0 or env > max_env_id]
+        if invalid_ids:
+            raise ValueError(f"Invalid DomainNet env ids: {invalid_ids}. Valid range is [0, {max_env_id}].")
+
+        original_env_names = list(dataset.environments)
+        dataset.datasets = [dataset.datasets[env] for env in selected_envs]
+        dataset.environments = [original_env_names[env] for env in selected_envs]
+
+        # Remap source/target env indices to the filtered dataset index space
+        remap = {old: new for new, old in enumerate(selected_envs)}
+        args.source_envs = [remap[env] for env in args.source_envs]
+        args.target_env = remap[args.target_env]
     #  if not isinstance(dataset, MultipleEnvironmentImageFolder):
     #      raise ValueError("SMALL image datasets are not implemented (corrupted), for transform.")
     dataset_y_dicts = []
