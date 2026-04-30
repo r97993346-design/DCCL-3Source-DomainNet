@@ -43,6 +43,8 @@ def main():
         help="Checkpoint every N steps. Default is dataset-dependent.",
     )
     parser.add_argument("--test_envs", type=int, nargs="+", default=None)  # sketch in PACS
+    parser.add_argument("--source_envs", type=int, nargs="+", default=None, help="Source env indices for DomainNet (e.g., 0 1 2)")
+    parser.add_argument("--target_env", type=int, default=None, help="Target env index for DomainNet (e.g., 5)")
     parser.add_argument("--holdout_fraction", type=float, default=0.2)
     parser.add_argument("--model_save", default=None, type=int, help="Model save start step")
     parser.add_argument("--deterministic", action="store_true")
@@ -154,6 +156,13 @@ def main():
         logger.nofmt(f"\tenv{i}: {env_property} (#{len(dataset[i])})")
     logger.nofmt("")
 
+    if args.dataset == "DomainNet" and (args.source_envs is not None or args.target_env is not None):
+        if args.source_envs is None or args.target_env is None:
+            raise ValueError("For DomainNet custom split, --source_envs and --target_env must be provided together.")
+        source_names = [dataset.environments[i] for i in args.source_envs]
+        target_name = dataset.environments[args.target_env]
+        logger.info(f"DomainNet custom split enabled: source_envs={args.source_envs} ({source_names}), target_env={args.target_env} ({target_name})")
+
     n_steps = args.steps or dataset.N_STEPS
     checkpoint_freq = args.checkpoint_freq or dataset.CHECKPOINT_FREQ
     logger.info(f"n_steps = {n_steps}")
@@ -163,11 +172,15 @@ def main():
     n_steps = (n_steps // checkpoint_freq) * checkpoint_freq + 1
     logger.info(f"n_steps is updated to {org_n_steps} => {n_steps} for checkpointing")
 
-    if not args.test_envs:
-        args.test_envs = [[te] for te in range(len(dataset))]
+    if args.dataset == "DomainNet" and args.source_envs is not None and args.target_env is not None:
+        args.test_envs = [[args.target_env]]
+        logger.info(f"Target test envs = {args.test_envs} (DomainNet custom split)")
     else:
-        args.test_envs = [[te] for te in args.test_envs]
-    logger.info(f"Target test envs = {args.test_envs}")
+        if not args.test_envs:
+            args.test_envs = [[te] for te in range(len(dataset))]
+        else:
+            args.test_envs = [[te] for te in args.test_envs]
+        logger.info(f"Target test envs = {args.test_envs}")
 
     ###########################################################################
     # Run
