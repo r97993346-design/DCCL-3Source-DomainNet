@@ -247,7 +247,7 @@ class DomainNet(MultipleEnvironmentImageFolder):
     ENVIRONMENTS = ["clip", "info", "paint", "quick", "real", "sketch"]
 
     def __init__(self, root):
-        self.dir = os.path.join(root, "~/.../repro_dccl/data/domain_net/")
+        self.dir = os.path.join(root, "domain_net/")
         super().__init__(self.dir)
 
 
