@@ -56,10 +56,9 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
         dataset.datasets = [dataset.datasets[env] for env in selected_envs]
         dataset.environments = [original_env_names[env] for env in selected_envs]
 
-        # Remap source/target env indices to the filtered dataset index space
+        # Remap indices to the filtered dataset index space
         remap = {old: new for new, old in enumerate(selected_envs)}
-        args.source_envs = [remap[env] for env in args.source_envs]
-        args.target_env = remap[args.target_env]
+        test_envs = [remap[env] for env in test_envs]
     #  if not isinstance(dataset, MultipleEnvironmentImageFolder):
     #      raise ValueError("SMALL image datasets are not implemented (corrupted), for transform.")
     dataset_y_dicts = []

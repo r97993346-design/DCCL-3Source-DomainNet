@@ -1,5 +1,7 @@
 import argparse
 import collections
+import copy
+import itertools
 import random
 import sys
 from pathlib import Path
@@ -172,15 +174,11 @@ def main():
     n_steps = (n_steps // checkpoint_freq) * checkpoint_freq + 1
     logger.info(f"n_steps is updated to {org_n_steps} => {n_steps} for checkpointing")
 
-    if args.dataset == "DomainNet" and args.source_envs is not None and args.target_env is not None:
-        args.test_envs = [[args.target_env]]
-        logger.info(f"Target test envs = {args.test_envs} (DomainNet custom split)")
+    if not args.test_envs:
+        args.test_envs = [[te] for te in range(len(dataset))]
     else:
-        if not args.test_envs:
-            args.test_envs = [[te] for te in range(len(dataset))]
-        else:
-            args.test_envs = [[te] for te in args.test_envs]
-        logger.info(f"Target test envs = {args.test_envs}")
+        args.test_envs = [[te] for te in args.test_envs]
+    logger.info(f"Target test envs = {args.test_envs}")
 
     ###########################################################################
     # Run
@@ -188,19 +186,61 @@ def main():
     all_records = []
     results = collections.defaultdict(list)
 
-    for test_env in args.test_envs:
-        res, records = train(
-            test_env,
-            args=args,
-            hparams=hparams,
-            n_steps=n_steps,
-            checkpoint_freq=checkpoint_freq,
-            logger=logger,
-            writer=writer,
-        )
-        all_records.append(records)
-        for k, v in res.items():
-            results[k].append(v)
+    combo_rows = []
+    run_all_domainnet_triplets = (
+        args.dataset == "DomainNet" and args.source_envs is None and args.target_env is None
+    )
+    if run_all_domainnet_triplets:
+        env_ids = list(range(len(dataset)))
+        env_names = list(dataset.environments)
+        logger.info("Running all DomainNet 3-source->1-target combinations with ERM baseline.")
+        for tgt in env_ids:
+            source_candidates = [e for e in env_ids if e != tgt]
+            for srcs in itertools.combinations(source_candidates, 3):
+                run_args = copy.deepcopy(args)
+                run_args.source_envs = list(srcs)
+                run_args.target_env = tgt
+                run_args.test_envs = [[tgt]]
+                logger.info(
+                    f"[Main] Combo source_envs={list(srcs)} ({[env_names[i] for i in srcs]}) -> "
+                    f"target_env={tgt} ({env_names[tgt]})"
+                )
+                res, records = train(
+                    [tgt], args=run_args, hparams=hparams, n_steps=n_steps,
+                    checkpoint_freq=checkpoint_freq, logger=logger, writer=writer
+                )
+                erm_args = copy.deepcopy(run_args)
+                erm_args.algorithm = "ERM"
+                erm_hparams = hparams_registry.default_hparams("ERM", args.dataset)
+                erm_hparams = setup_alg_hparams(erm_hparams, erm_args)
+                erm_hparams = Config(default=erm_hparams)
+                erm_res, _ = train(
+                    [tgt], args=erm_args, hparams=erm_hparams, n_steps=n_steps,
+                    checkpoint_freq=checkpoint_freq, logger=logger, writer=writer
+                )
+                key = "test_out"
+                main_acc = float(res.get(key, np.mean(list(res.values()))))
+                erm_acc = float(erm_res.get(key, np.mean(list(erm_res.values()))))
+                rel_drop = (erm_acc - main_acc) / max(erm_acc, 1e-12)
+                combo_rows.append((srcs, tgt, main_acc, erm_acc, rel_drop))
+                all_records.append(records)
+    else:
+        if args.dataset == "DomainNet" and args.source_envs is not None and args.target_env is not None:
+            args.test_envs = [[args.target_env]]
+            logger.info(f"Target test envs = {args.test_envs} (DomainNet custom split)")
+        for test_env in args.test_envs:
+            res, records = train(
+                test_env,
+                args=args,
+                hparams=hparams,
+                n_steps=n_steps,
+                checkpoint_freq=checkpoint_freq,
+                logger=logger,
+                writer=writer,
+            )
+            all_records.append(records)
+            for k, v in res.items():
+                results[k].append(v)
 
     # log summary table
     logger.info("=== Summary ===")
@@ -210,13 +250,26 @@ def main():
     logger.info("Algorithm: %s" % args.algorithm)
     logger.info("Dataset: %s" % args.dataset)
 
-    table = PrettyTable(["Selection"] + dataset.environments + ["Avg."])
-    for key, row in results.items():
-        row.append(np.mean(row))
-        row = [f"{acc:.3%}" for acc in row]
-        
-        table.add_row([key] + row)
-    logger.nofmt(table)
+    if run_all_domainnet_triplets:
+        combo_table = PrettyTable(["Sources(3)", "Target", "Algo", "ERM", "RelDrop(vs ERM)"])
+        for srcs, tgt, main_acc, erm_acc, rel_drop in combo_rows:
+            src_names = ",".join([dataset.environments[i] for i in srcs])
+            tgt_name = dataset.environments[tgt]
+            combo_table.add_row(
+                [src_names, tgt_name, f"{main_acc:.3%}", f"{erm_acc:.3%}", f"{rel_drop:.3%}"]
+            )
+        avg_algo = np.mean([r[2] for r in combo_rows]) if combo_rows else 0.0
+        avg_erm = np.mean([r[3] for r in combo_rows]) if combo_rows else 0.0
+        avg_rel = np.mean([r[4] for r in combo_rows]) if combo_rows else 0.0
+        combo_table.add_row(["AVG", "ALL", f"{avg_algo:.3%}", f"{avg_erm:.3%}", f"{avg_rel:.3%}"])
+        logger.nofmt(combo_table)
+    else:
+        table = PrettyTable(["Selection"] + dataset.environments + ["Avg."])
+        for key, row in results.items():
+            row.append(np.mean(row))
+            row = [f"{acc:.3%}" for acc in row]
+            table.add_row([key] + row)
+        logger.nofmt(table)
 
 
 if __name__ == "__main__":
