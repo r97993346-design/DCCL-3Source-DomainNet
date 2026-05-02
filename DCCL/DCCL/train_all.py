@@ -14,6 +14,7 @@ from sconf import Config
 from prettytable import PrettyTable
 
 from domainbed.datasets import get_dataset
+from domainbed.datasets import datasets as datasets_registry
 from domainbed import hparams_registry
 from domainbed.lib import misc
 from domainbed.lib.writers import get_writer
@@ -161,8 +162,15 @@ def main():
     if args.dataset == "DomainNet" and (args.source_envs is not None or args.target_env is not None):
         if args.source_envs is None or args.target_env is None:
             raise ValueError("For DomainNet custom split, --source_envs and --target_env must be provided together.")
-        source_names = [dataset.environments[i] for i in args.source_envs]
-        target_name = dataset.environments[args.target_env]
+        all_env_names = list(datasets_registry.DomainNet.ENVIRONMENTS)
+        max_env_id = len(all_env_names) - 1
+        invalid_source = [i for i in args.source_envs if i < 0 or i > max_env_id]
+        if args.target_env < 0 or args.target_env > max_env_id:
+            raise ValueError(f"Invalid --target_env={args.target_env}. Valid range is [0, {max_env_id}].")
+        if invalid_source:
+            raise ValueError(f"Invalid --source_envs={invalid_source}. Valid range is [0, {max_env_id}].")
+        source_names = [all_env_names[i] for i in args.source_envs]
+        target_name = all_env_names[args.target_env]
         logger.info(f"DomainNet custom split enabled: source_envs={args.source_envs} ({source_names}), target_env={args.target_env} ({target_name})")
 
     n_steps = args.steps or dataset.N_STEPS
