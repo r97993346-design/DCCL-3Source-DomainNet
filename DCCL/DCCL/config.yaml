@@ -7,4 +7,5 @@ swad_kwargs:
   n_tolerance: 6
   tolerance_ratio: 0.3
 test_batchsize: 128
+
 indomain_test: False  # use indomain test split or not

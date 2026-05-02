@@ -215,9 +215,9 @@ def main():
                 )
                 erm_args = copy.deepcopy(run_args)
                 erm_args.algorithm = "ERM"
-                erm_hparams = hparams_registry.default_hparams("ERM", args.dataset)
-                erm_hparams = setup_alg_hparams(erm_hparams, erm_args)
-                erm_hparams = Config(default=erm_hparams)
+                # Keep all runtime/config keys (for example `indomain_test`) to avoid
+                # missing-key errors inside trainer while swapping only the algorithm.
+                erm_hparams = copy.deepcopy(hparams)
                 erm_res, _ = train(
                     [tgt], args=erm_args, hparams=erm_hparams, n_steps=n_steps,
                     checkpoint_freq=checkpoint_freq, logger=logger, writer=writer
