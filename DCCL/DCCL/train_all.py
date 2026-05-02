@@ -238,9 +238,9 @@ def main():
                 all_records.append(records)
     else:
         if args.dataset == "DomainNet" and args.source_envs is not None and args.target_env is not None:
-            # In filtered DomainNet dataset index space, target is always appended
-            # after sources: selected_envs = source_envs + [target_env].
-            args.test_envs = [[len(args.source_envs)]]
+            # Keep original target index here; get_dataset() remaps it internally
+            # when filtering DomainNet with selected_envs=source_envs+[target_env].
+            args.test_envs = [[args.target_env]]
             logger.info(f"Target test envs = {args.test_envs} (DomainNet custom split)")
         for test_env in args.test_envs:
             res, records = train(

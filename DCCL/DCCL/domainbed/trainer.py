@@ -40,6 +40,9 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     args.real_test_envs = test_envs  # for log
     algorithm_class = algorithms.get_algorithm_class(args.algorithm)
     dataset, in_splits, out_splits = get_dataset(test_envs, args, hparams, algorithm_class)
+    if args.dataset == "DomainNet" and args.source_envs is not None and args.target_env is not None:
+        # For filtered DomainNet, target domain is appended after sources.
+        test_envs = [len(args.source_envs)]
     test_splits = []
 
     if hparams.indomain_test > 0.0:
