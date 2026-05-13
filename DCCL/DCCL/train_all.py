@@ -163,19 +163,11 @@ def main():
     torch.backends.cudnn.deterministic = args.deterministic
     torch.backends.cudnn.benchmark = not args.deterministic
 
-    # Dummy datasets for logging information.
-    # Real dataset will be re-assigned in train function.
-    # test_envs only decide transforms; simply set to zero.
-    dataset, _in_splits, _out_splits = get_dataset([0], args, hparams)
-
-    # print dataset information
-    logger.nofmt("Dataset:")
-    logger.nofmt(f"\t[{args.dataset}] #envs={len(dataset)}, #classes={dataset.num_classes}")
-    for i, env_property in enumerate(dataset.environments):
-        logger.nofmt(f"\tenv{i}: {env_property} (#{len(dataset[i])})")
-    logger.nofmt("")
-
-    if args.dataset == "DomainNet" and (args.source_envs is not None or args.target_env is not None):
+    domainnet_custom_split = (
+        args.dataset == "DomainNet"
+        and (args.source_envs is not None or args.target_env is not None)
+    )
+    if domainnet_custom_split:
         if args.source_envs is None or args.target_env is None:
             raise ValueError("For DomainNet custom split, --source_envs and --target_env must be provided together.")
         all_env_names = list(datasets_registry.DomainNet.ENVIRONMENTS)
@@ -185,6 +177,22 @@ def main():
             raise ValueError(f"Invalid --target_env={args.target_env}. Valid range is [0, {max_env_id}].")
         if invalid_source:
             raise ValueError(f"Invalid --source_envs={invalid_source}. Valid range is [0, {max_env_id}].")
+
+    # Dummy datasets for logging information.
+    # Real dataset will be re-assigned in train function.
+    # test_envs only decide transforms. For filtered DomainNet, pass the
+    # original target env id so get_dataset can remap it after filtering.
+    dummy_test_envs = [args.target_env] if domainnet_custom_split else [0]
+    dataset, _in_splits, _out_splits = get_dataset(dummy_test_envs, args, hparams)
+
+    # print dataset information
+    logger.nofmt("Dataset:")
+    logger.nofmt(f"\t[{args.dataset}] #envs={len(dataset)}, #classes={dataset.num_classes}")
+    for i, env_property in enumerate(dataset.environments):
+        logger.nofmt(f"\tenv{i}: {env_property} (#{len(dataset[i])})")
+    logger.nofmt("")
+
+    if domainnet_custom_split:
         source_names = [all_env_names[i] for i in args.source_envs]
         target_name = all_env_names[args.target_env]
         logger.info(f"DomainNet custom split enabled: source_envs={args.source_envs} ({source_names}), target_env={args.target_env} ({target_name})")
