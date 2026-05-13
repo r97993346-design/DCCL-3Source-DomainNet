@@ -22,6 +22,18 @@ from domainbed.lib.logger import Logger
 from domainbed.trainer import train
 from domainbed.lib.cl_hparams import setup_alg_hparams
 
+
+def apply_weak_erm_hparams(hparams):
+    """Apply intentionally weak-but-pretrained ERM baseline settings.
+
+    Weak ERM keeps the same ImageNet-pretrained backbone initialization as
+    DCCL for a fair backbone comparison, but disables SWAD model averaging.
+    This makes the baseline weaker without removing the shared pretraining.
+    """
+    hparams["pretrained"] = True
+    hparams["swad"] = None
+    return hparams
+
 def main():
     parser = argparse.ArgumentParser(description="Domain generalization")
     parser.add_argument("name", type=str)
@@ -48,6 +60,8 @@ def main():
     parser.add_argument("--test_envs", type=int, nargs="+", default=None)  # sketch in PACS
     parser.add_argument("--source_envs", type=int, nargs="+", default=None, help="Source env indices for DomainNet (e.g., 0 1 2)")
     parser.add_argument("--target_env", type=int, default=None, help="Target env index for DomainNet (e.g., 5)")
+    parser.add_argument("--erm_baseline", choices=["weak", "matched"], default="weak", help="ERM baseline mode for DomainNet auto sweep: weak keeps ImageNet pretraining but disables SWAD; matched uses the same backbone/SWAD settings as the main run.")
+    parser.add_argument("--weak_erm", action="store_true", help="When --algorithm ERM is run directly, use the weak ERM baseline settings (ImageNet pretrained backbone, no SWAD).")
     parser.add_argument("--holdout_fraction", type=float, default=0.2)
     parser.add_argument("--model_save", default=None, type=int, help="Model save start step")
     parser.add_argument("--deterministic", action="store_true")
@@ -92,6 +106,8 @@ def main():
     keys = [open(key, encoding="utf8") for key in keys]
     hparams = Config(*keys, default=hparams)
     hparams.argv_update(left_argv)
+    if args.algorithm == "ERM" and args.weak_erm:
+        hparams = apply_weak_erm_hparams(hparams)
 
     # setup debug
     if args.debug:
@@ -205,7 +221,8 @@ def main():
     if run_all_domainnet_triplets:
         env_ids = list(range(len(dataset)))
         env_names = list(dataset.environments)
-        logger.info("Running all DomainNet 3-source->1-target combinations with ERM baseline.")
+        erm_label = "ERM-weak" if args.erm_baseline == "weak" else "ERM"
+        logger.info(f"Running all DomainNet 3-source->1-target combinations with {erm_label} baseline.")
         for tgt in env_ids:
             source_candidates = [e for e in env_ids if e != tgt]
             for srcs in itertools.combinations(source_candidates, 3):
@@ -223,9 +240,12 @@ def main():
                 )
                 erm_args = copy.deepcopy(run_args)
                 erm_args.algorithm = "ERM"
+                erm_args.weak_erm = args.erm_baseline == "weak"
                 # Keep all runtime/config keys (for example `indomain_test`) to avoid
                 # missing-key errors inside trainer while swapping only the algorithm.
                 erm_hparams = copy.deepcopy(hparams)
+                if erm_args.weak_erm:
+                    erm_hparams = apply_weak_erm_hparams(erm_hparams)
                 erm_res, _ = train(
                     [tgt], args=erm_args, hparams=erm_hparams, n_steps=n_steps,
                     checkpoint_freq=checkpoint_freq, logger=logger, writer=writer
@@ -265,7 +285,8 @@ def main():
     logger.info("Dataset: %s" % args.dataset)
 
     if run_all_domainnet_triplets:
-        combo_table = PrettyTable(["Sources(3)", "Target", "Algo", "ERM", "RelDrop(vs ERM)"])
+        erm_label = "ERM-weak" if args.erm_baseline == "weak" else "ERM"
+        combo_table = PrettyTable(["Sources(3)", "Target", "Algo", erm_label, f"RelDrop(vs {erm_label})"])
         for srcs, tgt, main_acc, erm_acc, rel_drop in combo_rows:
             src_names = ",".join([dataset.environments[i] for i in srcs])
             tgt_name = dataset.environments[tgt]

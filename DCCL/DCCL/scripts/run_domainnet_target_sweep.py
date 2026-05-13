@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--gpu", type=int, default=0, help="GPU id for all jobs")
     parser.add_argument("--data_dir", type=str, required=True, help="DomainNet data root")
     parser.add_argument("--exp_prefix", type=str, default="exp-domainnet-target")
+    parser.add_argument("--erm_baseline", choices=["weak", "matched"], default="weak", help="ERM command mode: weak adds --weak_erm (ImageNet pretrained, no SWAD); matched keeps ERM hparams matched to the main run.")
     parser.add_argument("--extra_args", nargs=argparse.REMAINDER, default=[])
     args = parser.parse_args()
 
@@ -42,7 +43,8 @@ def main():
         ] + args.extra_args
 
         run(base[:2] + [f"{args.exp_prefix}_{combo_tag}_dccl", "--algorithm", "DCCL"] + base[2:], args.gpu)
-        run(base[:2] + [f"{args.exp_prefix}_{combo_tag}_erm", "--algorithm", "ERM"] + base[2:], args.gpu)
+        erm_extra = ["--weak_erm"] if args.erm_baseline == "weak" else []
+        run(base[:2] + [f"{args.exp_prefix}_{combo_tag}_erm", "--algorithm", "ERM"] + base[2:] + erm_extra, args.gpu)
 
     print(f"[DONE] target={args.target} finished all 10 combos with DCCL+ERM.")
 

@@ -42,7 +42,12 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     dataset, in_splits, out_splits = get_dataset(test_envs, args, hparams, algorithm_class)
     if args.dataset == "DomainNet" and args.source_envs is not None and args.target_env is not None:
         # For filtered DomainNet, target domain is appended after sources.
-        test_envs = [len(args.source_envs)]
+        # Remap both test_envs and optional target_env from original DomainNet ids
+        # to the filtered dataset index space before any environment-name lookup.
+        remapped_target_env = len(args.source_envs)
+        test_envs = [remapped_target_env]
+        if target_env is not None:
+            target_env = remapped_target_env
     test_splits = []
 
     if hparams.indomain_test > 0.0:
