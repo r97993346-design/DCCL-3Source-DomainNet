@@ -69,4 +69,5 @@ def setup_alg_hparams(hparams, args):
     hparams["causal_temperature"] = args.causal_temperature
     hparams["reliability_min_weight"] = args.reliability_min_weight
     hparams["reliability_loss_weight"] = args.reliability_loss_weight
+    hparams["csr_clip_model"] = args.csr_clip_model
     return hparams

@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
 import numpy as np
+import clip
 from domainbed.lib import misc
 #  import higher
 
@@ -268,7 +269,7 @@ class DCCL(Algorithm):
         self.causal_temperature = float(hparams.get("causal_temperature", 1.0))
         self.reliability_min_weight = float(hparams.get("reliability_min_weight", 0.05))
         self.reliability_loss_weight = float(hparams.get("reliability_loss_weight", 1.0))
-        self.causal_text_proj = None
+        self.csr_clip_image_encoder = None
         self.causal_embeddings = None
         self.spurious_embeddings = None
 
@@ -353,13 +354,22 @@ class DCCL(Algorithm):
         self.register_buffer("causal_embeddings", F.normalize(causal_emb, dim=1))
         self.register_buffer("spurious_embeddings", F.normalize(spurious_emb, dim=1))
 
-        visual_dim = default_visual_dim
-        if visual_dim != text_dim:
-            # Lightweight semantic projector used only when reliability module is enabled.
-            self.causal_text_proj = nn.Linear(visual_dim, text_dim)
-            self.optimizer.param_groups.append(
-                {"params": self.causal_text_proj.parameters(), "lr": self.hparams["lr"] / 10, "weight_decay": self.hparams["weight_decay"]}
-            )
+        encoder_name = hparams.get("csr_clip_model", "")
+        if not encoder_name and isinstance(causal_obj, dict):
+            encoder_name = causal_obj.get("encoder_name", "")
+        if not encoder_name and isinstance(spurious_obj, dict):
+            encoder_name = spurious_obj.get("encoder_name", "")
+        if not encoder_name:
+            raise ValueError("CSR requires `csr_clip_model` or `encoder_name` metadata in embedding files.")
+
+        clip_model, _ = clip.load(encoder_name, device="cpu")
+        self.csr_clip_image_encoder = clip_model.visual
+        self.csr_clip_image_encoder.eval()
+        for p in self.csr_clip_image_encoder.parameters():
+            p.requires_grad_(False)
+        clip_dim = int(self.csr_clip_image_encoder.output_dim)
+        if clip_dim != text_dim:
+            raise ValueError(f"CLIP image dim/text dim mismatch: image={clip_dim}, text={text_dim}.")
 
     def update(self, x, y, **kwargs):
         all_x = torch.cat(x)
@@ -433,7 +443,7 @@ class DCCL(Algorithm):
                 all_d = torch.cat(kwargs["d"])
                 all_d_2 = torch.cat(kwargs["d_2"])
                 pair_weight, reliability_stats = self._build_pair_reliability(
-                    embed_1=embed_1, labels=all_y, domains_view1=all_d, domains_view2=all_d_2
+                    all_x=all_x, labels=all_y, domains_view1=all_d, domains_view2=all_d_2
                 )
             else:
                 reliability_stats = None
@@ -500,27 +510,29 @@ class DCCL(Algorithm):
             loss_dict["csr_min"] = reliability_stats["min"]
             loss_dict["csr_max"] = reliability_stats["max"]
             loss_dict["csr_valid_pos_pairs"] = reliability_stats["valid_pairs"]
+            loss_dict["causal_sim_mean"] = reliability_stats["causal_sim_mean"]
+            loss_dict["spurious_sim_mean"] = reliability_stats["spurious_sim_mean"]
             loss_dict["weighted_sup_cl_loss"] = loss_sup_cl.item() if self.l else 0.0
         return loss_dict
 
-    def _build_pair_reliability(self, embed_1, labels, domains_view1, domains_view2):
+    def _build_pair_reliability(self, all_x, labels, domains_view1, domains_view2):
         """
         Args:
-            embed_1: [B, D_proj] raw projection features from primary view.
+            all_x: [B, C, H, W] raw batch image tensor for CLIP image semantics.
             labels: [B]
             domains_view1: [B]
             domains_view2: [B]
         Returns:
             pair_weight: [2B, 2B], default 1, cross-domain same-class positives replaced by R_ij.
         """
-        z_sem = embed_1 if self.causal_text_proj is None else self.causal_text_proj(embed_1)
-        z_sem = F.normalize(z_sem, dim=1)
+        q = self.csr_clip_image_encoder(all_x)
+        q = F.normalize(q.float(), dim=1)
         tc = self.causal_embeddings[labels]
         ts = self.spurious_embeddings[labels]
-        causal_sim = torch.sum(z_sem * tc, dim=1)
-        spurious_sim = torch.sum(z_sem * ts, dim=1)
+        causal_sim = torch.sum(q * tc, dim=1)
+        spurious_sim = torch.sum(q * ts, dim=1)
         raw_score = causal_sim - self.causal_beta * spurious_sim
-        r = torch.sigmoid(raw_score / self.causal_temperature)
+        r = torch.sigmoid(raw_score / self.causal_temperature).detach()
 
         r_2v = torch.cat([r, r], dim=0)  # [2B]
         pair_r = torch.clamp(
@@ -538,6 +550,8 @@ class DCCL(Algorithm):
         pair_weight = torch.ones_like(pair_r)
         pair_weight[cross_domain_pos] = pair_r[cross_domain_pos]
         stats = {
+            "causal_sim_mean": float(causal_sim.mean().item()),
+            "spurious_sim_mean": float(spurious_sim.mean().item()),
             "mean": float(r.mean().item()),
             "min": float(r.min().item()),
             "max": float(r.max().item()),

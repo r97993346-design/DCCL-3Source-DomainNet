@@ -105,6 +105,7 @@ def main():
     parser.add_argument("--causal_temperature", type=float, default=1.0, help="Temperature for sigmoid reliability mapping")
     parser.add_argument("--reliability_min_weight", type=float, default=0.05, help="Minimum clamp value for pair reliability weight")
     parser.add_argument("--reliability_loss_weight", type=float, default=1.0, help="Global scaling of reliability-weighted contrastive term")
+    parser.add_argument("--csr_clip_model", type=str, default="", help="CLIP image encoder name for CSR reliability branch; empty means auto from embedding metadata")
     args, left_argv = parser.parse_known_args()
 
     # setup hparams

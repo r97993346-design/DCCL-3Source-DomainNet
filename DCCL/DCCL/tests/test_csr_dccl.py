@@ -1,5 +1,6 @@
 import torch
 
+from domainbed.algorithms import algorithms as alg_module
 from domainbed.algorithms.algorithms import SupConLoss, DCCL
 
 
@@ -53,19 +54,68 @@ def test_csr_pair_reliability_range_and_backward(tmp_path):
     algo.causal_beta = 0.5
     algo.causal_temperature = 1.0
     algo.reliability_min_weight = 0.05
-    algo.causal_text_proj = torch.nn.Linear(10, text_dim)
+    class DummyClipImage(torch.nn.Module):
+        output_dim = text_dim
+        def forward(self, x):
+            # [B,3,H,W] -> [B,text_dim]
+            pooled = x.mean(dim=(2, 3))
+            rep = pooled.mean(dim=1, keepdim=True).repeat(1, text_dim)
+            return rep
+    algo.csr_clip_image_encoder = DummyClipImage()
     algo.causal_embeddings = torch.nn.functional.normalize(causal, dim=1)
     algo.spurious_embeddings = torch.nn.functional.normalize(spurious, dim=1)
 
-    embed = torch.randn(5, 10, requires_grad=True)
+    all_x = torch.randn(5, 3, 8, 8, requires_grad=True)
     y = torch.tensor([0, 1, 2, 3, 0], dtype=torch.long)
     d1 = torch.tensor([0, 0, 1, 1, 2], dtype=torch.long)
     d2 = torch.tensor([1, 1, 0, 2, 0], dtype=torch.long)
-    w, stats = algo._build_pair_reliability(embed, y, d1, d2)
+    w, stats = algo._build_pair_reliability(all_x, y, d1, d2)
     assert w.min() >= algo.reliability_min_weight - 1e-6
     assert w.max() <= 1.0 + 1e-6
     assert 0.0 <= stats["min"] <= stats["max"] <= 1.0
 
-    loss = (w.mean() + embed.pow(2).mean())
+    loss = (w.mean() + all_x.pow(2).mean())
     loss.backward()
-    assert torch.isfinite(embed.grad).all()
+    assert torch.isfinite(all_x.grad).all()
+
+
+def test_csr_disabled_does_not_init_clip_encoder():
+    algo = object.__new__(DCCL)
+    torch.nn.Module.__init__(algo)
+    algo.use_causal_reliability = False
+    algo.csr_clip_image_encoder = None
+    assert algo.csr_clip_image_encoder is None
+
+
+def test_csr_init_uses_clip_load(monkeypatch, tmp_path):
+    num_classes, dim = 3, 4
+    c_path = tmp_path / "causal.pt"
+    s_path = tmp_path / "spurious.pt"
+    torch.save({"embeddings": torch.randn(num_classes, dim), "encoder_name": "ViT-B/32"}, c_path)
+    torch.save({"embeddings": torch.randn(num_classes, dim), "encoder_name": "ViT-B/32"}, s_path)
+
+    called = {"v": False}
+    class DummyVisual(torch.nn.Module):
+        output_dim = dim
+        def forward(self, x):
+            return torch.ones(x.shape[0], dim)
+    class DummyClipModel(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.visual = DummyVisual()
+    def fake_load(name, device="cpu"):
+        called["v"] = True
+        return DummyClipModel(), None
+    monkeypatch.setattr(alg_module.clip, "load", fake_load)
+
+    algo = object.__new__(DCCL)
+    torch.nn.Module.__init__(algo)
+    algo.num_classes = num_classes
+    algo.hparams = {"lr": 1e-3, "weight_decay": 0.0}
+    algo._extract_embedding_tensor = DCCL._extract_embedding_tensor.__get__(algo, DCCL)
+    algo._init_causal_reliability_modules(
+        {"causal_embedding_path": str(c_path), "spurious_embedding_path": str(s_path), "csr_clip_model": ""},
+        default_visual_dim=dim,
+    )
+    assert called["v"] is True
+    assert algo.csr_clip_image_encoder is not None
