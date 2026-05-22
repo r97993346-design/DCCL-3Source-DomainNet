@@ -97,6 +97,14 @@ def main():
     parser.add_argument("--lamda", type=float, default=5, help="Weight coefficient for Transform Network sparsity loss")
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
+    # CSR-DCCL phase-1: causal reliability reweighting (default off for backward compatibility)
+    parser.add_argument("--use_causal_reliability", action="store_true", help="Enable causal semantic reliability estimation and weighted DCCL positive loss")
+    parser.add_argument("--causal_embedding_path", type=str, default="", help="Path to class-level causal text embeddings (tensor or dict containing tensor)")
+    parser.add_argument("--spurious_embedding_path", type=str, default="", help="Path to class-level spurious text embeddings (tensor or dict containing tensor)")
+    parser.add_argument("--causal_beta", type=float, default=0.5, help="Penalty coefficient for spurious similarity in reliability score")
+    parser.add_argument("--causal_temperature", type=float, default=1.0, help="Temperature for sigmoid reliability mapping")
+    parser.add_argument("--reliability_min_weight", type=float, default=0.05, help="Minimum clamp value for pair reliability weight")
+    parser.add_argument("--reliability_loss_weight", type=float, default=1.0, help="Global scaling of reliability-weighted contrastive term")
     args, left_argv = parser.parse_known_args()
 
     # setup hparams

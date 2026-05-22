@@ -61,4 +61,12 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+    # CSR-DCCL phase-1 switches / parameters
+    hparams["use_causal_reliability"] = args.use_causal_reliability
+    hparams["causal_embedding_path"] = args.causal_embedding_path
+    hparams["spurious_embedding_path"] = args.spurious_embedding_path
+    hparams["causal_beta"] = args.causal_beta
+    hparams["causal_temperature"] = args.causal_temperature
+    hparams["reliability_min_weight"] = args.reliability_min_weight
+    hparams["reliability_loss_weight"] = args.reliability_loss_weight
     return hparams

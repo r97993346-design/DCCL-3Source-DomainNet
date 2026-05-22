@@ -145,6 +145,53 @@ python train_all.py DCCL_VLCS_0 --dataset VLCS --deterministic --trial_seed 0 --
 python train_all.py DCCL_TI_0 --dataset TerraIncognita --deterministic --trial_seed 0 --checkpoint_freq 100 --data_dir ../data
 ```
 
+## 🧠 CSR Prompt Embeddings (Offline)
+
+For CSR-DCCL phase-1, causal/spurious text embeddings are built **offline** from prompt JSON files.
+No online LLM/VLM API is used in this workflow.
+
+### 1) Prepare prompt JSON
+
+Use a file like `DCCL/assets/prompts/example_causal_spurious_prompts.json`:
+- `class_names`: class order used for exported embeddings.
+- `prompts[class_name].causal_prompts`: non-empty list.
+- `prompts[class_name].spurious_prompts`: non-empty list.
+
+> Keep the prompt JSON under version control for reproducibility.
+
+### 2) Build embeddings with CLIP text encoder
+
+```bash
+cd DCCL/
+PYTHONPATH=../CLIP python DCCL/tools/build_causal_spurious_embeddings.py \
+  --prompt_json DCCL/assets/prompts/example_causal_spurious_prompts.json \
+  --output_dir DCCL/assets/semantic_embeddings/example \
+  --clip_model ViT-B-32 \
+  --pretrained openai \
+  --device cuda
+```
+
+The script saves:
+- `causal_embeddings.pt`
+- `spurious_embeddings.pt`
+
+Each file contains:
+- `embeddings`: `torch.Tensor[num_classes, embedding_dim]`
+- `class_names`: `List[str]` (same order as JSON `class_names`)
+- `encoder_name`: `str`
+- `prompt_type`: `"causal"` or `"spurious"`
+- `source_json`: `str`
+
+### 3) Train with generated embeddings
+
+```bash
+cd DCCL/
+python train_all.py exp_csr --dataset DomainNet --algorithm DCCL --data_dir ../data \
+  --use_causal_reliability \
+  --causal_embedding_path DCCL/assets/semantic_embeddings/example/causal_embeddings.pt \
+  --spurious_embedding_path DCCL/assets/semantic_embeddings/example/spurious_embeddings.pt
+```
+
 ## 📊 Results
 
 The training outputs will be saved in `DCCL/train_output/[DATASET]/[EXPERIMENT_NAME]/` containing:
