@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
 import numpy as np
+import clip
 from domainbed.lib import misc
 #  import higher
 
@@ -263,6 +264,14 @@ class DCCL(Algorithm):
         self.TN = hparams["TN"]
         self.lamda = hparams["lamda"]
         self.sample_d = hparams["sample_d"]
+        self.use_causal_reliability = hparams.get("use_causal_reliability", False)
+        self.causal_beta = float(hparams.get("causal_beta", 0.5))
+        self.causal_temperature = float(hparams.get("causal_temperature", 1.0))
+        self.reliability_min_weight = float(hparams.get("reliability_min_weight", 0.05))
+        self.reliability_loss_weight = float(hparams.get("reliability_loss_weight", 1.0))
+        self.csr_clip_image_encoder = None
+        self.causal_embeddings = None
+        self.spurious_embeddings = None
 
         if self.TN:
             self.TN_network = TN()
@@ -298,6 +307,69 @@ class DCCL(Algorithm):
             hparams["optimizer"],
             optimized_list
         )
+        if self.use_causal_reliability:
+            self._init_causal_reliability_modules(hparams, hidden_num_1)
+
+    def _extract_embedding_tensor(self, loaded_obj, file_path):
+        if isinstance(loaded_obj, torch.Tensor):
+            emb = loaded_obj
+        elif isinstance(loaded_obj, dict):
+            for key in ["embeddings", "embedding", "text_embeddings", "tensor", "weight"]:
+                if key in loaded_obj and isinstance(loaded_obj[key], torch.Tensor):
+                    emb = loaded_obj[key]
+                    break
+            else:
+                tensor_items = [v for v in loaded_obj.values() if isinstance(v, torch.Tensor)]
+                if len(tensor_items) == 1:
+                    emb = tensor_items[0]
+                else:
+                    raise ValueError(f"Cannot resolve tensor from embedding file: {file_path}")
+        else:
+            raise ValueError(f"Unsupported embedding object type `{type(loaded_obj)}` for file: {file_path}")
+
+        if emb.ndim != 2:
+            raise ValueError(f"Embedding tensor at {file_path} must be 2D [num_classes, dim], got shape={tuple(emb.shape)}")
+        if emb.shape[0] != self.num_classes:
+            raise ValueError(
+                f"Embedding class count mismatch for {file_path}: expected {self.num_classes}, got {emb.shape[0]}"
+            )
+        return emb.float()
+
+    def _init_causal_reliability_modules(self, hparams, default_visual_dim):
+        causal_path = hparams.get("causal_embedding_path", "")
+        spurious_path = hparams.get("spurious_embedding_path", "")
+        if not causal_path or not spurious_path:
+            raise ValueError("use_causal_reliability=True requires both causal_embedding_path and spurious_embedding_path.")
+
+        causal_obj = torch.load(causal_path, map_location="cpu")
+        spurious_obj = torch.load(spurious_path, map_location="cpu")
+        causal_emb = self._extract_embedding_tensor(causal_obj, causal_path)
+        spurious_emb = self._extract_embedding_tensor(spurious_obj, spurious_path)
+        if causal_emb.shape != spurious_emb.shape:
+            raise ValueError(
+                f"Causal/spurious embedding shape mismatch: causal={tuple(causal_emb.shape)}, spurious={tuple(spurious_emb.shape)}"
+            )
+
+        text_dim = int(causal_emb.shape[1])
+        self.register_buffer("causal_embeddings", F.normalize(causal_emb, dim=1))
+        self.register_buffer("spurious_embeddings", F.normalize(spurious_emb, dim=1))
+
+        encoder_name = hparams.get("csr_clip_model", "")
+        if not encoder_name and isinstance(causal_obj, dict):
+            encoder_name = causal_obj.get("encoder_name", "")
+        if not encoder_name and isinstance(spurious_obj, dict):
+            encoder_name = spurious_obj.get("encoder_name", "")
+        if not encoder_name:
+            raise ValueError("CSR requires `csr_clip_model` or `encoder_name` metadata in embedding files.")
+
+        clip_model, _ = clip.load(encoder_name, device="cpu")
+        self.csr_clip_image_encoder = clip_model.visual
+        self.csr_clip_image_encoder.eval()
+        for p in self.csr_clip_image_encoder.parameters():
+            p.requires_grad_(False)
+        clip_dim = int(self.csr_clip_image_encoder.output_dim)
+        if clip_dim != text_dim:
+            raise ValueError(f"CLIP image dim/text dim mismatch: image={clip_dim}, text={text_dim}.")
 
     def update(self, x, y, **kwargs):
         all_x = torch.cat(x)
@@ -366,6 +438,15 @@ class DCCL(Algorithm):
             view_1 = nn.functional.normalize(embed_1)
             view_2 = nn.functional.normalize(embed_2)
             features = torch.stack([view_1, view_2], dim=1)
+            pair_weight = None
+            if self.use_causal_reliability:
+                all_d = torch.cat(kwargs["d"])
+                all_d_2 = torch.cat(kwargs["d_2"])
+                pair_weight, reliability_stats = self._build_pair_reliability(
+                    all_x=all_x, labels=all_y, domains_view1=all_d, domains_view2=all_d_2
+                )
+            else:
+                reliability_stats = None
             if self.re_w:
                 all_d = torch.cat(kwargs["d"])
                 all_d_2 = torch.cat(kwargs["d_2"])
@@ -376,7 +457,7 @@ class DCCL(Algorithm):
                     pos_mask = 1-neg_mask
                 else:
                     pos_mask = None
-                loss_sup_cl = self.supcon_loss(features, all_y, neg_mask=neg_mask, pos_mask=pos_mask)
+                loss_sup_cl = self.supcon_loss(features, all_y, neg_mask=neg_mask, pos_mask=pos_mask, pair_weight=pair_weight)
             else:
                 if self.sample_d:
                     all_x_2_d = torch.cat(kwargs["x_2_d"])
@@ -384,10 +465,10 @@ class DCCL(Algorithm):
                     embed_2_d = self.proj_head(feature_x_2_d)
                     view_2_d = nn.functional.normalize(embed_2_d)
                     add_pos = torch.cat([view_2_d,view_2_d],0)
-                    loss_sup_cl = self.supcon_loss(features, all_y, add_pos = add_pos)
+                    loss_sup_cl = self.supcon_loss(features, all_y, add_pos = add_pos, pair_weight=pair_weight)
                 else:
-                    loss_sup_cl = self.supcon_loss(features, all_y)
-            loss += self.l*loss_sup_cl
+                    loss_sup_cl = self.supcon_loss(features, all_y, pair_weight=pair_weight)
+            loss += self.l * self.reliability_loss_weight * loss_sup_cl
         pre_cl_loss = 0.
         if self.l_layer:
 
@@ -424,7 +505,59 @@ class DCCL(Algorithm):
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
+        if self.use_causal_reliability and reliability_stats is not None:
+            loss_dict["csr_mean"] = reliability_stats["mean"]
+            loss_dict["csr_min"] = reliability_stats["min"]
+            loss_dict["csr_max"] = reliability_stats["max"]
+            loss_dict["csr_valid_pos_pairs"] = reliability_stats["valid_pairs"]
+            loss_dict["causal_sim_mean"] = reliability_stats["causal_sim_mean"]
+            loss_dict["spurious_sim_mean"] = reliability_stats["spurious_sim_mean"]
+            loss_dict["weighted_sup_cl_loss"] = loss_sup_cl.item() if self.l else 0.0
         return loss_dict
+
+    def _build_pair_reliability(self, all_x, labels, domains_view1, domains_view2):
+        """
+        Args:
+            all_x: [B, C, H, W] raw batch image tensor for CLIP image semantics.
+            labels: [B]
+            domains_view1: [B]
+            domains_view2: [B]
+        Returns:
+            pair_weight: [2B, 2B], default 1, cross-domain same-class positives replaced by R_ij.
+        """
+        q = self.csr_clip_image_encoder(all_x)
+        q = F.normalize(q.float(), dim=1)
+        tc = self.causal_embeddings[labels]
+        ts = self.spurious_embeddings[labels]
+        causal_sim = torch.sum(q * tc, dim=1)
+        spurious_sim = torch.sum(q * ts, dim=1)
+        raw_score = causal_sim - self.causal_beta * spurious_sim
+        r = torch.sigmoid(raw_score / self.causal_temperature).detach()
+
+        r_2v = torch.cat([r, r], dim=0)  # [2B]
+        pair_r = torch.clamp(
+            torch.ger(r_2v, r_2v),
+            min=self.reliability_min_weight,
+            max=1.0,
+        )
+
+        labels_2v = torch.cat([labels, labels], dim=0)
+        domains_2v = torch.cat([domains_view1, domains_view2], dim=0)
+        same_class = torch.eq(labels_2v.unsqueeze(1), labels_2v.unsqueeze(0))
+        cross_domain = ~torch.eq(domains_2v.unsqueeze(1), domains_2v.unsqueeze(0))
+        cross_domain_pos = same_class & cross_domain
+
+        pair_weight = torch.ones_like(pair_r)
+        pair_weight[cross_domain_pos] = pair_r[cross_domain_pos]
+        stats = {
+            "causal_sim_mean": float(causal_sim.mean().item()),
+            "spurious_sim_mean": float(spurious_sim.mean().item()),
+            "mean": float(r.mean().item()),
+            "min": float(r.min().item()),
+            "max": float(r.max().item()),
+            "valid_pairs": int(cross_domain_pos.sum().item()),
+        }
+        return pair_weight, stats
 
     def predict(self, x):
         return self.network(x)
@@ -468,7 +601,7 @@ class SupConLoss(nn.Module):
         self.mask_out = mask_out
         self.not_sup = not_sup
 
-    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None):
+    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None, pair_weight=None):
         """Compute loss for model. If both `labels` and `mask` are None,
         it degenerates to SimCLR unsupervised loss:
         https://arxiv.org/pdf/2002.05709.pdf
@@ -556,12 +689,22 @@ class SupConLoss(nn.Module):
         # compute mean of log-likelihood over positive
         if pos_mask is not None:
             log_prob = log_prob*pos_mask
-        if add_pos is not None:
+        if pair_weight is not None:
+            if pair_weight.shape != mask.shape:
+                raise ValueError(f"pair_weight shape mismatch: expected {tuple(mask.shape)}, got {tuple(pair_weight.shape)}")
+            weighted_pos_mask = mask * pair_weight
+            weighted_pos_denom = weighted_pos_mask.sum(1).clamp_min(1e-12)
+            mean_log_prob_pos = (weighted_pos_mask * log_prob).sum(1) / weighted_pos_denom
+            if add_pos is not None:
+                add_logits = torch.sum(add_pos*contrast_feature, 1, keepdim=True)/self.temperature - logits_max.detach()
+                add_logits = torch.squeeze(add_logits)
+                mean_log_prob_pos = ((weighted_pos_mask * log_prob).sum(1) + add_logits) / (weighted_pos_mask.sum(1) + 1)
+        elif add_pos is not None:
             add_logits = torch.sum(add_pos*contrast_feature, 1, keepdim=True)/self.temperature - logits_max.detach()
             add_logits = torch.squeeze(add_logits)
             mean_log_prob_pos = ((mask * log_prob).sum(1)+add_logits) / (mask.sum(1)+1)
         else:
-            mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
+            mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1).clamp_min(1e-12)
 
         # loss
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
