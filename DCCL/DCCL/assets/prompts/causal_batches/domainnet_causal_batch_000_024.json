@@ -1,0 +1,154 @@
+{
+  "prompts": {
+    "The_Eiffel_Tower": {
+      "causal_prompts": [
+        "A wrought-iron tower rises from four curved legs joined by arches and narrows upward into stacked platforms and a spire.",
+        "The landmark shows an open lattice frame with a broad base, mid-level decks, and a sharply tapering vertical silhouette."
+      ]
+    },
+    "The_Great_Wall_of_China": {
+      "causal_prompts": [
+        "A long fortified wall follows mountain ridges with repeating crenellations and evenly spaced watchtowers.",
+        "The scene is identified by a continuous stone rampart that snakes across terrain in connected segments."
+      ]
+    },
+    "The_Mona_Lisa": {
+      "causal_prompts": [
+        "A seated woman is shown from the waist up with folded hands, direct gaze, and a calm half-smile.",
+        "The portrait composition features a frontal upper body, crossed hands in the foreground, and a centered human figure."
+      ]
+    },
+    "aircraft_carrier": {
+      "causal_prompts": [
+        "A massive naval ship has a long flat flight deck with runway markings and a side island superstructure.",
+        "The vessel is recognized by carrier layout: wide deck for aircraft operations atop a large warship hull."
+      ]
+    },
+    "airplane": {
+      "causal_prompts": [
+        "A flying vehicle with a central fuselage, two fixed wings, tail fins, and engine units defines this class.",
+        "The object shows an aerodynamic body with wing span and rear stabilizers arranged for powered flight."
+      ]
+    },
+    "alarm_clock": {
+      "causal_prompts": [
+        "A compact timepiece body includes a clock face and distinct top bells or alarm controls.",
+        "The object is identified by a front dial with hour markers paired with an alarm mechanism on the casing."
+      ]
+    },
+    "ambulance": {
+      "causal_prompts": [
+        "A road vehicle with a boxy medical cabin, emergency markings, and roof signal units indicates patient transport.",
+        "The class appears as a van-like emergency vehicle configured for stretcher space and rapid response."
+      ]
+    },
+    "angel": {
+      "causal_prompts": [
+        "A human-like figure with prominent wings attached to the back forms the key identity cue.",
+        "The subject combines a person-shaped body and feathered wings, often in a poised or hovering posture."
+      ]
+    },
+    "animal_migration": {
+      "causal_prompts": [
+        "Multiple animals move together in a common direction, forming a coordinated herd or flock pattern.",
+        "The event is recognized by collective locomotion of many animals with shared travel flow across space."
+      ]
+    },
+    "ant": {
+      "causal_prompts": [
+        "A tiny insect with three body segments, six legs, bent antennae, and a narrow waist is characteristic.",
+        "The class is marked by a segmented exoskeleton body plan with head, thorax, and abdomen linked in line."
+      ]
+    },
+    "anvil": {
+      "causal_prompts": [
+        "A heavy metal block with a flat top, horn-shaped tapered end, and sturdy base defines this tool.",
+        "The object shows a forging surface and protruding beak profile used for shaping metal."
+      ]
+    },
+    "apple": {
+      "causal_prompts": [
+        "A round fruit body with smooth contour, a short stem at the top, and slight top-bottom dimples identifies it.",
+        "The class appears as a near-spherical pomaceous fruit with a central core region and stem attachment point."
+      ]
+    },
+    "arm": {
+      "causal_prompts": [
+        "An upper limb extends from shoulder to hand through upper arm, elbow joint, and forearm segments.",
+        "The body part is identified by a jointed long-limb structure ending in a wrist and hand."
+      ]
+    },
+    "asparagus": {
+      "causal_prompts": [
+        "Long green spears with straight stalks and compact bud-like tips are the defining visual feature.",
+        "The vegetable appears as slender shoots bundled by parallel stems and tapered heads."
+      ]
+    },
+    "axe": {
+      "causal_prompts": [
+        "A handle attached to a broad wedge-shaped cutting head forms the essential tool geometry.",
+        "The class is recognized by a long grip shaft ending in a sharpened metal blade for chopping."
+      ]
+    },
+    "backpack": {
+      "causal_prompts": [
+        "A soft container with shoulder straps and a main zippered compartment worn on the back identifies this item.",
+        "The object shows a portable bag body with dual straps, top opening, and load-carrying pouch structure."
+      ]
+    },
+    "banana": {
+      "causal_prompts": [
+        "A curved elongated fruit with tapering ends and peel-separated sections marks this class.",
+        "The object is identified by crescent-like fruit geometry and a thick peel around soft inner flesh."
+      ]
+    },
+    "bandage": {
+      "causal_prompts": [
+        "A narrow strip or patch used to cover injuries, often with an absorbent center, defines the item.",
+        "The class shows a protective wound-covering form with adhesive side regions around a central pad."
+      ]
+    },
+    "barn": {
+      "causal_prompts": [
+        "A large farm building with a high roof, wide doors, and storage-oriented interior volume is characteristic.",
+        "The structure is recognized by rural utility architecture featuring a broad rectangular body and pitched roofline."
+      ]
+    },
+    "baseball": {
+      "causal_prompts": [
+        "A small spherical ball with stitched seam curves wrapping around the surface identifies it.",
+        "The object is defined by leather-covered ball geometry and distinct red seam patterning."
+      ]
+    },
+    "baseball_bat": {
+      "causal_prompts": [
+        "A smooth tapered club with a thick striking barrel and narrow grip handle defines this sporting tool.",
+        "The class appears as a long cylindrical bat with one hitting end and one handhold end."
+      ]
+    },
+    "basket": {
+      "causal_prompts": [
+        "An open-top container with raised sidewalls and a concave holding cavity is the key structure.",
+        "The object is identified by a bowl-like carrier form, often with a woven body and optional handle."
+      ]
+    },
+    "basketball": {
+      "causal_prompts": [
+        "A round sports ball with black channel lines dividing orange-like panels is distinctive.",
+        "The class is recognized by a spherical ball marked by intersecting groove lines for grip and control."
+      ]
+    },
+    "bat": {
+      "causal_prompts": [
+        "A winged mammal with membranous wings stretched between elongated fingers and a small body defines it.",
+        "The animal shows outspread skin wings, pointed ears, and a hanging or flight-ready posture."
+      ]
+    },
+    "bathtub": {
+      "causal_prompts": [
+        "A large basin-shaped fixture with high sides and reclining interior space for bathing identifies this object.",
+        "The class appears as an elongated tub container designed to hold water for full-body washing."
+      ]
+    }
+  }
+}
