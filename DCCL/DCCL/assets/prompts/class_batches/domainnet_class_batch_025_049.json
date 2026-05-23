@@ -1,0 +1,33 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 1,
+  "start": 25,
+  "end_exclusive": 50,
+  "class_names": [
+    "beach",
+    "bear",
+    "beard",
+    "bed",
+    "bee",
+    "belt",
+    "bench",
+    "bicycle",
+    "binoculars",
+    "bird",
+    "birthday_cake",
+    "blackberry",
+    "blueberry",
+    "book",
+    "boomerang",
+    "bottlecap",
+    "bowtie",
+    "bracelet",
+    "brain",
+    "bread",
+    "bridge",
+    "broccoli",
+    "broom",
+    "bucket",
+    "bulldozer"
+  ]
+}

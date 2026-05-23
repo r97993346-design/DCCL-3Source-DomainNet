@@ -1,0 +1,33 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 9,
+  "start": 225,
+  "end_exclusive": 250,
+  "class_names": [
+    "pig",
+    "pillow",
+    "pineapple",
+    "pizza",
+    "pliers",
+    "police_car",
+    "pond",
+    "pool",
+    "popsicle",
+    "postcard",
+    "potato",
+    "power_outlet",
+    "purse",
+    "rabbit",
+    "raccoon",
+    "radio",
+    "rain",
+    "rainbow",
+    "rake",
+    "remote_control",
+    "rhinoceros",
+    "rifle",
+    "river",
+    "roller_coaster",
+    "rollerskates"
+  ]
+}

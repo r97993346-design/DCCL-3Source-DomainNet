@@ -1,0 +1,33 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 5,
+  "start": 125,
+  "end_exclusive": 150,
+  "class_names": [
+    "flying_saucer",
+    "foot",
+    "fork",
+    "frog",
+    "frying_pan",
+    "garden",
+    "garden_hose",
+    "giraffe",
+    "goatee",
+    "golf_club",
+    "grapes",
+    "grass",
+    "guitar",
+    "hamburger",
+    "hammer",
+    "hand",
+    "harp",
+    "hat",
+    "headphones",
+    "hedgehog",
+    "helicopter",
+    "helmet",
+    "hexagon",
+    "hockey_puck",
+    "hockey_stick"
+  ]
+}

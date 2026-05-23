@@ -1,0 +1,33 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 6,
+  "start": 150,
+  "end_exclusive": 175,
+  "class_names": [
+    "horse",
+    "hospital",
+    "hot_air_balloon",
+    "hot_dog",
+    "hot_tub",
+    "hourglass",
+    "house",
+    "house_plant",
+    "hurricane",
+    "ice_cream",
+    "jacket",
+    "jail",
+    "kangaroo",
+    "key",
+    "keyboard",
+    "knee",
+    "knife",
+    "ladder",
+    "lantern",
+    "laptop",
+    "leaf",
+    "leg",
+    "light_bulb",
+    "lighter",
+    "lighthouse"
+  ]
+}

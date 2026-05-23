@@ -1,0 +1,28 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 13,
+  "start": 325,
+  "end_exclusive": 345,
+  "class_names": [
+    "trombone",
+    "truck",
+    "trumpet",
+    "umbrella",
+    "underwear",
+    "van",
+    "vase",
+    "violin",
+    "washing_machine",
+    "watermelon",
+    "waterslide",
+    "whale",
+    "wheel",
+    "windmill",
+    "wine_bottle",
+    "wine_glass",
+    "wristwatch",
+    "yoga",
+    "zebra",
+    "zigzag"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 12,
+  "start": 300,
+  "end_exclusive": 325,
+  "class_names": [
+    "sweater",
+    "swing_set",
+    "sword",
+    "syringe",
+    "t-shirt",
+    "table",
+    "teapot",
+    "teddy-bear",
+    "telephone",
+    "television",
+    "tennis_racquet",
+    "tent",
+    "tiger",
+    "toaster",
+    "toe",
+    "toilet",
+    "tooth",
+    "toothbrush",
+    "toothpaste",
+    "tornado",
+    "tractor",
+    "traffic_light",
+    "train",
+    "tree",
+    "triangle"
+  ]
+}

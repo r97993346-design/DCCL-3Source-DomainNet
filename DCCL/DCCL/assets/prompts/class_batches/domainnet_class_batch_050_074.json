@@ -1,0 +1,33 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 2,
+  "start": 50,
+  "end_exclusive": 75,
+  "class_names": [
+    "bus",
+    "bush",
+    "butterfly",
+    "cactus",
+    "cake",
+    "calculator",
+    "calendar",
+    "camel",
+    "camera",
+    "camouflage",
+    "campfire",
+    "candle",
+    "cannon",
+    "canoe",
+    "car",
+    "carrot",
+    "castle",
+    "cat",
+    "ceiling_fan",
+    "cell_phone",
+    "cello",
+    "chair",
+    "chandelier",
+    "church",
+    "circle"
+  ]
+}

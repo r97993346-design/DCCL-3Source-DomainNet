@@ -1,0 +1,33 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 11,
+  "start": 275,
+  "end_exclusive": 300,
+  "class_names": [
+    "snowman",
+    "soccer_ball",
+    "sock",
+    "speedboat",
+    "spider",
+    "spoon",
+    "spreadsheet",
+    "square",
+    "squiggle",
+    "squirrel",
+    "stairs",
+    "star",
+    "steak",
+    "stereo",
+    "stethoscope",
+    "stitches",
+    "stop_sign",
+    "stove",
+    "strawberry",
+    "streetlight",
+    "string_bean",
+    "submarine",
+    "suitcase",
+    "sun",
+    "swan"
+  ]
+}

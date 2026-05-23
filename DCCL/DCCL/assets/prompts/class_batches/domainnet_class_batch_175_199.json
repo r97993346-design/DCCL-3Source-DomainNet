@@ -1,0 +1,33 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 7,
+  "start": 175,
+  "end_exclusive": 200,
+  "class_names": [
+    "lightning",
+    "line",
+    "lion",
+    "lipstick",
+    "lobster",
+    "lollipop",
+    "mailbox",
+    "map",
+    "marker",
+    "matches",
+    "megaphone",
+    "mermaid",
+    "microphone",
+    "microwave",
+    "monkey",
+    "moon",
+    "mosquito",
+    "motorbike",
+    "mountain",
+    "mouse",
+    "moustache",
+    "mouth",
+    "mug",
+    "mushroom",
+    "nail"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 4,
+  "start": 100,
+  "end_exclusive": 125,
+  "class_names": [
+    "drill",
+    "drums",
+    "duck",
+    "dumbbell",
+    "ear",
+    "elbow",
+    "elephant",
+    "envelope",
+    "eraser",
+    "eye",
+    "eyeglasses",
+    "face",
+    "fan",
+    "feather",
+    "fence",
+    "finger",
+    "fire_hydrant",
+    "fireplace",
+    "firetruck",
+    "fish",
+    "flamingo",
+    "flashlight",
+    "flip_flops",
+    "floor_lamp",
+    "flower"
+  ]
+}

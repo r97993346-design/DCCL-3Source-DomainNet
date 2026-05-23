@@ -1,0 +1,33 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 10,
+  "start": 250,
+  "end_exclusive": 275,
+  "class_names": [
+    "sailboat",
+    "sandwich",
+    "saw",
+    "saxophone",
+    "school_bus",
+    "scissors",
+    "scorpion",
+    "screwdriver",
+    "sea_turtle",
+    "see_saw",
+    "shark",
+    "sheep",
+    "shoe",
+    "shorts",
+    "shovel",
+    "sink",
+    "skateboard",
+    "skull",
+    "skyscraper",
+    "sleeping_bag",
+    "smiley_face",
+    "snail",
+    "snake",
+    "snorkel",
+    "snowflake"
+  ]
+}

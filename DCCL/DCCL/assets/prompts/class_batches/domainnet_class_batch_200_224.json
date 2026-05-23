@@ -1,0 +1,33 @@
+{
+  "dataset": "DomainNet",
+  "batch_index": 8,
+  "start": 200,
+  "end_exclusive": 225,
+  "class_names": [
+    "necklace",
+    "nose",
+    "ocean",
+    "octagon",
+    "octopus",
+    "onion",
+    "oven",
+    "owl",
+    "paint_can",
+    "paintbrush",
+    "palm_tree",
+    "panda",
+    "pants",
+    "paper_clip",
+    "parachute",
+    "parrot",
+    "passport",
+    "peanut",
+    "pear",
+    "peas",
+    "pencil",
+    "penguin",
+    "piano",
+    "pickup_truck",
+    "picture_frame"
+  ]
+}
