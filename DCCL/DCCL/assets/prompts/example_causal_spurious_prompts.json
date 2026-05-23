@@ -1,0 +1,29 @@
+{
+  "class_names": ["airplane", "dog", "chair"],
+  "prompts": {
+    "airplane": {
+      "causal_prompts": [
+        "an object with wings, fuselage, tail fin and aircraft structure"
+      ],
+      "spurious_prompts": [
+        "an object appearing in blue sky, clouds, airport background or sketch style"
+      ]
+    },
+    "dog": {
+      "causal_prompts": [
+        "an animal with four legs, ears, snout, tail and canine body structure"
+      ],
+      "spurious_prompts": [
+        "an animal appearing on grass, indoor background, cartoon texture or drawing style"
+      ]
+    },
+    "chair": {
+      "causal_prompts": [
+        "an object with a seat, backrest and supporting legs"
+      ],
+      "spurious_prompts": [
+        "an object appearing in a room, wooden texture, painting style or colored background"
+      ]
+    }
+  }
+}
