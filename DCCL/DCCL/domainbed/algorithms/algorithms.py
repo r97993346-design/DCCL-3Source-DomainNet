@@ -588,8 +588,13 @@ class DCCL(Algorithm):
             with torch.no_grad(): f_i_det=self.dfa_head(feature_x.detach())[0]
             m2,_=self.masker(f_i_det)
             f_sup2=f_i_det*m2; f_inf2=f_i_det*(1-m2)
-            l_mask=F.cross_entropy(self.sup_classifier(f_sup2).detach(),all_y)-F.cross_entropy(self.inf_classifier(f_inf2).detach(),all_y)
+            # keep gradients through masker; avoid updating classifier weights in this step
+            for p in self.sup_classifier.parameters(): p.requires_grad_(False)
+            for p in self.inf_classifier.parameters(): p.requires_grad_(False)
+            l_mask=F.cross_entropy(self.sup_classifier(f_sup2),all_y)-F.cross_entropy(self.inf_classifier(f_inf2),all_y)
             l_mask.backward(); self.optimizer_mask.step()
+            for p in self.sup_classifier.parameters(): p.requires_grad_(True)
+            for p in self.inf_classifier.parameters(): p.requires_grad_(True)
 
         loss_opt = loss
         self.optimizer.zero_grad()
