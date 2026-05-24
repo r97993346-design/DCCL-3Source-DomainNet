@@ -61,4 +61,23 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+    hparams["use_dfa"] = args.use_dfa
+    hparams["l_cdc"] = args.l_cdc
+    hparams["l_pma"] = args.l_pma
+    hparams["l_gt"] = args.l_gt
+
+    hparams["dfa_dim"] = args.dfa_dim
+    hparams["dfa_use_dfd"] = args.dfa_use_dfd
+    hparams["dfa_use_advm"] = args.dfa_use_advm
+    hparams["dfa_use_dr"] = args.dfa_use_dr
+    hparams["dfa_use_cr"] = args.dfa_use_cr
+    hparams["dfa_mask_ratio"] = args.dfa_mask_ratio
+    hparams["dfa_gumbel_tau"] = args.dfa_gumbel_tau
+    hparams["lambda_dfa_cls"] = args.lambda_dfa_cls
+    hparams["lambda_dfa_inv"] = args.lambda_dfa_inv
+    hparams["lambda_dfa_cl"] = args.lambda_dfa_cl
+    hparams["dfa_inv_rampup_epochs"] = args.dfa_inv_rampup_epochs
+    hparams["dfa_inference_head"] = args.dfa_inference_head
+    hparams["dfa_require_domain_balanced_batch"] = args.dfa_require_domain_balanced_batch
+    hparams["dfa_log_fallback_stats"] = args.dfa_log_fallback_stats
     return hparams

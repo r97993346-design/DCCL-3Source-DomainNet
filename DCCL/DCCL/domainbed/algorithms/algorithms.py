@@ -217,6 +217,63 @@ class TN(nn.Module):
         return x*out, loss
 
 
+
+
+class DualPathFeatureDisentangler(nn.Module):
+    def __init__(self, in_dim, out_dim):
+        super().__init__()
+        hid=max(out_dim,in_dim//2)
+        self.f_i=nn.Sequential(nn.Linear(in_dim,hid), nn.ReLU(), nn.Linear(hid,out_dim))
+        self.f_s=nn.Sequential(nn.Linear(in_dim,hid), nn.ReLU(), nn.Linear(hid,out_dim))
+    def forward(self,z):
+        return self.f_i(z), self.f_s(z)
+
+class AdversarialMasker(nn.Module):
+    def __init__(self, dim, ratio=0.6, tau=0.5):
+        super().__init__()
+        self.mlp=nn.Linear(dim, dim)
+        self.ratio=ratio; self.tau=tau
+    def forward(self, f):
+        logits=self.mlp(f)
+        if self.training:
+            m=torch.sigmoid((logits + torch.rand_like(logits).clamp_(1e-6,1-1e-6).log() - (1-torch.rand_like(logits).clamp_(1e-6,1-1e-6)).log())/self.tau)
+        else:
+            m=torch.sigmoid(logits)
+        k=max(1,int(m.shape[1]*self.ratio))
+        topk=torch.topk(m,k,dim=1).indices
+        hard=torch.zeros_like(m).scatter(1,topk,1.0)
+        m=(hard-m).detach()+m
+        return m, {'mask_mean':m.mean().item(),'superior_ratio':hard.mean().item()}
+
+
+class DomainRelatedAugmentation(nn.Module):
+    def __init__(self, dim):
+        super().__init__(); self.fc=nn.Linear(dim*2,dim)
+    def forward(self,f_sup,f_s,domain_id,entropy):
+        picks=[]; fb=0
+        for i in range(domain_id.shape[0]):
+            idx=(domain_id!=domain_id[i]).nonzero().flatten()
+            if idx.numel()==0: idx=(torch.arange(domain_id.shape[0],device=domain_id.device)!=i).nonzero().flatten(); fb+=1
+            if idx.numel()==0: idx=torch.tensor([i],device=domain_id.device)
+            j=idx[entropy[idx].argmin()]; picks.append(j)
+        hard=f_s[torch.stack(picks)]
+        return self.fc(torch.cat([f_sup,hard],1)), torch.stack(picks), fb
+
+class CausalRelatedAugmentation(nn.Module):
+    def __init__(self, dim):
+        super().__init__(); self.fc=nn.Linear(dim*2,dim)
+    def forward(self,f_sup,f_inf,logits_sup,y,domain_id):
+        prob=F.softmax(logits_sup.detach(),1); prob[torch.arange(prob.size(0)),y]=-1; obj=prob.argmax(1)
+        picks=[]; fb=0
+        for i in range(y.size(0)):
+            c=((domain_id==domain_id[i])&(y==obj[i])).nonzero().flatten()
+            if c.numel()==0: c=((domain_id==domain_id[i])&(y!=y[i])).nonzero().flatten(); fb+=1
+            if c.numel()==0: c=(y==obj[i]).nonzero().flatten(); fb+=1
+            if c.numel()==0: c=(y!=y[i]).nonzero().flatten(); fb+=1
+            if c.numel()==0: c=torch.tensor([i],device=y.device)
+            picks.append(c[0])
+        return self.fc(torch.cat([f_sup,f_inf[torch.stack(picks)]],1)), torch.stack(picks), fb
+
 class DCCL(Algorithm):
     """
     DCCL: Domain-Connecting Contrastive Learning
@@ -263,6 +320,20 @@ class DCCL(Algorithm):
         self.TN = hparams["TN"]
         self.lamda = hparams["lamda"]
         self.sample_d = hparams["sample_d"]
+        self.use_dfa = hparams.get("use_dfa", False)
+        self.l_cdc = hparams.get("l_cdc", 0.0)
+        self.l_pma = hparams.get("l_pma", 0.0)
+        self.l_gt = hparams.get("l_gt", 0.0)
+        self.dfa_dim = hparams.get("dfa_dim", hidden_num_2) or hidden_num_2
+        self.dfa_use_dfd = hparams.get("dfa_use_dfd", True)
+        self.dfa_use_advm = hparams.get("dfa_use_advm", True)
+        self.dfa_use_dr = hparams.get("dfa_use_dr", True)
+        self.dfa_use_cr = hparams.get("dfa_use_cr", True)
+        self.dfa_inference_head = hparams.get("dfa_inference_head", "invariant")
+        self.lambda_dfa_cls = hparams.get("lambda_dfa_cls", 1.0)
+        self.lambda_dfa_inv = hparams.get("lambda_dfa_inv", 1.0)
+        self.lambda_dfa_cl = hparams.get("lambda_dfa_cl", 0.005)
+        self.dfa_inv_rampup_epochs = hparams.get("dfa_inv_rampup_epochs", 5)
 
         if self.TN:
             self.TN_network = TN()
@@ -288,16 +359,71 @@ class DCCL(Algorithm):
             {"params": self.var_encoders.parameters(), "lr": self.hparams["lr"] * 10},
             {"params": self.pre_proj_head.parameters(), "lr": self.hparams["lr"]/lower_proj}
             ]
+        if self.use_dfa:
+            self.dfa_head = DualPathFeatureDisentangler(classifier_input_dim, self.dfa_dim)
+            self.domain_classifier = nn.Linear(self.dfa_dim, num_domains)
+            self.masker = AdversarialMasker(self.dfa_dim, hparams.get("dfa_mask_ratio",0.6), hparams.get("dfa_gumbel_tau",0.5))
+            self.sup_classifier = nn.Linear(self.dfa_dim, num_classes)
+            self.inf_classifier = nn.Linear(self.dfa_dim, num_classes)
+            self.dr_aug = DomainRelatedAugmentation(self.dfa_dim)
+            self.cr_aug = CausalRelatedAugmentation(self.dfa_dim)
+
         if self.TN:
             self.optimizer_TN = get_optimizer(
             hparams["optimizer"],
             [{"params": self.TN_network.parameters(), "lr": self.hparams["lr"]}]
             )
-        
+
+        if self.use_dfa:
+            self.optimizer_dfa_specific = get_optimizer(hparams["optimizer"],[{"params": list(self.dfa_head.f_s.parameters())+list(self.domain_classifier.parameters()), "lr": self.hparams["lr"]}])
+            self.optimizer_mask = get_optimizer(hparams["optimizer"],[{"params": self.masker.parameters(), "lr": self.hparams["lr"]}])
+
         self.optimizer = get_optimizer(
             hparams["optimizer"],
             optimized_list
         )
+    def _compute_dfa_losses(self, feat, feat_aug, feat_pre, labels, domains):
+        """Full DFA: CDC + PMA + GT."""
+        device = feat.device
+        unique_classes = labels.unique()
+        cdc_loss = torch.tensor(0.0, device=device)
+        pma_loss = torch.tensor(0.0, device=device)
+        gt_loss = torch.tensor(0.0, device=device)
+
+        # CDC: class-wise cross-domain center discrepancy minimization
+        cdc_pairs = 0
+        for c in unique_classes:
+            class_mask = labels == c
+            class_domains = domains[class_mask].unique()
+            if len(class_domains) < 2:
+                continue
+            class_centers = []
+            for d in class_domains:
+                cd_mask = class_mask & (domains == d)
+                class_centers.append(feat[cd_mask].mean(dim=0))
+            for i in range(len(class_centers)):
+                for j in range(i + 1, len(class_centers)):
+                    cdc_loss = cdc_loss + (class_centers[i] - class_centers[j]).pow(2).mean()
+                    cdc_pairs += 1
+        if cdc_pairs > 0:
+            cdc_loss = cdc_loss / cdc_pairs
+
+        # PMA: prototype matching between trainable and frozen pretrained features
+        pma_count = 0
+        for c in unique_classes:
+            cmask = labels == c
+            if cmask.sum() == 0:
+                continue
+            proto_train = feat[cmask].mean(dim=0)
+            proto_pre = feat_pre[cmask].mean(dim=0)
+            pma_loss = pma_loss + (proto_train - proto_pre).pow(2).mean()
+            pma_count += 1
+        if pma_count > 0:
+            pma_loss = pma_loss / pma_count
+
+        # GT: global consistency between two views
+        gt_loss = (feat - feat_aug).pow(2).mean()
+        return cdc_loss, pma_loss, gt_loss
 
     def update(self, x, y, **kwargs):
         all_x = torch.cat(x)
@@ -415,6 +541,56 @@ class DCCL(Algorithm):
             else:
                 pre_cl_loss += self.supcon_loss_pre(features, all_y_pre)
             loss += self.l_layer*pre_cl_loss
+        dfa_stats={}
+        if self.use_dfa:
+            all_d = torch.cat(kwargs["d"])
+            cdc_loss, pma_loss, gt_loss = self._compute_dfa_losses(feature_x, feature_x_2, pre_pred_x, all_y, all_d)
+            loss += self.l_cdc * cdc_loss + self.l_pma * pma_loss + self.l_gt * gt_loss
+
+            # step1: specific branch
+            z_det=feature_x.detach()
+            _,f_s=self.dfa_head(z_det)
+            l_spe_dc=F.cross_entropy(self.domain_classifier(f_s), all_d)
+            self.optimizer_dfa_specific.zero_grad(); l_spe_dc.backward(); self.optimizer_dfa_specific.step()
+
+            # step2: main dfa losses (freeze masker)
+            z_main=feature_x
+            f_i,f_s2=self.dfa_head(z_main)
+            for p in self.domain_classifier.parameters(): p.requires_grad_(False)
+            p_i=F.softmax(self.domain_classifier(f_i),dim=1)
+            uniform=torch.ones_like(p_i)/p_i.shape[1]
+            l_inv_dc=F.mse_loss(p_i,uniform)
+            for p in self.domain_classifier.parameters(): p.requires_grad_(True)
+            m,mstat=self.masker(f_i.detach() if not self.dfa_use_advm else f_i)
+            f_sup=f_i*m; f_inf=f_i*(1-m)
+            logits_sup=self.sup_classifier(f_sup); logits_inf=self.inf_classifier(f_inf)
+            l_sup_cls=F.cross_entropy(logits_sup,all_y); l_inf_cls=F.cross_entropy(logits_inf,all_y)
+            # DR
+            cand_dom=[]; dr_fb=0
+            with torch.no_grad(): ent=-(F.softmax(self.domain_classifier(f_s2.detach()),1)*F.log_softmax(self.domain_classifier(f_s2.detach()),1)).sum(1)
+            for i in range(all_y.shape[0]):
+                idx=(all_d!=all_d[i]).nonzero().flatten()
+                if idx.numel()==0: idx=(torch.arange(all_y.shape[0],device=all_y.device)!=i).nonzero().flatten(); dr_fb+=1
+                if idx.numel()==0: idx=torch.tensor([i],device=all_y.device)
+                j=idx[ent[idx].argmin()]
+                cand_dom.append(j)
+            f_dr,dr_pick,dr_fb = self.dr_aug(f_sup,f_s2,all_d,ent)
+            l_dr_cl=self.supcon_loss(torch.stack([F.normalize(f_i,dim=1),F.normalize(f_dr,dim=1)],1),all_y)
+            # CR
+            f_cr,cr_pick,cr_fb = self.cr_aug(f_sup,f_inf,logits_sup,all_y,all_d)
+            l_cr_cl=self.supcon_loss(torch.stack([F.normalize(f_i,dim=1),F.normalize(f_cr,dim=1)],1),all_y)
+            lambda_inv=self.lambda_dfa_inv*float(min(1.0,(kwargs.get("step",0)+1)/(self.dfa_inv_rampup_epochs*100.0)))
+            loss = loss + self.lambda_dfa_cls*(l_sup_cls+l_inf_cls)+lambda_inv*l_inv_dc+self.lambda_dfa_cl*(l_dr_cl+l_cr_cl)
+            dfa_stats=dict(l_spe_dc=l_spe_dc.item(),l_inv_dc=l_inv_dc.item(),l_sup_cls=l_sup_cls.item(),l_inf_cls=l_inf_cls.item(),l_dr_cl=l_dr_cl.item(),l_cr_cl=l_cr_cl.item(),loss_mask=(l_sup_cls-l_inf_cls).item(),lambda_inv_current=lambda_inv,mask_superior_ratio=mstat['superior_ratio'],dr_fallback_ratio=dr_fb/max(1,all_y.shape[0]),cr_fallback_ratio=cr_fb/max(1,all_y.shape[0]))
+
+            # step3 update masker only
+            self.optimizer_mask.zero_grad()
+            with torch.no_grad(): f_i_det=self.dfa_head(feature_x.detach())[0]
+            m2,_=self.masker(f_i_det)
+            f_sup2=f_i_det*m2; f_inf2=f_i_det*(1-m2)
+            l_mask=F.cross_entropy(self.sup_classifier(f_sup2).detach(),all_y)-F.cross_entropy(self.inf_classifier(f_inf2).detach(),all_y)
+            l_mask.backward(); self.optimizer_mask.step()
+
         loss_opt = loss
         self.optimizer.zero_grad()
         loss_opt.backward()
@@ -424,9 +600,16 @@ class DCCL(Algorithm):
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
+        if self.use_dfa:
+            loss_dict["cdc_loss"] = cdc_loss.item(); loss_dict["pma_loss"] = pma_loss.item(); loss_dict["gt_loss"] = gt_loss.item()
+            loss_dict.update(dfa_stats)
         return loss_dict
 
     def predict(self, x):
+        if self.use_dfa and self.dfa_inference_head == "invariant":
+            z=self.featurizer(x)
+            f_i,_=self.dfa_head(z)
+            return self.sup_classifier(f_i)
         return self.network(x)
 
     def predict_embed(self, x):
