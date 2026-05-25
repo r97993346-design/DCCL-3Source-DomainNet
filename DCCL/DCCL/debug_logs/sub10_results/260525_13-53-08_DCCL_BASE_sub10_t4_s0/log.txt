@@ -1,0 +1,144 @@
+[37m[36mINFO[0m[0m 05/25 13:53:08 | Command :: train_all.py DCCL_BASE_sub10_t4_s0 --dataset DomainNet --algorithm DCCL --data_dir /home/hooasia/lgg/data/repro_dccl_exp_data --seed 0 --trial_seed 0 --source_envs 1 2 3 --target_env 4 --steps 1500 --checkpoint_freq 500
+Environment:
+	Python: 3.10.20
+	PyTorch: 2.5.1+cu121
+	Torchvision: 0.20.1+cu121
+	CUDA: 12.1
+	CUDNN: 90100
+	NumPy: 2.2.6
+	PIL: 12.0.0
+Args:
+	TN: False
+	algorithm: DCCL
+	aug: 0
+	checkpoint_freq: 500
+	configs: []
+	data_dir: /home/hooasia/lgg/data/repro_dccl_exp_data
+	dataset: DomainNet
+	debug: False
+	deterministic: False
+	erm_baseline: weak
+	evalmode: fast
+	holdout_fraction: 0.2
+	l: 1
+	l_d: 0.05
+	l_layer: 1
+	label_ratio: 1.0
+	lamda: 5
+	log: False
+	mix: 0
+	model: resnet50
+	model_save: None
+	n_layer: 1
+	name: DCCL_BASE_sub10_t4_s0
+	out_dir: train_output/DomainNet/260525_13-53-08_DCCL_BASE_sub10_t4_s0
+	out_root: train_output/DomainNet
+	pos_mask: False
+	prebuild_loader: False
+	re_w: False
+	sample_d: False
+	seed: 0
+	show: False
+	source_envs: [1, 2, 3]
+	start_epoch: 1000
+	steps: 1500
+	sup: True
+	t: 0.1
+	t_pre: 0.2
+	target_env: 4
+	tb_freq: 10
+	test_envs: None
+	trial_seed: 0
+	two_ce: False
+	unique_name: 260525_13-53-08_DCCL_BASE_sub10_t4_s0
+	weak_erm: False
+	work_dir: .
+HParams:
+	data_augmentation: True
+	val_augment: False
+	resnet18: False
+	resnet_dropout: 0.0
+	class_balanced: False
+	optimizer: adam
+	freeze_bn: True
+	pretrained: True
+	lr: 5e-05
+	batch_size: 32
+	weight_decay: 0.0
+	t: 0.1
+	t_pre: 0.1
+	l: 1
+	l_d: 0.05
+	l_layer: 0.1
+	n_layer: 2
+	sup: True
+	two_ce: False
+	sample_d: False
+	re_w: False
+	pos_mask: False
+	mix: 0
+	aug: 0
+	model: resnet50
+	label_ratio: 1.0
+	TN: False
+	lamda: 5
+	start_epoch: 1000
+	log: False
+	swad: LossValley
+	swad_kwargs: 
+	  n_converge: 3
+	  n_tolerance: 6
+	  tolerance_ratio: 0.3
+	test_batchsize: 128
+	indomain_test: False
+Dataset:
+	[DomainNet] #envs=4, #classes=345
+	env0: infograph (#5326)
+	env1: painting (#7569)
+	env2: quickdraw (#17250)
+	env3: real (#17530)
+
+[37m[36mINFO[0m[0m 05/25 13:53:52 | DomainNet custom split enabled: source_envs=[1, 2, 3] (['info', 'paint', 'quick']), target_env=4 (real)
+[37m[36mINFO[0m[0m 05/25 13:53:52 | n_steps = 1500
+[37m[36mINFO[0m[0m 05/25 13:53:52 | checkpoint_freq = 500
+[37m[36mINFO[0m[0m 05/25 13:53:52 | n_steps is updated to 1500 => 1501 for checkpointing
+[37m[36mINFO[0m[0m 05/25 13:53:52 | Target test envs = [[4]] (DomainNet custom split)
+[37m[36mINFO[0m[0m 05/25 13:53:52 | Target test envs = [[4]] (DomainNet custom split)
+[37m[36mINFO[0m[0m 05/25 13:53:52 | 
+[37m[36mINFO[0m[0m 05/25 13:54:39 | Testenv name escaping te_real -> te_real
+[37m[36mINFO[0m[0m 05/25 13:54:39 | Test envs = [3], name = te_real
+[37m[36mINFO[0m[0m 05/25 13:54:39 | Batch sizes for each domain: [32, 32, 32, 0] (total=96)
+[37m[36mINFO[0m[0m 05/25 13:54:39 | steps-per-epoch for each domain: 133.16, 189.25, 431.25 -> min = 133.16
+[37m[36mINFO[0m[0m 05/25 13:54:40 | # of params = 50352409
+[37m[36mINFO[0m[0m 05/25 13:55:28 | test_in     test_out    train_in    train_out   tr_outloss  env0_out    env1_out    env2_out    env3_in     env3_out    step        epoch       loss        ce_loss     sup_cl_los  pre_cl_los  step_time   eval_time  
+[37m[36mINFO[0m[0m 05/25 13:55:28 | 0.002210    0.001997    0.000000    0.003954    5.960166    0.003756    0.004627    0.003478    0.002210    0.001997    0           0.000000    8.621015    5.921442    2.598200    2.102499    2.316788    45.893879  
+[37m[36mINFO[0m[0m 05/25 13:59:33 | 0.428123    0.424701    0.000000    0.332146    3.324339    0.211268    0.433576    0.351594    0.428123    0.424701    500         3.754987    4.891329    3.328235    1.346467    2.188234    0.380410    46.812594  
+[37m[36mINFO[0m[0m 05/25 14:03:42 | 0.465416    0.462065    0.000000    0.367192    3.422255    0.223474    0.479841    0.398261    0.465416    0.462065    1000        7.509974    3.131988    1.750351    1.220868    1.848506    0.384032    48.076545  
+[37m[36mINFO[0m[0m 05/25 14:07:48 | 0.472262    0.464062    0.000000    0.371684    3.587288    0.203756    0.469266    0.442029    0.472262    0.464062    1500        11.264961   2.371658    1.093687    1.156154    1.762391    0.383419    46.293660  
+[37m[36mINFO[0m[0m 05/25 14:07:48 | ---
+[37m[33mWARNING[0m[0m 05/25 14:07:48 | Evaluate SWAD ...
+[37m[36mINFO[0m[0m 05/25 14:08:34 | 0.504207    0.494010    0.000000    0.414411    2.937888    0.251643    0.518837    0.472754    0.504207    0.494010    [501-1500]  (N=5)
+[37m[36mINFO[0m[0m 05/25 14:08:34 | oracle = 47.226%
+[37m[36mINFO[0m[0m 05/25 14:08:34 | iid = 47.226%
+[37m[36mINFO[0m[0m 05/25 14:08:34 | last = 47.226%
+[37m[36mINFO[0m[0m 05/25 14:08:34 | last (inD) = 37.168%
+[37m[36mINFO[0m[0m 05/25 14:08:34 | iid (inD) = 37.168%
+[37m[36mINFO[0m[0m 05/25 14:08:34 | SWAD = 50.421%
+[37m[36mINFO[0m[0m 05/25 14:08:34 | SWAD (inD) = 41.441%
+[37m[36mINFO[0m[0m 05/25 14:08:34 | === Summary ===
+[37m[36mINFO[0m[0m 05/25 14:08:34 | Command: train_all.py DCCL_BASE_sub10_t4_s0 --dataset DomainNet --algorithm DCCL --data_dir /home/hooasia/lgg/data/repro_dccl_exp_data --seed 0 --trial_seed 0 --source_envs 1 2 3 --target_env 4 --steps 1500 --checkpoint_freq 500
+[37m[36mINFO[0m[0m 05/25 14:08:34 | Unique name: 260525_13-53-08_DCCL_BASE_sub10_t4_s0
+[37m[36mINFO[0m[0m 05/25 14:08:34 | Out path: train_output/DomainNet/260525_13-53-08_DCCL_BASE_sub10_t4_s0
+[37m[36mINFO[0m[0m 05/25 14:08:34 | Algorithm: DCCL
+[37m[36mINFO[0m[0m 05/25 14:08:34 | Dataset: DomainNet
++------------+---------+---------+
+| Selection  |   env0  |   Avg.  |
++------------+---------+---------+
+|   oracle   | 47.226% | 47.226% |
+|    iid     | 47.226% | 47.226% |
+|    last    | 47.226% | 47.226% |
+| last (inD) | 37.168% | 37.168% |
+| iid (inD)  | 37.168% | 37.168% |
+|    SWAD    | 50.421% | 50.421% |
+| SWAD (inD) | 41.441% | 41.441% |
++------------+---------+---------+

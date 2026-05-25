@@ -1,0 +1,183 @@
+[37m[36mINFO[0m[0m 05/25 14:46:13 | Command :: train_all.py DCCL_DFA_FULL_sub10_t4_s0 --dataset DomainNet --algorithm DCCL --data_dir /home/hooasia/lgg/data/repro_dccl_exp_data --seed 0 --trial_seed 0 --source_envs 1 2 3 --target_env 4 --use_dfa --dfa_use_dfd --dfa_use_advm --dfa_use_dr --dfa_use_cr --steps 1500 --checkpoint_freq 500
+Environment:
+	Python: 3.10.20
+	PyTorch: 2.5.1+cu121
+	Torchvision: 0.20.1+cu121
+	CUDA: 12.1
+	CUDNN: 90100
+	NumPy: 2.2.6
+	PIL: 12.0.0
+Args:
+	TN: False
+	algorithm: DCCL
+	aug: 0
+	checkpoint_freq: 500
+	configs: []
+	data_dir: /home/hooasia/lgg/data/repro_dccl_exp_data
+	dataset: DomainNet
+	debug: False
+	deterministic: False
+	dfa_dim: 0
+	dfa_gumbel_tau: 0.5
+	dfa_inference_head: invariant
+	dfa_inv_rampup_epochs: 5
+	dfa_log_fallback_stats: True
+	dfa_mask_ratio: 0.6
+	dfa_require_domain_balanced_batch: True
+	dfa_use_advm: True
+	dfa_use_cr: True
+	dfa_use_dfd: True
+	dfa_use_dr: True
+	erm_baseline: weak
+	evalmode: fast
+	holdout_fraction: 0.2
+	l: 1
+	l_cdc: 0.1
+	l_d: 0.05
+	l_gt: 0.1
+	l_layer: 1
+	l_pma: 0.1
+	label_ratio: 1.0
+	lambda_dfa_cl: 0.005
+	lambda_dfa_cls: 1.0
+	lambda_dfa_inv: 1.0
+	lamda: 5
+	log: False
+	mix: 0
+	model: resnet50
+	model_save: None
+	n_layer: 1
+	name: DCCL_DFA_FULL_sub10_t4_s0
+	out_dir: train_output/DomainNet/260525_14-46-13_DCCL_DFA_FULL_sub10_t4_s0
+	out_root: train_output/DomainNet
+	pos_mask: False
+	prebuild_loader: False
+	re_w: False
+	sample_d: False
+	seed: 0
+	show: False
+	source_envs: [1, 2, 3]
+	start_epoch: 1000
+	steps: 1500
+	sup: True
+	t: 0.1
+	t_pre: 0.2
+	target_env: 4
+	tb_freq: 10
+	test_envs: None
+	trial_seed: 0
+	two_ce: False
+	unique_name: 260525_14-46-13_DCCL_DFA_FULL_sub10_t4_s0
+	use_dfa: True
+	weak_erm: False
+	work_dir: .
+HParams:
+	data_augmentation: True
+	val_augment: False
+	resnet18: False
+	resnet_dropout: 0.0
+	class_balanced: False
+	optimizer: adam
+	freeze_bn: True
+	pretrained: True
+	lr: 5e-05
+	batch_size: 32
+	weight_decay: 0.0
+	t: 0.1
+	t_pre: 0.1
+	l: 1
+	l_d: 0.05
+	l_layer: 0.1
+	n_layer: 2
+	sup: True
+	two_ce: False
+	sample_d: False
+	re_w: False
+	pos_mask: False
+	mix: 0
+	aug: 0
+	model: resnet50
+	label_ratio: 1.0
+	TN: False
+	lamda: 5
+	start_epoch: 1000
+	log: False
+	use_dfa: True
+	l_cdc: 0.1
+	l_pma: 0.1
+	l_gt: 0.1
+	dfa_dim: 0
+	dfa_use_dfd: True
+	dfa_use_advm: True
+	dfa_use_dr: True
+	dfa_use_cr: True
+	dfa_mask_ratio: 0.6
+	dfa_gumbel_tau: 0.5
+	lambda_dfa_cls: 1.0
+	lambda_dfa_inv: 1.0
+	lambda_dfa_cl: 0.005
+	dfa_inv_rampup_epochs: 5
+	dfa_inference_head: invariant
+	dfa_require_domain_balanced_batch: True
+	dfa_log_fallback_stats: True
+	swad: LossValley
+	swad_kwargs: 
+	  n_converge: 3
+	  n_tolerance: 6
+	  tolerance_ratio: 0.3
+	test_batchsize: 128
+	indomain_test: False
+Dataset:
+	[DomainNet] #envs=4, #classes=345
+	env0: infograph (#5326)
+	env1: painting (#7569)
+	env2: quickdraw (#17250)
+	env3: real (#17530)
+
+[37m[36mINFO[0m[0m 05/25 14:46:57 | DomainNet custom split enabled: source_envs=[1, 2, 3] (['info', 'paint', 'quick']), target_env=4 (real)
+[37m[36mINFO[0m[0m 05/25 14:46:57 | n_steps = 1500
+[37m[36mINFO[0m[0m 05/25 14:46:57 | checkpoint_freq = 500
+[37m[36mINFO[0m[0m 05/25 14:46:57 | n_steps is updated to 1500 => 1501 for checkpointing
+[37m[36mINFO[0m[0m 05/25 14:46:57 | Target test envs = [[4]] (DomainNet custom split)
+[37m[36mINFO[0m[0m 05/25 14:46:57 | Target test envs = [[4]] (DomainNet custom split)
+[37m[36mINFO[0m[0m 05/25 14:46:57 | 
+[37m[36mINFO[0m[0m 05/25 14:47:43 | Testenv name escaping te_real -> te_real
+[37m[36mINFO[0m[0m 05/25 14:47:43 | Test envs = [3], name = te_real
+[37m[36mINFO[0m[0m 05/25 14:47:43 | Batch sizes for each domain: [32, 32, 32, 0] (total=96)
+[37m[36mINFO[0m[0m 05/25 14:47:43 | steps-per-epoch for each domain: 133.16, 189.25, 431.25 -> min = 133.16
+[37m[36mINFO[0m[0m 05/25 14:47:45 | # of params = 57266126
+[37m[36mINFO[0m[0m 05/25 14:48:34 | test_in     test_out    train_in    train_out   tr_outloss  env0_out    env1_out    env2_out    env3_in     env3_out    step        epoch       loss        ce_loss     sup_cl_los  pre_cl_los  cdc_loss    pma_loss    gt_loss     l_spe_dc    l_inv_dc    l_sup_cls   l_inf_cls   l_dr_cl     l_cr_cl     loss_mask   lambda_inv  lambda_inv  current_st  current_ep  dfa_inv_ra  lambda_inv  weighted_d  weighted_d  weighted_d  mask_super  dr_fallbac  cr_fallbac  cr_pair_at  cr_valid_p  cr_fallbac  cr_valid_p  cr_fallbac  step_time   eval_time  
+[37m[36mINFO[0m[0m 05/25 14:48:34 | 0.003494    0.005134    0.000000    0.002354    5.847022    0.000939    0.002644    0.003478    0.003494    0.005134    0           0.000000    20.468378   5.921442    2.598200    2.102499    0.337595    0.000000    0.065203    1.089789    0.000499    5.854883    5.847185    10.486794   10.516151   0.007698    0.002000    0.002000    0.000000    0.000000    5.000000    500.000000  11.702068   0.000001    0.105015    0.599609    0.000000    0.958333    96.000000   4.000000    92.000000   0.041667    1.000000    2.750541    46.343907  
+[37m[36mINFO[0m[0m 05/25 14:53:34 | 0.003637    0.004564    0.000000    0.004085    5.831053    0.005634    0.001983    0.004638    0.003637    0.004564    500         3.754987    16.740535   3.358181    1.338075    2.166293    0.492745    0.241180    0.050111    0.215683    0.000419    5.831492    5.844219    11.016858   9.241058    -0.012727   0.502996    0.502996    250.500000  1.881249    5.000000    500.000000  11.675712   0.000224    0.101290    0.599609    0.000000    0.908125    96.000000   8.820000    87.180000   0.091875    1.000000    0.493276    44.846264  
+[37m[36mINFO[0m[0m 05/25 14:58:37 | 0.006061    0.006560    0.000000    0.006365    5.816990    0.007512    0.004627    0.006957    0.006061    0.006560    1000        7.509974    14.953683   1.779139    1.208820    1.838792    0.534625    0.271404    0.057690    0.111987    0.000452    5.807906    5.841434    10.844253   8.777995    -0.033528   1.000000    1.000000    750.500000  5.636236    5.000000    500.000000  11.649340   0.000452    0.098111    0.599609    0.000000    0.902208    96.000000   9.388000    86.612000   0.097792    1.000000    0.496310    46.350193  
+[37m[36mINFO[0m[0m 05/25 15:03:41 | 0.015117    0.013406    0.000000    0.013847    5.800160    0.016901    0.016523    0.008116    0.015117    0.013406    1500        11.264961   14.145583   1.120285    1.127735    1.747361    0.546581    0.295053    0.060457    0.089499    0.000527    5.779352    5.836417    10.791993   8.612263    -0.057065   1.000000    1.000000    1250.50000  9.391223    5.000000    500.000000  11.615768   0.000527    0.097021    0.599609    0.000000    0.898833    96.000000   9.712000    86.288000   0.101167    1.000000    0.498046    46.981160  
+[37m[36mINFO[0m[0m 05/25 15:03:41 | ---
+[37m[36mINFO[0m[0m 05/25 15:05:17 | [DFA-EVAL] checkpoint_type=last evaluation_head=invariant acc_supervised_head=0.459141 acc_invariant_head=0.015117
+[37m[31mERROR[0m[0m 05/25 15:05:17 | Requested final model, but model is not yet converged; return last model instead
+[37m[33mWARNING[0m[0m 05/25 15:05:17 | Evaluate SWAD ...
+[37m[36mINFO[0m[0m 05/25 15:05:17 | [SWAD-DEBUG] last_model_class=DCCL swad_model_class=AveragedModel last_eval_head=invariant swad_eval_head=na
+[37m[36mINFO[0m[0m 05/25 15:06:05 | 0.502210    0.493725    0.000000    0.423656    3.069108    0.245070    0.526768    0.499130    0.502210    0.493725    [1001-1500]  (N=500)
+[37m[36mINFO[0m[0m 05/25 15:06:05 | oracle = 1.512%
+[37m[36mINFO[0m[0m 05/25 15:06:05 | iid = 1.512%
+[37m[36mINFO[0m[0m 05/25 15:06:05 | last = 1.512%
+[37m[36mINFO[0m[0m 05/25 15:06:05 | last (inD) = 1.385%
+[37m[36mINFO[0m[0m 05/25 15:06:05 | iid (inD) = 1.385%
+[37m[36mINFO[0m[0m 05/25 15:06:05 | SWAD = 50.221%
+[37m[36mINFO[0m[0m 05/25 15:06:05 | SWAD (inD) = 42.366%
+[37m[36mINFO[0m[0m 05/25 15:06:06 | === Summary ===
+[37m[36mINFO[0m[0m 05/25 15:06:06 | Command: train_all.py DCCL_DFA_FULL_sub10_t4_s0 --dataset DomainNet --algorithm DCCL --data_dir /home/hooasia/lgg/data/repro_dccl_exp_data --seed 0 --trial_seed 0 --source_envs 1 2 3 --target_env 4 --use_dfa --dfa_use_dfd --dfa_use_advm --dfa_use_dr --dfa_use_cr --steps 1500 --checkpoint_freq 500
+[37m[36mINFO[0m[0m 05/25 15:06:06 | Unique name: 260525_14-46-13_DCCL_DFA_FULL_sub10_t4_s0
+[37m[36mINFO[0m[0m 05/25 15:06:06 | Out path: train_output/DomainNet/260525_14-46-13_DCCL_DFA_FULL_sub10_t4_s0
+[37m[36mINFO[0m[0m 05/25 15:06:06 | Algorithm: DCCL
+[37m[36mINFO[0m[0m 05/25 15:06:06 | Dataset: DomainNet
++------------+---------+---------+
+| Selection  |   env0  |   Avg.  |
++------------+---------+---------+
+|   oracle   |  1.512% |  1.512% |
+|    iid     |  1.512% |  1.512% |
+|    last    |  1.512% |  1.512% |
+| last (inD) |  1.385% |  1.385% |
+| iid (inD)  |  1.385% |  1.385% |
+|    SWAD    | 50.221% | 50.221% |
+| SWAD (inD) | 42.366% | 42.366% |
++------------+---------+---------+

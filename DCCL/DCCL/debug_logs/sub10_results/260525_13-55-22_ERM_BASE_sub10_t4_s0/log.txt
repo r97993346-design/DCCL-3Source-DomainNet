@@ -1,0 +1,144 @@
+[37m[36mINFO[0m[0m 05/25 13:55:22 | Command :: train_all.py ERM_BASE_sub10_t4_s0 --dataset DomainNet --algorithm ERM --data_dir /home/hooasia/lgg/data/repro_dccl_exp_data --seed 0 --trial_seed 0 --source_envs 1 2 3 --target_env 4 --steps 1500 --checkpoint_freq 500
+Environment:
+	Python: 3.10.20
+	PyTorch: 2.5.1+cu121
+	Torchvision: 0.20.1+cu121
+	CUDA: 12.1
+	CUDNN: 90100
+	NumPy: 2.2.6
+	PIL: 12.0.0
+Args:
+	TN: False
+	algorithm: ERM
+	aug: 0
+	checkpoint_freq: 500
+	configs: []
+	data_dir: /home/hooasia/lgg/data/repro_dccl_exp_data
+	dataset: DomainNet
+	debug: False
+	deterministic: False
+	erm_baseline: weak
+	evalmode: fast
+	holdout_fraction: 0.2
+	l: 1
+	l_d: 0.05
+	l_layer: 1
+	label_ratio: 1.0
+	lamda: 5
+	log: False
+	mix: 0
+	model: resnet50
+	model_save: None
+	n_layer: 1
+	name: ERM_BASE_sub10_t4_s0
+	out_dir: train_output/DomainNet/260525_13-55-22_ERM_BASE_sub10_t4_s0
+	out_root: train_output/DomainNet
+	pos_mask: False
+	prebuild_loader: False
+	re_w: False
+	sample_d: False
+	seed: 0
+	show: False
+	source_envs: [1, 2, 3]
+	start_epoch: 1000
+	steps: 1500
+	sup: True
+	t: 0.1
+	t_pre: 0.2
+	target_env: 4
+	tb_freq: 10
+	test_envs: None
+	trial_seed: 0
+	two_ce: False
+	unique_name: 260525_13-55-22_ERM_BASE_sub10_t4_s0
+	weak_erm: False
+	work_dir: .
+HParams:
+	data_augmentation: True
+	val_augment: False
+	resnet18: False
+	resnet_dropout: 0.0
+	class_balanced: False
+	optimizer: adam
+	freeze_bn: True
+	pretrained: True
+	lr: 5e-05
+	batch_size: 32
+	weight_decay: 0.0
+	t: 0.1
+	t_pre: 0.1
+	l: 1
+	l_d: 0.05
+	l_layer: 0.1
+	n_layer: 2
+	sup: True
+	two_ce: False
+	sample_d: False
+	re_w: False
+	pos_mask: False
+	mix: 0
+	aug: 0
+	model: resnet50
+	label_ratio: 1.0
+	TN: False
+	lamda: 5
+	start_epoch: 1000
+	log: False
+	swad: LossValley
+	swad_kwargs: 
+	  n_converge: 3
+	  n_tolerance: 6
+	  tolerance_ratio: 0.3
+	test_batchsize: 128
+	indomain_test: False
+Dataset:
+	[DomainNet] #envs=4, #classes=345
+	env0: infograph (#5326)
+	env1: painting (#7569)
+	env2: quickdraw (#17250)
+	env3: real (#17530)
+
+[37m[36mINFO[0m[0m 05/25 13:56:06 | DomainNet custom split enabled: source_envs=[1, 2, 3] (['info', 'paint', 'quick']), target_env=4 (real)
+[37m[36mINFO[0m[0m 05/25 13:56:06 | n_steps = 1500
+[37m[36mINFO[0m[0m 05/25 13:56:06 | checkpoint_freq = 500
+[37m[36mINFO[0m[0m 05/25 13:56:06 | n_steps is updated to 1500 => 1501 for checkpointing
+[37m[36mINFO[0m[0m 05/25 13:56:06 | Target test envs = [[4]] (DomainNet custom split)
+[37m[36mINFO[0m[0m 05/25 13:56:06 | Target test envs = [[4]] (DomainNet custom split)
+[37m[36mINFO[0m[0m 05/25 13:56:06 | 
+[37m[36mINFO[0m[0m 05/25 13:56:51 | Testenv name escaping te_real -> te_real
+[37m[36mINFO[0m[0m 05/25 13:56:51 | Test envs = [3], name = te_real
+[37m[36mINFO[0m[0m 05/25 13:56:51 | Batch sizes for each domain: [32, 32, 32, 0] (total=96)
+[37m[36mINFO[0m[0m 05/25 13:56:51 | steps-per-epoch for each domain: 133.16, 189.25, 431.25 -> min = 133.16
+[37m[36mINFO[0m[0m 05/25 13:56:52 | # of params = 24214937
+[37m[36mINFO[0m[0m 05/25 13:57:40 | test_in     test_out    train_in    train_out   tr_outloss  env0_out    env1_out    env2_out    env3_in     env3_out    step        epoch       loss        step_time   eval_time  
+[37m[36mINFO[0m[0m 05/25 13:57:40 | 0.002781    0.003137    0.000000    0.003408    5.901825    0.005634    0.001983    0.002609    0.002781    0.003137    0           0.000000    5.883895    2.063211    45.610548  
+[37m[36mINFO[0m[0m 05/25 14:00:07 | 0.318098    0.296920    0.000000    0.253464    3.849445    0.157746    0.346993    0.255652    0.318098    0.296920    500         3.754987    4.260127    0.187793    45.052657  
+[37m[36mINFO[0m[0m 05/25 14:02:37 | 0.386694    0.381917    0.000000    0.323087    3.947278    0.189671    0.411765    0.367826    0.386694    0.381917    1000        7.509974    2.304547    0.188925    47.158083  
+[37m[36mINFO[0m[0m 05/25 14:05:06 | 0.390973    0.387051    0.000000    0.344475    4.088009    0.191549    0.425644    0.416232    0.390973    0.387051    1500        11.264961   1.516485    0.189186    47.145748  
+[37m[36mINFO[0m[0m 05/25 14:05:07 | ---
+[37m[33mWARNING[0m[0m 05/25 14:05:07 | Evaluate SWAD ...
+[37m[36mINFO[0m[0m 05/25 14:05:53 | 0.415145    0.399601    0.000000    0.366727    3.252929    0.232864    0.453404    0.413913    0.415145    0.399601    [501-1500]  (N=5)
+[37m[36mINFO[0m[0m 05/25 14:05:53 | oracle = 39.097%
+[37m[36mINFO[0m[0m 05/25 14:05:53 | iid = 39.097%
+[37m[36mINFO[0m[0m 05/25 14:05:53 | last = 39.097%
+[37m[36mINFO[0m[0m 05/25 14:05:53 | last (inD) = 34.448%
+[37m[36mINFO[0m[0m 05/25 14:05:53 | iid (inD) = 34.448%
+[37m[36mINFO[0m[0m 05/25 14:05:53 | SWAD = 41.515%
+[37m[36mINFO[0m[0m 05/25 14:05:53 | SWAD (inD) = 36.673%
+[37m[36mINFO[0m[0m 05/25 14:05:53 | === Summary ===
+[37m[36mINFO[0m[0m 05/25 14:05:53 | Command: train_all.py ERM_BASE_sub10_t4_s0 --dataset DomainNet --algorithm ERM --data_dir /home/hooasia/lgg/data/repro_dccl_exp_data --seed 0 --trial_seed 0 --source_envs 1 2 3 --target_env 4 --steps 1500 --checkpoint_freq 500
+[37m[36mINFO[0m[0m 05/25 14:05:53 | Unique name: 260525_13-55-22_ERM_BASE_sub10_t4_s0
+[37m[36mINFO[0m[0m 05/25 14:05:53 | Out path: train_output/DomainNet/260525_13-55-22_ERM_BASE_sub10_t4_s0
+[37m[36mINFO[0m[0m 05/25 14:05:53 | Algorithm: ERM
+[37m[36mINFO[0m[0m 05/25 14:05:53 | Dataset: DomainNet
++------------+---------+---------+
+| Selection  |   env0  |   Avg.  |
++------------+---------+---------+
+|   oracle   | 39.097% | 39.097% |
+|    iid     | 39.097% | 39.097% |
+|    last    | 39.097% | 39.097% |
+| last (inD) | 34.448% | 34.448% |
+| iid (inD)  | 34.448% | 34.448% |
+|    SWAD    | 41.515% | 41.515% |
+| SWAD (inD) | 36.673% | 36.673% |
++------------+---------+---------+
