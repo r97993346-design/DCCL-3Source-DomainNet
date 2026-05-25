@@ -581,9 +581,23 @@ class DCCL(Algorithm):
             # CR
             f_cr,cr_pick,cr_fb = self.cr_aug(f_sup,f_inf,logits_sup,all_y,all_d)
             l_cr_cl=self.supcon_loss(torch.stack([F.normalize(f_i,dim=1),F.normalize(f_cr,dim=1)],1),all_y)
-            lambda_inv=self.lambda_dfa_inv*float(min(1.0,(kwargs.get("step",0)+1)/(self.dfa_inv_rampup_epochs*100.0)))
-            loss = loss + self.lambda_dfa_cls*(l_sup_cls+l_inf_cls)+lambda_inv*l_inv_dc+self.lambda_dfa_cl*(l_dr_cl+l_cr_cl)
-            dfa_stats=dict(l_spe_dc=l_spe_dc.item(),l_inv_dc=l_inv_dc.item(),l_sup_cls=l_sup_cls.item(),l_inf_cls=l_inf_cls.item(),l_dr_cl=l_dr_cl.item(),l_cr_cl=l_cr_cl.item(),loss_mask=(l_sup_cls-l_inf_cls).item(),lambda_inv_current=lambda_inv,mask_superior_ratio=mstat['superior_ratio'],dr_fallback_ratio=dr_fb/max(1,all_y.shape[0]),cr_fallback_ratio=cr_fb/max(1,all_y.shape[0]))
+            current_step = kwargs.get("step", 0)
+            current_epoch = kwargs.get("step", 0) / max(1e-12, kwargs.get("steps_per_epoch", 1.0))
+            ramp = min(1.0, (current_step + 1) / (self.dfa_inv_rampup_epochs * 100.0))
+            lambda_inv=self.lambda_dfa_inv*float(ramp)
+            weighted_dfa_cls = self.lambda_dfa_cls*(l_sup_cls+l_inf_cls)
+            weighted_dfa_inv = lambda_inv*l_inv_dc
+            weighted_dfa_cl = self.lambda_dfa_cl*(l_dr_cl+l_cr_cl)
+            loss = loss + weighted_dfa_cls + weighted_dfa_inv + weighted_dfa_cl
+            dfa_stats=dict(
+                l_spe_dc=l_spe_dc.item(),l_inv_dc=l_inv_dc.item(),l_sup_cls=l_sup_cls.item(),l_inf_cls=l_inf_cls.item(),l_dr_cl=l_dr_cl.item(),l_cr_cl=l_cr_cl.item(),
+                loss_mask=(l_sup_cls-l_inf_cls).item(),lambda_inv_current=lambda_inv,lambda_inv_ramp=ramp,current_step=current_step,current_epoch=current_epoch,
+                dfa_inv_rampup_epochs=self.dfa_inv_rampup_epochs,lambda_inv_formula_denom=self.dfa_inv_rampup_epochs*100.0,
+                weighted_dfa_cls=weighted_dfa_cls.item(),weighted_dfa_inv=weighted_dfa_inv.item(),weighted_dfa_cl=weighted_dfa_cl.item(),
+                mask_superior_ratio=mstat['superior_ratio'],dr_fallback_ratio=dr_fb/max(1,all_y.shape[0]),cr_fallback_ratio=cr_fb/max(1,all_y.shape[0]),
+                cr_pair_attempt_count=int(all_y.shape[0]),cr_valid_pair_count=int(all_y.shape[0]-cr_fb),cr_fallback_count=int(cr_fb),
+                cr_valid_pair_ratio=float((all_y.shape[0]-cr_fb)/max(1,all_y.shape[0])),cr_fallback_participates_loss=1.0
+            )
 
             # step3 update masker only
             self.optimizer_mask.zero_grad()
@@ -615,8 +629,21 @@ class DCCL(Algorithm):
         if self.use_dfa and self.dfa_inference_head == "invariant":
             z=self.featurizer(x)
             f_i,_=self.dfa_head(z)
-            return self.sup_classifier(f_i)
+            return self.inf_classifier(f_i)
         return self.network(x)
+
+    def predict_with_head(self, x, head="current"):
+        if not self.use_dfa:
+            return self.network(x)
+        if head == "current":
+            return self.predict(x)
+        z = self.featurizer(x)
+        f_i, _ = self.dfa_head(z)
+        if head == "invariant":
+            return self.inf_classifier(f_i)
+        if head == "dccl":
+            return self.network(x)
+        raise ValueError(f"Unknown head: {head}")
 
     def predict_embed(self, x):
         return self.featurizer(x)

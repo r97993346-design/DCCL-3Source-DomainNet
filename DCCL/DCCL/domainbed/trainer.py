@@ -165,6 +165,25 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         target_env=target_env,
     )
 
+    def _log_dual_head_eval(alg, ckpt_type):
+        if not hasattr(alg, "predict_with_head"):
+            return None
+        dual_acc = {}
+        for head in ["dccl", "invariant"]:
+            prev_head = getattr(alg, "dfa_inference_head", None)
+            if prev_head is not None:
+                alg.dfa_inference_head = head
+            _, summary = evaluator.evaluate(alg)
+            dual_acc[head] = summary["test_in"]
+            if prev_head is not None:
+                alg.dfa_inference_head = prev_head
+        logger.info(
+            f"[DFA-EVAL] checkpoint_type={ckpt_type} evaluation_head={getattr(alg, 'dfa_inference_head', 'na')} "
+            f"acc_supervised_head={dual_acc.get('dccl', float('nan')):.6f} "
+            f"acc_invariant_head={dual_acc.get('invariant', float('nan')):.6f}"
+        )
+        return dual_acc
+
     swad = None
     if hparams["swad"]:
         swad_algorithm = swa_utils.AveragedModel(algorithm)
@@ -298,7 +317,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             key: [tensor.to(device) for tensor in tensorlist] for key, tensorlist in batches.items()
         }
 
-        inputs = {**batches, "step": step}
+        inputs = {**batches, "step": step, "steps_per_epoch": steps_per_epoch}
         step_vals = algorithm.update(**inputs)
         for key, val in step_vals.items():
             checkpoint_vals[key].append(val)
@@ -514,6 +533,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         "last (inD)": last_indomain,
         "iid (inD)": iid_best_indomain,
     }
+    _log_dual_head_eval(algorithm, "last")
 
     # Evaluate SWAD
     if swad:
@@ -524,6 +544,10 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             swa_utils.update_bn(train_minibatches_iterator, swad_algorithm, n_steps)
 
         logger.warning("Evaluate SWAD ...")
+        logger.info(
+            f"[SWAD-DEBUG] last_model_class={algorithm.__class__.__name__} swad_model_class={swad_algorithm.__class__.__name__} "
+            f"last_eval_head={getattr(algorithm, 'dfa_inference_head', 'na')} swad_eval_head={getattr(swad_algorithm, 'dfa_inference_head', 'na')}"
+        )
         accuracies, summaries = evaluator.evaluate(swad_algorithm)
         results = {**summaries, **accuracies}
         start = swad_algorithm.start_step
@@ -534,6 +558,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
         ret["SWAD"] = results["test_in"]
         ret["SWAD (inD)"] = results[in_key]
+        _log_dual_head_eval(swad_algorithm, "swad")
 
         # with torch.no_grad():
         #     embedding_train = []
