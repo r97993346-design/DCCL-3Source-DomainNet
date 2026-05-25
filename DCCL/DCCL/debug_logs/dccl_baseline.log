@@ -1,0 +1,156 @@
+[37m[36mINFO[0m[0m 05/21 16:49:17 | Command :: train_all.py DCCL_t4_s123 --dataset DomainNet --algorithm DCCL --data_dir /home/hooasia/lgg/projects/repro_dccl/data --seed 0 --trial_seed 0 --source_envs 1 2 3 --target_env 4
+Environment:
+	Python: 3.10.20
+	PyTorch: 2.5.1+cu121
+	Torchvision: 0.20.1+cu121
+	CUDA: 12.1
+	CUDNN: 90100
+	NumPy: 2.2.6
+	PIL: 12.0.0
+Args:
+	TN: False
+	algorithm: DCCL
+	aug: 0
+	checkpoint_freq: None
+	configs: []
+	data_dir: /home/hooasia/lgg/projects/repro_dccl/data
+	dataset: DomainNet
+	debug: False
+	deterministic: False
+	erm_baseline: weak
+	evalmode: fast
+	holdout_fraction: 0.2
+	l: 1
+	l_d: 0.05
+	l_layer: 1
+	label_ratio: 1.0
+	lamda: 5
+	log: False
+	mix: 0
+	model: resnet50
+	model_save: None
+	n_layer: 1
+	name: DCCL_t4_s123
+	out_dir: train_output/DomainNet/260521_16-49-17_DCCL_t4_s123
+	out_root: train_output/DomainNet
+	pos_mask: False
+	prebuild_loader: False
+	re_w: False
+	sample_d: False
+	seed: 0
+	show: False
+	source_envs: [1, 2, 3]
+	start_epoch: 1000
+	steps: None
+	sup: True
+	t: 0.1
+	t_pre: 0.2
+	target_env: 4
+	tb_freq: 10
+	test_envs: None
+	trial_seed: 0
+	two_ce: False
+	unique_name: 260521_16-49-17_DCCL_t4_s123
+	weak_erm: False
+	work_dir: .
+HParams:
+	data_augmentation: True
+	val_augment: False
+	resnet18: False
+	resnet_dropout: 0.0
+	class_balanced: False
+	optimizer: adam
+	freeze_bn: True
+	pretrained: True
+	lr: 5e-05
+	batch_size: 32
+	weight_decay: 0.0
+	t: 0.1
+	t_pre: 0.1
+	l: 1
+	l_d: 0.05
+	l_layer: 0.1
+	n_layer: 2
+	sup: True
+	two_ce: False
+	sample_d: False
+	re_w: False
+	pos_mask: False
+	mix: 0
+	aug: 0
+	model: resnet50
+	label_ratio: 1.0
+	TN: False
+	lamda: 5
+	start_epoch: 1000
+	log: False
+	swad: LossValley
+	swad_kwargs: 
+	  n_converge: 3
+	  n_tolerance: 6
+	  tolerance_ratio: 0.3
+	test_batchsize: 128
+	indomain_test: False
+Dataset:
+	[DomainNet] #envs=4, #classes=345
+	env0: infograph (#53201)
+	env1: painting (#75759)
+	env2: quickdraw (#172500)
+	env3: real (#175327)
+
+[37m[36mINFO[0m[0m 05/21 18:31:39 | DomainNet custom split enabled: source_envs=[1, 2, 3] (['info', 'paint', 'quick']), target_env=4 (real)
+[37m[36mINFO[0m[0m 05/21 18:31:39 | n_steps = 15001
+[37m[36mINFO[0m[0m 05/21 18:31:39 | checkpoint_freq = 1000
+[37m[36mINFO[0m[0m 05/21 18:31:39 | n_steps is updated to 15001 => 15001 for checkpointing
+[37m[36mINFO[0m[0m 05/21 18:31:39 | Target test envs = [[4]] (DomainNet custom split)
+[37m[36mINFO[0m[0m 05/21 18:31:39 | Target test envs = [[4]] (DomainNet custom split)
+[37m[36mINFO[0m[0m 05/21 18:31:39 | 
+[37m[36mINFO[0m[0m 05/21 18:39:08 | Testenv name escaping te_real -> te_real
+[37m[36mINFO[0m[0m 05/21 18:39:08 | Test envs = [3], name = te_real
+[37m[36mINFO[0m[0m 05/21 18:39:08 | Batch sizes for each domain: [32, 32, 32, 0] (total=96)
+[37m[36mINFO[0m[0m 05/21 18:39:08 | steps-per-epoch for each domain: 1330.03, 1894.00, 4312.50 -> min = 1330.03
+[37m[36mINFO[0m[0m 05/21 18:39:12 | # of params = 50352409
+[37m[36mINFO[0m[0m 05/21 18:47:46 | test_in     test_out    train_in    train_out   tr_outloss  env0_out    env1_out    env2_out    env3_in     env3_out    step        epoch       loss        ce_loss     sup_cl_los  pre_cl_los  step_time   eval_time  
+[37m[36mINFO[0m[0m 05/21 18:47:46 | 0.002495    0.002253    0.000000    0.003496    5.913559    0.002538    0.005544    0.002406    0.002495    0.002253    0           0.000000    8.463629    5.989764    2.402067    2.001101    8.503804    505.312511 
+[37m[36mINFO[0m[0m 05/21 19:00:56 | 0.498617    0.497505    0.000000    0.401684    2.760030    0.247180    0.519438    0.438435    0.498617    0.497505    1000        0.751862    4.772162    3.266857    1.353471    2.076702    0.386186    387.714165 
+[37m[36mINFO[0m[0m 05/21 19:14:24 | 0.541244    0.539969    0.000000    0.447622    2.515470    0.280169    0.569335    0.493362    0.541244    0.539969    2000        1.503724    3.718144    2.408570    1.259172    1.787234    0.387388    405.526062 
+[37m[36mINFO[0m[0m 05/21 19:27:43 | 0.557279    0.559304    0.000000    0.471238    2.432429    0.293985    0.587816    0.531913    0.557279    0.559304    3000        2.255586    3.376652    2.170222    1.204853    1.684728    0.388487    393.973222 
+[37m[36mINFO[0m[0m 05/21 19:40:58 | 0.569534    0.570312    0.000000    0.486325    2.367871    0.304793    0.604647    0.549536    0.569534    0.570312    4000        3.007448    3.152277    1.990208    1.185394    1.645550    0.387643    391.159275 
+[37m[36mINFO[0m[0m 05/21 19:54:22 | 0.567959    0.569999    0.000000    0.502016    2.288505    0.314850    0.612039    0.579159    0.567959    0.569999    5000        3.759310    2.991798    1.875428    1.156351    1.599433    0.388021    400.665864 
+[37m[36mINFO[0m[0m 05/21 20:07:19 | 0.569905    0.566833    0.000000    0.505736    2.290855    0.314286    0.614547    0.588377    0.569905    0.566833    6000        4.511172    2.840900    1.756808    1.134510    1.567248    0.389351    370.740148 
+[37m[36mINFO[0m[0m 05/21 20:20:16 | 0.572586    0.571909    0.000000    0.515699    2.291828    0.319173    0.625635    0.602290    0.572586    0.571909    7000        5.263034    2.729034    1.665353    1.119972    1.549372    0.388568    371.956423 
+[37m[36mINFO[0m[0m 05/21 20:33:33 | 0.583187    0.584600    0.000000    0.517591    2.263232    0.323120    0.628407    0.601246    0.583187    0.584600    8000        6.014896    2.638812    1.585347    1.112149    1.540342    0.388949    392.608089 
+[37m[36mINFO[0m[0m 05/21 20:46:56 | 0.580007    0.578212    0.000000    0.522861    2.308897    0.326128    0.631179    0.611275    0.580007    0.578212    9000        6.766758    2.526206    1.499419    1.089341    1.516681    0.388987    398.036936 
+[37m[36mINFO[0m[0m 05/21 21:00:17 | 0.587016    0.584400    0.000000    0.527572    2.250781    0.327632    0.634216    0.620870    0.587016    0.584400    10000       7.518620    2.431058    1.416242    1.079398    1.500749    0.388990    396.085224 
+[37m[36mINFO[0m[0m 05/21 21:13:46 | 0.579801    0.577955    0.000000    0.527410    2.261399    0.330639    0.637186    0.614406    0.579801    0.577955    11000       8.270482    2.338190    1.345232    1.059507    1.485269    0.389839    402.831030 
+[37m[36mINFO[0m[0m 05/21 21:27:13 | 0.588770    0.586140    0.000000    0.536814    2.242157    0.335338    0.647944    0.627159    0.588770    0.586140    12000       9.022344    2.247594    1.271467    1.044107    1.468449    0.390342    400.212907 
+[37m[36mINFO[0m[0m 05/21 21:40:22 | 0.594865    0.592956    0.000000    0.538038    2.240025    0.337124    0.645106    0.631884    0.594865    0.592956    13000       9.774206    2.200367    1.224538    1.043966    1.468121    0.383195    390.569229 
+[37m[36mINFO[0m[0m 05/21 21:53:34 | 0.576222    0.571567    0.000000    0.535210    2.351260    0.335056    0.636922    0.633652    0.576222    0.571567    14000       10.526068   2.131534    1.164284    1.035492    1.463379    0.383211    392.286883 
+[37m[36mINFO[0m[0m 05/21 22:06:39 | 0.584192    0.579124    0.000000    0.539421    2.326541    0.332331    0.646888    0.639043    0.584192    0.579124    15000       11.277930   2.071247    1.122215    1.019319    1.443952    0.382754    386.244581 
+[37m[36mINFO[0m[0m 05/21 22:06:39 | ---
+[37m[33mWARNING[0m[0m 05/21 22:06:39 | Evaluate SWAD ...
+[37m[36mINFO[0m[0m 05/21 22:12:57 | 0.634705    0.631370    0.000000    0.575158    1.970934    0.366917    0.691572    0.666986    0.634705    0.631370    [2001-15000]  (N=14)
+[37m[36mINFO[0m[0m 05/21 22:12:57 | oracle = 59.487%
+[37m[36mINFO[0m[0m 05/21 22:12:57 | iid = 58.419%
+[37m[36mINFO[0m[0m 05/21 22:12:57 | last = 58.419%
+[37m[36mINFO[0m[0m 05/21 22:12:57 | last (inD) = 53.942%
+[37m[36mINFO[0m[0m 05/21 22:12:57 | iid (inD) = 53.942%
+[37m[36mINFO[0m[0m 05/21 22:12:57 | SWAD = 63.471%
+[37m[36mINFO[0m[0m 05/21 22:12:57 | SWAD (inD) = 57.516%
+[37m[36mINFO[0m[0m 05/21 22:12:57 | === Summary ===
+[37m[36mINFO[0m[0m 05/21 22:12:57 | Command: train_all.py DCCL_t4_s123 --dataset DomainNet --algorithm DCCL --data_dir /home/hooasia/lgg/projects/repro_dccl/data --seed 0 --trial_seed 0 --source_envs 1 2 3 --target_env 4
+[37m[36mINFO[0m[0m 05/21 22:12:57 | Unique name: 260521_16-49-17_DCCL_t4_s123
+[37m[36mINFO[0m[0m 05/21 22:12:57 | Out path: train_output/DomainNet/260521_16-49-17_DCCL_t4_s123
+[37m[36mINFO[0m[0m 05/21 22:12:57 | Algorithm: DCCL
+[37m[36mINFO[0m[0m 05/21 22:12:57 | Dataset: DomainNet
++------------+---------+---------+
+| Selection  |   env0  |   Avg.  |
++------------+---------+---------+
+|   oracle   | 59.487% | 59.487% |
+|    iid     | 58.419% | 58.419% |
+|    last    | 58.419% | 58.419% |
+| last (inD) | 53.942% | 53.942% |
+| iid (inD)  | 53.942% | 53.942% |
+|    SWAD    | 63.471% | 63.471% |
+| SWAD (inD) | 57.516% | 57.516% |
++------------+---------+---------+
