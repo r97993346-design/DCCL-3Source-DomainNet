@@ -562,6 +562,8 @@ class DCCL(Algorithm):
             l_inv_dc=F.mse_loss(p_i,uniform)
             for p in self.domain_classifier.parameters(): p.requires_grad_(True)
             m,mstat=self.masker(f_i.detach() if not self.dfa_use_advm else f_i)
+            # step2 freezes masker: prevent this branch from building gradients into masker
+            m = m.detach()
             f_sup=f_i*m; f_inf=f_i*(1-m)
             logits_sup=self.sup_classifier(f_sup); logits_inf=self.inf_classifier(f_inf)
             l_sup_cls=F.cross_entropy(logits_sup,all_y); l_inf_cls=F.cross_entropy(logits_inf,all_y)
@@ -588,9 +590,8 @@ class DCCL(Algorithm):
             with torch.no_grad(): f_i_det=self.dfa_head(feature_x.detach())[0]
             m2,_=self.masker(f_i_det)
             f_sup2=f_i_det*m2; f_inf2=f_i_det*(1-m2)
-            # keep gradients through masker; avoid updating classifier weights in this step
-            for p in self.sup_classifier.parameters(): p.requires_grad_(False)
-            for p in self.inf_classifier.parameters(): p.requires_grad_(False)
+            # keep gradients through masker. classifier grads (if any) are discarded by
+            # self.optimizer.zero_grad() before the main optimizer step below.
             l_mask=F.cross_entropy(self.sup_classifier(f_sup2),all_y)-F.cross_entropy(self.inf_classifier(f_inf2),all_y)
             l_mask.backward(); self.optimizer_mask.step()
             for p in self.sup_classifier.parameters(): p.requires_grad_(True)
