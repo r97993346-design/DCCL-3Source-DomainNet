@@ -61,4 +61,15 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+    hparams["use_intervention_reliability"] = args.use_intervention_reliability
+    hparams["fourier_mix_alpha"] = args.fourier_mix_alpha
+    hparams["fourier_mix_min"] = args.fourier_mix_min
+    hparams["fourier_mix_max"] = args.fourier_mix_max
+    hparams["fourier_donor_cross_domain_only"] = args.fourier_donor_cross_domain_only
+    hparams["intervention_mu"] = args.intervention_mu
+    hparams["intervention_temperature"] = args.intervention_temperature
+    hparams["reliability_min_weight"] = args.reliability_min_weight
+    hparams["reliability_loss_weight"] = args.reliability_loss_weight
+    hparams["detach_reliability_score"] = args.detach_reliability_score
+    hparams["log_intervention_stats"] = args.log_intervention_stats
     return hparams

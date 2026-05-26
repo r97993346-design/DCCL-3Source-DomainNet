@@ -15,6 +15,11 @@ from domainbed.lib import misc
 from domainbed import networks
 from domainbed.lib.misc import random_pairs_of_minibatches
 from domainbed.optimizers import get_optimizer
+from domainbed.lib.intervention import (
+    denormalize_imagenet,
+    normalize_imagenet,
+    fourier_amplitude_intervention,
+)
 
 from domainbed.models.resnet_mixstyle import (
     resnet18_mixstyle_L234_p0d5_a0d1,
@@ -263,6 +268,17 @@ class DCCL(Algorithm):
         self.TN = hparams["TN"]
         self.lamda = hparams["lamda"]
         self.sample_d = hparams["sample_d"]
+        self.use_intervention_reliability = hparams.get("use_intervention_reliability", False)
+        self.fourier_mix_alpha = hparams.get("fourier_mix_alpha", 0.5)
+        self.fourier_mix_min = hparams.get("fourier_mix_min", 0.1)
+        self.fourier_mix_max = hparams.get("fourier_mix_max", 0.9)
+        self.fourier_donor_cross_domain_only = hparams.get("fourier_donor_cross_domain_only", True)
+        self.intervention_mu = hparams.get("intervention_mu", 0.0)
+        self.intervention_temperature = hparams.get("intervention_temperature", 0.1)
+        self.reliability_min_weight = hparams.get("reliability_min_weight", 0.05)
+        self.reliability_loss_weight = hparams.get("reliability_loss_weight", 1.0)
+        self.detach_reliability_score = hparams.get("detach_reliability_score", True)
+        self.log_intervention_stats = hparams.get("log_intervention_stats", True)
 
         if self.TN:
             self.TN_network = TN()
@@ -387,7 +403,40 @@ class DCCL(Algorithm):
                     loss_sup_cl = self.supcon_loss(features, all_y, add_pos = add_pos)
                 else:
                     loss_sup_cl = self.supcon_loss(features, all_y)
-            loss += self.l*loss_sup_cl
+
+            original_sup_cl_value = loss_sup_cl.detach().item()
+            if self.use_intervention_reliability:
+                all_d = torch.cat(kwargs["d"])
+                all_x_img = denormalize_imagenet(all_x)
+                all_x_a_img, donor_indices, fallback_count = fourier_amplitude_intervention(
+                    all_x_img,
+                    all_d,
+                    mix_alpha=self.fourier_mix_alpha,
+                    mix_min=self.fourier_mix_min,
+                    mix_max=self.fourier_mix_max,
+                    cross_domain_only=self.fourier_donor_cross_domain_only,
+                )
+                all_x_a = normalize_imagenet(all_x_a_img)
+                feature_x_a = self.featurizer(all_x_a)
+                z_orig = nn.functional.normalize(embed_1, dim=1)
+                z_inter = nn.functional.normalize(self.proj_head(feature_x_a), dim=1)
+                if self.detach_reliability_score:
+                    sim = torch.sum(z_orig.detach() * z_inter.detach(), dim=1)
+                else:
+                    sim = torch.sum(z_orig * z_inter, dim=1)
+                r = torch.sigmoid((sim - self.intervention_mu) / max(self.intervention_temperature, 1e-6))
+                pair_r = torch.clamp(r.unsqueeze(1) * r.unsqueeze(0), self.reliability_min_weight, 1.0)
+                same_cls = torch.eq(all_y.unsqueeze(1), all_y.unsqueeze(0))
+                cross_dom = ~torch.eq(all_d.unsqueeze(1), all_d.unsqueeze(0))
+                pos_pair_weight = torch.where(
+                    same_cls & cross_dom,
+                    pair_r,
+                    torch.ones_like(pair_r),
+                )
+                loss_sup_cl = self.supcon_loss(features, all_y, pos_pair_weight=pos_pair_weight)
+                loss += self.l * self.reliability_loss_weight * loss_sup_cl
+            else:
+                loss += self.l*loss_sup_cl
         pre_cl_loss = 0.
         if self.l_layer:
 
@@ -422,6 +471,23 @@ class DCCL(Algorithm):
         loss_dict = {"loss": loss.item(), "ce_loss": ce_loss}
         if self.l:
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
+            if self.use_intervention_reliability and self.log_intervention_stats:
+                same_cls = torch.eq(all_y.unsqueeze(1), all_y.unsqueeze(0))
+                cross_dom = ~torch.eq(all_d.unsqueeze(1), all_d.unsqueeze(0))
+                valid_pairs = (same_cls & cross_dom).float().sum().item()
+                loss_dict.update({
+                    "intervention_similarity_mean": sim.mean().item(),
+                    "intervention_similarity_min": sim.min().item(),
+                    "intervention_similarity_max": sim.max().item(),
+                    "reliability_mean": r.mean().item(),
+                    "reliability_min": r.min().item(),
+                    "reliability_max": r.max().item(),
+                    "valid_cross_domain_positive_pairs": valid_pairs,
+                    "fourier_donor_fallback_count": float(fallback_count),
+                    "original_sup_cl_value": float(original_sup_cl_value),
+                    "weighted_r_dccl_loss": loss_sup_cl.item(),
+                    "total_loss": loss.item(),
+                })
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
         return loss_dict
@@ -468,7 +534,7 @@ class SupConLoss(nn.Module):
         self.mask_out = mask_out
         self.not_sup = not_sup
 
-    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None):
+    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None, pos_pair_weight=None):
         """Compute loss for model. If both `labels` and `mask` are None,
         it degenerates to SimCLR unsupervised loss:
         https://arxiv.org/pdf/2002.05709.pdf
@@ -530,6 +596,9 @@ class SupConLoss(nn.Module):
 
         # tile mask
         mask = mask.repeat(anchor_count, contrast_count)
+        pair_weight = None
+        if pos_pair_weight is not None:
+            pair_weight = pos_pair_weight.float().to(device).repeat(anchor_count, contrast_count)
         mask_out = 1-mask
         # mask-out self-contrast cases
         # self, dimension->index (value) along which dim, index, src->consistent indexing with index
@@ -556,12 +625,16 @@ class SupConLoss(nn.Module):
         # compute mean of log-likelihood over positive
         if pos_mask is not None:
             log_prob = log_prob*pos_mask
+        weighted_mask = mask if pair_weight is None else mask * pair_weight
         if add_pos is not None:
             add_logits = torch.sum(add_pos*contrast_feature, 1, keepdim=True)/self.temperature - logits_max.detach()
             add_logits = torch.squeeze(add_logits)
-            mean_log_prob_pos = ((mask * log_prob).sum(1)+add_logits) / (mask.sum(1)+1)
+            denom = weighted_mask.sum(1)
+            mean_log_prob_pos = ((weighted_mask * log_prob).sum(1)+add_logits) / (denom+1)
         else:
-            mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
+            denom = weighted_mask.sum(1)
+            mean_log_prob_pos = (weighted_mask * log_prob).sum(1) / torch.clamp_min(denom, 1.0)
+        mean_log_prob_pos = torch.where(denom > 0, mean_log_prob_pos, torch.zeros_like(mean_log_prob_pos))
 
         # loss
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
