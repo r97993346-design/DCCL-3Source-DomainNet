@@ -97,6 +97,17 @@ def main():
     parser.add_argument("--lamda", type=float, default=5, help="Weight coefficient for Transform Network sparsity loss")
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
+    parser.add_argument("--use_intervention_reliability", action="store_true", help="Enable Fourier intervention reliability weighting for sup_cl.")
+    parser.add_argument("--fourier_mix_alpha", type=float, default=0.5)
+    parser.add_argument("--fourier_mix_min", type=float, default=0.1)
+    parser.add_argument("--fourier_mix_max", type=float, default=0.9)
+    parser.add_argument("--fourier_donor_cross_domain_only", type=lambda x: str(x).lower() in ["1", "true", "yes"], default=True)
+    parser.add_argument("--intervention_mu", type=float, default=0.0)
+    parser.add_argument("--intervention_temperature", type=float, default=0.1)
+    parser.add_argument("--reliability_min_weight", type=float, default=0.05)
+    parser.add_argument("--reliability_loss_weight", type=float, default=1.0)
+    parser.add_argument("--detach_reliability_score", type=lambda x: str(x).lower() in ["1", "true", "yes"], default=True)
+    parser.add_argument("--log_intervention_stats", type=lambda x: str(x).lower() in ["1", "true", "yes"], default=True)
     args, left_argv = parser.parse_known_args()
 
     # setup hparams
