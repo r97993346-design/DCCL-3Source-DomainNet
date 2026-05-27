@@ -73,4 +73,9 @@ def setup_alg_hparams(hparams, args):
     hparams["reliability_loss_weight"] = args.reliability_loss_weight
     hparams["detach_reliability_score"] = args.detach_reliability_score
     hparams["log_intervention_stats"] = args.log_intervention_stats
+    hparams["use_factorization_loss"] = args.use_factorization_loss
+    hparams["factorization_loss_weight"] = args.factorization_loss_weight
+    hparams["factorization_offdiag_weight"] = args.factorization_offdiag_weight
+    hparams["factorization_eps"] = args.factorization_eps
+    hparams["log_factorization_stats"] = args.log_factorization_stats
     return hparams
