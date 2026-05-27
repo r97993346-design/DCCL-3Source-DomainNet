@@ -1,4 +1,15 @@
 import torch
+import pytest
+import sys
+import types
+from argparse import Namespace
+
+if "clip" not in sys.modules:
+    sys.modules["clip"] = types.SimpleNamespace(load=lambda *args, **kwargs: (None, None))
+
+from domainbed import hparams_registry
+from domainbed.algorithms.algorithms import DCCL
+from domainbed.lib.cl_hparams import setup_alg_hparams
 from domainbed.lib.intervention import denormalize_imagenet, normalize_imagenet, fourier_amplitude_intervention
 
 
@@ -61,3 +72,64 @@ def test_no_positive_pair_no_nan_and_backward_finite():
     assert torch.isfinite(loss)
     loss.backward()
     assert torch.isfinite(logits.grad).all()
+
+
+def _build_args(**overrides):
+    base = dict(
+        dataset="DomainNet", model="resnet50", sup=True, two_ce=False, sample_d=False,
+        re_w=False, pos_mask=False, mix=0.0, aug=0.0, label_ratio=1.0, TN=False,
+        lamda=5.0, start_epoch=1000, log=False, use_fourier_intervention=False,
+        use_intervention_reliability=False, fourier_mix_alpha=0.5, fourier_mix_min=0.1,
+        fourier_mix_max=0.9, fourier_donor_cross_domain_only=True, intervention_mu=0.0,
+        intervention_temperature=0.1, reliability_min_weight=0.05, reliability_loss_weight=1.0,
+        detach_reliability_score=True, log_intervention_stats=True
+    )
+    base.update(overrides)
+    return Namespace(**base)
+
+
+def _build_hparams(**overrides):
+    args = _build_args(**overrides)
+    hparams = hparams_registry.default_hparams("DCCL", "DomainNet")
+    hparams = setup_alg_hparams(hparams, args)
+    hparams["pretrained"] = False
+    hparams["freeze_bn"] = True
+    return hparams
+
+
+def test_cli_stage1_keys_are_recognized_by_sconf():
+    Config = pytest.importorskip("sconf").Config
+    hparams = _build_hparams()
+    cfg = Config(open("DCCL/DCCL/config.yaml", encoding="utf8"), default=hparams)
+    cfg.argv_update([
+        "--use_fourier_intervention", "true",
+        "--use_intervention_reliability", "true",
+        "--fourier_mix_alpha", "0.5",
+        "--fourier_mix_min", "0.1",
+        "--fourier_mix_max", "0.9",
+        "--fourier_donor_cross_domain_only", "true",
+        "--intervention_mu", "0.0",
+        "--intervention_temperature", "0.1",
+        "--reliability_min_weight", "0.05",
+        "--reliability_loss_weight", "1.0",
+        "--detach_reliability_score", "true",
+        "--log_intervention_stats", "true",
+    ])
+    assert cfg.use_fourier_intervention is True
+    assert cfg.use_intervention_reliability is True
+
+
+def test_invalid_reliability_without_fourier_raises_clear_error():
+    hparams = _build_hparams(use_fourier_intervention=False, use_intervention_reliability=True)
+    try:
+        DCCL((3, 224, 224), 2, 3, hparams)
+        assert False, "Expected ValueError"
+    except ValueError as e:
+        assert "use_intervention_reliability=True requires use_fourier_intervention=True" in str(e)
+
+
+def test_dccl_init_sets_reliability_weight_and_alias():
+    hparams = _build_hparams(use_fourier_intervention=True, use_intervention_reliability=True, reliability_loss_weight=1.23)
+    alg = DCCL((3, 224, 224), 2, 3, hparams)
+    assert alg.reliability_loss_weight == 1.23
+    assert alg.re_w == alg.reliability_loss_weight
