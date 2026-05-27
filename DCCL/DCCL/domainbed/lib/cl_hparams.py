@@ -61,6 +61,7 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+    hparams["use_fourier_intervention"] = args.use_fourier_intervention
     hparams["use_intervention_reliability"] = args.use_intervention_reliability
     hparams["fourier_mix_alpha"] = args.fourier_mix_alpha
     hparams["fourier_mix_min"] = args.fourier_mix_min

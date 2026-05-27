@@ -268,6 +268,7 @@ class DCCL(Algorithm):
         self.TN = hparams["TN"]
         self.lamda = hparams["lamda"]
         self.sample_d = hparams["sample_d"]
+        self.use_fourier_intervention = hparams.get("use_fourier_intervention", False)
         self.use_intervention_reliability = hparams.get("use_intervention_reliability", False)
         self.fourier_mix_alpha = hparams.get("fourier_mix_alpha", 0.5)
         self.fourier_mix_min = hparams.get("fourier_mix_min", 0.1)
@@ -277,8 +278,16 @@ class DCCL(Algorithm):
         self.intervention_temperature = hparams.get("intervention_temperature", 0.1)
         self.reliability_min_weight = hparams.get("reliability_min_weight", 0.05)
         self.reliability_loss_weight = hparams.get("reliability_loss_weight", 1.0)
+        # Backward-compatible alias for existing code paths that use self.re_w
+        self.re_w = self.reliability_loss_weight
         self.detach_reliability_score = hparams.get("detach_reliability_score", True)
         self.log_intervention_stats = hparams.get("log_intervention_stats", True)
+        if self.use_intervention_reliability and not self.use_fourier_intervention:
+            raise ValueError(
+                "use_intervention_reliability=True requires "
+                "use_fourier_intervention=True because reliability weights "
+                "are computed from original/intervened representation stability."
+            )
 
         if self.TN:
             self.TN_network = TN()

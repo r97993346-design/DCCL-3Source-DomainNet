@@ -9,6 +9,7 @@ swad_kwargs:
 test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
+use_fourier_intervention: False
 use_intervention_reliability: False
 fourier_mix_alpha: 0.5
 fourier_mix_min: 0.1
