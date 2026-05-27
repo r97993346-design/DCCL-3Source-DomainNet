@@ -269,6 +269,9 @@ class DCCL(Algorithm):
         self.f_amp_alpha = hparams.get("f_amp_alpha", 0.5)
         self.f_amp_beta = hparams.get("f_amp_beta", 0.01)
         self.f_donor_same_class = hparams.get("f_donor_same_class", False)
+        self.use_masker = hparams.get("use_masker", False)
+        self.lambda_mask = hparams.get("lambda_mask", 0.0)
+        self.masker_temperature = hparams.get("masker_temperature", 1.0)
 
         if self.TN:
             self.TN_network = TN()
@@ -284,6 +287,7 @@ class DCCL(Algorithm):
             self.pre_proj_head = nn.Sequential(nn.Linear(self.featurizer.n_outputs, hidden_num_1))
         else:
             self.pre_proj_head = nn.Sequential(nn.Linear(self.featurizer.n_outputs, hidden_num_1), nn.BatchNorm1d(hidden_num_1), nn.ReLU(), nn.Linear(hidden_num_1, hidden_num_2))
+        self.masker_head = nn.Sequential(nn.Linear(hidden_num_2, hidden_num_2))
         lower_cls=0.1
         lower_proj=10
         
@@ -292,7 +296,8 @@ class DCCL(Algorithm):
             {'params':self.proj_head.parameters(), 'lr':self.hparams["lr"]/lower_proj, 'weight_decay':self.hparams["weight_decay"]},
             {"params": self.mean_encoders.parameters(), "lr": self.hparams["lr"] * 10},
             {"params": self.var_encoders.parameters(), "lr": self.hparams["lr"] * 10},
-            {"params": self.pre_proj_head.parameters(), "lr": self.hparams["lr"]/lower_proj}
+            {"params": self.pre_proj_head.parameters(), "lr": self.hparams["lr"]/lower_proj},
+            {"params": self.masker_head.parameters(), "lr": self.hparams["lr"]/lower_proj}
             ]
         if self.TN:
             self.optimizer_TN = get_optimizer(
@@ -468,6 +473,26 @@ class DCCL(Algorithm):
             z_int = nn.functional.normalize(self.proj_head(f_int))
             fac_loss = self._factorization_loss(z_anchor, z_int)
             loss += self.lambda_fac * fac_loss
+        mask_loss = torch.tensor(0.0, device=all_x.device)
+        mask_activate_ratio = torch.tensor(0.0, device=all_x.device)
+        if self.use_masker:
+            z_mask = self.proj_head(feature_x)
+            mask_logits = self.masker_head(z_mask)
+            gumbel_sample = F.gumbel_softmax(
+                torch.stack([mask_logits, torch.zeros_like(mask_logits)], dim=-1),
+                tau=self.masker_temperature,
+                hard=False,
+                dim=-1
+            )
+            soft_mask = gumbel_sample[..., 0]
+            mask_activate_ratio = soft_mask.mean()
+            masked_feature = feature_x * soft_mask
+            masked_logits = self.classifier(masked_feature)
+            cls_mask_loss = F.cross_entropy(masked_logits, all_y)
+            entropy = -(soft_mask * torch.log(soft_mask + 1e-8) + (1.0 - soft_mask) * torch.log(1.0 - soft_mask + 1e-8))
+            entropy = entropy.mean()
+            mask_loss = cls_mask_loss - 0.01 * entropy
+            loss += self.lambda_mask * mask_loss
         pre_cl_loss = 0.
         if self.l_layer:
 
@@ -504,6 +529,12 @@ class DCCL(Algorithm):
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
         if self.cirl_stage1:
             loss_dict["factorization_loss"] = fac_loss.item()
+        loss_dict["dccl_loss"] = (loss.item() - self.lambda_fac * fac_loss.item() - self.lambda_mask * mask_loss.item())
+        loss_dict["total_loss"] = loss.item()
+        loss_dict["mask_loss"] = mask_loss.item()
+        loss_dict["lambda_mask"] = float(self.lambda_mask)
+        loss_dict["masker_temperature"] = float(self.masker_temperature)
+        loss_dict["mask_activate_ratio"] = mask_activate_ratio.item()
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
         return loss_dict
