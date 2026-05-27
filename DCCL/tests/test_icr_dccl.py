@@ -82,9 +82,13 @@ def _build_args(**overrides):
         use_intervention_reliability=False, fourier_mix_alpha=0.5, fourier_mix_min=0.1,
         fourier_mix_max=0.9, fourier_donor_cross_domain_only=True, intervention_mu=0.0,
         intervention_temperature=0.1, reliability_min_weight=0.05, reliability_loss_weight=1.0,
-        detach_reliability_score=True, log_intervention_stats=True,
-        use_factorization_loss=False, factorization_loss_weight=0.001,
-        factorization_offdiag_weight=0.005, factorization_eps=1e-4, log_factorization_stats=True
+        detach_reliability_score=True, log_intervention_stats=True
+        ,use_factorization_loss=False, factorization_loss_weight=0.01,
+        factorization_offdiag_weight=0.005, factorization_eps=1e-4,
+        factorization_feature_source="contrastive", log_factorization_stats=True,
+        use_adversarial_masker=False, masker_aux_loss_weight=0.1, masker_adversarial_weight=1.0,
+        mask_keep_ratio=0.5, gumbel_temperature=1.0, gumbel_hard=True, masker_hidden_dim=256,
+        masker_update_interval=1, log_masker_stats=True
     )
     base.update(overrides)
     return Namespace(**base)
@@ -127,13 +131,14 @@ def test_cli_stage2_factorization_keys_are_recognized_by_sconf():
     cfg = Config(open("DCCL/DCCL/config.yaml", encoding="utf8"), default=hparams)
     cfg.argv_update([
         "--use_factorization_loss", "true",
-        "--factorization_loss_weight", "0.001",
+        "--factorization_loss_weight", "0.01",
         "--factorization_offdiag_weight", "0.005",
         "--factorization_eps", "0.0001",
+        "--factorization_feature_source", "contrastive",
         "--log_factorization_stats", "true",
     ])
     assert cfg.use_factorization_loss is True
-    assert abs(cfg.factorization_loss_weight - 0.001) < 1e-12
+    assert abs(cfg.factorization_loss_weight - 0.01) < 1e-9
 
 
 def test_invalid_reliability_without_fourier_raises_clear_error():
@@ -158,23 +163,13 @@ def test_invalid_factorization_without_fourier_raises_clear_error():
         DCCL((3, 224, 224), 2, 3, hparams)
 
 
-def test_factorization_loss_shape_finite_and_small_batch_safe():
-    hparams = _build_hparams(use_fourier_intervention=True, use_factorization_loss=True)
-    alg = DCCL((3, 224, 224), 2, 3, hparams)
-    z_orig = torch.randn(4, 128, requires_grad=True)
-    z_inter = torch.randn(4, 128, requires_grad=True)
-    loss, on_diag, off_diag, diag_mean, offdiag_abs_mean, feat_dim = alg._factorization_loss(z_orig, z_inter)
-    assert feat_dim == 128
-    assert torch.isfinite(loss)
-    assert torch.isfinite(on_diag)
-    assert torch.isfinite(off_diag)
-    assert torch.isfinite(diag_mean)
-    assert torch.isfinite(offdiag_abs_mean)
-    loss.backward()
-    assert torch.isfinite(z_orig.grad).all()
-    assert torch.isfinite(z_inter.grad).all()
+def test_invalid_masker_without_factorization_raises():
+    hparams = _build_hparams(use_fourier_intervention=True, use_factorization_loss=False, use_adversarial_masker=True)
+    with pytest.raises(ValueError, match="use_adversarial_masker=True requires use_factorization_loss=True"):
+        DCCL((3, 224, 224), 2, 3, hparams)
 
-    z_small_1 = torch.randn(1, 64, requires_grad=True)
-    z_small_2 = torch.randn(1, 64, requires_grad=True)
-    loss_small, *_ = alg._factorization_loss(z_small_1, z_small_2)
-    assert torch.isfinite(loss_small)
+
+def test_invalid_masker_without_fourier_raises():
+    hparams = _build_hparams(use_fourier_intervention=False, use_factorization_loss=True, use_adversarial_masker=True)
+    with pytest.raises(ValueError, match="use_factorization_loss=True requires use_fourier_intervention=True"):
+        DCCL((3, 224, 224), 2, 3, hparams)

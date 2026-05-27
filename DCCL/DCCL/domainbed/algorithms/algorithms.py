@@ -283,10 +283,20 @@ class DCCL(Algorithm):
         self.detach_reliability_score = hparams.get("detach_reliability_score", True)
         self.log_intervention_stats = hparams.get("log_intervention_stats", True)
         self.use_factorization_loss = hparams.get("use_factorization_loss", False)
-        self.factorization_loss_weight = hparams.get("factorization_loss_weight", 0.001)
+        self.factorization_loss_weight = hparams.get("factorization_loss_weight", 0.01)
         self.factorization_offdiag_weight = hparams.get("factorization_offdiag_weight", 0.005)
         self.factorization_eps = hparams.get("factorization_eps", 1e-4)
+        self.factorization_feature_source = hparams.get("factorization_feature_source", "contrastive")
         self.log_factorization_stats = hparams.get("log_factorization_stats", True)
+        self.use_adversarial_masker = hparams.get("use_adversarial_masker", False)
+        self.masker_aux_loss_weight = hparams.get("masker_aux_loss_weight", 0.1)
+        self.masker_adversarial_weight = hparams.get("masker_adversarial_weight", 1.0)
+        self.mask_keep_ratio = hparams.get("mask_keep_ratio", 0.5)
+        self.gumbel_temperature = hparams.get("gumbel_temperature", 1.0)
+        self.gumbel_hard = hparams.get("gumbel_hard", True)
+        self.masker_hidden_dim = hparams.get("masker_hidden_dim", 256)
+        self.masker_update_interval = hparams.get("masker_update_interval", 1)
+        self.log_masker_stats = hparams.get("log_masker_stats", True)
         if self.use_intervention_reliability and not self.use_fourier_intervention:
             raise ValueError(
                 "use_intervention_reliability=True requires "
@@ -294,11 +304,13 @@ class DCCL(Algorithm):
                 "are computed from original/intervened representation stability."
             )
         if self.use_factorization_loss and not self.use_fourier_intervention:
-            raise ValueError(
-                "use_factorization_loss=True requires "
-                "use_fourier_intervention=True because factorization uses "
-                "original/intervened representation pairs."
-            )
+            raise ValueError("use_factorization_loss=True requires use_fourier_intervention=True.")
+        if self.factorization_feature_source != "contrastive":
+            raise ValueError("factorization_feature_source currently supports only 'contrastive'.")
+        if self.use_adversarial_masker and not self.use_factorization_loss:
+            raise ValueError("use_adversarial_masker=True requires use_factorization_loss=True.")
+        if self.use_adversarial_masker and not self.use_fourier_intervention:
+            raise ValueError("use_adversarial_masker=True requires use_fourier_intervention=True.")
 
         if self.TN:
             self.TN_network = TN()
@@ -334,6 +346,37 @@ class DCCL(Algorithm):
             hparams["optimizer"],
             optimized_list
         )
+        if self.use_adversarial_masker:
+            feat_dim = hidden_num_1 if hparams["n_layer"] == 1 else hidden_num_2
+            self.masker = nn.Sequential(
+                nn.Linear(feat_dim, self.masker_hidden_dim),
+                nn.ReLU(),
+                nn.Linear(self.masker_hidden_dim, feat_dim),
+            )
+            self.classifier_superior = nn.Linear(feat_dim, num_classes)
+            self.classifier_inferior = nn.Linear(feat_dim, num_classes)
+            self.optimizer_masker = get_optimizer(
+                hparams["optimizer"],
+                self.masker.parameters(),
+                lr=self.hparams["lr"],
+                weight_decay=self.hparams["weight_decay"],
+            )
+            self.optimizer_aux = get_optimizer(
+                hparams["optimizer"],
+                list(self.classifier_superior.parameters()) + list(self.classifier_inferior.parameters()),
+                lr=self.hparams["lr"],
+                weight_decay=self.hparams["weight_decay"],
+            )
+
+    def _gumbel_topk_mask(self, logits):
+        logits = torch.nan_to_num(logits, nan=0.0, posinf=0.0, neginf=0.0)
+        scores = F.gumbel_softmax(logits, tau=max(self.gumbel_temperature, 1e-6), hard=False, dim=1)
+        k = max(1, min(logits.shape[1] - 1, int(self.mask_keep_ratio * logits.shape[1])))
+        vals, idx = torch.topk(scores, k, dim=1)
+        hard = torch.zeros_like(scores).scatter_(1, idx, 1.0)
+        if self.gumbel_hard:
+            return hard + scores - scores.detach()
+        return scores
 
     def update(self, x, y, **kwargs):
         all_x = torch.cat(x)
@@ -425,11 +468,17 @@ class DCCL(Algorithm):
                     loss_sup_cl = self.supcon_loss(features, all_y)
 
             original_sup_cl_value = loss_sup_cl.detach().item()
+            all_d = torch.cat(kwargs["d"])
+            sim = r = None
+            fallback_count = 0
+            factorization_loss = torch.tensor(0.0, device=all_x.device)
+            factorization_on_diag = torch.tensor(0.0, device=all_x.device)
+            factorization_off_diag = torch.tensor(0.0, device=all_x.device)
+            factorization_corr_diag_mean = torch.tensor(0.0, device=all_x.device)
+            factorization_corr_offdiag_abs_mean = torch.tensor(0.0, device=all_x.device)
             need_intervened_view = self.use_intervention_reliability or self.use_factorization_loss
             z_orig = nn.functional.normalize(embed_1, dim=1)
             z_inter = None
-            all_d = None
-            fallback_count = 0
             if need_intervened_view:
                 all_d = torch.cat(kwargs["d"])
                 all_x_img = denormalize_imagenet(all_x)
@@ -463,8 +512,37 @@ class DCCL(Algorithm):
             else:
                 loss += self.l*loss_sup_cl
             if self.use_factorization_loss:
-                fac_loss, fac_on, fac_off, fac_diag_mean, fac_offdiag_abs_mean, fac_dim = self._factorization_loss(z_orig, z_inter)
-                loss += self.factorization_loss_weight * fac_loss
+                bsz = z_orig.shape[0]
+                if bsz >= 2:
+                    zo = (z_orig - z_orig.mean(dim=0, keepdim=True)) / (z_orig.std(dim=0, keepdim=True) + self.factorization_eps)
+                    zi = (z_inter - z_inter.mean(dim=0, keepdim=True)) / (z_inter.std(dim=0, keepdim=True) + self.factorization_eps)
+                    corr = (zo.T @ zi) / bsz
+                    diag = torch.diagonal(corr)
+                    factorization_on_diag = torch.sum((diag - 1.0) ** 2)
+                    off = corr - torch.diag_embed(diag)
+                    factorization_off_diag = torch.sum(off ** 2)
+                    factorization_corr_diag_mean = diag.mean()
+                    factorization_corr_offdiag_abs_mean = off.abs().mean()
+                    factorization_loss = factorization_on_diag + self.factorization_offdiag_weight * factorization_off_diag
+                loss += self.factorization_loss_weight * factorization_loss
+            superior_cls_loss = torch.tensor(0.0, device=all_x.device)
+            inferior_cls_loss = torch.tensor(0.0, device=all_x.device)
+            masker_loss = torch.tensor(0.0, device=all_x.device)
+            masker_update_executed = False
+            mask_mean = torch.tensor(0.0, device=all_x.device)
+            mask_min = torch.tensor(0.0, device=all_x.device)
+            mask_max = torch.tensor(0.0, device=all_x.device)
+            if self.use_adversarial_masker:
+                logits_o = self.masker(z_orig)
+                logits_i = self.masker(z_inter)
+                m_orig = self._gumbel_topk_mask(logits_o)
+                m_int = self._gumbel_topk_mask(logits_i)
+                z_orig_sup, z_orig_inf = z_orig * m_orig, z_orig * (1 - m_orig)
+                z_int_sup, z_int_inf = z_inter * m_int, z_inter * (1 - m_int)
+                superior_cls_loss = F.cross_entropy(self.classifier_superior(z_orig_sup), all_y) + F.cross_entropy(self.classifier_superior(z_int_sup), all_y)
+                inferior_cls_loss = F.cross_entropy(self.classifier_inferior(z_orig_inf), all_y) + F.cross_entropy(self.classifier_inferior(z_int_inf), all_y)
+                loss = loss + self.masker_aux_loss_weight * (superior_cls_loss + inferior_cls_loss)
+                mask_mean, mask_min, mask_max = m_orig.mean(), m_orig.min(), m_orig.max()
         pre_cl_loss = 0.
         if self.l_layer:
 
@@ -496,6 +574,30 @@ class DCCL(Algorithm):
         self.optimizer.zero_grad()
         loss_opt.backward()
         self.optimizer.step()
+        if self.use_adversarial_masker and (self.masker_update_interval <= 1):
+            masker_update_executed = True
+            z_o_det = z_orig.detach()
+            z_i_det = z_inter.detach()
+            for p in self.classifier_superior.parameters():
+                p.requires_grad = False
+            for p in self.classifier_inferior.parameters():
+                p.requires_grad = False
+            logits_o = self.masker(z_o_det)
+            logits_i = self.masker(z_i_det)
+            m_orig = self._gumbel_topk_mask(logits_o)
+            m_int = self._gumbel_topk_mask(logits_i)
+            z_orig_sup, z_orig_inf = z_o_det * m_orig, z_o_det * (1 - m_orig)
+            z_int_sup, z_int_inf = z_i_det * m_int, z_i_det * (1 - m_int)
+            sup_m = F.cross_entropy(self.classifier_superior(z_orig_sup), all_y) + F.cross_entropy(self.classifier_superior(z_int_sup), all_y)
+            inf_m = F.cross_entropy(self.classifier_inferior(z_orig_inf), all_y) + F.cross_entropy(self.classifier_inferior(z_int_inf), all_y)
+            masker_loss = sup_m - self.masker_adversarial_weight * inf_m
+            self.optimizer_masker.zero_grad()
+            masker_loss.backward()
+            self.optimizer_masker.step()
+            for p in self.classifier_superior.parameters():
+                p.requires_grad = True
+            for p in self.classifier_inferior.parameters():
+                p.requires_grad = True
         loss_dict = {"loss": loss.item(), "ce_loss": ce_loss}
         if self.l:
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
@@ -518,13 +620,26 @@ class DCCL(Algorithm):
                 })
             if self.use_factorization_loss and self.log_factorization_stats:
                 loss_dict.update({
-                    "factorization_loss": fac_loss.item(),
-                    "factorization_on_diag_loss": fac_on.item(),
-                    "factorization_off_diag_loss": fac_off.item(),
-                    "factorization_corr_diag_mean": fac_diag_mean.item(),
-                    "factorization_corr_offdiag_abs_mean": fac_offdiag_abs_mean.item(),
-                    "factorization_feature_dim": float(fac_dim),
-                    "intervened_view_reused_for_reliability_and_factorization": float(self.use_intervention_reliability),
+                    "factorization_loss": float(factorization_loss.item()),
+                    "factorization_on_diag_loss": float(factorization_on_diag.item()),
+                    "factorization_off_diag_loss": float(factorization_off_diag.item()),
+                    "factorization_corr_diag_mean": float(factorization_corr_diag_mean.item()),
+                    "factorization_corr_offdiag_abs_mean": float(factorization_corr_offdiag_abs_mean.item()),
+                    "factorization_feature_dim": float(z_orig.shape[1]),
+                    "intervened_view_reused_for_reliability_and_factorization": bool(need_intervened_view and self.use_intervention_reliability and self.use_factorization_loss),
+                })
+            if self.use_adversarial_masker and self.log_masker_stats:
+                loss_dict.update({
+                    "masker_loss": float(masker_loss.item()),
+                    "masker_aux_total_loss": float((superior_cls_loss + inferior_cls_loss).item()),
+                    "superior_cls_loss": float(superior_cls_loss.item()),
+                    "inferior_cls_loss": float(inferior_cls_loss.item()),
+                    "mask_keep_ratio_actual": float(mask_mean.item()),
+                    "mask_mean": float(mask_mean.item()),
+                    "mask_min": float(mask_min.item()),
+                    "mask_max": float(mask_max.item()),
+                    "gumbel_temperature": float(self.gumbel_temperature),
+                    "masker_update_executed": bool(masker_update_executed),
                 })
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()

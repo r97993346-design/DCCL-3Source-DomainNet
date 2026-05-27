@@ -77,5 +77,15 @@ def setup_alg_hparams(hparams, args):
     hparams["factorization_loss_weight"] = args.factorization_loss_weight
     hparams["factorization_offdiag_weight"] = args.factorization_offdiag_weight
     hparams["factorization_eps"] = args.factorization_eps
+    hparams["factorization_feature_source"] = args.factorization_feature_source
     hparams["log_factorization_stats"] = args.log_factorization_stats
+    hparams["use_adversarial_masker"] = args.use_adversarial_masker
+    hparams["masker_aux_loss_weight"] = args.masker_aux_loss_weight
+    hparams["masker_adversarial_weight"] = args.masker_adversarial_weight
+    hparams["mask_keep_ratio"] = args.mask_keep_ratio
+    hparams["gumbel_temperature"] = args.gumbel_temperature
+    hparams["gumbel_hard"] = args.gumbel_hard
+    hparams["masker_hidden_dim"] = args.masker_hidden_dim
+    hparams["masker_update_interval"] = args.masker_update_interval
+    hparams["log_masker_stats"] = args.log_masker_stats
     return hparams
