@@ -9,3 +9,20 @@ swad_kwargs:
 test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
+use_fourier_intervention: False
+use_intervention_reliability: False
+fourier_mix_alpha: 0.5
+fourier_mix_min: 0.1
+fourier_mix_max: 0.9
+fourier_donor_cross_domain_only: True
+intervention_mu: 0.0
+intervention_temperature: 0.1
+reliability_min_weight: 0.05
+reliability_loss_weight: 1.0
+detach_reliability_score: True
+log_intervention_stats: True
+use_factorization_loss: False
+factorization_loss_weight: 0.001
+factorization_offdiag_weight: 0.005
+factorization_eps: 0.0001
+log_factorization_stats: True

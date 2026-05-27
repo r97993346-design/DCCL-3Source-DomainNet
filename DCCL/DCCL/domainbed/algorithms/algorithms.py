@@ -15,6 +15,11 @@ from domainbed.lib import misc
 from domainbed import networks
 from domainbed.lib.misc import random_pairs_of_minibatches
 from domainbed.optimizers import get_optimizer
+from domainbed.lib.intervention import (
+    denormalize_imagenet,
+    normalize_imagenet,
+    fourier_amplitude_intervention,
+)
 
 from domainbed.models.resnet_mixstyle import (
     resnet18_mixstyle_L234_p0d5_a0d1,
@@ -265,7 +270,9 @@ class DCCL(Algorithm):
         self.sample_d = hparams["sample_d"]
         self.cirl_stage1 = hparams.get("cirl_stage1", False)
         self.lambda_fac = hparams.get("lambda_fac", 0.0)
-        self.fac_eps = hparams.get("fac_eps", 1e-6)
+        self.fac_eps = hparams.get("fac_eps", hparams.get("factorization_eps", 1e-6))
+        # backward-compatible alias for branches/configs using old attribute name
+        self.factorization_eps = self.fac_eps
         self.f_amp_alpha = hparams.get("f_amp_alpha", 0.5)
         self.f_amp_beta = hparams.get("f_amp_beta", 0.01)
         self.f_donor_same_class = hparams.get("f_donor_same_class", False)
@@ -287,7 +294,7 @@ class DCCL(Algorithm):
             self.pre_proj_head = nn.Sequential(nn.Linear(self.featurizer.n_outputs, hidden_num_1))
         else:
             self.pre_proj_head = nn.Sequential(nn.Linear(self.featurizer.n_outputs, hidden_num_1), nn.BatchNorm1d(hidden_num_1), nn.ReLU(), nn.Linear(hidden_num_1, hidden_num_2))
-        self.masker_head = nn.Sequential(nn.Linear(hidden_num_2, hidden_num_2))
+        self.masker_head = nn.Sequential(nn.Linear(hidden_num_2, classifier_input_dim))
         lower_cls=0.1
         lower_proj=10
         
@@ -539,6 +546,22 @@ class DCCL(Algorithm):
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
         return loss_dict
 
+    def _factorization_loss(self, z_orig, z_inter):
+        bsz, feat_dim = z_orig.shape
+        if bsz < 2:
+            zero = (z_orig.sum() * 0.0)
+            return zero, zero, zero, zero, zero, feat_dim
+        z_o = (z_orig - z_orig.mean(dim=0, keepdim=True)) / (z_orig.std(dim=0, keepdim=True) + self.factorization_eps)
+        z_a = (z_inter - z_inter.mean(dim=0, keepdim=True)) / (z_inter.std(dim=0, keepdim=True) + self.factorization_eps)
+        corr = torch.matmul(z_o.t(), z_a) / float(bsz)
+        diag = torch.diagonal(corr)
+        on_diag = torch.sum((diag - 1.0) ** 2)
+        off_diag_mask = ~torch.eye(corr.shape[0], dtype=torch.bool, device=corr.device)
+        off_diag = torch.sum(corr[off_diag_mask] ** 2)
+        loss = on_diag + self.factorization_offdiag_weight * off_diag
+        offdiag_abs_mean = torch.mean(torch.abs(corr[off_diag_mask])) if off_diag_mask.any() else corr.new_tensor(0.0)
+        return loss, on_diag, off_diag, diag.mean(), offdiag_abs_mean, feat_dim
+
     def predict(self, x):
         return self.network(x)
 
@@ -581,7 +604,7 @@ class SupConLoss(nn.Module):
         self.mask_out = mask_out
         self.not_sup = not_sup
 
-    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None):
+    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None, pos_pair_weight=None):
         """Compute loss for model. If both `labels` and `mask` are None,
         it degenerates to SimCLR unsupervised loss:
         https://arxiv.org/pdf/2002.05709.pdf
@@ -643,6 +666,9 @@ class SupConLoss(nn.Module):
 
         # tile mask
         mask = mask.repeat(anchor_count, contrast_count)
+        pair_weight = None
+        if pos_pair_weight is not None:
+            pair_weight = pos_pair_weight.float().to(device).repeat(anchor_count, contrast_count)
         mask_out = 1-mask
         # mask-out self-contrast cases
         # self, dimension->index (value) along which dim, index, src->consistent indexing with index
@@ -669,12 +695,16 @@ class SupConLoss(nn.Module):
         # compute mean of log-likelihood over positive
         if pos_mask is not None:
             log_prob = log_prob*pos_mask
+        weighted_mask = mask if pair_weight is None else mask * pair_weight
         if add_pos is not None:
             add_logits = torch.sum(add_pos*contrast_feature, 1, keepdim=True)/self.temperature - logits_max.detach()
             add_logits = torch.squeeze(add_logits)
-            mean_log_prob_pos = ((mask * log_prob).sum(1)+add_logits) / (mask.sum(1)+1)
+            denom = weighted_mask.sum(1)
+            mean_log_prob_pos = ((weighted_mask * log_prob).sum(1)+add_logits) / (denom+1)
         else:
-            mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
+            denom = weighted_mask.sum(1)
+            mean_log_prob_pos = (weighted_mask * log_prob).sum(1) / torch.clamp_min(denom, 1.0)
+        mean_log_prob_pos = torch.where(denom > 0, mean_log_prob_pos, torch.zeros_like(mean_log_prob_pos))
 
         # loss
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
