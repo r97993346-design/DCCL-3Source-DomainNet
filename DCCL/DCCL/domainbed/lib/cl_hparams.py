@@ -62,6 +62,8 @@ def setup_alg_hparams(hparams, args):
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
     hparams["cirl_stage1"] = args.cirl_stage1
+    hparams["use_fourier_intervention"] = args.use_fourier_intervention
+    hparams["use_factorization_loss"] = args.use_factorization_loss
     hparams["lambda_fac"] = args.lambda_fac
     hparams["fac_eps"] = args.fac_eps
     hparams["f_amp_alpha"] = args.f_amp_alpha

@@ -98,6 +98,8 @@ def main():
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
     parser.add_argument("--cirl_stage1", action="store_true", help="Enable CIRL stage F1: Fourier intervention + factorization")
+    parser.add_argument("--use_fourier_intervention", action="store_true", help="Enable Fourier intervention (alias for Stage F1)")
+    parser.add_argument("--use_factorization_loss", action="store_true", help="Enable factorization loss (alias for Stage F1)")
     parser.add_argument("--lambda_fac", type=float, default=0.01, help="Weight for CIRL factorization loss")
     parser.add_argument("--fac_eps", type=float, default=1e-6, help="Numerical epsilon for factorization covariance normalization")
     parser.add_argument("--f_amp_alpha", type=float, default=0.5, help="Amplitude interpolation ratio for Fourier intervention")

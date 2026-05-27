@@ -269,10 +269,14 @@ class DCCL(Algorithm):
         self.lamda = hparams["lamda"]
         self.sample_d = hparams["sample_d"]
         self.cirl_stage1 = hparams.get("cirl_stage1", False)
+        self.use_fourier_intervention = hparams.get("use_fourier_intervention", self.cirl_stage1)
+        self.use_factorization_loss = hparams.get("use_factorization_loss", self.cirl_stage1)
         self.lambda_fac = hparams.get("lambda_fac", 0.0)
         self.fac_eps = hparams.get("fac_eps", hparams.get("factorization_eps", 1e-6))
         # backward-compatible alias for branches/configs using old attribute name
         self.factorization_eps = self.fac_eps
+        self.factorization_ondiag_weight = hparams.get("factorization_ondiag_weight", 1.0)
+        self.factorization_offdiag_weight = hparams.get("factorization_offdiag_weight", 1.0)
         self.f_amp_alpha = hparams.get("f_amp_alpha", 0.5)
         self.f_amp_beta = hparams.get("f_amp_beta", 0.01)
         self.f_donor_same_class = hparams.get("f_donor_same_class", False)
@@ -380,7 +384,9 @@ class DCCL(Algorithm):
         z2 = z2 / (z2.std(dim=0, keepdim=True) + self.fac_eps)
         c = (z1.T @ z2) / max(1, b - 1)
         eye = torch.eye(c.size(0), device=c.device, dtype=c.dtype)
-        return ((c - eye) ** 2).mean()
+        on_diag = torch.diagonal(c).add_(-1).pow_(2).mean()
+        off_diag = (c - torch.diag(torch.diagonal(c))).pow(2).mean()
+        return self.factorization_ondiag_weight * on_diag + self.factorization_offdiag_weight * off_diag
 
     def update(self, x, y, **kwargs):
         all_x = torch.cat(x)
@@ -471,10 +477,15 @@ class DCCL(Algorithm):
                 else:
                     loss_sup_cl = self.supcon_loss(features, all_y)
             loss += self.l*loss_sup_cl
+        dccl_loss = loss
         fac_loss = torch.tensor(0.0, device=all_x.device)
-        if self.cirl_stage1:
-            all_d = torch.cat(kwargs["d"])
-            x_int = self._fourier_intervention(all_x, all_y, all_d)
+        if self.use_factorization_loss:
+            dccl_loss = loss
+            if self.use_fourier_intervention:
+                all_d = torch.cat(kwargs["d"])
+                x_int = self._fourier_intervention(all_x, all_y, all_d)
+            else:
+                x_int = all_x_2
             f_int = self.featurizer(x_int)
             z_anchor = nn.functional.normalize(self.proj_head(feature_x))
             z_int = nn.functional.normalize(self.proj_head(f_int))
@@ -534,9 +545,9 @@ class DCCL(Algorithm):
         loss_dict = {"loss": loss.item(), "ce_loss": ce_loss}
         if self.l:
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
-        if self.cirl_stage1:
+        if self.use_factorization_loss:
             loss_dict["factorization_loss"] = fac_loss.item()
-        loss_dict["dccl_loss"] = (loss.item() - self.lambda_fac * fac_loss.item() - self.lambda_mask * mask_loss.item())
+        loss_dict["dccl_loss"] = dccl_loss.item()
         loss_dict["total_loss"] = loss.item()
         loss_dict["mask_loss"] = mask_loss.item()
         loss_dict["lambda_mask"] = float(self.lambda_mask)
