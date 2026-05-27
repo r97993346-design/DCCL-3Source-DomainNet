@@ -97,6 +97,15 @@ def main():
     parser.add_argument("--lamda", type=float, default=5, help="Weight coefficient for Transform Network sparsity loss")
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
+    parser.add_argument("--cirl_stage1", action="store_true", help="Enable CIRL stage F1: Fourier intervention + factorization")
+    parser.add_argument("--lambda_fac", type=float, default=0.01, help="Weight for CIRL factorization loss")
+    parser.add_argument("--fac_eps", type=float, default=1e-6, help="Numerical epsilon for factorization covariance normalization")
+    parser.add_argument("--f_amp_alpha", type=float, default=0.5, help="Amplitude interpolation ratio for Fourier intervention")
+    parser.add_argument("--f_amp_beta", type=float, default=0.01, help="Central low-frequency ratio for Fourier intervention")
+    parser.add_argument("--f_donor_same_class", action="store_true", help="Restrict donor sampling to same class in Fourier intervention")
+    parser.add_argument("--use_masker", action="store_true", help="Enable Stage F2 masker loss")
+    parser.add_argument("--lambda_mask", type=float, default=0.1, help="Weight for Stage F2 masker loss")
+    parser.add_argument("--masker_temperature", type=float, default=1.0, help="Gumbel-Softmax temperature for Stage F2 masker")
     args, left_argv = parser.parse_known_args()
 
     # setup hparams
