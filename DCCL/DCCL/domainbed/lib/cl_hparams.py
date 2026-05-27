@@ -61,4 +61,13 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+    hparams["cirl_stage1"] = args.cirl_stage1
+    hparams["lambda_fac"] = args.lambda_fac
+    hparams["fac_eps"] = args.fac_eps
+    hparams["f_amp_alpha"] = args.f_amp_alpha
+    hparams["f_amp_beta"] = args.f_amp_beta
+    hparams["f_donor_same_class"] = args.f_donor_same_class
+    hparams["use_masker"] = args.use_masker
+    hparams["lambda_mask"] = args.lambda_mask
+    hparams["masker_temperature"] = args.masker_temperature
     return hparams
