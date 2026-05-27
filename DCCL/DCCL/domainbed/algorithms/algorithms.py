@@ -282,11 +282,22 @@ class DCCL(Algorithm):
         self.re_w = self.reliability_loss_weight
         self.detach_reliability_score = hparams.get("detach_reliability_score", True)
         self.log_intervention_stats = hparams.get("log_intervention_stats", True)
+        self.use_factorization_loss = hparams.get("use_factorization_loss", False)
+        self.factorization_loss_weight = hparams.get("factorization_loss_weight", 0.001)
+        self.factorization_offdiag_weight = hparams.get("factorization_offdiag_weight", 0.005)
+        self.factorization_eps = hparams.get("factorization_eps", 1e-4)
+        self.log_factorization_stats = hparams.get("log_factorization_stats", True)
         if self.use_intervention_reliability and not self.use_fourier_intervention:
             raise ValueError(
                 "use_intervention_reliability=True requires "
                 "use_fourier_intervention=True because reliability weights "
                 "are computed from original/intervened representation stability."
+            )
+        if self.use_factorization_loss and not self.use_fourier_intervention:
+            raise ValueError(
+                "use_factorization_loss=True requires "
+                "use_fourier_intervention=True because factorization uses "
+                "original/intervened representation pairs."
             )
 
         if self.TN:
@@ -414,7 +425,12 @@ class DCCL(Algorithm):
                     loss_sup_cl = self.supcon_loss(features, all_y)
 
             original_sup_cl_value = loss_sup_cl.detach().item()
-            if self.use_intervention_reliability:
+            need_intervened_view = self.use_intervention_reliability or self.use_factorization_loss
+            z_orig = nn.functional.normalize(embed_1, dim=1)
+            z_inter = None
+            all_d = None
+            fallback_count = 0
+            if need_intervened_view:
                 all_d = torch.cat(kwargs["d"])
                 all_x_img = denormalize_imagenet(all_x)
                 all_x_a_img, donor_indices, fallback_count = fourier_amplitude_intervention(
@@ -427,8 +443,8 @@ class DCCL(Algorithm):
                 )
                 all_x_a = normalize_imagenet(all_x_a_img)
                 feature_x_a = self.featurizer(all_x_a)
-                z_orig = nn.functional.normalize(embed_1, dim=1)
                 z_inter = nn.functional.normalize(self.proj_head(feature_x_a), dim=1)
+            if self.use_intervention_reliability:
                 if self.detach_reliability_score:
                     sim = torch.sum(z_orig.detach() * z_inter.detach(), dim=1)
                 else:
@@ -446,6 +462,9 @@ class DCCL(Algorithm):
                 loss += self.l * self.reliability_loss_weight * loss_sup_cl
             else:
                 loss += self.l*loss_sup_cl
+            if self.use_factorization_loss:
+                fac_loss, fac_on, fac_off, fac_diag_mean, fac_offdiag_abs_mean, fac_dim = self._factorization_loss(z_orig, z_inter)
+                loss += self.factorization_loss_weight * fac_loss
         pre_cl_loss = 0.
         if self.l_layer:
 
@@ -497,9 +516,35 @@ class DCCL(Algorithm):
                     "weighted_r_dccl_loss": loss_sup_cl.item(),
                     "total_loss": loss.item(),
                 })
+            if self.use_factorization_loss and self.log_factorization_stats:
+                loss_dict.update({
+                    "factorization_loss": fac_loss.item(),
+                    "factorization_on_diag_loss": fac_on.item(),
+                    "factorization_off_diag_loss": fac_off.item(),
+                    "factorization_corr_diag_mean": fac_diag_mean.item(),
+                    "factorization_corr_offdiag_abs_mean": fac_offdiag_abs_mean.item(),
+                    "factorization_feature_dim": float(fac_dim),
+                    "intervened_view_reused_for_reliability_and_factorization": float(self.use_intervention_reliability),
+                })
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
         return loss_dict
+
+    def _factorization_loss(self, z_orig, z_inter):
+        bsz, feat_dim = z_orig.shape
+        if bsz < 2:
+            zero = (z_orig.sum() * 0.0)
+            return zero, zero, zero, zero, zero, feat_dim
+        z_o = (z_orig - z_orig.mean(dim=0, keepdim=True)) / (z_orig.std(dim=0, keepdim=True) + self.factorization_eps)
+        z_a = (z_inter - z_inter.mean(dim=0, keepdim=True)) / (z_inter.std(dim=0, keepdim=True) + self.factorization_eps)
+        corr = torch.matmul(z_o.t(), z_a) / float(bsz)
+        diag = torch.diagonal(corr)
+        on_diag = torch.sum((diag - 1.0) ** 2)
+        off_diag_mask = ~torch.eye(corr.shape[0], dtype=torch.bool, device=corr.device)
+        off_diag = torch.sum(corr[off_diag_mask] ** 2)
+        loss = on_diag + self.factorization_offdiag_weight * off_diag
+        offdiag_abs_mean = torch.mean(torch.abs(corr[off_diag_mask])) if off_diag_mask.any() else corr.new_tensor(0.0)
+        return loss, on_diag, off_diag, diag.mean(), offdiag_abs_mean, feat_dim
 
     def predict(self, x):
         return self.network(x)

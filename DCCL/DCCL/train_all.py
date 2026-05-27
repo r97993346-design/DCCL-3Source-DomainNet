@@ -109,6 +109,11 @@ def main():
     parser.add_argument("--reliability_loss_weight", type=float, default=1.0)
     parser.add_argument("--detach_reliability_score", type=lambda x: str(x).lower() in ["1", "true", "yes"], default=True)
     parser.add_argument("--log_intervention_stats", type=lambda x: str(x).lower() in ["1", "true", "yes"], default=True)
+    parser.add_argument("--use_factorization_loss", type=lambda x: str(x).lower() in ["1", "true", "yes"], default=False)
+    parser.add_argument("--factorization_loss_weight", type=float, default=0.001)
+    parser.add_argument("--factorization_offdiag_weight", type=float, default=0.005)
+    parser.add_argument("--factorization_eps", type=float, default=1e-4)
+    parser.add_argument("--log_factorization_stats", type=lambda x: str(x).lower() in ["1", "true", "yes"], default=True)
     args, left_argv = parser.parse_known_args()
 
     # setup hparams
