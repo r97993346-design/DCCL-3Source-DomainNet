@@ -220,7 +220,17 @@ class MultipleEnvironmentImageFolder(MultipleDomainDataset):
             self.datasets.append(env_dataset)
 
         self.input_shape = (3, 224, 224)
+        if not self.datasets:
+            raise ValueError(f"No environment folders were found under {root!r}.")
         self.num_classes = len(self.datasets[-1].classes)
+        self.class_names = list(self.datasets[-1].classes)
+        self.class_to_idx = dict(self.datasets[-1].class_to_idx)
+        for env_dataset in self.datasets[:-1]:
+            if env_dataset.class_to_idx != self.class_to_idx:
+                raise ValueError(
+                    "All environments must use the same class-to-label mapping "
+                    "for RISE text prototypes and DCCL labels to align."
+                )
 
 
 class VLCS(MultipleEnvironmentImageFolder):
