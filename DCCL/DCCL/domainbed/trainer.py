@@ -136,6 +136,15 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # setup algorithm (model)
     #######################################################
     hparams["total_num_domains"] = len(dataset)
+    if hparams.get("use_rise", False):
+        class_names = getattr(dataset, "class_names", None)
+        if class_names is None or len(class_names) != dataset.num_classes:
+            raise ValueError(
+                "RISE-guided DCCL could not read a valid class-name mapping from "
+                f"dataset {args.dataset!r}. Expected {dataset.num_classes} names, "
+                f"got {0 if class_names is None else len(class_names)}."
+            )
+        hparams["class_names"] = list(class_names)
     algorithm = algorithm_class(
         dataset.input_shape,
         dataset.num_classes,
