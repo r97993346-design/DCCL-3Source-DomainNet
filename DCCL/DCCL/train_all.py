@@ -61,6 +61,7 @@ def main():
     parser.add_argument("--source_envs", type=int, nargs="+", default=None, help="Source env indices for DomainNet (e.g., 0 1 2)")
     parser.add_argument("--target_env", type=int, default=None, help="Target env index for DomainNet (e.g., 5)")
     parser.add_argument("--erm_baseline", choices=["weak", "matched"], default="weak", help="ERM baseline mode for DomainNet auto sweep: weak keeps ImageNet pretraining but disables SWAD; matched uses the same backbone/SWAD settings as the main run.")
+    parser.add_argument("--domainnet_auto_source_count", type=int, default=3, choices=[3, 5], help="Number of source domains to use when automatically sweeping DomainNet combinations without --source_envs/--target_env. Use 3 for the original 3-source sweep or 5 for the full 5-source sweep.")
     parser.add_argument("--weak_erm", action="store_true", help="When --algorithm ERM is run directly, use the weak ERM baseline settings (ImageNet pretrained backbone, no SWAD).")
     parser.add_argument("--holdout_fraction", type=float, default=0.2)
     parser.add_argument("--model_save", default=None, type=int, help="Model save start step")
@@ -223,17 +224,23 @@ def main():
     results = collections.defaultdict(list)
 
     combo_rows = []
-    run_all_domainnet_triplets = (
+    run_all_domainnet_auto_sweep = (
         args.dataset == "DomainNet" and args.source_envs is None and args.target_env is None
     )
-    if run_all_domainnet_triplets:
+    if run_all_domainnet_auto_sweep:
         env_ids = list(range(len(dataset)))
         env_names = list(dataset.environments)
         erm_label = "ERM-weak" if args.erm_baseline == "weak" else "ERM"
-        logger.info(f"Running all DomainNet 3-source->1-target combinations with {erm_label} baseline.")
+        source_count = args.domainnet_auto_source_count
+        if source_count >= len(dataset):
+            raise ValueError(
+                f"--domainnet_auto_source_count must be smaller than the number of DomainNet "
+                f"environments ({len(dataset)}), got {source_count}."
+            )
+        logger.info(f"Running all DomainNet {source_count}-source->1-target combinations with {erm_label} baseline.")
         for tgt in env_ids:
             source_candidates = [e for e in env_ids if e != tgt]
-            for srcs in itertools.combinations(source_candidates, 3):
+            for srcs in itertools.combinations(source_candidates, source_count):
                 run_args = copy.deepcopy(args)
                 run_args.source_envs = list(srcs)
                 run_args.target_env = tgt
@@ -292,9 +299,10 @@ def main():
     logger.info("Algorithm: %s" % args.algorithm)
     logger.info("Dataset: %s" % args.dataset)
 
-    if run_all_domainnet_triplets:
+    if run_all_domainnet_auto_sweep:
         erm_label = "ERM-weak" if args.erm_baseline == "weak" else "ERM"
-        combo_table = PrettyTable(["Sources(3)", "Target", "Algo", erm_label, f"RelDrop(vs {erm_label})"])
+        source_count = args.domainnet_auto_source_count
+        combo_table = PrettyTable([f"Sources({source_count})", "Target", "Algo", erm_label, f"RelDrop(vs {erm_label})"])
         for srcs, tgt, main_acc, erm_acc, rel_drop in combo_rows:
             src_names = ",".join([dataset.environments[i] for i in srcs])
             tgt_name = dataset.environments[tgt]
