@@ -136,6 +136,13 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # setup algorithm (model)
     #######################################################
     hparams["total_num_domains"] = len(dataset)
+    if hparams.get("use_rise", False):
+        if not hasattr(dataset, "datasets") or len(dataset.datasets) == 0 or not hasattr(dataset.datasets[-1], "classes"):
+            raise ValueError(
+                "RISE requires dataset.classes aligned with label indices. "
+                "Provide a DomainNet class mapping or ensure dataset.datasets[-1].classes exists."
+            )
+        hparams["class_names"] = list(dataset.datasets[-1].classes)
     algorithm = algorithm_class(
         dataset.input_shape,
         dataset.num_classes,

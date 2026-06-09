@@ -88,4 +88,15 @@ def setup_alg_hparams(hparams, args):
     hparams["masker_hidden_dim"] = args.masker_hidden_dim
     hparams["masker_update_interval"] = args.masker_update_interval
     hparams["log_masker_stats"] = args.log_masker_stats
+    hparams["use_rise"] = getattr(args, "use_rise", False)
+    hparams["use_rise_kd"] = getattr(args, "use_rise_kd", False)
+    hparams["use_rise_proto"] = getattr(args, "use_rise_proto", False)
+    hparams["rise_clip_model_name"] = getattr(args, "rise_clip_model_name", "ViT-B/32")
+    hparams["rise_clip_download_root"] = getattr(args, "rise_clip_download_root", None)
+    hparams["rise_kd_weight"] = getattr(args, "rise_kd_weight", 0.5)
+    hparams["rise_proto_weight"] = getattr(args, "rise_proto_weight", 0.1)
+    hparams["rise_kd_temperature"] = getattr(args, "rise_kd_temperature", 2.0)
+    hparams["rise_prompt_mode"] = getattr(args, "rise_prompt_mode", "rise80")
+    hparams["rise_freeze_clip"] = getattr(args, "rise_freeze_clip", True)
+    hparams["rise_projection_dim"] = getattr(args, "rise_projection_dim", 512)
     return hparams
