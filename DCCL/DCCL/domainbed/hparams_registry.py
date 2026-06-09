@@ -21,6 +21,17 @@ def _hparams(algorithm, dataset, random_state):
 
     hparams["freeze_bn"] = (True, True)
     hparams["pretrained"] = (True, True)  # only for ResNet
+    hparams["use_rise"] = (False, False)
+    hparams["use_rise_kd"] = (False, False)
+    hparams["use_rise_proto"] = (False, False)
+    hparams["rise_clip_model_name"] = ("ViT-B/32", "ViT-B/32")
+    hparams["rise_clip_download_root"] = (None, None)
+    hparams["rise_kd_weight"] = (0.5, 0.5)
+    hparams["rise_proto_weight"] = (0.1, 0.1)
+    hparams["rise_kd_temperature"] = (2.0, 2.0)
+    hparams["rise_prompt_mode"] = ("rise80", "rise80")
+    hparams["rise_freeze_clip"] = (True, True)
+    hparams["rise_projection_dim"] = (512, 512)
 
     if dataset not in SMALL_IMAGES:
         hparams["lr"] = (5e-5, 10 ** random_state.uniform(-5, -3.5))

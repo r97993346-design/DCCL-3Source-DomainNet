@@ -36,3 +36,16 @@ gumbel_hard: True
 masker_hidden_dim: 256
 masker_update_interval: 1
 log_masker_stats: True
+
+# RISE-guided semantic supervision defaults (all disabled unless requested).
+use_rise: False
+use_rise_kd: False
+use_rise_proto: False
+rise_clip_model_name: ViT-B/32
+rise_clip_download_root: null
+rise_kd_weight: 0.5
+rise_proto_weight: 0.1
+rise_kd_temperature: 2.0
+rise_prompt_mode: rise80
+rise_freeze_clip: True
+rise_projection_dim: 512
