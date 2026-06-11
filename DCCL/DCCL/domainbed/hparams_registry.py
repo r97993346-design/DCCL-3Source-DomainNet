@@ -19,6 +19,27 @@ def _hparams(algorithm, dataset, random_state):
     hparams["class_balanced"] = (False, False)
     hparams["optimizer"] = ("adam", "adam")
 
+    # CIRL/ICR/RISE experimental defaults. All feature switches are disabled
+    # here so ERM/DCCL baselines keep their original behavior unless CLI/config
+    # explicitly opts in.
+    hparams["use_cirl"] = (False, False)
+    hparams["lambda_cirl"] = (1.0, 1.0)
+    hparams["lambda_icr"] = (1.0, 1.0)
+    hparams["cirl_use_fourier_reliability"] = (False, False)
+    hparams["cirl_reliability_temperature"] = (1.0, 1.0)
+    hparams["cirl_min_reliability"] = (0.05, 0.05)
+    hparams["cirl_fourier_alpha"] = (0.5, 0.5)
+    hparams["use_rise"] = (False, False)
+    hparams["lambda_kd"] = (1.0, 1.0)
+    hparams["lambda_ad"] = (1.0, 1.0)
+    hparams["rise_prompt_mode"] = ("rise80", "rise80")
+    hparams["rise_clip_model_name"] = ("ViT-B/32", "ViT-B/32")
+    hparams["rise_clip_download_root"] = (None, None)
+    hparams["rise_kd_temperature"] = (2.0, 2.0)
+    hparams["rise_teacher_temperature"] = (1.0, 1.0)
+    hparams["rise_ad_use_gt_label"] = (True, True)
+    hparams["class_names"] = ([], [])
+
     hparams["freeze_bn"] = (True, True)
     hparams["pretrained"] = (True, True)  # only for ResNet
 

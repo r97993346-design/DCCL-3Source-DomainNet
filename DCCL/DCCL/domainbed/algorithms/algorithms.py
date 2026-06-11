@@ -15,6 +15,8 @@ from domainbed.lib import misc
 from domainbed import networks
 from domainbed.lib.misc import random_pairs_of_minibatches
 from domainbed.optimizers import get_optimizer
+from domainbed.modules.cirl import CIRLModule
+from domainbed.modules.rise import RISETeacher
 
 from domainbed.models.resnet_mixstyle import (
     resnet18_mixstyle_L234_p0d5_a0d1,
@@ -273,6 +275,33 @@ class DCCL(Algorithm):
         self.supcon_loss_pre = SupConLoss(hparams["t_pre"])
         self.con_loss = ConLoss(hparams["t"])
 
+        # CIRL is an opt-in internal student enhancement. It creates causal
+        # reliability weights for DCCL contrastive relations, not a teacher.
+        self.use_cirl = hparams["use_cirl"]
+        self.lambda_cirl = hparams["lambda_cirl"]
+        self.lambda_icr = hparams["lambda_icr"]
+        if self.use_cirl:
+            self.cirl = CIRLModule(
+                temperature=hparams["cirl_reliability_temperature"],
+                min_reliability=hparams["cirl_min_reliability"],
+                use_fourier_reliability=hparams["cirl_use_fourier_reliability"],
+                fourier_alpha=hparams["cirl_fourier_alpha"],
+            )
+
+        # RISE is an opt-in external frozen CLIP teacher used only in update().
+        self.use_rise = hparams["use_rise"]
+        self.lambda_kd = hparams["lambda_kd"]
+        self.lambda_ad = hparams["lambda_ad"]
+        if self.use_rise:
+            class_names = hparams["class_names"] or [str(i) for i in range(num_classes)]
+            self.rise_teacher = RISETeacher(
+                class_names=class_names,
+                student_dim=hidden_num_2 if hparams["n_layer"] != 1 else hidden_num_1,
+                clip_model_name=hparams["rise_clip_model_name"],
+                download_root=hparams["rise_clip_download_root"],
+                prompt_mode=hparams["rise_prompt_mode"],
+            )
+
         # layer-wise contrast
         if hparams["n_layer"]==1:
             self.pre_proj_head = nn.Sequential(nn.Linear(self.featurizer.n_outputs, hidden_num_1))
@@ -288,6 +317,8 @@ class DCCL(Algorithm):
             {"params": self.var_encoders.parameters(), "lr": self.hparams["lr"] * 10},
             {"params": self.pre_proj_head.parameters(), "lr": self.hparams["lr"]/lower_proj}
             ]
+        if self.use_rise:
+            optimized_list.append({"params": self.rise_teacher.align_proj.parameters(), "lr": self.hparams["lr"]/lower_proj})
         if self.TN:
             self.optimizer_TN = get_optimizer(
             hparams["optimizer"],
@@ -366,6 +397,23 @@ class DCCL(Algorithm):
             view_1 = nn.functional.normalize(embed_1)
             view_2 = nn.functional.normalize(embed_2)
             features = torch.stack([view_1, view_2], dim=1)
+            cirl_outputs = None
+            reliability_matrix = None
+            if self.use_cirl:
+                all_d = torch.cat(kwargs["d"])
+                cirl_outputs = self.cirl(view_1, all_y, all_d)
+                reliability_matrix = cirl_outputs["reliability_matrix"]
+                if self.hparams["cirl_use_fourier_reliability"] and self.lambda_icr:
+                    x_icr = self.cirl.fourier_intervention(all_x)
+                    feature_x_icr = self.featurizer(x_icr)
+                    view_icr = nn.functional.normalize(self.proj_head(feature_x_icr))
+                    cirl_outputs["loss_icr_fourier"] = 1.0 - F.cosine_similarity(view_1, view_icr.detach(), dim=1).mean()
+                    cirl_outputs["loss_cirl"] = cirl_outputs["loss_cirl"] + self.lambda_icr * cirl_outputs["loss_icr_fourier"]
+                else:
+                    cirl_outputs["loss_icr_fourier"] = view_1.new_tensor(0.0)
+                # Feed the causal-enhanced first view into DCCL contrastive
+                # learning while keeping the augmented second view unchanged.
+                features = torch.stack([cirl_outputs["z_causal"], view_2], dim=1)
             if self.re_w:
                 all_d = torch.cat(kwargs["d"])
                 all_d_2 = torch.cat(kwargs["d_2"])
@@ -376,7 +424,7 @@ class DCCL(Algorithm):
                     pos_mask = 1-neg_mask
                 else:
                     pos_mask = None
-                loss_sup_cl = self.supcon_loss(features, all_y, neg_mask=neg_mask, pos_mask=pos_mask)
+                loss_sup_cl = self.supcon_loss(features, all_y, neg_mask=neg_mask, pos_mask=pos_mask, reliability_matrix=reliability_matrix)
             else:
                 if self.sample_d:
                     all_x_2_d = torch.cat(kwargs["x_2_d"])
@@ -384,10 +432,12 @@ class DCCL(Algorithm):
                     embed_2_d = self.proj_head(feature_x_2_d)
                     view_2_d = nn.functional.normalize(embed_2_d)
                     add_pos = torch.cat([view_2_d,view_2_d],0)
-                    loss_sup_cl = self.supcon_loss(features, all_y, add_pos = add_pos)
+                    loss_sup_cl = self.supcon_loss(features, all_y, add_pos = add_pos, reliability_matrix=reliability_matrix)
                 else:
-                    loss_sup_cl = self.supcon_loss(features, all_y)
+                    loss_sup_cl = self.supcon_loss(features, all_y, reliability_matrix=reliability_matrix)
             loss += self.l*loss_sup_cl
+            if self.use_cirl:
+                loss += self.lambda_cirl * cirl_outputs["loss_cirl"]
         pre_cl_loss = 0.
         if self.l_layer:
 
@@ -415,13 +465,48 @@ class DCCL(Algorithm):
             else:
                 pre_cl_loss += self.supcon_loss_pre(features, all_y_pre)
             loss += self.l_layer*pre_cl_loss
+        loss_kd = pred_x.new_tensor(0.0)
+        loss_ad = pred_x.new_tensor(0.0)
+        if self.use_rise:
+            # Frozen external teacher: CLIP contributes losses during training
+            # only; predict()/evaluation never calls RISE.
+            student_z = self.proj_head(feature_x)
+            if self.lambda_kd:
+                teacher_logits = self.rise_teacher.compute_teacher_logits(
+                    all_x, temperature=self.hparams["rise_teacher_temperature"]
+                )
+                loss_kd = self.rise_teacher.compute_kd_loss(
+                    pred_x, teacher_logits, tau=self.hparams["rise_kd_temperature"]
+                )
+                loss += self.lambda_kd * loss_kd
+            if self.lambda_ad:
+                loss_ad = self.rise_teacher.compute_ad_loss(student_z, all_y)
+                loss += self.lambda_ad * loss_ad
         loss_opt = loss
         self.optimizer.zero_grad()
         loss_opt.backward()
         self.optimizer.step()
-        loss_dict = {"loss": loss.item(), "ce_loss": ce_loss}
+        loss_dict = {
+            "loss": loss.item(),
+            "loss_total": loss.item(),
+            "ce_loss": ce_loss,
+            "loss_cls": ce_loss,
+            "loss_dccl": loss_sup_cl.item() if self.l else 0.0,
+            "loss_kd": loss_kd.item() if self.use_rise else 0.0,
+            "loss_ad": loss_ad.item() if self.use_rise else 0.0,
+        }
         if self.l:
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
+        if self.use_cirl:
+            loss_dict.update({
+                "loss_cirl": cirl_outputs["loss_cirl"].item() if self.l else 0.0,
+                "loss_cirl_reliability": cirl_outputs["loss_reliability"].item() if self.l else 0.0,
+                "loss_cirl_consistency": cirl_outputs["loss_consistency"].item() if self.l else 0.0,
+                "loss_icr_fourier": cirl_outputs["loss_icr_fourier"].item() if self.l else 0.0,
+                "mean_reliability": cirl_outputs["mean_reliability"].item() if self.l else 0.0,
+                "min_reliability": cirl_outputs["min_reliability"].item() if self.l else 0.0,
+                "max_reliability": cirl_outputs["max_reliability"].item() if self.l else 0.0,
+            })
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
         return loss_dict
@@ -468,7 +553,7 @@ class SupConLoss(nn.Module):
         self.mask_out = mask_out
         self.not_sup = not_sup
 
-    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None):
+    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None, reliability_matrix=None):
         """Compute loss for model. If both `labels` and `mask` are None,
         it degenerates to SimCLR unsupervised loss:
         https://arxiv.org/pdf/2002.05709.pdf
@@ -530,6 +615,11 @@ class SupConLoss(nn.Module):
 
         # tile mask
         mask = mask.repeat(anchor_count, contrast_count)
+        if reliability_matrix is not None:
+            reliability_matrix = reliability_matrix.to(device=device, dtype=mask.dtype)
+            if reliability_matrix.shape != (batch_size, batch_size):
+                raise ValueError("reliability_matrix must have shape [batch_size, batch_size]")
+            mask = mask * reliability_matrix.repeat(anchor_count, contrast_count)
         mask_out = 1-mask
         # mask-out self-contrast cases
         # self, dimension->index (value) along which dim, index, src->consistent indexing with index
@@ -561,7 +651,7 @@ class SupConLoss(nn.Module):
             add_logits = torch.squeeze(add_logits)
             mean_log_prob_pos = ((mask * log_prob).sum(1)+add_logits) / (mask.sum(1)+1)
         else:
-            mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
+            mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1).clamp_min(1e-12)
 
         # loss
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos

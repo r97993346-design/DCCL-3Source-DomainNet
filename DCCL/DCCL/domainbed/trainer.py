@@ -136,6 +136,10 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # setup algorithm (model)
     #######################################################
     hparams["total_num_domains"] = len(dataset)
+    # RISE needs class names to build CLIP text prototypes. This is metadata
+    # only and is ignored unless --use_rise is enabled by DCCL.
+    if hasattr(dataset, "datasets") and dataset.datasets:
+        hparams["class_names"] = list(getattr(dataset.datasets[-1], "classes", []))
     algorithm = algorithm_class(
         dataset.input_shape,
         dataset.num_classes,

@@ -98,6 +98,28 @@ def main():
     parser.add_argument("--lamda", type=float, default=5, help="Weight coefficient for Transform Network sparsity loss")
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
+
+    # CIRL is an internal DCCL student enhancement; all switches default off.
+    parser.add_argument("--use_cirl", action="store_true", help="Enable CIRL causal reliability reweighting inside DCCL")
+    parser.add_argument("--lambda_cirl", type=float, default=1.0, help="Weight for CIRL regularization loss")
+    parser.add_argument("--cirl_use_fourier_reliability", action="store_true", help="Use Fourier/style reliability in CIRL")
+    parser.add_argument("--cirl_reliability_temperature", type=float, default=1.0, help="Temperature for CIRL reliability scores")
+    parser.add_argument("--cirl_min_reliability", type=float, default=0.05, help="Minimum pair reliability clamp")
+    parser.add_argument("--cirl_fourier_alpha", type=float, default=0.5, help="Blend factor for Fourier reliability")
+    parser.add_argument("--lambda_icr", type=float, default=1.0, help="Weight for ICR/Fourier intervention consistency inside CIRL")
+
+    # RISE is a frozen external CLIP teacher used only during training.
+    parser.add_argument("--use_rise", action="store_true", help="Enable RISE external CLIP teacher guidance")
+    parser.add_argument("--lambda_kd", type=float, default=1.0, help="Weight for RISE CLIP-KD loss")
+    parser.add_argument("--lambda_ad", type=float, default=1.0, help="Weight for RISE text-prototype alignment loss")
+    parser.add_argument("--disable_rise_kd", action="store_true", help="Disable RISE KD even when --use_rise is set")
+    parser.add_argument("--disable_rise_ad", action="store_true", help="Disable RISE AD even when --use_rise is set")
+    parser.add_argument("--rise_prompt_mode", type=str, default="rise80", choices=["rise80", "single"], help="Prompt template set for RISE text prototypes")
+    parser.add_argument("--rise_clip_model_name", type=str, default="ViT-B/32", help="CLIP model name or local checkpoint path for RISE")
+    parser.add_argument("--rise_clip_download_root", type=str, default=None, help="Local CLIP cache/checkpoint directory for RISE")
+    parser.add_argument("--rise_kd_temperature", type=float, default=2.0, help="Distillation temperature for RISE KD")
+    parser.add_argument("--rise_teacher_temperature", type=float, default=1.0, help="Temperature for CLIP image/text teacher logits")
+    parser.add_argument("--rise_ad_use_gt_label", action="store_true", default=True, help="Use GT labels for RISE AD text prototype alignment")
     args, left_argv = parser.parse_known_args()
 
     # setup hparams
@@ -153,6 +175,14 @@ def main():
     logger.nofmt("HParams:")
     for line in hparams.dumps().split("\n"):
         logger.nofmt("\t" + line)
+
+    logger.nofmt("CIRL/RISE:")
+    for key in [
+        "use_cirl", "use_rise", "rise_prompt_mode", "rise_clip_model_name",
+        "rise_clip_download_root", "cirl_use_fourier_reliability", "lambda_cirl",
+        "lambda_kd", "lambda_ad",
+    ]:
+        logger.nofmt("\t{}: {}".format(key, hparams[key]))
 
     if args.show:
         exit()

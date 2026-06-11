@@ -61,4 +61,20 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+    hparams["use_cirl"] = args.use_cirl
+    hparams["lambda_cirl"] = args.lambda_cirl
+    hparams["cirl_use_fourier_reliability"] = args.cirl_use_fourier_reliability
+    hparams["cirl_reliability_temperature"] = args.cirl_reliability_temperature
+    hparams["cirl_min_reliability"] = args.cirl_min_reliability
+    hparams["cirl_fourier_alpha"] = args.cirl_fourier_alpha
+    hparams["lambda_icr"] = args.lambda_icr
+    hparams["use_rise"] = args.use_rise
+    hparams["lambda_kd"] = 0.0 if args.disable_rise_kd else args.lambda_kd
+    hparams["lambda_ad"] = 0.0 if args.disable_rise_ad else args.lambda_ad
+    hparams["rise_prompt_mode"] = args.rise_prompt_mode
+    hparams["rise_clip_model_name"] = args.rise_clip_model_name
+    hparams["rise_clip_download_root"] = args.rise_clip_download_root
+    hparams["rise_kd_temperature"] = args.rise_kd_temperature
+    hparams["rise_ad_use_gt_label"] = args.rise_ad_use_gt_label
+    hparams["rise_teacher_temperature"] = args.rise_teacher_temperature
     return hparams
