@@ -2,6 +2,7 @@
 
 from asyncio import ALL_COMPLETED
 import copy
+import logging
 from typing import List
 
 import torch
@@ -20,6 +21,7 @@ from domainbed.lib.intervention import (
     normalize_imagenet,
     fourier_amplitude_intervention,
 )
+from domainbed import rise
 
 from domainbed.models.resnet_mixstyle import (
     resnet18_mixstyle_L234_p0d5_a0d1,
@@ -311,6 +313,64 @@ class DCCL(Algorithm):
             raise ValueError("use_adversarial_masker=True requires use_factorization_loss=True.")
         if self.use_adversarial_masker and not self.use_fourier_intervention:
             raise ValueError("use_adversarial_masker=True requires use_fourier_intervention=True.")
+        self.use_rise = hparams.get("use_rise", False)
+        self.use_rise_kd = self.use_rise and hparams.get("use_rise_kd", False)
+        self.use_rise_proto = self.use_rise and hparams.get("use_rise_proto", False)
+        self.rise_kd_weight = hparams.get("rise_kd_weight", 0.0)
+        self.rise_proto_weight = hparams.get("rise_proto_weight", 0.0)
+        self.rise_kd_temperature = hparams.get("rise_kd_temperature", 2.0)
+
+        if self.use_rise:
+            class_names = hparams.get("class_names", None)
+            if class_names is None or len(class_names) != num_classes:
+                raise ValueError(
+                    "RISE-guided DCCL requires class_names aligned with labels. "
+                    f"Expected {num_classes} names, got {0 if class_names is None else len(class_names)}."
+                )
+            self.rise_clip_model, self.rise_clip_module = rise.load_clip_teacher(
+                hparams.get("rise_clip_model_name", "ViT-B/32"),
+                device="cpu",
+                freeze=hparams.get("rise_freeze_clip", True),
+                download_root=hparams.get("rise_clip_download_root", None),
+            )
+            rise_prompt_mode = hparams.get("rise_prompt_mode", "multi")
+            text_prototypes = rise.build_text_prototypes(
+                self.rise_clip_model,
+                self.rise_clip_module,
+                class_names,
+                rise_prompt_mode,
+                device="cpu",
+            )
+            self.register_buffer("rise_text_prototypes", text_prototypes)
+            self.rise_clip_input_normalize = rise.CLIPInputNormalize()
+            self.rise_clip_dim = text_prototypes.shape[1]
+            rise_prompt_count = rise.prompt_count(rise_prompt_mode)
+            if rise_prompt_mode == "rise80" and rise_prompt_count != 80:
+                raise ValueError(f"rise80 prompt mode must contain 80 templates, got {rise_prompt_count}.")
+            first_class_prompts = rise.build_prompts(class_names[:1], rise_prompt_mode)[0][:5]
+            logging.getLogger("SingletonLogger").info(
+                "RISE prompt mode=%s, prompt_count=%d, E_proto shape=%s, "
+                "first_class=%r, first_5_prompts=%s",
+                rise_prompt_mode,
+                rise_prompt_count,
+                tuple(text_prototypes.shape),
+                class_names[0],
+                first_class_prompts,
+            )
+            if self.use_rise_proto:
+                projection_dim = hparams.get("rise_projection_dim", self.rise_clip_dim)
+                if projection_dim != self.rise_clip_dim:
+                    raise ValueError(
+                        "--rise_projection_dim must match the CLIP text embedding dimension "
+                        f"({self.rise_clip_dim}) for {hparams.get('rise_clip_model_name', 'ViT-B/32')}. "
+                        f"Got {projection_dim}."
+                    )
+                self.rise_projector = nn.Linear(classifier_input_dim, projection_dim)
+            else:
+                self.rise_projector = None
+        else:
+            self.rise_clip_model = None
+            self.rise_projector = None
 
         if self.TN:
             self.TN_network = TN()
@@ -336,6 +396,12 @@ class DCCL(Algorithm):
             {"params": self.var_encoders.parameters(), "lr": self.hparams["lr"] * 10},
             {"params": self.pre_proj_head.parameters(), "lr": self.hparams["lr"]/lower_proj}
             ]
+        if self.use_rise_proto:
+            optimized_list.append({
+                "params": self.rise_projector.parameters(),
+                "lr": self.hparams["lr"],
+                "weight_decay": self.hparams["weight_decay"],
+            })
         if self.TN:
             self.optimizer_TN = get_optimizer(
             hparams["optimizer"],
@@ -570,6 +636,35 @@ class DCCL(Algorithm):
             else:
                 pre_cl_loss += self.supcon_loss_pre(features, all_y_pre)
             loss += self.l_layer*pre_cl_loss
+        rise_kd_loss = None
+        rise_proto_loss = None
+        rise_clip_top1_match_label_ratio = None
+        rise_clip_confidence_mean = None
+        rise_proto_cosine_mean = None
+
+        if self.use_rise and self.use_rise_kd:
+            with torch.no_grad():
+                clip_x = self.rise_clip_input_normalize(all_x)
+                clip_img_feat = self.rise_clip_model.encode_image(clip_x).float()
+                clip_img_feat = F.normalize(clip_img_feat, dim=1)
+                clip_logits = clip_img_feat @ self.rise_text_prototypes.detach().T
+                logit_scale = getattr(self.rise_clip_model, "logit_scale", None)
+                if logit_scale is not None:
+                    clip_logits = clip_logits * logit_scale.exp().detach()
+                clip_logits = clip_logits.detach()
+                clip_probs = F.softmax(clip_logits, dim=1)
+                rise_clip_confidence_mean = clip_probs.max(dim=1).values.mean()
+                rise_clip_top1_match_label_ratio = (clip_probs.argmax(dim=1) == all_y).float().mean()
+            rise_kd_loss = rise.clip_kd_loss(pred_x, clip_logits, self.rise_kd_temperature)
+            loss += self.rise_kd_weight * rise_kd_loss
+
+        if self.use_rise and self.use_rise_proto:
+            projected_feature = self.rise_projector(feature_x)
+            rise_proto_loss, rise_proto_cosine_mean = rise.prototype_alignment_loss(
+                projected_feature, all_y, self.rise_text_prototypes
+            )
+            loss += self.rise_proto_weight * rise_proto_loss
+
         loss_opt = loss
         self.optimizer.zero_grad()
         loss_opt.backward()
@@ -643,6 +738,27 @@ class DCCL(Algorithm):
                 })
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
+        if self.use_rise:
+            loss_dict.update({
+                "loss_cls": ce_loss,
+                "loss_dccl": loss_sup_cl.item() if self.l else 0.0,
+                "loss_rise_kd": rise_kd_loss.item() if rise_kd_loss is not None else 0.0,
+                "loss_rise_proto": rise_proto_loss.item() if rise_proto_loss is not None else 0.0,
+                "rise_kd_weight": float(self.rise_kd_weight),
+                "rise_proto_weight": float(self.rise_proto_weight),
+                "rise_clip_top1_match_label_ratio": (
+                    rise_clip_top1_match_label_ratio.item()
+                    if rise_clip_top1_match_label_ratio is not None else 0.0
+                ),
+                "rise_clip_confidence_mean": (
+                    rise_clip_confidence_mean.item()
+                    if rise_clip_confidence_mean is not None else 0.0
+                ),
+                "rise_proto_cosine_mean": (
+                    rise_proto_cosine_mean.item()
+                    if rise_proto_cosine_mean is not None else 0.0
+                ),
+            })
         return loss_dict
 
     def _factorization_loss(self, z_orig, z_inter):

@@ -124,6 +124,19 @@ def main():
     parser.add_argument("--masker_hidden_dim", type=int, default=256)
     parser.add_argument("--masker_update_interval", type=int, default=1)
     parser.add_argument("--log_masker_stats", type=lambda x: str(x).lower() in ["1", "true", "yes"], default=True)
+
+    # RISE-guided DCCL options. All are inert unless --use_rise is set.
+    parser.add_argument("--use_rise", action="store_true", help="Enable RISE-guided CLIP language supervision for DCCL")
+    parser.add_argument("--use_rise_kd", action="store_true", help="Enable CLIP teacher logits KL distillation")
+    parser.add_argument("--use_rise_proto", action="store_true", help="Enable CLIP text prototype cosine alignment")
+    parser.add_argument("--rise_clip_model_name", type=str, default="ViT-B/32", help="Frozen CLIP teacher model name, or a local CLIP checkpoint path")
+    parser.add_argument("--rise_clip_download_root", type=str, default=None, help="Local directory/cache for CLIP weights; useful on offline servers")
+    parser.add_argument("--rise_kd_weight", type=float, default=0.5, help="Weight for RISE CLIP-KD loss")
+    parser.add_argument("--rise_proto_weight", type=float, default=0.1, help="Weight for RISE text prototype alignment loss")
+    parser.add_argument("--rise_kd_temperature", type=float, default=2.0, help="Temperature for RISE CLIP-KD KL loss")
+    parser.add_argument("--rise_prompt_mode", choices=["simple", "multi", "domain_invariant", "rise80"], default="multi", help="Prompt template set for CLIP text prototypes")
+    parser.add_argument("--rise_freeze_clip", type=lambda x: str(x).lower() in ("1", "true", "yes", "y"), default=True, help="Freeze CLIP teacher parameters")
+    parser.add_argument("--rise_projection_dim", type=int, default=512, help="Projection dimension for DCCL features before text prototype alignment")
     args, left_argv = parser.parse_known_args()
 
     # setup hparams

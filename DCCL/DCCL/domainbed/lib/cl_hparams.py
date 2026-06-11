@@ -88,4 +88,15 @@ def setup_alg_hparams(hparams, args):
     hparams["masker_hidden_dim"] = args.masker_hidden_dim
     hparams["masker_update_interval"] = args.masker_update_interval
     hparams["log_masker_stats"] = args.log_masker_stats
+    hparams["use_rise"] = args.use_rise
+    hparams["use_rise_kd"] = args.use_rise_kd
+    hparams["use_rise_proto"] = args.use_rise_proto
+    hparams["rise_clip_model_name"] = args.rise_clip_model_name
+    hparams["rise_clip_download_root"] = args.rise_clip_download_root
+    hparams["rise_kd_weight"] = args.rise_kd_weight
+    hparams["rise_proto_weight"] = args.rise_proto_weight
+    hparams["rise_kd_temperature"] = args.rise_kd_temperature
+    hparams["rise_prompt_mode"] = args.rise_prompt_mode
+    hparams["rise_freeze_clip"] = args.rise_freeze_clip
+    hparams["rise_projection_dim"] = args.rise_projection_dim
     return hparams
