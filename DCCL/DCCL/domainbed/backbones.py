@@ -1,8 +1,15 @@
 # Copyright (c) Kakao Brain. All Rights Reserved.
 
+import sys
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 import torchvision.models
+
+_clip_root = Path(__file__).resolve().parents[3] / "CLIP"
+if str(_clip_root) not in sys.path:
+    sys.path.insert(0, str(_clip_root))
 import clip
 
 
