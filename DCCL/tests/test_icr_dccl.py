@@ -88,7 +88,11 @@ def _build_args(**overrides):
         factorization_feature_source="contrastive", log_factorization_stats=True,
         use_adversarial_masker=False, masker_aux_loss_weight=0.1, masker_adversarial_weight=1.0,
         mask_keep_ratio=0.5, gumbel_temperature=1.0, gumbel_hard=True, masker_hidden_dim=256,
-        masker_update_interval=1, log_masker_stats=True
+        masker_update_interval=1, log_masker_stats=True,
+        use_rise=False, use_rise_kd=False, use_rise_proto=False,
+        rise_clip_model_name="ViT-B/32", rise_clip_download_root=None,
+        rise_kd_weight=0.5, rise_proto_weight=0.1, rise_kd_temperature=2.0,
+        rise_prompt_mode="multi", rise_freeze_clip=True, rise_projection_dim=512
     )
     base.update(overrides)
     return Namespace(**base)
@@ -150,11 +154,33 @@ def test_invalid_reliability_without_fourier_raises_clear_error():
         assert "use_intervention_reliability=True requires use_fourier_intervention=True" in str(e)
 
 
-def test_dccl_init_sets_reliability_weight_and_alias():
-    hparams = _build_hparams(use_fourier_intervention=True, use_intervention_reliability=True, reliability_loss_weight=1.23)
+def test_dccl_init_keeps_reliability_weight_separate_from_original_re_w():
+    hparams = _build_hparams(
+        use_fourier_intervention=True,
+        use_intervention_reliability=True,
+        reliability_loss_weight=1.23,
+        re_w=False,
+    )
     alg = DCCL((3, 224, 224), 2, 3, hparams)
     assert alg.reliability_loss_weight == 1.23
-    assert alg.re_w == alg.reliability_loss_weight
+    assert alg.re_w is False
+
+
+def test_setup_hparams_accepts_rise_and_cirl_together():
+    hparams = _build_hparams(
+        use_rise=True,
+        use_rise_kd=True,
+        use_rise_proto=True,
+        use_fourier_intervention=True,
+        use_intervention_reliability=True,
+        use_factorization_loss=True,
+    )
+    assert hparams["use_rise"] is True
+    assert hparams["use_rise_kd"] is True
+    assert hparams["use_rise_proto"] is True
+    assert hparams["use_fourier_intervention"] is True
+    assert hparams["use_intervention_reliability"] is True
+    assert hparams["use_factorization_loss"] is True
 
 
 def test_invalid_factorization_without_fourier_raises_clear_error():

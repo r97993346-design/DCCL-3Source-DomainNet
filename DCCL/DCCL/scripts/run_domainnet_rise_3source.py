@@ -15,7 +15,7 @@ import sys
 
 
 DOMAINNET_ENVS = ["clip", "info", "paint", "quick", "real", "sketch"]
-VARIANTS = ["baseline", "rise_proto", "rise_kd", "rise_kd_proto"]
+VARIANTS = ["baseline", "cirl", "rise_proto", "rise_kd", "rise_kd_proto", "rise_kd_proto_cirl"]
 SCRIPT_DIR = Path(__file__).resolve().parent
 TRAIN_DIR = SCRIPT_DIR.parent
 
@@ -41,9 +41,22 @@ def validate_full_domainnet(data_dir):
     return domainnet_root
 
 
+def cirl_args(args):
+    return [
+        "--use_fourier_intervention", "true",
+        "--use_intervention_reliability",
+        "--use_factorization_loss", "true",
+        "--fourier_mix_alpha", str(args.fourier_mix_alpha),
+        "--reliability_loss_weight", str(args.reliability_loss_weight),
+        "--factorization_loss_weight", str(args.factorization_loss_weight),
+    ]
+
+
 def variant_args(variant, args):
     if variant == "baseline":
         return []
+    if variant == "cirl":
+        return cirl_args(args)
     clip_args = ["--rise_clip_model_name", args.rise_clip_model_name]
     if args.rise_clip_download_root is not None:
         clip_args.extend(["--rise_clip_download_root", str(Path(args.rise_clip_download_root).resolve())])
@@ -68,6 +81,8 @@ def variant_args(variant, args):
         return common_rise_args + kd_args
     if variant == "rise_kd_proto":
         return common_rise_args + kd_args + proto_args
+    if variant == "rise_kd_proto_cirl":
+        return common_rise_args + kd_args + proto_args + cirl_args(args)
     raise ValueError(f"Unknown variant: {variant}")
 
 
@@ -142,8 +157,8 @@ def main():
         choices=VARIANTS + ["all"],
         default="all",
         help=(
-            "Which variant to run: baseline, rise_proto (AD/text prototype only), "
-            "rise_kd (KD only), rise_kd_proto (AD+KD), or all."
+            "Which variant to run: baseline, cirl, rise_proto (AD/text prototype only), "
+            "rise_kd (KD only), rise_kd_proto (AD+KD), rise_kd_proto_cirl, or all."
         ),
     )
     parser.add_argument("--gpu", type=int, default=0, help="CUDA_VISIBLE_DEVICES value for launched jobs.")
@@ -156,6 +171,9 @@ def main():
     parser.add_argument("--rise_kd_temperature", type=float, default=2.0)
     parser.add_argument("--rise_prompt_mode", choices=["simple", "multi", "domain_invariant", "rise80"], default="multi")
     parser.add_argument("--rise_projection_dim", type=int, default=512)
+    parser.add_argument("--fourier_mix_alpha", type=float, default=0.5)
+    parser.add_argument("--reliability_loss_weight", type=float, default=1.0)
+    parser.add_argument("--factorization_loss_weight", type=float, default=0.01)
     parser.add_argument("--extra_args", nargs=argparse.REMAINDER, default=[], help="Additional args appended to train_all.py commands.")
     args = parser.parse_args()
 

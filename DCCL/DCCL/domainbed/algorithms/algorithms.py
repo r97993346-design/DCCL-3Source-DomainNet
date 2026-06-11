@@ -280,8 +280,10 @@ class DCCL(Algorithm):
         self.intervention_temperature = hparams.get("intervention_temperature", 0.1)
         self.reliability_min_weight = hparams.get("reliability_min_weight", 0.05)
         self.reliability_loss_weight = hparams.get("reliability_loss_weight", 1.0)
-        # Backward-compatible alias for existing code paths that use self.re_w
-        self.re_w = self.reliability_loss_weight
+        # Keep the original DCCL domain re-weighting switch separate from the
+        # reliability loss scale so disabling the new module preserves baseline
+        # DCCL behavior exactly.
+        self.re_w = hparams.get("re_w", False)
         self.detach_reliability_score = hparams.get("detach_reliability_score", True)
         self.log_intervention_stats = hparams.get("log_intervention_stats", True)
         self.use_factorization_loss = hparams.get("use_factorization_loss", False)
@@ -665,9 +667,13 @@ class DCCL(Algorithm):
             )
             loss += self.rise_proto_weight * rise_proto_loss
 
-        loss_opt = loss
+        # DCCL base terms, CIRL intervention terms, and RISE supervision terms
+        # are all accumulated into this single scalar before backpropagation.
+        # This keeps one fused gradient update for the shared DCCL network instead
+        # of stepping RISE/CIRL objectives separately.
+        total_loss = loss
         self.optimizer.zero_grad()
-        loss_opt.backward()
+        total_loss.backward()
         self.optimizer.step()
         if self.use_adversarial_masker and (self.masker_update_interval <= 1):
             masker_update_executed = True
