@@ -72,4 +72,26 @@ def setup_alg_hparams(hparams, args):
     hparams["rise_prompt_mode"] = args.rise_prompt_mode
     hparams["rise_freeze_clip"] = args.rise_freeze_clip
     hparams["rise_projection_dim"] = args.rise_projection_dim
+    hparams["use_fourier_intervention"] = args.use_fourier_intervention
+    hparams["use_intervention_reliability"] = args.use_intervention_reliability
+    hparams["fourier_mix_alpha"] = args.fourier_mix_alpha
+    hparams["fourier_mix_min"] = args.fourier_mix_min
+    hparams["fourier_mix_max"] = args.fourier_mix_max
+    hparams["intervention_mu"] = args.intervention_mu
+    hparams["intervention_temperature"] = args.intervention_temperature
+    hparams["reliability_min_weight"] = args.reliability_min_weight
+    hparams["reliability_loss_weight"] = args.reliability_loss_weight
+    hparams["use_factorization_loss"] = args.use_factorization_loss
+    hparams["factorization_loss_weight"] = args.factorization_loss_weight
+    hparams["factorization_offdiag_weight"] = args.factorization_offdiag_weight
+    hparams["factorization_eps"] = args.factorization_eps
+    hparams["factorization_feature_source"] = args.factorization_feature_source
+    hparams["use_adversarial_masker"] = args.use_adversarial_masker
+    hparams["masker_aux_loss_weight"] = args.masker_aux_loss_weight
+    hparams["masker_adversarial_weight"] = args.masker_adversarial_weight
+    hparams["mask_keep_ratio"] = args.mask_keep_ratio
+    hparams["gumbel_temperature"] = args.gumbel_temperature
+    hparams["gumbel_hard"] = args.gumbel_hard
+    hparams["masker_hidden_dim"] = args.masker_hidden_dim
+    hparams["masker_update_interval"] = args.masker_update_interval
     return hparams

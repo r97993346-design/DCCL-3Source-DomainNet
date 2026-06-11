@@ -19,6 +19,30 @@ def _hparams(algorithm, dataset, random_state):
     hparams["class_balanced"] = (False, False)
     hparams["optimizer"] = ("adam", "adam")
 
+    # CIRL defaults; train_all.py can override these through setup_alg_hparams.
+    hparams["use_fourier_intervention"] = (False, False)
+    hparams["use_intervention_reliability"] = (False, False)
+    hparams["fourier_mix_alpha"] = (1.0, 1.0)
+    hparams["fourier_mix_min"] = (0.0, 0.0)
+    hparams["fourier_mix_max"] = (1.0, 1.0)
+    hparams["intervention_mu"] = (0.5, 0.5)
+    hparams["intervention_temperature"] = (0.1, 0.1)
+    hparams["reliability_min_weight"] = (0.1, 0.1)
+    hparams["reliability_loss_weight"] = (1.0, 1.0)
+    hparams["use_factorization_loss"] = (False, False)
+    hparams["factorization_loss_weight"] = (0.1, 0.1)
+    hparams["factorization_offdiag_weight"] = (0.005, 0.005)
+    hparams["factorization_eps"] = (1e-4, 1e-4)
+    hparams["factorization_feature_source"] = ("projection", "projection")
+    hparams["use_adversarial_masker"] = (False, False)
+    hparams["masker_aux_loss_weight"] = (0.1, 0.1)
+    hparams["masker_adversarial_weight"] = (1.0, 1.0)
+    hparams["mask_keep_ratio"] = (0.5, 0.5)
+    hparams["gumbel_temperature"] = (1.0, 1.0)
+    hparams["gumbel_hard"] = (True, True)
+    hparams["masker_hidden_dim"] = (512, 512)
+    hparams["masker_update_interval"] = (1, 1)
+
     hparams["freeze_bn"] = (True, True)
     hparams["pretrained"] = (True, True)  # only for ResNet
 
