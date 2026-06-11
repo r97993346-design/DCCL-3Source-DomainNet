@@ -168,6 +168,21 @@ class VarianceEncoder(nn.Module):
 
 
 
+
+
+class FeatureMasker(nn.Module):
+    """Small MLP that predicts feature-wise mask logits for CIRL."""
+    def __init__(self, feature_dim, hidden_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(feature_dim * 2, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, feature_dim),
+        )
+
+    def forward(self, z_orig, z_inter):
+        return self.net(torch.cat([z_orig, z_inter], dim=1))
+
 class ForwardModel(nn.Module):
     """Forward model is used to reduce gpu memory usage of SWAD.
     """
@@ -240,6 +255,33 @@ class DCCL(Algorithm):
         hidden_num_1, hidden_num_2 = classifier_input_dim//4, classifier_input_dim//4
         self.num_classes = num_classes
         self.aug = hparams["aug"]
+        # CIRL options. All branches are inert unless their flags are enabled.
+        self.use_fourier_intervention = hparams.get("use_fourier_intervention", False)
+        self.use_intervention_reliability = hparams.get("use_intervention_reliability", False)
+        self.fourier_mix_alpha = hparams.get("fourier_mix_alpha", 1.0)
+        self.fourier_mix_min = hparams.get("fourier_mix_min", 0.0)
+        self.fourier_mix_max = hparams.get("fourier_mix_max", 1.0)
+        self.intervention_mu = hparams.get("intervention_mu", 0.5)
+        self.intervention_temperature = hparams.get("intervention_temperature", 0.1)
+        self.reliability_min_weight = hparams.get("reliability_min_weight", 0.1)
+        self.reliability_loss_weight = hparams.get("reliability_loss_weight", 1.0)
+        self.use_factorization_loss = hparams.get("use_factorization_loss", False)
+        self.factorization_loss_weight = hparams.get("factorization_loss_weight", 0.1)
+        self.factorization_offdiag_weight = hparams.get("factorization_offdiag_weight", 0.005)
+        self.factorization_eps = hparams.get("factorization_eps", 1e-4)
+        self.factorization_feature_source = hparams.get("factorization_feature_source", "projection")
+        self.use_adversarial_masker = hparams.get("use_adversarial_masker", False)
+        self.masker_aux_loss_weight = hparams.get("masker_aux_loss_weight", 0.1)
+        self.masker_adversarial_weight = hparams.get("masker_adversarial_weight", 1.0)
+        self.mask_keep_ratio = hparams.get("mask_keep_ratio", 0.5)
+        self.gumbel_temperature = hparams.get("gumbel_temperature", 1.0)
+        self.gumbel_hard = hparams.get("gumbel_hard", True)
+        self.masker_hidden_dim = hparams.get("masker_hidden_dim", 512)
+        self.masker_update_interval = hparams.get("masker_update_interval", 1)
+        self.update_count = 0
+        self.imagenet_mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
+        self.imagenet_std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
+
         self.classifier = nn.Sequential(nn.Linear(classifier_input_dim, num_classes))
         self.network = nn.Sequential(self.featurizer, self.classifier)
         if hparams["n_layer"]==1:
@@ -247,6 +289,15 @@ class DCCL(Algorithm):
         else:
             self.proj_head = nn.Sequential(nn.Linear(self.featurizer.n_outputs, hidden_num_1), nn.BatchNorm1d(hidden_num_1), nn.ReLU(), nn.Linear(hidden_num_1, hidden_num_2))
         self.proj = nn.Sequential(self.featurizer, self.proj_head)
+        self.proj_output_dim = hidden_num_1 if hparams["n_layer"] == 1 else hidden_num_2
+        if self.use_adversarial_masker:
+            self.masker = FeatureMasker(self.proj_output_dim, self.masker_hidden_dim)
+            self.superior_classifier = nn.Linear(self.proj_output_dim, num_classes)
+            self.inferior_classifier = nn.Linear(self.proj_output_dim, num_classes)
+        else:
+            self.masker = None
+            self.superior_classifier = None
+            self.inferior_classifier = None
 
         shapes = get_shapes(self.pre_featurizer, self.input_shape)
         self.mean_encoders = nn.ModuleList([
@@ -271,6 +322,7 @@ class DCCL(Algorithm):
         self.rise_kd_weight = hparams.get("rise_kd_weight", 0.0)
         self.rise_proto_weight = hparams.get("rise_proto_weight", 0.0)
         self.rise_kd_temperature = hparams.get("rise_kd_temperature", 2.0)
+        self.re_w = hparams.get("re_w", False)
 
         if self.use_rise:
             class_names = hparams.get("class_names", None)
@@ -348,6 +400,11 @@ class DCCL(Algorithm):
             {"params": self.var_encoders.parameters(), "lr": self.hparams["lr"] * 10},
             {"params": self.pre_proj_head.parameters(), "lr": self.hparams["lr"]/lower_proj}
             ]
+        if self.use_adversarial_masker:
+            optimized_list.extend([
+                {"params": self.superior_classifier.parameters(), "lr": self.hparams["lr"], "weight_decay": self.hparams["weight_decay"]},
+                {"params": self.inferior_classifier.parameters(), "lr": self.hparams["lr"], "weight_decay": self.hparams["weight_decay"]},
+            ])
         if self.use_rise_proto:
             optimized_list.append({
                 "params": self.rise_projector.parameters(),
@@ -364,6 +421,114 @@ class DCCL(Algorithm):
             hparams["optimizer"],
             optimized_list
         )
+        if self.use_adversarial_masker:
+            self.masker_optimizer = get_optimizer(
+                hparams["optimizer"],
+                [{"params": self.masker.parameters(), "lr": self.hparams["lr"], "weight_decay": self.hparams["weight_decay"]}],
+            )
+
+    def _imagenet_denormalize(self, x):
+        mean = self.imagenet_mean.to(device=x.device, dtype=x.dtype)
+        std = self.imagenet_std.to(device=x.device, dtype=x.dtype)
+        return (x * std + mean).clamp(0.0, 1.0)
+
+    def _imagenet_normalize(self, x):
+        mean = self.imagenet_mean.to(device=x.device, dtype=x.dtype)
+        std = self.imagenet_std.to(device=x.device, dtype=x.dtype)
+        return (x.clamp(0.0, 1.0) - mean) / std
+
+    def _cross_domain_donor_indices(self, domains):
+        batch_size = domains.numel()
+        perm = torch.randperm(batch_size, device=domains.device)
+        if batch_size <= 1:
+            return perm
+        donor = perm.clone()
+        for i in range(batch_size):
+            candidates = torch.nonzero(domains != domains[i], as_tuple=False).flatten()
+            if candidates.numel() > 0:
+                donor[i] = candidates[torch.randint(candidates.numel(), (1,), device=domains.device)]
+        return donor
+
+    def _fourier_intervention(self, x, domains=None):
+        if domains is None:
+            donor_idx = torch.randperm(x.size(0), device=x.device)
+        else:
+            donor_idx = self._cross_domain_donor_indices(domains)
+        x01 = self._imagenet_denormalize(x)
+        donor01 = x01[donor_idx]
+        fft_x = torch.fft.fft2(x01, dim=(-2, -1))
+        fft_donor = torch.fft.fft2(donor01, dim=(-2, -1))
+        amp_x, phase_x = torch.abs(fft_x), torch.angle(fft_x)
+        amp_donor = torch.abs(fft_donor)
+        alpha = self.fourier_mix_alpha
+        if alpha < 0:
+            low = min(self.fourier_mix_min, self.fourier_mix_max)
+            high = max(self.fourier_mix_min, self.fourier_mix_max)
+            alpha = torch.empty(x.size(0), 1, 1, 1, device=x.device, dtype=x.dtype).uniform_(low, high)
+        else:
+            alpha = float(max(self.fourier_mix_min, min(self.fourier_mix_max, alpha)))
+        mixed_amp = (1.0 - alpha) * amp_x + alpha * amp_donor
+        mixed_fft = torch.polar(mixed_amp, phase_x)
+        x_inter = torch.fft.ifft2(mixed_fft, dim=(-2, -1)).real
+        return self._imagenet_normalize(x_inter)
+
+    def _reliable_supcon_loss(self, features, labels, domains, reliability):
+        batch_size = labels.shape[0]
+        contrast_count = features.shape[1]
+        flat_features = torch.cat(torch.unbind(features, dim=1), dim=0)
+        logits = torch.matmul(flat_features, flat_features.T) / self.supcon_loss.temperature
+        logits = logits - logits.max(dim=1, keepdim=True).values.detach()
+        repeated_labels = labels.repeat(contrast_count)
+        repeated_domains = domains.repeat(contrast_count)
+        label_mask = torch.eq(repeated_labels.view(-1, 1), repeated_labels.view(1, -1)).float()
+        logits_mask = torch.ones_like(label_mask)
+        logits_mask.scatter_(1, torch.arange(batch_size * contrast_count, device=features.device).view(-1, 1), 0)
+        cross_domain = torch.ne(repeated_domains.view(-1, 1), repeated_domains.view(1, -1)).float()
+        rel = reliability.repeat(contrast_count)
+        rel_pair = torch.clamp(rel.view(-1, 1) * rel.view(1, -1), self.reliability_min_weight, 1.0)
+        pos_weight = torch.ones_like(label_mask)
+        pos_weight = torch.where((label_mask > 0) & (cross_domain > 0), rel_pair, pos_weight)
+        mask = label_mask * logits_mask * pos_weight
+        exp_logits = torch.exp(logits) * logits_mask
+        log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True) + 1e-12)
+        denom = mask.sum(1).clamp_min(1e-12)
+        mean_log_prob_pos = (mask * log_prob).sum(1) / denom
+        valid = (mask.sum(1) > 0).float()
+        loss = -mean_log_prob_pos * valid
+        return loss.sum() / valid.sum().clamp_min(1.0)
+
+    def _factorization_loss(self, z_orig, z_inter):
+        z_orig = (z_orig - z_orig.mean(0)) / (z_orig.std(0, unbiased=False) + self.factorization_eps)
+        z_inter = (z_inter - z_inter.mean(0)) / (z_inter.std(0, unbiased=False) + self.factorization_eps)
+        corr = torch.matmul(z_orig.T, z_inter) / z_orig.size(0)
+        on_diag = torch.diagonal(corr).add_(-1).pow_(2).sum()
+        off_diag = corr.flatten()[:-1].view(corr.size(0) - 1, corr.size(0) + 1)[:, 1:].flatten().pow(2).sum()
+        return on_diag + self.factorization_offdiag_weight * off_diag
+
+    def _gumbel_topk_mask(self, logits):
+        keep = max(1, min(logits.size(1), int(round(logits.size(1) * self.mask_keep_ratio))))
+        if self.training:
+            noise = -torch.empty_like(logits).exponential_().log()
+            scores = (logits + noise) / max(self.gumbel_temperature, 1e-8)
+        else:
+            scores = logits
+        if self.gumbel_hard:
+            idx = scores.topk(keep, dim=1).indices
+            hard = torch.zeros_like(logits).scatter_(1, idx, 1.0)
+            soft = F.softmax(scores, dim=1) * keep
+            return hard + soft - soft.detach()
+        return (F.softmax(scores, dim=1) * keep).clamp(0.0, 1.0)
+
+    def _masker_aux_losses(self, z_orig, z_inter, labels, detach_mask_for_aux):
+        mask_logits = self.masker(z_orig, z_inter)
+        mask = self._gumbel_topk_mask(mask_logits)
+        if detach_mask_for_aux:
+            mask = mask.detach()
+        sup_z = z_orig * mask
+        inf_z = z_orig * (1.0 - mask)
+        sup_loss = F.cross_entropy(self.superior_classifier(sup_z), labels)
+        inf_loss = F.cross_entropy(self.inferior_classifier(inf_z), labels)
+        return sup_loss, inf_loss, mask, sup_z, inf_z
 
     def update(self, x, y, **kwargs):
         all_x = torch.cat(x)
@@ -410,7 +575,17 @@ class DCCL(Algorithm):
             loss = F.cross_entropy(pred_x, all_y)
         ce_loss = loss.item()
 
+        all_d = torch.cat(kwargs["d"]) if "d" in kwargs else None
         feature_x_2, inter_feats_2 = self.featurizer(all_x_2, ret_feats=True)
+        z_orig = None
+        z_inter = None
+        reliability = None
+        x_inter = None
+        if self.use_fourier_intervention:
+            x_inter = self._fourier_intervention(all_x, all_d)
+            feature_x_inter = self.featurizer(x_inter)
+            z_orig = nn.functional.normalize(self.proj_head(feature_x), dim=1)
+            z_inter = nn.functional.normalize(self.proj_head(feature_x_inter), dim=1)
         if self.two_ce:
             loss = loss/2+F.cross_entropy(self.classifier(feature_x_2), all_y)/2
         with torch.no_grad():
@@ -429,11 +604,22 @@ class DCCL(Algorithm):
             embed_2 = self.proj_head(feature_x_2)
             embed_1 = self.proj_head(feature_x)
 
-            view_1 = nn.functional.normalize(embed_1)
-            view_2 = nn.functional.normalize(embed_2)
+            view_1 = nn.functional.normalize(embed_1, dim=1)
+            view_2 = nn.functional.normalize(embed_2, dim=1)
+            if z_orig is None:
+                z_orig = view_1
+            if z_inter is None:
+                z_inter = view_2
             features = torch.stack([view_1, view_2], dim=1)
-            if self.re_w:
-                all_d = torch.cat(kwargs["d"])
+            if self.use_intervention_reliability:
+                if all_d is None:
+                    all_d = torch.zeros_like(all_y)
+                features = torch.stack([z_orig, z_inter], dim=1)
+                sim = F.cosine_similarity(z_orig.detach(), z_inter.detach(), dim=1)
+                reliability = torch.sigmoid((sim - self.intervention_mu) / self.intervention_temperature)
+                loss_sup_cl = self._reliable_supcon_loss(features, all_y, all_d, reliability)
+                loss += self.l * self.reliability_loss_weight * loss_sup_cl
+            elif self.re_w:
                 all_d_2 = torch.cat(kwargs["d_2"])
                 d = torch.unsqueeze(torch.cat([all_d, all_d_2]), 1).float()
                 neg_mask = torch.eq(d, d.T).float()
@@ -443,17 +629,18 @@ class DCCL(Algorithm):
                 else:
                     pos_mask = None
                 loss_sup_cl = self.supcon_loss(features, all_y, neg_mask=neg_mask, pos_mask=pos_mask)
+                loss += self.l*loss_sup_cl
             else:
                 if self.sample_d:
                     all_x_2_d = torch.cat(kwargs["x_2_d"])
                     feature_x_2_d = self.featurizer(all_x_2_d)
                     embed_2_d = self.proj_head(feature_x_2_d)
-                    view_2_d = nn.functional.normalize(embed_2_d)
+                    view_2_d = nn.functional.normalize(embed_2_d, dim=1)
                     add_pos = torch.cat([view_2_d,view_2_d],0)
                     loss_sup_cl = self.supcon_loss(features, all_y, add_pos = add_pos)
                 else:
                     loss_sup_cl = self.supcon_loss(features, all_y)
-            loss += self.l*loss_sup_cl
+                loss += self.l*loss_sup_cl
         pre_cl_loss = 0.
         if self.l_layer:
 
@@ -481,6 +668,39 @@ class DCCL(Algorithm):
             else:
                 pre_cl_loss += self.supcon_loss_pre(features, all_y_pre)
             loss += self.l_layer*pre_cl_loss
+
+        factorization_loss = None
+        if self.use_factorization_loss:
+            if z_orig is None:
+                z_orig = nn.functional.normalize(self.proj_head(feature_x), dim=1)
+            if z_inter is None:
+                z_inter = nn.functional.normalize(self.proj_head(feature_x_2), dim=1)
+            factor_z_orig = z_orig
+            factor_z_inter = z_inter
+            factorization_loss = self._factorization_loss(factor_z_orig, factor_z_inter)
+            loss += self.factorization_loss_weight * factorization_loss
+
+        masker_aux_loss = None
+        masker_loss = None
+        if self.use_adversarial_masker:
+            if z_orig is None:
+                z_orig = nn.functional.normalize(self.proj_head(feature_x), dim=1)
+            if z_inter is None:
+                z_inter = nn.functional.normalize(self.proj_head(feature_x_2), dim=1)
+            sup_aux, inf_aux, mask, sup_z, inf_z = self._masker_aux_losses(
+                z_orig, z_inter, all_y, detach_mask_for_aux=True
+            )
+            masker_aux_loss = sup_aux + inf_aux
+            loss += self.masker_aux_loss_weight * masker_aux_loss
+            if self.update_count % max(1, self.masker_update_interval) == 0:
+                self.masker_optimizer.zero_grad()
+                sup_m, inf_m, _, _, _ = self._masker_aux_losses(
+                    z_orig.detach(), z_inter.detach(), all_y, detach_mask_for_aux=False
+                )
+                masker_loss = sup_m - self.masker_adversarial_weight * inf_m
+                masker_loss.backward()
+                self.masker_optimizer.step()
+
         rise_kd_loss = None
         rise_proto_loss = None
         rise_clip_top1_match_label_ratio = None
@@ -515,6 +735,16 @@ class DCCL(Algorithm):
         loss_opt.backward()
         self.optimizer.step()
         loss_dict = {"loss": loss.item(), "ce_loss": ce_loss}
+        if self.use_fourier_intervention:
+            loss_dict["fourier_intervention"] = 1.0
+        if self.use_intervention_reliability:
+            loss_dict["reliability_mean"] = reliability.mean().item() if reliability is not None else 0.0
+            loss_dict["reliability_loss_weight"] = float(self.reliability_loss_weight)
+        if self.use_factorization_loss:
+            loss_dict["loss_factorization"] = factorization_loss.item() if factorization_loss is not None else 0.0
+        if self.use_adversarial_masker:
+            loss_dict["loss_masker_aux"] = masker_aux_loss.item() if masker_aux_loss is not None else 0.0
+            loss_dict["loss_masker"] = masker_loss.item() if masker_loss is not None else 0.0
         if self.l:
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
         if self.l_layer:
@@ -540,6 +770,7 @@ class DCCL(Algorithm):
                     if rise_proto_cosine_mean is not None else 0.0
                 ),
             })
+        self.update_count += 1
         return loss_dict
 
     def predict(self, x):
