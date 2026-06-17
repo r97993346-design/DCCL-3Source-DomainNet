@@ -98,6 +98,12 @@ def main():
     parser.add_argument("--lamda", type=float, default=5, help="Weight coefficient for Transform Network sparsity loss")
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
+    parser.add_argument("--use_cirl_official", action="store_true", help="Enable official CIRL auxiliary branch for DCCL")
+    parser.add_argument("--cirl_use_adaptive_kl", action="store_true", help="Enable adaptive KL between DCCL and CIRL outputs")
+    parser.add_argument("--cirl_weight", type=float, default=1.0, help="Weight for official CIRL auxiliary loss")
+    parser.add_argument("--cirl_kl_weight", type=float, default=0.1, help="Weight for CIRL/DCCL adaptive KL loss")
+    parser.add_argument("--cirl_kl_temperature", type=float, default=2.0, help="Temperature for CIRL/DCCL adaptive KL")
+    parser.add_argument("--cirl_eps", type=float, default=1e-6, help="Numerical epsilon for CIRL adaptive KL")
     args, left_argv = parser.parse_known_args()
 
     # setup hparams

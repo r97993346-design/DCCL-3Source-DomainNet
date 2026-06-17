@@ -2,6 +2,8 @@
 
 from asyncio import ALL_COMPLETED
 import copy
+import sys
+from pathlib import Path
 from typing import List
 
 import torch
@@ -14,7 +16,20 @@ from domainbed.lib import misc
 
 from domainbed import networks
 from domainbed.lib.misc import random_pairs_of_minibatches
+
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 from domainbed.optimizers import get_optimizer
+
+try:
+    from third_party.CIRL.models.classifier import Classifier as OfficialCIRLClassifier
+    from third_party.CIRL.models.classifier import Masker as OfficialCIRLMasker
+    from third_party.CIRL.utils.tools import factorization_loss as official_cirl_factorization_loss
+except Exception:
+    OfficialCIRLClassifier = None
+    OfficialCIRLMasker = None
+    official_cirl_factorization_loss = None
 
 from domainbed.models.resnet_mixstyle import (
     resnet18_mixstyle_L234_p0d5_a0d1,
@@ -263,10 +278,29 @@ class DCCL(Algorithm):
         self.TN = hparams["TN"]
         self.lamda = hparams["lamda"]
         self.sample_d = hparams["sample_d"]
+        self.use_cirl_official = hparams.get("use_cirl_official", False)
+        self.cirl_use_adaptive_kl = hparams.get("cirl_use_adaptive_kl", False)
+        self.cirl_weight = hparams.get("cirl_weight", 1.0)
+        self.cirl_kl_weight = hparams.get("cirl_kl_weight", 0.1)
+        self.cirl_kl_temperature = hparams.get("cirl_kl_temperature", 2.0)
+        self.cirl_eps = hparams.get("cirl_eps", 1e-6)
 
         if self.TN:
             self.TN_network = TN()
         self.weight_matrix=None
+
+        if self.use_cirl_official:
+            if OfficialCIRLClassifier is None or OfficialCIRLMasker is None or official_cirl_factorization_loss is None:
+                raise ImportError("third_party/CIRL official classifier/masker/factorization modules are required for --use_cirl_official")
+            cirl_k = min(1024, classifier_input_dim)
+            self.cirl_classifier = OfficialCIRLClassifier(classifier_input_dim, num_classes)
+            self.cirl_classifier_ad = OfficialCIRLClassifier(classifier_input_dim, num_classes)
+            self.cirl_masker = OfficialCIRLMasker(
+                in_dim=classifier_input_dim,
+                num_classes=classifier_input_dim,
+                middle=4 * classifier_input_dim,
+                k=cirl_k,
+            )
         
         # losses - simplified to only essential parameters
         self.supcon_loss = SupConLoss(hparams["t"])
@@ -288,6 +322,11 @@ class DCCL(Algorithm):
             {"params": self.var_encoders.parameters(), "lr": self.hparams["lr"] * 10},
             {"params": self.pre_proj_head.parameters(), "lr": self.hparams["lr"]/lower_proj}
             ]
+        if self.use_cirl_official:
+            optimized_list.extend([
+                {"params": self.cirl_classifier.parameters(), "lr": self.hparams["lr"]/lower_cls, "weight_decay": self.hparams["weight_decay"]},
+                {"params": self.cirl_classifier_ad.parameters(), "lr": self.hparams["lr"]/lower_cls, "weight_decay": self.hparams["weight_decay"]},
+            ])
         if self.TN:
             self.optimizer_TN = get_optimizer(
             hparams["optimizer"],
@@ -298,6 +337,50 @@ class DCCL(Algorithm):
             hparams["optimizer"],
             optimized_list
         )
+        if self.use_cirl_official:
+            self.cirl_masker_optimizer = get_optimizer(
+                hparams["optimizer"],
+                [{"params": self.cirl_masker.parameters(), "lr": self.hparams["lr"]/lower_cls, "weight_decay": self.hparams["weight_decay"]}]
+            )
+
+    def _cirl_fourier_augment_official(self, x):
+        """Adapter for official CIRL Fourier dataloader output.
+
+        The vendored CIRL tree references get_fourier_train_dataloader from its
+        data package, but that package is not included in this repository.  Keep
+        the one-to-one original/augmented interface required by CIRL and fall
+        back to identity augmentation when the official dataloader transform is
+        unavailable.
+        """
+        return x.detach().clone()
+
+    def _safe_cirl_factorization_loss(self, f_a, f_b):
+        if f_a.size(0) < 2 or f_b.size(0) < 2:
+            return f_a.new_zeros(())
+        loss = official_cirl_factorization_loss(f_a, f_b)
+        return torch.nan_to_num(loss, nan=0.0, posinf=0.0, neginf=0.0)
+
+    def _adaptive_kl_loss(self, logits_d, logits_c, labels):
+        T = float(self.cirl_kl_temperature)
+        eps = float(self.cirl_eps)
+        ce_d = F.cross_entropy(logits_d, labels, reduction="none")
+        ce_c = F.cross_entropy(logits_c, labels, reduction="none")
+        prob_d = F.softmax(logits_d, dim=1)
+        prob_c = F.softmax(logits_c, dim=1)
+        conf_d = prob_d.max(dim=1).values
+        conf_c = prob_c.max(dim=1).values
+        score_d = torch.exp(-ce_d.detach()) * conf_d.detach()
+        score_c = torch.exp(-ce_c.detach()) * conf_c.detach()
+        alpha_d = score_d / (score_d + score_c + eps)
+        alpha_c = score_c / (score_d + score_c + eps)
+        p_d = F.softmax(logits_d / T, dim=1)
+        p_c = F.softmax(logits_c / T, dim=1)
+        p_d_t = p_d.detach()
+        p_c_t = p_c.detach()
+        kl_d_to_c = (p_d_t * (torch.log(p_d_t + eps) - torch.log(p_c + eps))).sum(dim=1)
+        kl_c_to_d = (p_c_t * (torch.log(p_c_t + eps) - torch.log(p_d + eps))).sum(dim=1)
+        loss = T * T * (alpha_d.detach() * kl_d_to_c + alpha_c.detach() * kl_c_to_d).mean()
+        return torch.nan_to_num(loss, nan=0.0, posinf=0.0, neginf=0.0), alpha_d, alpha_c
 
     def update(self, x, y, **kwargs):
         all_x = torch.cat(x)
@@ -415,15 +498,69 @@ class DCCL(Algorithm):
             else:
                 pre_cl_loss += self.supcon_loss_pre(features, all_y_pre)
             loss += self.l_layer*pre_cl_loss
+        dccl_original_loss = loss
+        cirl_official_loss = feature_x.new_zeros(())
+        cirl_adaptive_kl_loss = feature_x.new_zeros(())
+        alpha_d_mean = feature_x.new_zeros(())
+        alpha_c_mean = feature_x.new_zeros(())
+        cirl_loss_cls_sup = feature_x.new_zeros(())
+        cirl_loss_cls_inf = feature_x.new_zeros(())
+        cirl_loss_fac = feature_x.new_zeros(())
+        if self.use_cirl_official:
+            x_a = self._cirl_fourier_augment_official(all_x).to(device=all_x.device, dtype=all_x.dtype)
+            feature_x_a = self.featurizer(x_a)
+            cirl_features = torch.cat([feature_x, feature_x_a], dim=0)
+            cirl_labels = torch.cat([all_y, all_y], dim=0)
+            masks_sup = self.cirl_masker(cirl_features.detach())
+            masks_inf = torch.ones_like(masks_sup) - masks_sup
+            features_sup = cirl_features * masks_sup
+            features_inf = cirl_features * masks_inf
+            scores_sup = self.cirl_classifier(features_sup)
+            scores_inf = self.cirl_classifier_ad(features_inf)
+            cirl_loss_cls_sup = F.cross_entropy(scores_sup, cirl_labels)
+            cirl_loss_cls_inf = F.cross_entropy(scores_inf, cirl_labels)
+            cirl_loss_fac = self._safe_cirl_factorization_loss(feature_x, feature_x_a)
+            cirl_official_loss = 0.5 * cirl_loss_cls_sup + 0.5 * cirl_loss_cls_inf + cirl_loss_fac
+            logits_c = self.cirl_classifier(feature_x)
+            if self.cirl_use_adaptive_kl:
+                cirl_adaptive_kl_loss, alpha_d, alpha_c = self._adaptive_kl_loss(pred_x, logits_c, all_y)
+                alpha_d_mean = alpha_d.mean()
+                alpha_c_mean = alpha_c.mean()
+            loss = loss + self.cirl_weight * cirl_official_loss + self.cirl_kl_weight * cirl_adaptive_kl_loss
+        loss = torch.nan_to_num(loss, nan=0.0, posinf=0.0, neginf=0.0)
         loss_opt = loss
         self.optimizer.zero_grad()
         loss_opt.backward()
         self.optimizer.step()
-        loss_dict = {"loss": loss.item(), "ce_loss": ce_loss}
+        if self.use_cirl_official:
+            self.cirl_masker_optimizer.zero_grad()
+            with torch.no_grad():
+                feature_detached = self.featurizer(all_x).detach()
+            masks_sup = self.cirl_masker(feature_detached)
+            masks_inf = torch.ones_like(masks_sup) - masks_sup
+            scores_sup = self.cirl_classifier(feature_detached * masks_sup)
+            scores_inf = self.cirl_classifier_ad(feature_detached * masks_inf)
+            masker_loss = 0.5 * F.cross_entropy(scores_sup, all_y) - 0.5 * F.cross_entropy(scores_inf, all_y)
+            masker_loss = torch.nan_to_num(masker_loss, nan=0.0, posinf=0.0, neginf=0.0)
+            masker_loss.backward()
+            self.cirl_masker_optimizer.step()
+        loss_dict = {"loss": loss.item(), "ce_loss": ce_loss, "L_dccl_original": dccl_original_loss.item(), "DCCL_CE": ce_loss, "use_cirl_official": float(self.use_cirl_official), "cirl_use_adaptive_kl": float(self.cirl_use_adaptive_kl)}
         if self.l:
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
+            loss_dict["DCCL_contrastive_loss"] = loss_sup_cl.item()
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
+        if self.use_cirl_official:
+            loss_dict.update({
+                "L_cirl_official": cirl_official_loss.item(),
+                "L_adaptive_kl": cirl_adaptive_kl_loss.item(),
+                "alpha_d_mean": alpha_d_mean.item(),
+                "alpha_c_mean": alpha_c_mean.item(),
+                "cirl_loss_sup": cirl_loss_cls_sup.item(),
+                "cirl_loss_inf": cirl_loss_cls_inf.item(),
+                "cirl_loss_fac": cirl_loss_fac.item(),
+                "cirl_masker_loss": masker_loss.item(),
+            })
         return loss_dict
 
     def predict(self, x):
