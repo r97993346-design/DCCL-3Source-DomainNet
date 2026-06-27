@@ -61,4 +61,10 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+    hparams["use_cirl_official"] = args.use_cirl_official
+    hparams["cirl_use_adaptive_kl"] = args.cirl_use_adaptive_kl
+    hparams["cirl_weight"] = args.cirl_weight
+    hparams["cirl_kl_weight"] = args.cirl_kl_weight
+    hparams["cirl_kl_temperature"] = args.cirl_kl_temperature
+    hparams["cirl_eps"] = args.cirl_eps
     return hparams
