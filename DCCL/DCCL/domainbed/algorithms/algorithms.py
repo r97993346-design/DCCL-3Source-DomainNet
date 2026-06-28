@@ -16,7 +16,7 @@ from domainbed import networks
 from domainbed.lib.misc import random_pairs_of_minibatches
 from domainbed.optimizers import get_optimizer
 from domainbed.causal_variant import CausalVariantGenerator, save_diffusion_images
-from domainbed.causal_variant.filters import pretrained_anchor_filter, class_consistency_filter
+from domainbed.causal_variant.filters import pretrained_anchor_filter, class_consistency_filter, diffusion_black_image_filter
 from domainbed.causal_variant.sensitivity import compute_causal_sensitivity
 from domainbed.causal_variant.losses import causal_semantic_loss, causal_kl_loss, causal_positive_contrastive_loss
 
@@ -462,6 +462,7 @@ class DCCL(Algorithm):
             "causal/anchor_sim_mean": 0.0, "causal/cls_conf_mean": 0.0, "causal/sensitivity_mean": 0.0, "causal/sensitivity_top_mean": 0.0,
             "causal/diffusion_generated_count": 0.0, "causal/diffusion_kept_count": 0.0, "causal/diffusion_kept_ratio": 0.0,
             "causal/diffusion_selected_count": 0.0, "causal/diffusion_selected_ratio": 0.0,
+            "causal/diffusion_black_count": 0.0, "causal/diffusion_black_ratio": 0.0,
         }
         domains = torch.cat(kwargs["d"]) if "d" in kwargs else None
         def _flatten_meta(values):
@@ -497,7 +498,13 @@ class DCCL(Algorithm):
             self.featurizer, self.classifier, variants.images, all_y, variants.source_indices,
             self.hparams.get("causal_cls_filter_mode", "confidence"), self.hparams.get("causal_cls_conf_thresh", 0.5), cls_enabled)
         logs.update(c_logs)
-        keep = keep_anchor & keep_cls
+        keep_quality, q_logs = diffusion_black_image_filter(
+            variants.images, variants.kinds,
+            self.hparams.get("causal_filter_black_diffusion", True),
+            self.hparams.get("causal_black_mean_thresh", 0.03),
+            self.hparams.get("causal_black_std_thresh", 0.01))
+        logs.update(q_logs)
+        keep = keep_anchor & keep_cls & keep_quality
         logs["causal/valid_candidate_ratio"] = keep.float().mean().item()
         diffusion_keep = keep[diffusion_indices] if diffusion_indices.numel() else torch.empty(0, dtype=torch.bool, device=all_x.device)
         logs["causal/diffusion_kept_count"] = float(diffusion_keep.sum().item())

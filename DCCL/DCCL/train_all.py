@@ -139,6 +139,9 @@ def main():
     parser.add_argument("--causal_save_diffusion_metadata", type=lambda v: str(v).lower() == "true", default=True)
     parser.add_argument("--causal_use_diffusion_cache", type=lambda v: str(v).lower() == "true", default=True)
     parser.add_argument("--causal_diffusion_cache_dir", type=str, default="causal_diffusion_cache")
+    parser.add_argument("--causal_filter_black_diffusion", type=lambda v: str(v).lower() == "true", default=True)
+    parser.add_argument("--causal_black_mean_thresh", type=float, default=0.03)
+    parser.add_argument("--causal_black_std_thresh", type=float, default=0.01)
     args, left_argv = parser.parse_known_args()
 
     # setup hparams

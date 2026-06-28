@@ -72,6 +72,7 @@ def setup_alg_hparams(hparams, args):
         "causal_cls_filter_mode", "causal_cls_conf_thresh", "causal_filter_warmup_steps", "causal_cls_filter_use_ema",
         "causal_sensitivity_metric", "causal_sensitivity_temperature", "causal_top_m", "causal_sem_weight", "causal_kl_weight", "causal_kl_warmup_steps", "causal_cf_as_anchor",
         "causal_save_diffusion_images", "causal_save_diffusion_mode", "causal_save_diffusion_metadata", "causal_use_diffusion_cache", "causal_diffusion_cache_dir",
+        "causal_filter_black_diffusion", "causal_black_mean_thresh", "causal_black_std_thresh",
     ]:
         hparams[key] = getattr(args, key)
     return hparams
