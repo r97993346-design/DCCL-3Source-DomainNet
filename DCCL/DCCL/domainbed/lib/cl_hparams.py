@@ -61,4 +61,17 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+    hparams["dataset"] = args.dataset
+    for key in [
+        "use_causal_variant_factor", "causal_use_photometric", "causal_use_xdomainmix", "causal_use_diffusion",
+        "causal_photo_ops", "causal_photo_strength_min", "causal_photo_strength_max",
+        "causal_xdomainmix_alpha", "causal_xdomainmix_same_class_only", "causal_xdomainmix_require_diff_domain", "causal_xdomainmix_fallback_skip",
+        "causal_diffusion_model_path", "causal_diffusion_local_only", "causal_diffusion_every_n_steps", "causal_diffusion_max_images_per_step",
+        "causal_diffusion_steps", "causal_diffusion_cfg_text", "causal_diffusion_cfg_image", "causal_diffusion_seed", "causal_diffusion_device", "causal_style_per_image",
+        "causal_prompt_mode", "causal_prompt_bank", "causal_use_pre_anchor_filter", "causal_pre_anchor_thresh",
+        "causal_cls_filter_mode", "causal_cls_conf_thresh", "causal_filter_warmup_steps", "causal_cls_filter_use_ema",
+        "causal_sensitivity_metric", "causal_sensitivity_temperature", "causal_top_m", "causal_sem_weight", "causal_kl_weight", "causal_kl_warmup_steps", "causal_cf_as_anchor",
+        "causal_save_diffusion_images", "causal_save_diffusion_mode", "causal_save_diffusion_metadata", "causal_use_diffusion_cache", "causal_diffusion_cache_dir",
+    ]:
+        hparams[key] = getattr(args, key)
     return hparams

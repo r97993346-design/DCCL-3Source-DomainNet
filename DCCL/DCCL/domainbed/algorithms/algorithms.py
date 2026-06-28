@@ -15,6 +15,10 @@ from domainbed.lib import misc
 from domainbed import networks
 from domainbed.lib.misc import random_pairs_of_minibatches
 from domainbed.optimizers import get_optimizer
+from domainbed.causal_variant import CausalVariantGenerator, save_diffusion_images
+from domainbed.causal_variant.filters import pretrained_anchor_filter, class_consistency_filter
+from domainbed.causal_variant.sensitivity import compute_causal_sensitivity
+from domainbed.causal_variant.losses import causal_semantic_loss, causal_kl_loss, causal_positive_contrastive_loss
 
 from domainbed.models.resnet_mixstyle import (
     resnet18_mixstyle_L234_p0d5_a0d1,
@@ -263,6 +267,9 @@ class DCCL(Algorithm):
         self.TN = hparams["TN"]
         self.lamda = hparams["lamda"]
         self.sample_d = hparams["sample_d"]
+        self.re_w = hparams["re_w"]
+        self.use_causal_variant_factor = hparams.get("use_causal_variant_factor", False)
+        self.causal_generator = CausalVariantGenerator(hparams) if self.use_causal_variant_factor else None
 
         if self.TN:
             self.TN_network = TN()
@@ -359,6 +366,15 @@ class DCCL(Algorithm):
                 reg_loss += vlb.mean() / 2.
 
             loss += self.l_d*reg_loss
+        causal_pack = None
+        if self.use_causal_variant_factor:
+            causal_pack = self._build_causal_pack(all_x, all_y, feature_x, pred_x, kwargs)
+            loss = loss + causal_pack["loss_sem"] * self.hparams.get("causal_sem_weight", 0.1)
+            kl_weight = self.hparams.get("causal_kl_weight", 0.0)
+            if kwargs.get("step", 0) < self.hparams.get("causal_kl_warmup_steps", 1000):
+                kl_weight = 0.0
+            loss = loss + causal_pack["loss_kl"] * kl_weight
+
         if self.l:
             embed_2 = self.proj_head(feature_x_2)
             embed_1 = self.proj_head(feature_x)
@@ -387,7 +403,12 @@ class DCCL(Algorithm):
                     loss_sup_cl = self.supcon_loss(features, all_y, add_pos = add_pos)
                 else:
                     loss_sup_cl = self.supcon_loss(features, all_y)
-            loss += self.l*loss_sup_cl
+            loss_causal_dccl = loss_sup_cl
+            if causal_pack is not None and causal_pack["selected_embed"] is not None:
+                cp_loss = causal_positive_contrastive_loss(view_1[causal_pack["selected_src"]], causal_pack["selected_embed"], torch.cat([view_1, view_2], 0), self.hparams["t"])
+                if cp_loss is not None:
+                    loss_causal_dccl = loss_sup_cl + cp_loss
+            loss += self.l*loss_causal_dccl
         pre_cl_loss = 0.
         if self.l_layer:
 
@@ -422,9 +443,114 @@ class DCCL(Algorithm):
         loss_dict = {"loss": loss.item(), "ce_loss": ce_loss}
         if self.l:
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
+        if causal_pack is not None:
+            loss_dict.update(causal_pack["logs"])
+            loss_dict["loss/causal_sem"] = causal_pack["loss_sem"].item()
+            loss_dict["loss/causal_kl"] = causal_pack["loss_kl"].item()
+            loss_dict["loss/causal_dccl"] = loss_causal_dccl.item() if self.l else 0.0
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
         return loss_dict
+
+
+    def _build_causal_pack(self, all_x, all_y, feature_x, pred_x, kwargs):
+        zero = pred_x.sum() * 0.0
+        logs = {
+            "causal/num_photo_candidates": 0.0, "causal/num_xdomainmix_candidates": 0.0, "causal/num_diffusion_candidates": 0.0,
+            "causal/anchor_keep_ratio": 0.0, "causal/cls_keep_ratio": 0.0, "causal/valid_candidate_ratio": 0.0,
+            "causal/selected_ratio": 0.0, "causal/selected_photo_ratio": 0.0, "causal/selected_xdomainmix_ratio": 0.0, "causal/selected_diffusion_ratio": 0.0,
+            "causal/anchor_sim_mean": 0.0, "causal/cls_conf_mean": 0.0, "causal/sensitivity_mean": 0.0, "causal/sensitivity_top_mean": 0.0,
+            "causal/diffusion_generated_count": 0.0, "causal/diffusion_kept_count": 0.0, "causal/diffusion_kept_ratio": 0.0,
+            "causal/diffusion_selected_count": 0.0, "causal/diffusion_selected_ratio": 0.0,
+        }
+        domains = torch.cat(kwargs["d"]) if "d" in kwargs else None
+        def _flatten_meta(values):
+            if not values:
+                return None
+            flattened = []
+            for value in values:
+                if isinstance(value, (list, tuple)):
+                    flattened.extend(list(value))
+                else:
+                    flattened.append(value)
+            return flattened
+        original_paths = _flatten_meta(kwargs.get("path", []))
+        class_names_per_sample = _flatten_meta(kwargs.get("class_name", []))
+        domain_names = _flatten_meta(kwargs.get("domain_name", []))
+        try:
+            variants = self.causal_generator(all_x, all_y, domains=domains, step=kwargs.get("step", 0), class_names=class_names_per_sample, original_paths=original_paths, domain_names=domain_names)
+        except Exception as exc:
+            print("WARNING: causal variant generation failed; falling back to original DCCL: {}".format(exc))
+            variants = None
+        if variants is None or variants.images.shape[0] == 0:
+            return {"selected_embed": None, "selected_src": None, "loss_sem": zero, "loss_kl": zero, "logs": logs}
+        for kind in variants.kinds:
+            logs["causal/num_{}_candidates".format("xdomainmix" if kind == "xdomainmix" else kind)] += 1.0
+        diffusion_indices = torch.tensor([i for i, kind in enumerate(variants.kinds) if kind == "diffusion"], device=all_x.device, dtype=torch.long)
+        logs["causal/diffusion_generated_count"] = float(diffusion_indices.numel())
+        keep_anchor, a_logs, anchor_sim = pretrained_anchor_filter(
+            self.pre_featurizer, all_x, variants.images, variants.source_indices,
+            self.hparams.get("causal_pre_anchor_thresh", 0.35), self.hparams.get("causal_use_pre_anchor_filter", True))
+        logs.update(a_logs)
+        cls_enabled = kwargs.get("step", 0) >= self.hparams.get("causal_filter_warmup_steps", 500)
+        keep_cls, c_logs, cls_conf = class_consistency_filter(
+            self.featurizer, self.classifier, variants.images, all_y, variants.source_indices,
+            self.hparams.get("causal_cls_filter_mode", "confidence"), self.hparams.get("causal_cls_conf_thresh", 0.5), cls_enabled)
+        logs.update(c_logs)
+        keep = keep_anchor & keep_cls
+        logs["causal/valid_candidate_ratio"] = keep.float().mean().item()
+        diffusion_keep = keep[diffusion_indices] if diffusion_indices.numel() else torch.empty(0, dtype=torch.bool, device=all_x.device)
+        logs["causal/diffusion_kept_count"] = float(diffusion_keep.sum().item())
+        logs["causal/diffusion_kept_ratio"] = float(diffusion_keep.float().mean().item()) if diffusion_keep.numel() else 0.0
+        if keep.sum().item() == 0:
+            if self.hparams.get("causal_save_diffusion_images", True) and self.hparams.get("causal_save_diffusion_mode", "kept") == "all":
+                save_diffusion_images(variants, diffusion_indices, anchor_sim, cls_conf, keep_anchor, keep_cls, keep, [], self.hparams.get("causal_save_diffusion_metadata", True))
+            return {"selected_embed": None, "selected_src": None, "loss_sem": zero, "loss_kl": zero, "logs": logs}
+        valid_imgs = variants.images[keep]
+        valid_src = variants.source_indices[keep]
+        valid_kinds = [k for k, m in zip(variants.kinds, keep.detach().cpu().tolist()) if m]
+        cand_feat = self.featurizer(valid_imgs)
+        cand_logits = self.classifier(cand_feat)
+        sens = compute_causal_sensitivity(pred_x, cand_logits, valid_src, self.hparams.get("causal_sensitivity_temperature", 1.0), self.hparams.get("causal_sensitivity_metric", "kl"))
+        logs["causal/sensitivity_mean"] = sens.mean().item()
+        selected = []
+        top_m = int(self.hparams.get("causal_top_m", 1))
+        for i in valid_src.unique(sorted=True):
+            idx = torch.nonzero(valid_src == i, as_tuple=False).flatten()
+            vals = sens[idx]
+            take = idx[torch.topk(vals, min(top_m, vals.numel())).indices]
+            selected.append(take)
+        selected = torch.cat(selected) if selected else torch.empty(0, dtype=torch.long, device=all_x.device)
+        if selected.numel() == 0:
+            return {"selected_embed": None, "selected_src": None, "loss_sem": zero, "loss_kl": zero, "logs": logs}
+        valid_original_indices = torch.nonzero(keep, as_tuple=False).flatten()
+        selected_original_indices = valid_original_indices[selected]
+        selected_diffusion = torch.tensor([idx.item() for idx in selected_original_indices if variants.kinds[idx.item()] == "diffusion"], device=all_x.device, dtype=torch.long)
+        logs["causal/diffusion_selected_count"] = float(selected_diffusion.numel())
+        logs["causal/diffusion_selected_ratio"] = float(selected_diffusion.numel()) / float(max(1, diffusion_indices.numel()))
+        if self.hparams.get("causal_save_diffusion_images", True):
+            save_mode = self.hparams.get("causal_save_diffusion_mode", "kept")
+            if save_mode == "all":
+                save_indices = diffusion_indices
+            elif save_mode == "kept":
+                save_indices = diffusion_indices[diffusion_keep]
+            elif save_mode == "selected":
+                save_indices = selected_diffusion
+            else:
+                save_indices = torch.empty(0, device=all_x.device, dtype=torch.long)
+            save_diffusion_images(variants, save_indices, anchor_sim, cls_conf, keep_anchor, keep_cls, keep, selected_original_indices, self.hparams.get("causal_save_diffusion_metadata", True))
+        selected_src = valid_src[selected]
+        selected_feat = cand_feat[selected]
+        selected_embed = nn.functional.normalize(self.proj_head(selected_feat), dim=1)
+        selected_logits = cand_logits[selected]
+        logs["causal/selected_ratio"] = float(selected.numel()) / float(all_x.shape[0])
+        logs["causal/sensitivity_top_mean"] = sens[selected].mean().item()
+        for name in ("photo", "xdomainmix", "diffusion"):
+            logs["causal/selected_{}_ratio".format(name)] = sum(1 for j in selected.detach().cpu().tolist() if valid_kinds[j] == name) / float(max(1, selected.numel()))
+        sem = causal_semantic_loss(selected_logits, all_y[selected_src]) or zero
+        kl = causal_kl_loss(pred_x[selected_src], selected_logits, self.hparams.get("causal_sensitivity_temperature", 1.0)) or zero
+        return {"selected_embed": selected_embed, "selected_src": selected_src, "loss_sem": sem, "loss_kl": kl, "logs": logs}
+
 
     def predict(self, x):
         return self.network(x)

@@ -295,7 +295,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         batches = misc.merge_dictlist(batches_dictlist)
         # to device
         batches = {
-            key: [tensor.to(device) for tensor in tensorlist] for key, tensorlist in batches.items()
+            key: [tensor.to(device) if hasattr(tensor, "to") else tensor for tensor in tensorlist]
+            for key, tensorlist in batches.items()
         }
 
         inputs = {**batches, "step": step}
