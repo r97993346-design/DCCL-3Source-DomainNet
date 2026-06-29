@@ -152,6 +152,11 @@ class _SplitDataset(torch.utils.data.Dataset):
         x, y = self.underlying_dataset[self.keys[key]]
         ret = {"y": y}
         ret["d"] = self.env_id
+        if hasattr(self.underlying_dataset, "samples"):
+            ret["path"] = self.underlying_dataset.samples[self.keys[key]][0]
+        if hasattr(self.underlying_dataset, "classes"):
+            ret["class_name"] = self.underlying_dataset.classes[y]
+        ret["domain_name"] = "domain_{}".format(self.env_id)
         for key, transform in self.transforms.items():
             ret[key] = transform(x)
             if self.sample_d and not self.test:
