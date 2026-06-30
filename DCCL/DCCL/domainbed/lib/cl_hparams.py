@@ -64,7 +64,11 @@ def setup_alg_hparams(hparams, args):
     for key in [
         "use_diffusemix_pos", "diffusemix_lambda_fg", "diffusemix_lambda_pair",
         "diffusemix_supcon_start_steps", "diffusemix_use_supcon_positive",
-        "diffusemix_supcon_all_kept"
+        "diffusemix_supcon_all_kept", "diffusemix_fractal_lambda",
+        "diffusemix_augmentation_mode", "diffusemix_prompts", "diffusemix_fractal_dir",
+        "diffusemix_use_real_fractal",
+        "diffusemix_use_reliability_gate", "diffusemix_min_reliability",
+        "diffusemix_strong_reliability", "diffusemix_min_keep_rate"
     ]:
         hparams[key] = getattr(args, key, False)
     return hparams

@@ -299,9 +299,42 @@ class DCCL(Algorithm):
             optimized_list
         )
 
+    def _diffusemix_attention_mask(self, feat_map):
+        score = feat_map.detach().abs().mean(dim=1, keepdim=True)
+        thresh = score.flatten(1).mean(dim=1, keepdim=True).view(-1, 1, 1, 1)
+        mask = (score >= thresh).float()
+        return mask
+
+    def _masked_avg_pool(self, feat_map, mask):
+        if mask.shape[-2:] != feat_map.shape[-2:]:
+            mask = F.interpolate(mask, size=feat_map.shape[-2:], mode="nearest")
+        denom = mask.sum(dim=(2, 3), keepdim=True).clamp_min(1.0)
+        return (feat_map * mask).sum(dim=(2, 3)) / denom.squeeze(-1).squeeze(-1)
+
+    def _diffusemix_gate_reason(self, diffusemix, diffusemix_stats, step):
+        if diffusemix is None or diffusemix.get("x", None) is None or diffusemix["x"].numel() == 0:
+            return "no_valid_sample"
+        keep_rate = float(diffusemix_stats.get("diffusemix_keep_rate", 0.0))
+        min_keep = float(self.hparams.get("diffusemix_min_keep_rate", 0.0))
+        if int(diffusemix_stats.get("diffusemix_kept_num", 0)) == 0:
+            return "no_valid_sample"
+        if keep_rate < min_keep:
+            return "low_keep_rate"
+        strong_num = int(diffusemix_stats.get("diffusemix_strong_num", 0))
+        if strong_num == 0:
+            return "no_strong_positive"
+        if step < self.hparams.get("diffusemix_supcon_start_steps", 0):
+            return "before_supcon_start"
+        if not self.hparams.get("diffusemix_use_supcon_positive", False):
+            return "supcon_disabled"
+        return "enabled"
+
     def update(self, x, y, **kwargs):
         all_x = torch.cat(x)
-        all_y = torch.cat(y)
+        all_y = torch.cat(y).long()
+        num_classes = getattr(self, "num_classes", self.classifier[-1].out_features if isinstance(self.classifier, nn.Sequential) else self.classifier.out_features)
+        if all_y.numel() and (all_y.min().item() < 0 or all_y.max().item() >= num_classes):
+            raise ValueError(f"DCCL label out of range: min={all_y.min().item()}, max={all_y.max().item()}, num_classes={num_classes}")
         diffusemix = kwargs.get("diffusemix", None)
         diffusemix_stats = kwargs.get("diffusemix_stats", {})
         x_2 = kwargs["x_2"]
@@ -389,36 +422,93 @@ class DCCL(Algorithm):
                     loss_sup_cl = self.supcon_loss(features, all_y, add_pos = add_pos)
                 else:
                     add_pos = None
-                    if (diffusemix is not None and self.hparams.get("diffusemix_use_supcon_positive", False)
-                            and kwargs.get("step", 0) >= self.hparams.get("diffusemix_supcon_start_steps", 0)):
+                    gate_reason = self._diffusemix_gate_reason(diffusemix, diffusemix_stats, kwargs.get("step", 0))
+                    diffusemix_stats["diffusemix_gate_reason"] = gate_reason
+                    diffusemix_stats.setdefault("number_of_diffusemix_positives_used_in_supcon", 0)
+                    if gate_reason == "enabled":
                         dm_x = diffusemix["x"]
-                        dm_anchor = diffusemix["anchor_indices"]
+                        dm_anchor = diffusemix["anchor_indices"].long()
                         dm_strong = diffusemix["strong_mask"]
+                        valid_anchor = (dm_anchor >= 0) & (dm_anchor < view_2.shape[0])
+                        if not valid_anchor.all():
+                            diffusemix_stats["diffusemix_invalid_anchor_num"] = int((~valid_anchor).sum().item())
+                            dm_x = dm_x[valid_anchor]
+                            dm_anchor = dm_anchor[valid_anchor]
+                            dm_strong = dm_strong[valid_anchor]
+                            if dm_x.numel() == 0:
+                                diffusemix_stats["diffusemix_gate_reason"] = "no_valid_anchor"
                         if self.hparams.get("diffusemix_supcon_all_kept", False):
                             dm_strong = torch.ones_like(dm_strong, dtype=torch.bool)
                         if dm_x.numel() > 0 and dm_strong.any():
-                            dm_feature = self.featurizer(dm_x[dm_strong])
+                            strong_idx = dm_strong.nonzero(as_tuple=False).flatten()
+                            dm_feature = self.featurizer(dm_x[strong_idx])
                             dm_view = nn.functional.normalize(self.proj_head(dm_feature))
                             extra = view_2.detach().clone()
-                            extra[dm_anchor[dm_strong]] = dm_view
+                            extra[dm_anchor[strong_idx]] = dm_view
                             add_pos = torch.cat([extra, extra], 0)
-                            diffusemix_stats["number_of_diffusemix_positives_used_in_supcon"] = int(dm_strong.sum().item())
+                            diffusemix_stats["number_of_diffusemix_positives_used_in_supcon"] = int(strong_idx.numel())
                     loss_sup_cl = self.supcon_loss(features, all_y, add_pos=add_pos)
             loss += self.l*loss_sup_cl
         loss_dm_fg = torch.tensor(0.0, device=all_x.device)
         loss_dm_pair = torch.tensor(0.0, device=all_x.device)
-        if diffusemix is not None and diffusemix["x"].numel() > 0:
+        lambda_fg_eff = float(self.hparams.get("diffusemix_lambda_fg", 0))
+        if diffusemix is None or diffusemix.get("x", None) is None or diffusemix["x"].numel() == 0:
+            lambda_fg_eff = 0.0
+            diffusemix_stats.setdefault("diffusemix_gate_reason", "no_valid_sample")
+        elif diffusemix is not None and diffusemix["x"].numel() > 0:
             dm_x = diffusemix["x"]
-            dm_anchor = diffusemix["anchor_indices"]
-            dm_feature = self.featurizer(dm_x)
-            anchor_feature = feature_x[dm_anchor]
-            pair_loss = 1 - F.cosine_similarity(anchor_feature, dm_feature).mean()
-            if self.hparams.get("diffusemix_lambda_fg", 0) > 0:
-                loss_dm_fg = pair_loss
-                loss += self.hparams.get("diffusemix_lambda_fg", 0) * loss_dm_fg
-            elif self.hparams.get("diffusemix_lambda_pair", 0) > 0:
-                loss_dm_pair = pair_loss
-                loss += self.hparams.get("diffusemix_lambda_pair", 0) * loss_dm_pair
+            dm_anchor = diffusemix["anchor_indices"].long()
+            dm_weights = diffusemix.get("reliability_weights", torch.ones(dm_x.shape[0], device=all_x.device)).to(all_x.device).clamp_min(0.0)
+            valid_anchor = (dm_anchor >= 0) & (dm_anchor < feature_x.shape[0])
+            if not valid_anchor.all():
+                diffusemix_stats["diffusemix_invalid_anchor_num"] = int((~valid_anchor).sum().item())
+                dm_x = dm_x[valid_anchor]
+                dm_anchor = dm_anchor[valid_anchor]
+                dm_weights = dm_weights[valid_anchor]
+            diffusemix_stats["diffusemix_anchor_min"] = int(dm_anchor.min().item()) if dm_anchor.numel() else -1
+            diffusemix_stats["diffusemix_anchor_max"] = int(dm_anchor.max().item()) if dm_anchor.numel() else -1
+            if dm_x.numel() == 0:
+                lambda_fg_eff = 0.0
+                diffusemix_stats["diffusemix_gate_reason"] = "no_valid_anchor"
+                diffusemix_stats["lambda_fg_eff"] = float(lambda_fg_eff)
+                dm_feature = None
+            else:
+                dm_feature, dm_inter_feats = self.featurizer(dm_x, ret_feats=True)
+                anchor_feature = feature_x[dm_anchor]
+            if dm_feature is not None:
+                pair_vec = 1 - F.cosine_similarity(anchor_feature, dm_feature, dim=1)
+                pair_loss = (pair_vec * dm_weights).sum() / dm_weights.sum().clamp_min(1.0)
+                fg_loss = pair_loss
+                if self.hparams.get("diffusemix_lambda_fg", 0) > 0 and inter_feats and dm_inter_feats:
+                    try:
+                        anchor_map = inter_feats[-1][dm_anchor]
+                        dm_map = dm_inter_feats[-1]
+                        anchor_mask = self._diffusemix_attention_mask(anchor_map)
+                        dm_mask = self._diffusemix_attention_mask(dm_map)
+                        anchor_fg = self._masked_avg_pool(anchor_map, anchor_mask)
+                        dm_fg = self._masked_avg_pool(dm_map, dm_mask)
+                        fg_vec = 1 - F.cosine_similarity(anchor_fg, dm_fg, dim=1)
+                        fg_loss = (fg_vec * dm_weights).sum() / dm_weights.sum().clamp_min(1.0)
+                    except Exception:
+                        fg_loss = pair_loss
+                keep_rate = float(diffusemix_stats.get("diffusemix_keep_rate", 0.0))
+                min_keep = float(self.hparams.get("diffusemix_min_keep_rate", 0.0))
+                if int(diffusemix_stats.get("diffusemix_kept_num", 0)) == 0:
+                    lambda_fg_eff = 0.0
+                    diffusemix_stats["diffusemix_gate_reason"] = "no_valid_sample"
+                elif keep_rate < min_keep:
+                    lambda_fg_eff *= 0.5
+                    diffusemix_stats["diffusemix_gate_reason"] = "low_keep_rate"
+                if self.hparams.get("diffusemix_lambda_fg", 0) > 0:
+                    loss_dm_fg = fg_loss
+                    if self.l and loss_dm_fg.detach() > loss_sup_cl.detach():
+                        lambda_fg_eff = min(lambda_fg_eff, float(self.hparams.get("diffusemix_lambda_fg", 0)) * 0.5)
+                        diffusemix_stats["diffusemix_gate_reason"] = "fg_loss_too_large"
+                    loss += lambda_fg_eff * loss_dm_fg
+                elif self.hparams.get("diffusemix_lambda_pair", 0) > 0:
+                    loss_dm_pair = pair_loss
+                    loss += self.hparams.get("diffusemix_lambda_pair", 0) * loss_dm_pair
+        diffusemix_stats["lambda_fg_eff"] = float(lambda_fg_eff)
 
         pre_cl_loss = 0.
         if self.l_layer:
@@ -458,7 +548,7 @@ class DCCL(Algorithm):
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
         for _k, _v in diffusemix_stats.items():
-            if isinstance(_v, (int, float)):
+            if isinstance(_v, (int, float, str, dict)):
                 loss_dict[_k] = _v
         return loss_dict
 
