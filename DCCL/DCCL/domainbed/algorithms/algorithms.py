@@ -302,6 +302,8 @@ class DCCL(Algorithm):
     def update(self, x, y, **kwargs):
         all_x = torch.cat(x)
         all_y = torch.cat(y)
+        diffusemix = kwargs.get("diffusemix", None)
+        diffusemix_stats = kwargs.get("diffusemix_stats", {})
         x_2 = kwargs["x_2"]
         all_x_2 = torch.cat(x_2)
         if self.TN:
@@ -386,8 +388,38 @@ class DCCL(Algorithm):
                     add_pos = torch.cat([view_2_d,view_2_d],0)
                     loss_sup_cl = self.supcon_loss(features, all_y, add_pos = add_pos)
                 else:
-                    loss_sup_cl = self.supcon_loss(features, all_y)
+                    add_pos = None
+                    if (diffusemix is not None and self.hparams.get("diffusemix_use_supcon_positive", False)
+                            and kwargs.get("step", 0) >= self.hparams.get("diffusemix_supcon_start_steps", 0)):
+                        dm_x = diffusemix["x"]
+                        dm_anchor = diffusemix["anchor_indices"]
+                        dm_strong = diffusemix["strong_mask"]
+                        if self.hparams.get("diffusemix_supcon_all_kept", False):
+                            dm_strong = torch.ones_like(dm_strong, dtype=torch.bool)
+                        if dm_x.numel() > 0 and dm_strong.any():
+                            dm_feature = self.featurizer(dm_x[dm_strong])
+                            dm_view = nn.functional.normalize(self.proj_head(dm_feature))
+                            extra = view_2.detach().clone()
+                            extra[dm_anchor[dm_strong]] = dm_view
+                            add_pos = torch.cat([extra, extra], 0)
+                            diffusemix_stats["number_of_diffusemix_positives_used_in_supcon"] = int(dm_strong.sum().item())
+                    loss_sup_cl = self.supcon_loss(features, all_y, add_pos=add_pos)
             loss += self.l*loss_sup_cl
+        loss_dm_fg = torch.tensor(0.0, device=all_x.device)
+        loss_dm_pair = torch.tensor(0.0, device=all_x.device)
+        if diffusemix is not None and diffusemix["x"].numel() > 0:
+            dm_x = diffusemix["x"]
+            dm_anchor = diffusemix["anchor_indices"]
+            dm_feature = self.featurizer(dm_x)
+            anchor_feature = feature_x[dm_anchor]
+            pair_loss = 1 - F.cosine_similarity(anchor_feature, dm_feature).mean()
+            if self.hparams.get("diffusemix_lambda_fg", 0) > 0:
+                loss_dm_fg = pair_loss
+                loss += self.hparams.get("diffusemix_lambda_fg", 0) * loss_dm_fg
+            elif self.hparams.get("diffusemix_lambda_pair", 0) > 0:
+                loss_dm_pair = pair_loss
+                loss += self.hparams.get("diffusemix_lambda_pair", 0) * loss_dm_pair
+
         pre_cl_loss = 0.
         if self.l_layer:
 
@@ -419,11 +451,15 @@ class DCCL(Algorithm):
         self.optimizer.zero_grad()
         loss_opt.backward()
         self.optimizer.step()
-        loss_dict = {"loss": loss.item(), "ce_loss": ce_loss}
+        loss_dict = {"loss": loss.item(), "ce_loss": ce_loss, "loss_cls": ce_loss, "loss_dm_fg": float(loss_dm_fg.item()), "loss_dm_pair": float(loss_dm_pair.item())}
         if self.l:
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
+            loss_dict["loss_supcon"] = loss_sup_cl.item()
         if self.l_layer:
             loss_dict["pre_cl_loss"] = pre_cl_loss.item()
+        for _k, _v in diffusemix_stats.items():
+            if isinstance(_v, (int, float)):
+                loss_dict[_k] = _v
         return loss_dict
 
     def predict(self, x):

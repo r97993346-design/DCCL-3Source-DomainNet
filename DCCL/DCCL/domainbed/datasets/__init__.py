@@ -43,8 +43,10 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
     is_mnist = "MNIST" in args.dataset
     dataset = vars(datasets)[args.dataset](args.data_dir)
 
+    original_env_ids = None
     if args.dataset == "DomainNet" and args.source_envs is not None and args.target_env is not None:
         selected_envs = list(args.source_envs) + [args.target_env]
+        original_env_ids = selected_envs
         if len(set(selected_envs)) != len(selected_envs):
             raise ValueError("--source_envs and --target_env must be disjoint.")
         max_env_id = len(dataset) - 1
@@ -100,6 +102,8 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
             test_envs,
             hparams
         )
+        for split in (out, in_):
+            split.source_env_id = original_env_ids[env_i] if original_env_ids is not None else env_i
         if env_i in test_envs:
             in_type = "test"
             out_type = "test"
@@ -149,9 +153,16 @@ class _SplitDataset(torch.utils.data.Dataset):
         if self.direct_return:
             return self.underlying_dataset[self.keys[key]]
 
-        x, y = self.underlying_dataset[self.keys[key]]
+        original_key = self.keys[key]
+        x, y = self.underlying_dataset[original_key]
         ret = {"y": y}
         ret["d"] = self.env_id
+        ret["source_env"] = getattr(self, "source_env_id", self.env_id)
+        ret["sample_index"] = original_key
+        if hasattr(self.underlying_dataset, "samples"):
+            ret["path"] = self.underlying_dataset.samples[original_key][0]
+            classes = getattr(self.underlying_dataset, "classes", [])
+            ret["class_name"] = classes[y] if y < len(classes) else str(y)
         for key, transform in self.transforms.items():
             ret[key] = transform(x)
             if self.sample_d and not self.test:

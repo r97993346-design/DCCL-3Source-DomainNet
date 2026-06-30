@@ -16,6 +16,7 @@ from domainbed.lib import swa_utils
 from domainbed.lib.query import Q
 from domainbed.lib.fast_data_loader import InfiniteDataLoader, FastDataLoader
 from domainbed import swad as swad_module
+from domainbed.diffusemix import DiffuseMixPositiveManager
 
 
 if torch.cuda.is_available():
@@ -144,6 +145,11 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     )
     num_class = dataset.num_classes
     algorithm.to(device)
+    class_names = getattr(dataset.datasets[0], "classes", []) if hasattr(dataset, "datasets") and dataset.datasets else []
+    diffusemix_manager = None
+    if getattr(args, "use_diffusemix_pos", False):
+        diffusemix_manager = DiffuseMixPositiveManager(args, args.dataset, class_names, device, logger)
+        logger.info(f"DiffuseMix enabled: cache_dir={args.diffusemix_cache_dir}, source_envs={train_envs}")
 
     
     n_params = sum([p.numel() for p in algorithm.parameters()])
@@ -295,10 +301,22 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         batches = misc.merge_dictlist(batches_dictlist)
         # to device
         batches = {
-            key: [tensor.to(device) for tensor in tensorlist] for key, tensorlist in batches.items()
+            key: [tensor.to(device) if torch.is_tensor(tensor) else tensor for tensor in tensorlist]
+            for key, tensorlist in batches.items()
         }
 
         inputs = {**batches, "step": step}
+        if diffusemix_manager is not None:
+            all_x_for_dm = torch.cat(batches["x"])
+            all_y_for_dm = torch.cat(batches["y"])
+            all_env_for_dm = torch.cat(batches.get("source_env", batches.get("d")))
+            paths_for_dm = [p for env_paths in batches.get("path", []) for p in list(env_paths)] if "path" in batches else None
+            idx_for_dm = torch.cat(batches["sample_index"]) if "sample_index" in batches else None
+            dm_batch, dm_stats = diffusemix_manager.build_batch(
+                algorithm, all_x_for_dm, all_y_for_dm, all_env_for_dm, paths_for_dm, idx_for_dm, step
+            )
+            inputs["diffusemix"] = dm_batch
+            inputs["diffusemix_stats"] = dm_stats
         step_vals = algorithm.update(**inputs)
         for key, val in step_vals.items():
             checkpoint_vals[key].append(val)

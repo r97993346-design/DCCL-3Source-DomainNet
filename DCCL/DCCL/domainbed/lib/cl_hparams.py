@@ -61,4 +61,10 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+    for key in [
+        "use_diffusemix_pos", "diffusemix_lambda_fg", "diffusemix_lambda_pair",
+        "diffusemix_supcon_start_steps", "diffusemix_use_supcon_positive",
+        "diffusemix_supcon_all_kept"
+    ]:
+        hparams[key] = getattr(args, key, False)
     return hparams
