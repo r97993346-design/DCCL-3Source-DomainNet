@@ -1,25 +1,28 @@
 import json
 import math
+import os
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms as T
 
-DEFAULT_PROMPT = (
-    "Change only the domain-related appearance of this image, including texture, color, "
-    "illumination, background, and artistic style, while strictly preserving the object "
-    "identity, object shape, pose, and semantic category. Do not add or remove objects."
-)
+DIFFUSEMIX_OFFICIAL_PROMPTS = [
+    "Autumn", "snowy", "watercolor art", "sunset", "rainbow",
+    "aurora", "mosaic", "ukiyo-e", "a sketch with crayon",
+]
+
 
 _basic = T.Compose([
     T.Resize((224, 224)), T.ToTensor(),
     T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 _to_pil = T.ToPILImage()
+_to_tensor = T.ToTensor()
 _mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
 _std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
 
@@ -49,15 +52,26 @@ class DiffuseMixPositiveManager:
         self.device = device
         self.logger = logger
         self.pipe = None
+        self.fractal_images = None
         self.basic = _basic
         self.stats = defaultdict(float)
         self.env_attempts = defaultdict(int)
         self.env_kept = defaultdict(int)
+        self.env_strong = defaultdict(int)
         self.class_attempts = defaultdict(int)
         self.class_kept = defaultdict(int)
+        self.class_strong = defaultdict(int)
 
-    def prompt(self):
-        return DEFAULT_PROMPT
+    def _prompt_list(self):
+        raw = getattr(self.args, "diffusemix_prompts", "")
+        prompts = [p.strip() for p in raw.split(",") if p.strip()]
+        return prompts if prompts else DIFFUSEMIX_OFFICIAL_PROMPTS
+
+    def prompt(self, seed=None):
+        prompts = self._prompt_list()
+        if seed is None:
+            return prompts[0]
+        return prompts[int(seed) % len(prompts)]
 
     def _cache_dir(self, source_env, class_name, image_id):
         return (Path(self.args.diffusemix_cache_dir) / self.dataset_name /
@@ -75,6 +89,12 @@ class DiffuseMixPositiveManager:
             try:
                 meta = json.loads(meta_path.read_text())
                 if not meta.get("filter_pass", False):
+                    continue
+                cached_mode = meta.get("augmentation_mode", "direct")
+                current_mode = getattr(self.args, "diffusemix_augmentation_mode", "diffusemix")
+                if cached_mode != current_mode:
+                    continue
+                if current_mode == "diffusemix" and not meta.get("diffusemix_source_style", False):
                     continue
                 img_path = meta_path.with_suffix(".png")
                 if not img_path.exists():
@@ -106,11 +126,75 @@ class DiffuseMixPositiveManager:
                     param.requires_grad_(False)
         return self.pipe
 
+    def _load_fractal_images(self):
+        if self.fractal_images is not None:
+            return self.fractal_images
+        fractal_dir = getattr(self.args, "diffusemix_fractal_dir", "")
+        if not getattr(self.args, "diffusemix_use_real_fractal", True):
+            raise RuntimeError("Source-style DiffuseMix requires --diffusemix_use_real_fractal and real images from --diffusemix_fractal_dir")
+        if not fractal_dir:
+            raise RuntimeError("--diffusemix_fractal_dir is required when --diffusemix_augmentation_mode diffusemix is used for new generation")
+        exts = (".png", ".jpg", ".jpeg")
+        paths = sorted([Path(fractal_dir) / name for name in os.listdir(fractal_dir) if name.lower().endswith(exts)])
+        if not paths:
+            raise RuntimeError(f"No fractal images found in --diffusemix_fractal_dir={fractal_dir}")
+        self.fractal_images = [Image.open(path).convert("RGB").resize((256, 256)) for path in paths]
+        return self.fractal_images
+
+    def _source_style_combine_images(self, original_img, generated_img, seed, blend_width=20):
+        original_img = original_img.convert("RGB").resize((256, 256))
+        generated_img = generated_img.convert("RGB").resize((256, 256))
+        width, height = original_img.size
+        vertical = (int(seed) % 2) == 0
+        if vertical:
+            mask = np.linspace(0, 1, blend_width).reshape(-1, 1)
+            mask = np.tile(mask, (1, width))
+            top = max(0, height // 2 - blend_width // 2)
+            bottom = height - top - blend_width
+            mask = np.vstack([np.zeros((top, width)), mask, np.ones((bottom, width))])
+        else:
+            mask = np.linspace(0, 1, blend_width).reshape(1, -1)
+            mask = np.tile(mask, (height, 1))
+            left = max(0, width // 2 - blend_width // 2)
+            right = width - left - blend_width
+            mask = np.hstack([np.zeros((height, left)), mask, np.ones((height, right))])
+        mask = np.tile(mask[:, :, np.newaxis], (1, 1, 3))
+        original_array = np.array(original_img, dtype=np.float32) / 255.0
+        generated_array = np.array(generated_img, dtype=np.float32) / 255.0
+        blended_array = (1 - mask) * original_array + mask * generated_array
+        return Image.fromarray(np.clip(blended_array * 255, 0, 255).astype(np.uint8)), vertical
+
+    def _source_style_blend_fractal(self, base_img, fractal_img, alpha):
+        overlay_img = fractal_img.resize(base_img.size)
+        base_array = np.array(base_img, dtype=np.float32)
+        overlay_array = np.array(overlay_img, dtype=np.float32)
+        blended_array = (1 - alpha) * base_array + alpha * overlay_array
+        return Image.fromarray(np.clip(blended_array, 0, 255).astype(np.uint8))
+
+    def _compose_diffusemix(self, orig_pil, generated_pil, seed):
+        mode = getattr(self.args, "diffusemix_augmentation_mode", "diffusemix")
+        if mode == "direct":
+            return generated_pil, {"augmentation_mode": "direct", "mix_lambda": 0.0}
+        hybrid, vertical = self._source_style_combine_images(orig_pil, generated_pil, seed)
+        fractals = self._load_fractal_images()
+        fractal_idx = int(seed) % len(fractals)
+        lam = float(getattr(self.args, "diffusemix_fractal_lambda", 0.20))
+        augmented = self._source_style_blend_fractal(hybrid, fractals[fractal_idx], lam)
+        meta = {
+            "augmentation_mode": "diffusemix",
+            "diffusemix_source_style": True,
+            "diffusemix_use_real_fractal": bool(getattr(self.args, "diffusemix_use_real_fractal", True)),
+            "mix_mask_type": "vertical" if vertical else "horizontal",
+            "mix_lambda": lam,
+            "fractal_index": fractal_idx,
+        }
+        return augmented, meta
+
     @torch.no_grad()
-    def _generate(self, pil, seed):
+    def _generate(self, pil, seed, prompt):
         pipe = self._ensure_pipe()
         gen = torch.Generator(device=self.device).manual_seed(int(seed)) if str(self.device).startswith("cuda") else torch.Generator().manual_seed(int(seed))
-        out = pipe(prompt=self.prompt(), image=pil, num_inference_steps=20, image_guidance_scale=1.5, guidance_scale=7.5, generator=gen)
+        out = pipe(prompt=prompt, image=pil, num_inference_steps=20, image_guidance_scale=1.5, guidance_scale=7.5, generator=gen)
         return out.images[0]
 
     def _cam(self, algorithm, x, y):
@@ -143,27 +227,40 @@ class DiffuseMixPositiveManager:
         return torch.norm(torch.cat([u1-u2, s1-s2], dim=1), dim=1).item()
 
     def _filter(self, algorithm, orig_x, cand_x, y):
-        meta = {"anchor_pred": None, "anchor_conf": None, "kl_to_original": None,
+        meta = {"anchor_pred": None, "anchor_conf": None, "candidate_pred": None, "candidate_conf": None,
+                "anchor_class_match": False, "candidate_class_match": False, "class_filter_pass": False,
+                "conf_filter_pass": False, "kl_filter_pass": True, "cam_filter_pass": None,
+                "foreground_filter_pass": None, "style_filter_pass": None, "kl_to_original": None,
                 "cam_similarity": None, "mask_iou": None, "foreground_similarity": None,
-                "style_distance": None, "filter_pass": False, "strong_positive": False}
+                "style_distance": None, "style_gate": 1.0, "reliability_weight": 0.0,
+                "filter_pass": False, "strong_positive": False, "positive_type": "invalid"}
         was_training = algorithm.training
         algorithm.eval()
         with torch.no_grad():
             lo = algorithm.predict(orig_x); lc = algorithm.predict(cand_x)
             po, pc = F.softmax(lo, dim=1), F.softmax(lc, dim=1)
-            conf, pred = pc.max(1)
-            meta["anchor_pred"] = int(pred.item()); meta["anchor_conf"] = float(conf.item())
+            anchor_conf, anchor_pred = po.max(1)
+            cand_conf, cand_pred = pc.max(1)
+            meta["anchor_pred"] = int(anchor_pred.item()); meta["anchor_conf"] = float(anchor_conf.item())
+            meta["candidate_pred"] = int(cand_pred.item()); meta["candidate_conf"] = float(cand_conf.item())
+            meta["anchor_class_match"] = bool(anchor_pred.item() == int(y))
+            meta["candidate_class_match"] = bool(cand_pred.item() == int(y))
+            meta["class_filter_pass"] = bool(meta["anchor_class_match"] and meta["candidate_class_match"])
+            meta["conf_filter_pass"] = bool(cand_conf.item() > self.args.diffusemix_filter_conf)
             meta["kl_to_original"] = float(F.kl_div(pc.log(), po, reduction="batchmean").item())
-        if pred.item() != int(y) or conf.item() <= self.args.diffusemix_filter_conf:
+        if not meta["class_filter_pass"] or not meta["conf_filter_pass"]:
             algorithm.train(was_training); return meta
-        if self.args.diffusemix_filter_kl is not None and meta["kl_to_original"] >= self.args.diffusemix_filter_kl:
-            algorithm.train(was_training); return meta
+        if self.args.diffusemix_filter_kl is not None:
+            meta["kl_filter_pass"] = bool(meta["kl_to_original"] < self.args.diffusemix_filter_kl)
+            if not meta["kl_filter_pass"]:
+                algorithm.train(was_training); return meta
         cam_ok, fg_ok = True, True
         cam_o = cam_c = None
         if self.args.diffusemix_use_cam_filter or self.args.diffusemix_use_fg_consistency:
             cam_o = self._cam(algorithm, orig_x, y); cam_c = self._cam(algorithm, cand_x, y)
             if cam_o is None or cam_c is None:
                 cam_ok = False
+                meta["cam_filter_pass"] = False
             else:
                 meta["cam_similarity"] = float(F.cosine_similarity(cam_o.flatten(1), cam_c.flatten(1)).item())
                 mo = cam_o > self.args.diffusemix_cam_threshold; mc = cam_c > self.args.diffusemix_cam_threshold
@@ -171,17 +268,33 @@ class DiffuseMixPositiveManager:
                 meta["mask_iou"] = float((inter / union).item())
                 cam_ok = (meta["cam_similarity"] > self.args.diffusemix_cam_sim_threshold or
                           meta["mask_iou"] > self.args.diffusemix_mask_iou_threshold)
+                meta["cam_filter_pass"] = bool(cam_ok)
         with torch.no_grad():
             fo = algorithm.featurizer(orig_x); fc = algorithm.featurizer(cand_x)
             meta["foreground_similarity"] = float(F.cosine_similarity(fo, fc).mean().item())
         if self.args.diffusemix_semantic_sim_threshold is not None:
             fg_ok = meta["foreground_similarity"] > self.args.diffusemix_semantic_sim_threshold
+            meta["foreground_filter_pass"] = bool(fg_ok)
         if self.args.diffusemix_use_style_filter:
             meta["style_distance"] = self._style_distance(orig_x, cand_x)
-            if meta["style_distance"] <= self.args.diffusemix_style_min_distance:
+            meta["style_filter_pass"] = bool(meta["style_distance"] > self.args.diffusemix_style_min_distance)
+            meta["style_gate"] = 1.0 if meta["style_filter_pass"] else 0.0
+            if not meta["style_filter_pass"]:
                 algorithm.train(was_training); return meta
+        cam_sim_for_weight = meta["cam_similarity"] if meta["cam_similarity"] is not None else 1.0
+        fg_sim_for_weight = meta["foreground_similarity"] if meta["foreground_similarity"] is not None else 0.0
+        meta["reliability_weight"] = float(cand_conf.item() * cam_sim_for_weight * fg_sim_for_weight * meta["style_gate"])
+        if self.args.diffusemix_use_reliability_gate and meta["reliability_weight"] < self.args.diffusemix_min_reliability:
+            algorithm.train(was_training); return meta
         meta["filter_pass"] = True
-        meta["strong_positive"] = bool(conf.item() > self.args.diffusemix_strong_conf and cam_ok and fg_ok)
+        strong_by_metrics = (cand_conf.item() > self.args.diffusemix_strong_conf and cam_ok and fg_ok)
+        if cam_o is not None and cam_c is not None:
+            strong_by_metrics = strong_by_metrics and meta["cam_similarity"] > self.args.diffusemix_cam_sim_threshold and meta["mask_iou"] > self.args.diffusemix_mask_iou_threshold
+        else:
+            strong_by_metrics = False
+        strong_by_reliability = (not self.args.diffusemix_use_reliability_gate or meta["reliability_weight"] >= self.args.diffusemix_strong_reliability)
+        meta["strong_positive"] = bool(strong_by_metrics and strong_by_reliability)
+        meta["positive_type"] = "strong" if meta["strong_positive"] else "weak"
         algorithm.train(was_training)
         return meta
 
@@ -200,7 +313,7 @@ class DiffuseMixPositiveManager:
         zeros = {"loss_dm_fg": 0.0, "loss_dm_pair": 0.0, "number_of_diffusemix_positives_used_in_supcon": 0}
         if step < self.args.diffusemix_warmup_steps:
             return None, zeros
-        xs=[]; anchors=[]; strong=[]; metas=[]
+        xs=[]; anchors=[]; strong=[]; weights=[]; metas=[]
         generated = kept = invalid = weak = strong_n = saved = hit = miss = 0
         for i in range(all_x.shape[0]):
             if generated >= self.args.diffusemix_max_per_step and not self.args.diffusemix_use_cache_first:
@@ -214,26 +327,33 @@ class DiffuseMixPositiveManager:
             if cached:
                 hit += 1
                 for img_path, meta in cached:
-                    xs.append(self.basic(Image.open(img_path).convert("RGB"))); anchors.append(i); strong.append(bool(meta.get("strong_positive"))); metas.append(meta)
+                    xs.append(self.basic(Image.open(img_path).convert("RGB"))); anchors.append(i); strong.append(bool(meta.get("strong_positive"))); weights.append(float(meta.get("reliability_weight", 1.0))); metas.append(meta)
                     kept += 1; strong_n += int(meta.get("strong_positive", False)); weak += int(not meta.get("strong_positive", False))
                     self.env_kept[se] += 1; self.class_kept[cn] += 1
+                    if meta.get("strong_positive", False):
+                        self.env_strong[se] += 1; self.class_strong[cn] += 1
                 continue
             miss += 1
             if not self.args.diffusemix_regenerate_if_cache_empty or generated >= self.args.diffusemix_max_per_step:
                 continue
             pil = Image.open(p).convert("RGB") if p else denorm_to_pil(all_x[i])
+            seed = int(step * 100000 + i)
+            selected_prompt = self.prompt(seed)
             with torch.no_grad():
-                cand_pil = self._generate(pil, int(step * 100000 + i))
+                gen_pil = self._generate(pil, seed, selected_prompt)
+            cand_pil, mix_meta = self._compose_diffusemix(pil, gen_pil, seed)
             generated += 1
             cand_x = self.basic(cand_pil).unsqueeze(0).to(all_x.device)
             meta = self._filter(algorithm, all_x[i:i+1], cand_x, y)
             meta.update({"dataset": self.dataset_name, "source_env": se, "class_name": cn, "class_label": y,
-                         "original_path": p, "original_relpath": p, "prompt": self.prompt(), "seed": int(step*100000+i),
-                         "generator_name": "instruct-pix2pix", "created_at": datetime.utcnow().isoformat() + "Z"})
+                         "original_path": p, "original_relpath": p, "prompt": selected_prompt, "seed": seed,
+                         "generator_name": "instruct-pix2pix", "created_at": datetime.utcnow().isoformat() + "Z", **mix_meta})
             if meta["filter_pass"]:
                 kept += 1; strong_n += int(meta["strong_positive"]); weak += int(not meta["strong_positive"])
                 self.env_kept[se] += 1; self.class_kept[cn] += 1
-                xs.append(cand_x.squeeze(0).detach().cpu()); anchors.append(i); strong.append(meta["strong_positive"]); metas.append(meta)
+                if meta["strong_positive"]:
+                    self.env_strong[se] += 1; self.class_strong[cn] += 1
+                xs.append(cand_x.squeeze(0).detach().cpu()); anchors.append(i); strong.append(meta["strong_positive"]); weights.append(float(meta.get("reliability_weight", 1.0))); metas.append(meta)
                 if self.args.diffusemix_save_kept_only or not self.args.diffusemix_save_rejected:
                     saved += self._save(cand_pil, meta, se, cn, iid)
             else:
@@ -243,7 +363,7 @@ class DiffuseMixPositiveManager:
         if not xs:
             stats = {**zeros, "diffusemix_cache_hit_num": hit, "diffusemix_cache_miss_num": miss, "diffusemix_generated_num": generated, "diffusemix_kept_num": kept, "diffusemix_strong_num": strong_n, "diffusemix_weak_num": weak, "diffusemix_invalid_num": invalid, "diffusemix_cache_save_num": saved}
             return None, self._rates(stats, metas)
-        batch = {"x": torch.stack(xs).to(all_x.device), "anchor_indices": torch.tensor(anchors, device=all_x.device, dtype=torch.long), "strong_mask": torch.tensor(strong, device=all_x.device, dtype=torch.bool), "metas": metas}
+        batch = {"x": torch.stack(xs).to(all_x.device), "anchor_indices": torch.tensor(anchors, device=all_x.device, dtype=torch.long), "strong_mask": torch.tensor(strong, device=all_x.device, dtype=torch.bool), "reliability_weights": torch.tensor(weights, device=all_x.device, dtype=torch.float32), "metas": metas}
         stats = {"diffusemix_cache_hit_num": hit, "diffusemix_cache_miss_num": miss, "diffusemix_generated_num": generated, "diffusemix_kept_num": kept, "diffusemix_strong_num": strong_n, "diffusemix_weak_num": weak, "diffusemix_invalid_num": invalid, "diffusemix_cache_save_num": saved}
         return batch, self._rates(stats, metas)
 
@@ -251,11 +371,22 @@ class DiffuseMixPositiveManager:
         kept = stats.get("diffusemix_kept_num", 0); gen = stats.get("diffusemix_generated_num", 0)
         stats["diffusemix_keep_rate"] = float(kept / max(1, gen + stats.get("diffusemix_cache_hit_num", 0)))
         stats["diffusemix_strong_rate"] = float(stats.get("diffusemix_strong_num", 0) / max(1, kept))
+        rel_vals = [m.get("reliability_weight") for m in metas if m.get("reliability_weight") is not None]
+        stats["diffusemix_reliability_mean"] = float(sum(rel_vals) / len(rel_vals)) if rel_vals else 0.0
         for k, name in [("cam_similarity","diffusemix_cam_sim_mean"),("mask_iou","diffusemix_mask_iou_mean"),("foreground_similarity","diffusemix_fg_sim_mean"),("style_distance","diffusemix_style_distance_mean")]:
             vals=[m.get(k) for m in metas if m.get(k) is not None]
             stats[name]=float(sum(vals)/len(vals)) if vals else 0.0
-        stats["keep_rate_per_source_env"] = dict(self.env_kept)
-        stats["strong_rate_per_source_env"] = dict(self.env_kept)
-        stats["keep_rate_per_class"] = dict(self.class_kept)
-        stats["strong_rate_per_class"] = dict(self.class_kept)
+        stats["kept_per_source_env"] = dict(self.env_kept)
+        stats["attempts_per_source_env"] = dict(self.env_attempts)
+        stats["keep_rate_per_source_env"] = {str(k): float(self.env_kept[k] / max(1, self.env_attempts[k])) for k in self.env_attempts}
+        stats["strong_per_source_env"] = dict(self.env_strong)
+        stats["strong_rate_per_source_env"] = {str(k): float(self.env_strong[k] / max(1, self.env_kept[k])) for k in self.env_attempts}
+        stats["kept_per_class"] = dict(self.class_kept)
+        stats["attempts_per_class"] = dict(self.class_attempts)
+        stats["keep_rate_per_class"] = {str(k): float(self.class_kept[k] / max(1, self.class_attempts[k])) for k in self.class_attempts}
+        stats["strong_per_class"] = dict(self.class_strong)
+        stats["strong_rate_per_class"] = {str(k): float(self.class_strong[k] / max(1, self.class_kept[k])) for k in self.class_attempts}
+        for key, field in [("class_filter_pass", "diffusemix_class_pass_num"), ("conf_filter_pass", "diffusemix_conf_pass_num"), ("kl_filter_pass", "diffusemix_kl_pass_num"), ("cam_filter_pass", "diffusemix_cam_pass_num"), ("foreground_filter_pass", "diffusemix_fg_pass_num"), ("style_filter_pass", "diffusemix_style_pass_num")]:
+            vals = [m.get(key) for m in metas if m.get(key) is not None]
+            stats[field] = int(sum(bool(v) for v in vals)) if vals else 0
         return stats
