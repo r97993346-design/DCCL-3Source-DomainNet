@@ -385,7 +385,10 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             }
 
             for key, val in checkpoint_vals.items():
-                results[key] = np.mean(val)
+                if val and all(isinstance(v, (int, float, np.integer, np.floating)) for v in val):
+                    results[key] = np.mean(val)
+                elif val:
+                    results[key] = val[-1]
 
             eval_start_time = time.time()
             accuracies, summaries = evaluator.evaluate(algorithm)
