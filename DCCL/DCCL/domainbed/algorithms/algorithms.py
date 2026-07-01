@@ -299,6 +299,31 @@ class DCCL(Algorithm):
             optimized_list
         )
 
+
+    def _valid_diffusemix_entries(self, diffusemix, max_anchor, device, stats=None):
+        """Return DiffuseMix tensors that are safe to use for batch indexing."""
+        dm_x = diffusemix["x"].to(device)
+        dm_anchor = diffusemix["anchor_indices"].to(device=device, dtype=torch.long).flatten()
+        dm_strong = diffusemix.get("strong_mask", torch.zeros(dm_anchor.shape[0], device=device, dtype=torch.bool)).to(device=device, dtype=torch.bool).flatten()
+        dm_weights = diffusemix.get("reliability_weights", torch.ones(dm_anchor.shape[0], device=device)).to(device=device, dtype=torch.float32).flatten().clamp_min(0.0)
+
+        n = min(dm_x.shape[0], dm_anchor.numel(), dm_strong.numel(), dm_weights.numel())
+        if stats is not None and (dm_x.shape[0] != n or dm_anchor.numel() != n or dm_strong.numel() != n or dm_weights.numel() != n):
+            stats["diffusemix_misaligned_entry_num"] = int(max(dm_x.shape[0], dm_anchor.numel(), dm_strong.numel(), dm_weights.numel()) - n)
+        dm_x, dm_anchor, dm_strong, dm_weights = dm_x[:n], dm_anchor[:n], dm_strong[:n], dm_weights[:n]
+
+        if n == 0:
+            return dm_x, dm_anchor, dm_strong, dm_weights
+        valid_anchor = (dm_anchor >= 0) & (dm_anchor < int(max_anchor))
+        if not bool(valid_anchor.all().item()):
+            if stats is not None:
+                stats["diffusemix_invalid_anchor_num"] = int((~valid_anchor).sum().item())
+            dm_x = dm_x[valid_anchor]
+            dm_anchor = dm_anchor[valid_anchor]
+            dm_strong = dm_strong[valid_anchor]
+            dm_weights = dm_weights[valid_anchor]
+        return dm_x, dm_anchor, dm_strong, dm_weights
+
     def _diffusemix_attention_mask(self, feat_map):
         score = feat_map.detach().abs().mean(dim=1, keepdim=True)
         thresh = score.flatten(1).mean(dim=1, keepdim=True).view(-1, 1, 1, 1)
@@ -361,7 +386,7 @@ class DCCL(Algorithm):
         r = np.random.rand(1)
         if self.aug and r<self.aug:
             lam = np.random.beta(1, 1)
-            rand_index = torch.randperm(all_x.size()[0]).cuda()
+            rand_index = torch.randperm(all_x.size()[0], device=all_x.device)
             target_a = all_y
             target_b = all_y[rand_index]
             # cutmix
@@ -426,25 +451,21 @@ class DCCL(Algorithm):
                     diffusemix_stats["diffusemix_gate_reason"] = gate_reason
                     diffusemix_stats.setdefault("number_of_diffusemix_positives_used_in_supcon", 0)
                     if gate_reason == "enabled":
-                        dm_x = diffusemix["x"]
-                        dm_anchor = diffusemix["anchor_indices"].long()
-                        dm_strong = diffusemix["strong_mask"]
-                        valid_anchor = (dm_anchor >= 0) & (dm_anchor < view_2.shape[0])
-                        if not valid_anchor.all():
-                            diffusemix_stats["diffusemix_invalid_anchor_num"] = int((~valid_anchor).sum().item())
-                            dm_x = dm_x[valid_anchor]
-                            dm_anchor = dm_anchor[valid_anchor]
-                            dm_strong = dm_strong[valid_anchor]
-                            if dm_x.numel() == 0:
-                                diffusemix_stats["diffusemix_gate_reason"] = "no_valid_anchor"
+                        dm_x, dm_anchor, dm_strong, _ = self._valid_diffusemix_entries(
+                            diffusemix, view_2.shape[0], all_x.device, diffusemix_stats
+                        )
+                        if dm_x.numel() == 0:
+                            diffusemix_stats["diffusemix_gate_reason"] = "no_valid_anchor"
                         if self.hparams.get("diffusemix_supcon_all_kept", False):
                             dm_strong = torch.ones_like(dm_strong, dtype=torch.bool)
                         if dm_x.numel() > 0 and dm_strong.any():
                             strong_idx = dm_strong.nonzero(as_tuple=False).flatten()
-                            dm_feature = self.featurizer(dm_x[strong_idx])
+                            strong_idx = strong_idx.clamp(0, dm_x.shape[0] - 1)
+                            strong_anchor = dm_anchor.index_select(0, strong_idx).clamp(0, view_2.shape[0] - 1)
+                            dm_feature = self.featurizer(dm_x.index_select(0, strong_idx))
                             dm_view = nn.functional.normalize(self.proj_head(dm_feature))
                             extra = view_2.detach().clone()
-                            extra[dm_anchor[strong_idx]] = dm_view
+                            extra.index_copy_(0, strong_anchor, dm_view)
                             add_pos = torch.cat([extra, extra], 0)
                             diffusemix_stats["number_of_diffusemix_positives_used_in_supcon"] = int(strong_idx.numel())
                     loss_sup_cl = self.supcon_loss(features, all_y, add_pos=add_pos)
@@ -456,15 +477,9 @@ class DCCL(Algorithm):
             lambda_fg_eff = 0.0
             diffusemix_stats.setdefault("diffusemix_gate_reason", "no_valid_sample")
         elif diffusemix is not None and diffusemix["x"].numel() > 0:
-            dm_x = diffusemix["x"]
-            dm_anchor = diffusemix["anchor_indices"].long()
-            dm_weights = diffusemix.get("reliability_weights", torch.ones(dm_x.shape[0], device=all_x.device)).to(all_x.device).clamp_min(0.0)
-            valid_anchor = (dm_anchor >= 0) & (dm_anchor < feature_x.shape[0])
-            if not valid_anchor.all():
-                diffusemix_stats["diffusemix_invalid_anchor_num"] = int((~valid_anchor).sum().item())
-                dm_x = dm_x[valid_anchor]
-                dm_anchor = dm_anchor[valid_anchor]
-                dm_weights = dm_weights[valid_anchor]
+            dm_x, dm_anchor, _, dm_weights = self._valid_diffusemix_entries(
+                diffusemix, feature_x.shape[0], all_x.device, diffusemix_stats
+            )
             diffusemix_stats["diffusemix_anchor_min"] = int(dm_anchor.min().item()) if dm_anchor.numel() else -1
             diffusemix_stats["diffusemix_anchor_max"] = int(dm_anchor.max().item()) if dm_anchor.numel() else -1
             if dm_x.numel() == 0:
@@ -474,14 +489,16 @@ class DCCL(Algorithm):
                 dm_feature = None
             else:
                 dm_feature, dm_inter_feats = self.featurizer(dm_x, ret_feats=True)
-                anchor_feature = feature_x[dm_anchor]
+                safe_anchor = dm_anchor.clamp(0, feature_x.shape[0] - 1)
+                anchor_feature = feature_x.index_select(0, safe_anchor)
             if dm_feature is not None:
                 pair_vec = 1 - F.cosine_similarity(anchor_feature, dm_feature, dim=1)
                 pair_loss = (pair_vec * dm_weights).sum() / dm_weights.sum().clamp_min(1.0)
                 fg_loss = pair_loss
                 if self.hparams.get("diffusemix_lambda_fg", 0) > 0 and inter_feats and dm_inter_feats:
                     try:
-                        anchor_map = inter_feats[-1][dm_anchor]
+                        safe_map_anchor = dm_anchor.clamp(0, inter_feats[-1].shape[0] - 1)
+                        anchor_map = inter_feats[-1].index_select(0, safe_map_anchor)
                         dm_map = dm_inter_feats[-1]
                         anchor_mask = self._diffusemix_attention_mask(anchor_map)
                         dm_mask = self._diffusemix_attention_mask(dm_map)
@@ -677,7 +694,7 @@ class SupConLoss(nn.Module):
             exp_logits = exp_logits*neg_mask
         if self.mask_out:
             exp_logits = exp_logits*mask_out
-        log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True))
+        log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True).clamp_min(1e-12))
 
         # compute mean of log-likelihood over positive
         if pos_mask is not None:
@@ -687,7 +704,7 @@ class SupConLoss(nn.Module):
             add_logits = torch.squeeze(add_logits)
             mean_log_prob_pos = ((mask * log_prob).sum(1)+add_logits) / (mask.sum(1)+1)
         else:
-            mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
+            mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1).clamp_min(1.0)
 
         # loss
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos

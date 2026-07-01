@@ -96,6 +96,8 @@ class DiffuseMixPositiveManager:
                     continue
                 if current_mode == "diffusemix" and not meta.get("diffusemix_source_style", False):
                     continue
+                if current_mode == "diffusemix" and meta.get("diffusemix_composition_version") != "paper_quality_v3":
+                    continue
                 img_path = meta_path.with_suffix(".png")
                 if not img_path.exists():
                     continue
@@ -141,52 +143,70 @@ class DiffuseMixPositiveManager:
         self.fractal_images = [Image.open(path).convert("RGB").resize((256, 256)) for path in paths]
         return self.fractal_images
 
-    def _source_style_combine_images(self, original_img, generated_img, seed, blend_width=20):
+    def _source_style_combine_images(self, original_img, generated_img, seed):
+        """Build the DIFFUSEMIX hybrid image H = M*I + (1-M)*I_hat."""
         original_img = original_img.convert("RGB").resize((256, 256))
         generated_img = generated_img.convert("RGB").resize((256, 256))
         width, height = original_img.size
-        vertical = (int(seed) % 2) == 0
-        if vertical:
-            mask = np.linspace(0, 1, blend_width).reshape(-1, 1)
-            mask = np.tile(mask, (1, width))
-            top = max(0, height // 2 - blend_width // 2)
-            bottom = height - top - blend_width
-            mask = np.vstack([np.zeros((top, width)), mask, np.ones((bottom, width))])
-        else:
-            mask = np.linspace(0, 1, blend_width).reshape(1, -1)
-            mask = np.tile(mask, (height, 1))
-            left = max(0, width // 2 - blend_width // 2)
-            right = width - left - blend_width
-            mask = np.hstack([np.zeros((height, left)), mask, np.ones((height, right))])
-        mask = np.tile(mask[:, :, np.newaxis], (1, 1, 3))
-        original_array = np.array(original_img, dtype=np.float32) / 255.0
-        generated_array = np.array(generated_img, dtype=np.float32) / 255.0
-        blended_array = (1 - mask) * original_array + mask * generated_array
-        return Image.fromarray(np.clip(blended_array * 255, 0, 255).astype(np.uint8)), vertical
+        vertical = True
+        split = width // 2
+        keep_original_on_first_side = True
+
+        # Use a hard left/right mask so the result is visibly a splice: the
+        # left half comes from the source image, the right half from the
+        # diffusion-generated image. This matches the paper's illustrated
+        # source-style DIFFUSEMIX pipeline and avoids the previous transparent
+        # overlay / top-bottom artifact.
+        mask = np.zeros((height, width), dtype=np.float32)
+        mask[:, :split] = 1.0
+        mask = mask[:, :, np.newaxis]
+        original_array = np.array(original_img, dtype=np.float32)
+        generated_array = np.array(generated_img, dtype=np.float32)
+        hybrid_array = mask * original_array + (1.0 - mask) * generated_array
+        return Image.fromarray(np.clip(hybrid_array, 0, 255).astype(np.uint8)), vertical, split, keep_original_on_first_side
 
     def _source_style_blend_fractal(self, base_img, fractal_img, alpha):
-        overlay_img = fractal_img.resize(base_img.size)
-        base_array = np.array(base_img, dtype=np.float32)
+        """Blend the hybrid image with a brightness-matched fractal.
+
+        Raw fractal images can be very dark or high contrast. Matching their
+        channel statistics to the hybrid image before blending keeps the final
+        image close to the original/generated content and lets lambda control
+        style strength instead of overall brightness.
+        """
+        alpha = float(np.clip(alpha, 0.0, 0.15))
+        overlay_img = fractal_img.convert("RGB").resize(base_img.size)
+        base_array = np.array(base_img.convert("RGB"), dtype=np.float32)
         overlay_array = np.array(overlay_img, dtype=np.float32)
+
+        base_mean = base_array.mean(axis=(0, 1), keepdims=True)
+        base_std = base_array.std(axis=(0, 1), keepdims=True).clip(min=1.0)
+        overlay_mean = overlay_array.mean(axis=(0, 1), keepdims=True)
+        overlay_std = overlay_array.std(axis=(0, 1), keepdims=True).clip(min=1.0)
+        overlay_array = (overlay_array - overlay_mean) / overlay_std * base_std + base_mean
+
         blended_array = (1 - alpha) * base_array + alpha * overlay_array
-        return Image.fromarray(np.clip(blended_array, 0, 255).astype(np.uint8))
+        return Image.fromarray(np.clip(blended_array, 0, 255).astype(np.uint8)), alpha
 
     def _compose_diffusemix(self, orig_pil, generated_pil, seed):
         mode = getattr(self.args, "diffusemix_augmentation_mode", "diffusemix")
         if mode == "direct":
             return generated_pil, {"augmentation_mode": "direct", "mix_lambda": 0.0}
-        hybrid, vertical = self._source_style_combine_images(orig_pil, generated_pil, seed)
+        hybrid, vertical, split, keep_original_on_first_side = self._source_style_combine_images(orig_pil, generated_pil, seed)
         fractals = self._load_fractal_images()
         fractal_idx = int(seed) % len(fractals)
-        lam = float(getattr(self.args, "diffusemix_fractal_lambda", 0.20))
-        augmented = self._source_style_blend_fractal(hybrid, fractals[fractal_idx], lam)
+        requested_lam = float(getattr(self.args, "diffusemix_fractal_lambda", 0.08))
+        augmented, lam = self._source_style_blend_fractal(hybrid, fractals[fractal_idx], requested_lam)
         meta = {
             "augmentation_mode": "diffusemix",
             "diffusemix_source_style": True,
             "diffusemix_use_real_fractal": bool(getattr(self.args, "diffusemix_use_real_fractal", True)),
             "mix_mask_type": "vertical" if vertical else "horizontal",
+            "mix_mask_split": int(split),
+            "mix_mask_original_first_side": bool(keep_original_on_first_side),
             "mix_lambda": lam,
+            "mix_lambda_requested": requested_lam,
             "fractal_index": fractal_idx,
+            "diffusemix_composition_version": "paper_quality_v3",
         }
         return augmented, meta
 
@@ -357,13 +377,22 @@ class DiffuseMixPositiveManager:
             selected_prompt = self.prompt(seed)
             with torch.no_grad():
                 gen_pil = self._generate(pil, seed, selected_prompt)
-            cand_pil, mix_meta = self._compose_diffusemix(pil, gen_pil, seed)
             generated += 1
+            gen_x = self.basic(gen_pil).unsqueeze(0).to(all_x.device)
+            gen_meta = self._filter(algorithm, all_x[i:i+1], gen_x, y)
+            if not gen_meta["filter_pass"]:
+                invalid += 1
+                self.stats["diffusemix_generated_quality_reject_num"] += 1
+                continue
+            cand_pil, mix_meta = self._compose_diffusemix(pil, gen_pil, seed)
             cand_x = self.basic(cand_pil).unsqueeze(0).to(all_x.device)
             meta = self._filter(algorithm, all_x[i:i+1], cand_x, y)
             meta.update({"dataset": self.dataset_name, "source_env": se, "class_name": cn, "class_label": y,
                          "original_path": p, "original_relpath": p, "prompt": selected_prompt, "seed": seed, "anchor_batch_index": int(i),
-                         "generator_name": "instruct-pix2pix", "created_at": datetime.utcnow().isoformat() + "Z", **mix_meta})
+                         "generator_name": "instruct-pix2pix", "generated_quality_pass": True,
+                         "generated_candidate_conf": gen_meta.get("candidate_conf"),
+                         "generated_foreground_similarity": gen_meta.get("foreground_similarity"),
+                         "created_at": datetime.utcnow().isoformat() + "Z", **mix_meta})
             if meta["filter_pass"]:
                 kept += 1; strong_n += int(meta["strong_positive"]); weak += int(not meta["strong_positive"])
                 self.env_kept[se] += 1; self.class_kept[cn] += 1
@@ -389,6 +418,7 @@ class DiffuseMixPositiveManager:
         stats["diffusemix_strong_rate"] = float(stats.get("diffusemix_strong_num", 0) / max(1, kept))
         stats["diffusemix_invalid_label_num"] = int(self.stats.get("diffusemix_invalid_label_num", 0))
         stats["diffusemix_cache_label_mismatch_num"] = int(self.stats.get("diffusemix_cache_label_mismatch_num", 0))
+        stats["diffusemix_generated_quality_reject_num"] = int(self.stats.get("diffusemix_generated_quality_reject_num", 0))
         stats["diffusemix_valid_num"] = int(stats.get("diffusemix_kept_num", 0))
         anchor_vals = [m.get("anchor_batch_index") for m in metas if m.get("anchor_batch_index") is not None]
         stats["diffusemix_anchor_min"] = int(min(anchor_vals)) if anchor_vals else -1

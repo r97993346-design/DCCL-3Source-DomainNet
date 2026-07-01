@@ -116,7 +116,7 @@ def main():
     parser.add_argument("--diffusemix_fractal_dir", type=str, default="", help="Directory of fractal images used by the official DiffuseMix blending step")
     parser.add_argument("--diffusemix_use_real_fractal", action=argparse.BooleanOptionalAction, default=True, help="Use real fractal images from --diffusemix_fractal_dir for source-style DiffuseMix")
     parser.add_argument("--diffusemix_augmentation_mode", type=str, default="diffusemix", choices=["diffusemix", "direct"], help="Use source-style DiffuseMix composition or raw generated images")
-    parser.add_argument("--diffusemix_fractal_lambda", type=float, default=0.2, help="Blend ratio for source-style DiffuseMix fractal images")
+    parser.add_argument("--diffusemix_fractal_lambda", type=float, default=0.08, help="Blend ratio for source-style DiffuseMix fractal images; internally capped at 0.15 to avoid overpowering the generated content")
     parser.add_argument("--diffusemix_lambda_fg", type=float, default=0.03)
     parser.add_argument("--diffusemix_lambda_pair", type=float, default=0.0)
     parser.add_argument("--diffusemix_warmup_steps", type=int, default=3000)
