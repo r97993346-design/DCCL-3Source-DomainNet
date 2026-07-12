@@ -2,7 +2,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from domainbed.algorithms.piccl import CausalMediatorProjection, PICCL, ResidualGateFusion
+from domainbed.algorithms.piccl import CausalMediatorProjection, PICCL, ResidualGateFusion, parse_bool
 
 
 def test_residual_gate_zero_scale_restores_original_feature():
@@ -48,3 +48,9 @@ def test_piccl_diagnostics_do_not_return_string_lr_list():
     source = __import__("inspect").getsource(PICCL.update)
     assert "param_group_lrs" not in source
     assert "param_group_lr_" in source
+
+
+def test_parse_bool_alias_handles_false_string():
+    assert parse_bool("false") is False
+    assert parse_bool("0") is False
+    assert parse_bool("true") is True

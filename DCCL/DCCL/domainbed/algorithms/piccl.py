@@ -21,6 +21,11 @@ def _as_bool(value):
     return bool(value)
 
 
+def parse_bool(value):
+    """Backward-compatible alias for PICCL boolean hparams."""
+    return _as_bool(value)
+
+
 class PairedInterventionResponseEstimator(nn.Module):
     def forward(self, z, z_int, z_ref, z_int_ref):
         tensors = {"z": z, "z_int": z_int, "z_ref": z_ref, "z_int_ref": z_int_ref}
