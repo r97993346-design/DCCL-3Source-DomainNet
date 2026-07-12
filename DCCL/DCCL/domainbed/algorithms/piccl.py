@@ -9,6 +9,23 @@ from domainbed.algorithms.algorithms import DCCL, ForwardModel
 from domainbed.optimizers import get_optimizer
 
 
+def parse_bool(value):
+    """Parse booleans from CLI/config values without treating 'false' as truthy."""
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "t", "yes", "y", "on"}:
+            return True
+        if normalized in {"0", "false", "f", "no", "n", "off", "none", "null", ""}:
+            return False
+    raise ValueError(f"Cannot parse boolean value: {value!r}")
+
+
 class PairedInterventionResponseEstimator(nn.Module):
     def forward(self, z, z_int, z_ref, z_int_ref):
         tensors = {"z": z, "z_int": z_int, "z_ref": z_ref, "z_int_ref": z_int_ref}
@@ -168,6 +185,10 @@ class PICCLForwardModel(nn.Module):
 class PICCL(DCCL):
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super().__init__(input_shape, num_classes, num_domains, hparams)
+        self.use_piccl = parse_bool(hparams.get("use_piccl", True))
+        if not self.use_piccl:
+            return
+
         feature_dim = self.featurizer.n_outputs
         for p in self.pre_featurizer.parameters():
             p.requires_grad = False
@@ -272,7 +293,7 @@ class PICCL(DCCL):
         return reg_loss
 
     def update(self, x, y, **kwargs):
-        if not bool(self.hparams.get("use_piccl", True)):
+        if not self.use_piccl:
             return super().update(x, y, **kwargs)
         all_x, all_y = torch.cat(x), torch.cat(y)
         all_x_2 = torch.cat(kwargs["x_2"])
@@ -386,7 +407,7 @@ class PICCL(DCCL):
         }
 
     def predict_embed(self, x):
-        if not bool(self.hparams.get("use_piccl", True)):
+        if not self.use_piccl:
             return self.featurizer(x)
         z = self.featurizer(x)
         piccl_m = self.causal_mediator(z, self.sensitive_subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)
@@ -399,12 +420,17 @@ class PICCL(DCCL):
         return self.classifier(self.predict_embed(x))
 
     def get_forward_model(self):
+        if not self.use_piccl:
+            return ForwardModel(self.network)
         model = PICCLForwardModel(self.featurizer, self.sensitive_subspace, self.causal_mediator, self.classifier)
         model.piccl_alpha.copy_(self.piccl_alpha.detach().cpu())
         return model
 
     def clone(self):
         clone = copy.deepcopy(self)
-        clone.optimizer = get_optimizer(self.hparams["optimizer"], clone._optimizer_groups())
+        if not self.use_piccl:
+            clone.optimizer = get_optimizer(self.hparams["optimizer"], clone.optimizer.param_groups)
+        else:
+            clone.optimizer = get_optimizer(self.hparams["optimizer"], clone._optimizer_groups())
         clone.optimizer.load_state_dict(self.optimizer.state_dict())
         return clone
