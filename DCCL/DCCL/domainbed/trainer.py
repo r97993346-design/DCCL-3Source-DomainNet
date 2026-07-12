@@ -136,6 +136,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # setup algorithm (model)
     #######################################################
     hparams["total_num_domains"] = len(dataset)
+    if args.algorithm == "PICCL":
+        hparams["piccl_total_steps"] = n_steps
     algorithm = algorithm_class(
         dataset.input_shape,
         dataset.num_classes,
