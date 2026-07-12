@@ -24,6 +24,38 @@ else:
     device = "cpu"
 
 
+def _mean_numeric_metric(key, values):
+    numeric_values = []
+    for index, value in enumerate(values):
+        if isinstance(value, torch.Tensor):
+            if value.numel() != 1:
+                raise TypeError(
+                    f"Metric {key!r} at index {index} must be scalar, "
+                    f"got tensor shape {tuple(value.shape)}"
+                )
+            value = value.detach().item()
+
+        if isinstance(value, np.generic):
+            value = value.item()
+
+        if isinstance(value, bool):
+            value = float(value)
+
+        if not isinstance(value, (int, float)):
+            raise TypeError(
+                f"Metric {key!r} at index {index} must be numeric, "
+                f"got {type(value).__name__}: {value!r}"
+            )
+
+        if not np.isfinite(value):
+            raise FloatingPointError(
+                f"Metric {key!r} contains non-finite value at index {index}: {value}"
+            )
+
+        numeric_values.append(float(value))
+
+    return float(np.mean(numeric_values))
+
 def json_handler(v):
     if isinstance(v, (Path, range)):
         return str(v)
@@ -369,7 +401,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             }
 
             for key, val in checkpoint_vals.items():
-                results[key] = np.mean(val)
+                results[key] = _mean_numeric_metric(key, val)
 
             eval_start_time = time.time()
             accuracies, summaries = evaluator.evaluate(algorithm)

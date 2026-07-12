@@ -9,6 +9,18 @@ from domainbed.algorithms.algorithms import DCCL, ForwardModel
 from domainbed.optimizers import get_optimizer
 
 
+def _as_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "1", "yes", "y", "on"}:
+            return True
+        if lowered in {"false", "0", "no", "n", "off"}:
+            return False
+    return bool(value)
+
+
 class PairedInterventionResponseEstimator(nn.Module):
     def forward(self, z, z_int, z_ref, z_int_ref):
         tensors = {"z": z, "z_int": z_int, "z_ref": z_ref, "z_int_ref": z_int_ref}
@@ -272,14 +284,14 @@ class PICCL(DCCL):
         return reg_loss
 
     def update(self, x, y, **kwargs):
-        if not bool(self.hparams.get("use_piccl", True)):
+        if not _as_bool(self.hparams.get("use_piccl", True)):
             return super().update(x, y, **kwargs)
         all_x, all_y = torch.cat(x), torch.cat(y)
         all_x_2 = torch.cat(kwargs["x_2"])
         domains = self._domain_ids(x)
         step = kwargs.get("step", 0)
         alpha = self._alpha(step).to(all_x.device)
-        detach_basis = not bool(self.hparams.get("piccl_basis_receive_task_grad", False))
+        detach_basis = not _as_bool(self.hparams.get("piccl_basis_receive_task_grad", False))
 
         z, inter_feats = self.featurizer(all_x, ret_feats=True)
         z_int, _ = self.featurizer(all_x_2, ret_feats=True)
@@ -388,7 +400,7 @@ class PICCL(DCCL):
         }
 
     def predict_embed(self, x):
-        if not bool(self.hparams.get("use_piccl", True)):
+        if not _as_bool(self.hparams.get("use_piccl", True)):
             return self.featurizer(x)
         z = self.featurizer(x)
         piccl_m = self.causal_mediator(z, self.sensitive_subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)

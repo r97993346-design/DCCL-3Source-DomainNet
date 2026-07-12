@@ -23,6 +23,25 @@ from domainbed.trainer import train
 from domainbed.lib.cl_hparams import setup_alg_hparams
 
 
+def str2bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "1", "yes", "y", "on"}:
+            return True
+        if lowered in {"false", "0", "no", "n", "off"}:
+            return False
+    raise ValueError(f"Cannot parse boolean value from {value!r}")
+
+
+def normalize_hparam_types(hparams):
+    for key in ("use_piccl", "piccl_basis_receive_task_grad"):
+        if key in hparams:
+            hparams[key] = str2bool(hparams[key])
+    return hparams
+
+
 def apply_weak_erm_hparams(hparams):
     """Apply intentionally weak-but-pretrained ERM baseline settings.
 
@@ -107,6 +126,7 @@ def main():
     keys = [open(key, encoding="utf8") for key in keys]
     hparams = Config(*keys, default=hparams)
     hparams.argv_update(left_argv)
+    hparams = normalize_hparam_types(hparams)
     if args.algorithm == "ERM" and args.weak_erm:
         hparams = apply_weak_erm_hparams(hparams)
 

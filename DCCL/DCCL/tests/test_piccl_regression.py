@@ -42,3 +42,9 @@ def test_piccl_parameter_gradients_can_flow_through_residual_gate():
     fused.pow(2).mean().backward()
     assert gate.linear.weight.grad is not None
     assert gate.linear.weight.grad.norm().item() > 0
+
+
+def test_piccl_diagnostics_do_not_return_string_lr_list():
+    source = __import__("inspect").getsource(PICCL.update)
+    assert "param_group_lrs" not in source
+    assert "param_group_lr_" in source
