@@ -91,8 +91,26 @@ def _hparams(algorithm, dataset, random_state):
         hparams["rho"] = (0.05, random_state.choice([0.01, 0.02, 0.05, 0.1]))
     elif algorithm == "CutMix":
         hparams["beta"] = (1.0, 1.0)
-        # cutmix_prob is set to 1.0 for ImageNet and 0.5 for CIFAR100 in the original paper.
         hparams["cutmix_prob"] = (1.0, 1.0)
+
+    if algorithm == "PICCL":
+        hparams["piccl_rank"] = (16, int(random_state.choice([8, 16, 32])))
+        hparams["piccl_alpha_max"] = (0.5, float(random_state.choice([0.25, 0.5, 0.75])))
+        hparams["piccl_warmup_ratio"] = (0.10, 0.10)
+        hparams["piccl_ramp_ratio"] = (0.20, 0.20)
+        hparams["piccl_proto_momentum"] = (0.99, float(random_state.choice([0.95, 0.99])))
+        hparams["piccl_num_interventions"] = (1, 1)
+        hparams["piccl_ccc_weight"] = (1.0, 1.0)
+        hparams["piccl_int_weight"] = (0.1, float(random_state.choice([0.05, 0.1, 0.2])))
+        hparams["piccl_ref_weight"] = (1.0, 1.0)
+        hparams["piccl_isr_weight"] = (0.1, float(random_state.choice([0.05, 0.1, 0.2])))
+        hparams["piccl_orth_weight"] = (1e-3, 1e-3)
+        hparams["piccl_inv_weight"] = (0.05, float(random_state.choice([0.01, 0.05, 0.1])))
+        hparams["piccl_eps"] = (1e-8, 1e-8)
+        hparams["piccl_gt_mode"] = ("replace", "replace")
+        hparams["piccl_basis_receive_task_grad"] = (False, False)
+        hparams["piccl_min_valid_domains"] = (2, 2)
+        hparams["piccl_total_steps"] = (15001, 15001)
 
     return hparams
 
