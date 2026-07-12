@@ -1,4 +1,5 @@
 from .algorithms import *
+from .piccl import PICCL
 
 
 def get_algorithm_class(algorithm_name):
