@@ -57,6 +57,16 @@ def _hparams(algorithm, dataset, random_state):
         hparams["piccl_basis_receive_task_grad"] = (False, False)
         hparams["piccl_min_valid_domains"] = (2, 2)
         hparams["piccl_total_steps"] = (1, 1)
+        hparams["use_piccl"] = (True, True)
+        hparams["piccl_fusion_mode"] = ("legacy", "legacy")
+        hparams["piccl_lr_multiplier"] = (1.0, 1.0)
+        hparams["piccl_loss_warmup_ratio"] = (0.0, 0.0)
+        hparams["piccl_feature_warmup_ratio"] = (0.0, 0.0)
+        hparams["piccl_delayed_start_ratio"] = (0.0, 0.0)
+        hparams["piccl_residual_scale"] = (0.1, 0.1)
+        hparams["piccl_gate_bias"] = (-4.0, -4.0)
+        hparams["piccl_connectivity_weight"] = (1.0, 1.0)
+        hparams["piccl_diagnostic_interval"] = (0, 0)
 
     if algorithm in ["DANN", "CDANN"]:
         if dataset not in SMALL_IMAGES:
