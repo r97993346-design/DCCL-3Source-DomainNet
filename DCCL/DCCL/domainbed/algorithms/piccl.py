@@ -344,7 +344,7 @@ class PICCL(DCCL):
             fused_cos = F.cosine_similarity(z, m, dim=1).mean()
             orth_err = self.sensitive_subspace.orthogonality_loss()
             cap = self.sensitive_subspace.capture_ratio(responses)
-        return {
+        metrics = {
             "loss": float(loss.item()), "loss_cls": float(loss_cls.item()), "loss_ccc": float(loss_ccc.item()),
             "loss_cross": float(loss_cross.item()), "loss_int": float(loss_int.item()), "loss_ref": float(loss_ref.item()),
             "loss_isr": float(loss_isr.item()), "loss_orth": float(loss_orth.item()), "loss_inv": float(loss_inv.item()),
@@ -368,9 +368,11 @@ class PICCL(DCCL):
             "gate_max": float(gate.max().item()) if gate is not None else 0.0,
             "backbone_grad_norm": grad_stats["backbone_grad_norm"], "piccl_grad_norm": grad_stats["piccl_grad_norm"],
             "classifier_grad_norm": grad_stats["classifier_grad_norm"],
-            "param_group_lrs": ",".join(str(g["lr"]) for g in self.optimizer.param_groups),
             "has_nan_or_inf": float(any(not torch.isfinite(t).all().item() for t in [loss, z, m, logits])),
         }
+        for i, group in enumerate(self.optimizer.param_groups):
+            metrics[f"param_group_lr_{i}"] = float(group["lr"])
+        return metrics
 
     def _diagnostic_grad_norms(self):
         def norm(parameters):
