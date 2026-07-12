@@ -1,0 +1,164 @@
+[37m[36mINFO[0m[0m 07/12 17:51:30 | Command :: train_all.py stage0_dccl_seed0 --dataset PACS --algorithm DCCL --model resnet50 --deterministic --trial_seed 0 --checkpoint_freq 100 --steps 500 --data_dir /home/hooasia/lgg/data/repro_dccl_data
+Environment:
+	Python: 3.10.20
+	PyTorch: 2.5.1+cu121
+	Torchvision: 0.20.1+cu121
+	CUDA: 12.1
+	CUDNN: 90100
+	NumPy: 2.2.6
+	PIL: 12.0.0
+Args:
+	TN: False
+	algorithm: DCCL
+	aug: 0
+	checkpoint_freq: 100
+	configs: []
+	data_dir: /home/hooasia/lgg/data/repro_dccl_data
+	dataset: PACS
+	debug: False
+	deterministic: True
+	domainnet_auto_source_count: 3
+	erm_baseline: weak
+	evalmode: fast
+	holdout_fraction: 0.2
+	l: 1
+	l_d: 0.05
+	l_layer: 1
+	label_ratio: 1.0
+	lamda: 5
+	log: False
+	mix: 0
+	model: resnet50
+	model_save: None
+	n_layer: 1
+	name: stage0_dccl_seed0
+	out_dir: train_output/PACS/260712_17-51-30_stage0_dccl_seed0
+	out_root: train_output/PACS
+	pos_mask: False
+	prebuild_loader: False
+	re_w: False
+	sample_d: False
+	seed: 0
+	show: False
+	source_envs: None
+	start_epoch: 1000
+	steps: 500
+	sup: True
+	t: 0.1
+	t_pre: 0.2
+	target_env: None
+	tb_freq: 10
+	test_envs: None
+	trial_seed: 0
+	two_ce: False
+	unique_name: 260712_17-51-30_stage0_dccl_seed0
+	weak_erm: False
+	work_dir: .
+HParams:
+	data_augmentation: True
+	val_augment: False
+	resnet18: False
+	resnet_dropout: 0.0
+	class_balanced: False
+	optimizer: adam
+	freeze_bn: True
+	pretrained: True
+	lr: 5e-05
+	batch_size: 32
+	weight_decay: 0.0
+	t: 0.1
+	t_pre: 0.2
+	l: 1
+	l_d: 0.01
+	l_layer: 1
+	n_layer: 1
+	sup: True
+	two_ce: False
+	sample_d: False
+	re_w: False
+	pos_mask: False
+	mix: 0
+	aug: 0
+	model: resnet50
+	label_ratio: 1.0
+	TN: False
+	lamda: 5
+	start_epoch: 1000
+	log: False
+	swad: LossValley
+	swad_kwargs: 
+	  n_converge: 3
+	  n_tolerance: 6
+	  tolerance_ratio: 0.3
+	test_batchsize: 128
+	indomain_test: False
+Dataset:
+	[PACS] #envs=4, #classes=7
+	env0: art_painting (#2048)
+	env1: cartoon (#2344)
+	env2: photo (#1670)
+	env3: sketch (#3929)
+
+[37m[36mINFO[0m[0m 07/12 17:51:35 | n_steps = 500
+[37m[36mINFO[0m[0m 07/12 17:51:35 | checkpoint_freq = 100
+[37m[36mINFO[0m[0m 07/12 17:51:35 | n_steps is updated to 500 => 501 for checkpointing
+[37m[36mINFO[0m[0m 07/12 17:51:35 | Target test envs = [[0], [1], [2], [3]]
+[37m[36mINFO[0m[0m 07/12 17:51:35 | 
+[37m[36mINFO[0m[0m 07/12 17:51:39 | Testenv name escaping te_art_painting -> te_art_painting
+[37m[36mINFO[0m[0m 07/12 17:51:39 | Test envs = [0], name = te_art_painting
+[37m[36mINFO[0m[0m 07/12 17:51:39 | Batch sizes for each domain: [0, 32, 32, 32] (total=96)
+[37m[36mINFO[0m[0m 07/12 17:51:39 | steps-per-epoch for each domain: 58.62, 41.75, 98.25 -> min = 41.75
+[37m[36mINFO[0m[0m 07/12 17:51:40 | # of params = 49132487
+[37m[36mINFO[0m[0m 07/12 17:51:51 | test_in     test_out    train_in    train_out   tr_outloss  env0_in     env0_out    env1_out    env2_out    env3_out    step        epoch       loss        ce_loss     sup_cl_los  pre_cl_los  step_time   eval_time  
+[37m[36mINFO[0m[0m 07/12 17:51:51 | 0.131178    0.178484    0.000000    0.237347    1.886318    0.131178    0.178484    0.228632    0.260479    0.222930    0           0.000000    12.331758   1.940914    5.304292    5.112845    0.922278    10.037622  
+[37m[36mINFO[0m[0m 07/12 17:52:42 | 0.840757    0.858191    0.000000    0.958663    0.129799    0.840757    0.858191    0.957265    0.976048    0.942675    100         2.395210    8.762183    0.314906    3.828304    4.597653    0.388989    10.409818  
+[37m[36mINFO[0m[0m 07/12 17:54:05 | 0.815131    0.821516    0.000000    0.947162    0.161543    0.815131    0.821516    0.950855    0.967066    0.923567    200         4.790419    7.982994    0.098144    3.534133    4.349766    0.656941    11.822217  
+[37m[36mINFO[0m[0m 07/12 17:55:29 | 0.828554    0.809291    0.000000    0.963647    0.117586    0.828554    0.809291    0.967949    0.979042    0.943949    300         7.185629    7.736242    0.063011    3.457533    4.222318    0.655536    12.232814  
+[37m[36mINFO[0m[0m 07/12 17:56:53 | 0.832215    0.836186    0.000000    0.967617    0.111989    0.832215    0.836186    0.967949    0.982036    0.952866    400         9.580838    7.600904    0.043525    3.417919    4.150560    0.661644    12.120552  
+[37m[36mINFO[0m[0m 07/12 17:58:21 | 0.854179    0.870416    0.000000    0.971474    0.100705    0.854179    0.870416    0.974359    0.991018    0.949045    500         11.976048   7.540774    0.033698    3.410591    4.110783    0.728841    12.474919  
+[37m[36mINFO[0m[0m 07/12 17:58:22 | ---
+[37m[31mERROR[0m[0m 07/12 17:58:22 | Requested final model, but model is not yet converged; return last model instead
+[37m[33mWARNING[0m[0m 07/12 17:58:22 | Evaluate SWAD ...
+[37m[36mINFO[0m[0m 07/12 17:58:33 | 0.884686    0.885086    0.000000    0.974012    0.082316    0.884686    0.885086    0.976496    0.985030    0.960510    [401-500]  (N=100)
+[37m[36mINFO[0m[0m 07/12 17:58:33 | oracle = 85.418%
+[37m[36mINFO[0m[0m 07/12 17:58:33 | iid = 85.418%
+[37m[36mINFO[0m[0m 07/12 17:58:33 | last = 85.418%
+[37m[36mINFO[0m[0m 07/12 17:58:33 | last (inD) = 97.147%
+[37m[36mINFO[0m[0m 07/12 17:58:33 | iid (inD) = 97.147%
+[37m[36mINFO[0m[0m 07/12 17:58:33 | SWAD = 88.469%
+[37m[36mINFO[0m[0m 07/12 17:58:33 | SWAD (inD) = 97.401%
+[37m[36mINFO[0m[0m 07/12 17:58:34 | 
+[37m[36mINFO[0m[0m 07/12 17:58:38 | Testenv name escaping te_cartoon -> te_cartoon
+[37m[36mINFO[0m[0m 07/12 17:58:38 | Test envs = [1], name = te_cartoon
+[37m[36mINFO[0m[0m 07/12 17:58:38 | Batch sizes for each domain: [32, 0, 32, 32] (total=96)
+[37m[36mINFO[0m[0m 07/12 17:58:38 | steps-per-epoch for each domain: 51.22, 41.75, 98.25 -> min = 41.75
+[37m[36mINFO[0m[0m 07/12 17:58:40 | # of params = 49132487
+[37m[36mINFO[0m[0m 07/12 17:58:54 | test_in     test_out    train_in    train_out   tr_outloss  env0_out    env1_in     env1_out    env2_out    env3_out    step        epoch       loss        ce_loss     sup_cl_los  pre_cl_los  step_time   eval_time  
+[37m[36mINFO[0m[0m 07/12 17:58:54 | 0.190299    0.175214    0.000000    0.188913    1.935005    0.161369    0.190299    0.175214    0.155689    0.249682    0           0.000000    12.286621   2.019510    5.238059    5.054751    0.456394    12.950973  
+[37m[36mINFO[0m[0m 07/12 18:00:05 | 0.786247    0.826923    0.000000    0.954907    0.139629    0.943765    0.786247    0.826923    0.991018    0.929936    100         2.395210    8.666501    0.274986    3.798093    4.569297    0.557516    11.579827  
+[37m[36mINFO[0m[0m 07/12 18:01:36 | 0.751599    0.779915    0.000000    0.949156    0.156127    0.919315    0.751599    0.779915    0.988024    0.940127    200         4.790419    7.920769    0.096085    3.526608    4.299244    0.740895    12.727110  
+[37m[36mINFO[0m[0m 07/12 18:03:02 | 0.707356    0.747863    0.000000    0.948777    0.152992    0.926650    0.707356    0.747863    0.991018    0.928662    300         7.185629    7.732311    0.067768    3.472879    4.198680    0.677846    12.200222  
+[37m[36mINFO[0m[0m 07/12 18:04:33 | 0.800640    0.818376    0.000000    0.966832    0.104537    0.960880    0.800640    0.818376    0.988024    0.951592    400         9.580838    7.583675    0.042943    3.422004    4.130290    0.751737    12.144475  
+[37m[36mINFO[0m[0m 07/12 18:05:59 | 0.820362    0.831197    0.000000    0.967923    0.104779    0.963325    0.820362    0.831197    0.985030    0.955414    500         11.976048   7.483642    0.028148    3.391206    4.079175    0.675149    12.358335  
+[37m[36mINFO[0m[0m 07/12 18:05:59 | ---
+[37m[33mWARNING[0m[0m 07/12 18:06:00 | Evaluate SWAD ...
+[37m[36mINFO[0m[0m 07/12 18:06:12 | 0.788380    0.835470    0.000000    0.971732    0.080416    0.965770    0.788380    0.835470    0.994012    0.955414    [101-500]  (N=7)
+[37m[36mINFO[0m[0m 07/12 18:06:12 | oracle = 82.036%
+[37m[36mINFO[0m[0m 07/12 18:06:12 | iid = 82.036%
+[37m[36mINFO[0m[0m 07/12 18:06:12 | last = 82.036%
+[37m[36mINFO[0m[0m 07/12 18:06:12 | last (inD) = 96.792%
+[37m[36mINFO[0m[0m 07/12 18:06:12 | iid (inD) = 96.792%
+[37m[36mINFO[0m[0m 07/12 18:06:12 | SWAD = 78.838%
+[37m[36mINFO[0m[0m 07/12 18:06:12 | SWAD (inD) = 97.173%
+[37m[36mINFO[0m[0m 07/12 18:06:12 | 
+[37m[36mINFO[0m[0m 07/12 18:06:17 | Testenv name escaping te_photo -> te_photo
+[37m[36mINFO[0m[0m 07/12 18:06:17 | Test envs = [2], name = te_photo
+[37m[36mINFO[0m[0m 07/12 18:06:17 | Batch sizes for each domain: [32, 32, 0, 32] (total=96)
+[37m[36mINFO[0m[0m 07/12 18:06:17 | steps-per-epoch for each domain: 51.22, 58.62, 98.25 -> min = 51.22
+[37m[36mINFO[0m[0m 07/12 18:06:19 | # of params = 49132487
+[37m[36mINFO[0m[0m 07/12 18:06:32 | test_in     test_out    train_in    train_out   tr_outloss  env0_out    env1_out    env2_in     env2_out    env3_out    step        epoch       loss        ce_loss     sup_cl_los  pre_cl_los  step_time   eval_time  
+[37m[36mINFO[0m[0m 07/12 18:06:32 | 0.269461    0.236527    0.000000    0.169532    1.889805    0.195599    0.207265    0.269461    0.236527    0.105732    0           0.000000    12.213739   2.026850    5.132355    5.079951    0.717852    12.369403  
+[37m[36mINFO[0m[0m 07/12 18:07:44 | 0.974551    0.964072    0.000000    0.946779    0.161933    0.943765    0.961538    0.974551    0.964072    0.935032    100         1.952410    9.120404    0.377250    3.955768    4.762760    0.574844    11.985689  
+[37m[36mINFO[0m[0m 07/12 18:09:14 | 0.970060    0.964072    0.000000    0.949833    0.145472    0.948655    0.965812    0.970060    0.964072    0.935032    200         3.904820    8.222579    0.121833    3.600639    4.494925    0.750167    11.618607  
+[37m[36mINFO[0m[0m 07/12 18:10:40 | 0.976048    0.961078    0.000000    0.946676    0.155332    0.960880    0.959402    0.976048    0.961078    0.919745    300         5.857230    7.993214    0.078484    3.517011    4.400066    0.681022    11.395030  
+[37m[36mINFO[0m[0m 07/12 18:12:06 | 0.979790    0.964072    0.000000    0.947080    0.156409    0.943765    0.970085    0.979790    0.964072    0.927389    400         7.809640    7.838818    0.052180    3.462641    4.331589    0.682144    11.258449  
