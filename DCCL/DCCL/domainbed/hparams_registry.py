@@ -67,6 +67,7 @@ def _hparams(algorithm, dataset, random_state):
         hparams["piccl_gate_bias"] = (-4.0, -4.0)
         hparams["piccl_connectivity_weight"] = (1.0, 1.0)
         hparams["piccl_diagnostic_interval"] = (0, 0)
+        hparams["piccl_strict_bypass"] = (False, False)
 
     if algorithm in ["DANN", "CDANN"]:
         if dataset not in SMALL_IMAGES:

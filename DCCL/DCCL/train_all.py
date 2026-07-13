@@ -36,7 +36,7 @@ def str2bool(value):
 
 
 def normalize_hparam_types(hparams):
-    for key in ("use_piccl", "piccl_basis_receive_task_grad"):
+    for key in ("use_piccl", "piccl_basis_receive_task_grad", "piccl_strict_bypass"):
         if key in hparams:
             hparams[key] = str2bool(hparams[key])
     return hparams

@@ -185,6 +185,10 @@ class PICCLForwardModel(nn.Module):
 class PICCL(DCCL):
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super().__init__(input_shape, num_classes, num_domains, hparams)
+        self.piccl_strict_bypass = _as_bool(hparams.get("piccl_strict_bypass", False))
+        if self.piccl_strict_bypass:
+            self.optimizer = get_optimizer(hparams["optimizer"], self._dccl_optimizer_groups())
+            return
         feature_dim = self.featurizer.n_outputs
         for p in self.pre_featurizer.parameters():
             p.requires_grad = False
@@ -203,7 +207,7 @@ class PICCL(DCCL):
         self.register_buffer("piccl_alpha", torch.tensor(0.0))
         self.optimizer = get_optimizer(hparams["optimizer"], self._optimizer_groups())
 
-    def _optimizer_groups(self):
+    def _dccl_optimizer_groups(self):
         return [
             {"params": self.featurizer.parameters(), "lr": self.hparams["lr"], "weight_decay": self.hparams["weight_decay"]},
             {"params": self.classifier.parameters(), "lr": self.hparams["lr"] / 0.1, "weight_decay": self.hparams["weight_decay"]},
@@ -211,6 +215,12 @@ class PICCL(DCCL):
             {"params": self.mean_encoders.parameters(), "lr": self.hparams["lr"] * 10},
             {"params": self.var_encoders.parameters(), "lr": self.hparams["lr"] * 10},
             {"params": self.pre_proj_head.parameters(), "lr": self.hparams["lr"] / 10},
+        ]
+
+    def _optimizer_groups(self):
+        if _as_bool(self.hparams.get("piccl_strict_bypass", False)):
+            return self._dccl_optimizer_groups()
+        return self._dccl_optimizer_groups() + [
             {"params": self.sensitive_subspace.parameters(), "lr": self.hparams["lr"] * float(self.hparams.get("piccl_lr_multiplier", 1.0)), "weight_decay": self.hparams["weight_decay"]},
             {"params": self.causal_mediator.parameters(), "lr": self.hparams["lr"] * float(self.hparams.get("piccl_lr_multiplier", 1.0)), "weight_decay": self.hparams["weight_decay"]},
             {"params": self.residual_gate.parameters(), "lr": self.hparams["lr"] * float(self.hparams.get("piccl_lr_multiplier", 1.0)), "weight_decay": self.hparams["weight_decay"]},
@@ -289,7 +299,7 @@ class PICCL(DCCL):
         return reg_loss
 
     def update(self, x, y, **kwargs):
-        if not _as_bool(self.hparams.get("use_piccl", True)):
+        if self.piccl_strict_bypass or not _as_bool(self.hparams.get("use_piccl", True)):
             return super().update(x, y, **kwargs)
         all_x, all_y = torch.cat(x), torch.cat(y)
         all_x_2 = torch.cat(kwargs["x_2"])
@@ -376,6 +386,12 @@ class PICCL(DCCL):
             "weighted_loss_ccc": float(weighted_ccc.item()), "weighted_loss_isr": float(weighted_isr.item()),
             "weighted_loss_orth": float(weighted_orth.item()), "weighted_loss_inv": float(weighted_inv.item()),
             "piccl_loss_scale": float(loss_scale), "piccl_feature_scale": float(self._feature_scale(step)),
+            "residual_scale_effective": float(self.hparams.get("piccl_residual_scale", 0.1)),
+            "piccl_loss_weight_effective": float(self.hparams.get("piccl_ccc_weight", 1.0)) * float(loss_scale),
+            "connectivity_weight_effective": float(self.hparams.get("piccl_connectivity_weight", 1.0)) * float(loss_scale),
+            "residual_delta_norm": float(delta_norm.item()),
+            "fused_original_cosine": float(fused_cos.item()),
+            "piccl_executed": 1.0,
             "original_feature_norm": float(original_norm.item()), "piccl_feature_norm": float(piccl_m.norm(dim=1).mean().item()),
             "feature_delta_norm": float(delta_norm.item()), "feature_delta_ratio": float((delta_norm / original_norm).item()),
             "original_fused_cosine": float(fused_cos.item()),
@@ -405,7 +421,7 @@ class PICCL(DCCL):
         }
 
     def predict_embed(self, x):
-        if not _as_bool(self.hparams.get("use_piccl", True)):
+        if self.piccl_strict_bypass or not _as_bool(self.hparams.get("use_piccl", True)):
             return self.featurizer(x)
         z = self.featurizer(x)
         piccl_m = self.causal_mediator(z, self.sensitive_subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)
@@ -418,6 +434,8 @@ class PICCL(DCCL):
         return self.classifier(self.predict_embed(x))
 
     def get_forward_model(self):
+        if self.piccl_strict_bypass or not _as_bool(self.hparams.get("use_piccl", True)):
+            return super().get_forward_model()
         model = PICCLForwardModel(self.featurizer, self.sensitive_subspace, self.causal_mediator, self.classifier)
         model.piccl_alpha.copy_(self.piccl_alpha.detach().cpu())
         return model
