@@ -6,7 +6,7 @@
   "trials": 24,
   "budgets": [500, 1500],
   "full_steps": 5001,
-  "base_args": ["--dataset", "PACS", "--algorithm", "PICCL", "--deterministic", "--trial_seed", "0", "--checkpoint_freq", "100", "--data_dir", "/home/hooasia/lgg/data/repro_dccl_data", "--piccl_fusion_mode", "residual_gate"],
+  "base_args": ["--dataset", "PACS", "--algorithm", "PICCL", "--deterministic", "--trial_seed", "0", "--checkpoint_freq", "100", "--data_dir", "../data", "--piccl_fusion_mode", "residual_gate"],
   "search_space": {
     "piccl_ccc_weight": [0, 0.0001, 0.0003, 0.001, 0.003, 0.01, 0.03, 0.1],
     "piccl_connectivity_weight": [0, 0.00001, 0.0001, 0.001, 0.01],

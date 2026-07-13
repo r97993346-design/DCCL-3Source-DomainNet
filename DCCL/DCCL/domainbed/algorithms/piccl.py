@@ -9,6 +9,23 @@ from domainbed.algorithms.algorithms import DCCL, ForwardModel
 from domainbed.optimizers import get_optimizer
 
 
+def _as_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "1", "yes", "y", "on"}:
+            return True
+        if lowered in {"false", "0", "no", "n", "off"}:
+            return False
+    return bool(value)
+
+
+def parse_bool(value):
+    """Backward-compatible alias for PICCL boolean hparams."""
+    return _as_bool(value)
+
+
 class PairedInterventionResponseEstimator(nn.Module):
     def forward(self, z, z_int, z_ref, z_int_ref):
         tensors = {"z": z, "z_int": z_int, "z_ref": z_ref, "z_int_ref": z_int_ref}
@@ -272,14 +289,14 @@ class PICCL(DCCL):
         return reg_loss
 
     def update(self, x, y, **kwargs):
-        if not bool(self.hparams.get("use_piccl", True)):
+        if not _as_bool(self.hparams.get("use_piccl", True)):
             return super().update(x, y, **kwargs)
         all_x, all_y = torch.cat(x), torch.cat(y)
         all_x_2 = torch.cat(kwargs["x_2"])
         domains = self._domain_ids(x)
         step = kwargs.get("step", 0)
         alpha = self._alpha(step).to(all_x.device)
-        detach_basis = not bool(self.hparams.get("piccl_basis_receive_task_grad", False))
+        detach_basis = not _as_bool(self.hparams.get("piccl_basis_receive_task_grad", False))
 
         z, inter_feats = self.featurizer(all_x, ret_feats=True)
         z_int, _ = self.featurizer(all_x_2, ret_feats=True)
@@ -344,7 +361,7 @@ class PICCL(DCCL):
             fused_cos = F.cosine_similarity(z, m, dim=1).mean()
             orth_err = self.sensitive_subspace.orthogonality_loss()
             cap = self.sensitive_subspace.capture_ratio(responses)
-        return {
+        metrics = {
             "loss": float(loss.item()), "loss_cls": float(loss_cls.item()), "loss_ccc": float(loss_ccc.item()),
             "loss_cross": float(loss_cross.item()), "loss_int": float(loss_int.item()), "loss_ref": float(loss_ref.item()),
             "loss_isr": float(loss_isr.item()), "loss_orth": float(loss_orth.item()), "loss_inv": float(loss_inv.item()),
@@ -368,9 +385,11 @@ class PICCL(DCCL):
             "gate_max": float(gate.max().item()) if gate is not None else 0.0,
             "backbone_grad_norm": grad_stats["backbone_grad_norm"], "piccl_grad_norm": grad_stats["piccl_grad_norm"],
             "classifier_grad_norm": grad_stats["classifier_grad_norm"],
-            "param_group_lrs": ",".join(str(g["lr"]) for g in self.optimizer.param_groups),
             "has_nan_or_inf": float(any(not torch.isfinite(t).all().item() for t in [loss, z, m, logits])),
         }
+        for i, group in enumerate(self.optimizer.param_groups):
+            metrics[f"param_group_lr_{i}"] = float(group["lr"])
+        return metrics
 
     def _diagnostic_grad_norms(self):
         def norm(parameters):
@@ -386,7 +405,7 @@ class PICCL(DCCL):
         }
 
     def predict_embed(self, x):
-        if not bool(self.hparams.get("use_piccl", True)):
+        if not _as_bool(self.hparams.get("use_piccl", True)):
             return self.featurizer(x)
         z = self.featurizer(x)
         piccl_m = self.causal_mediator(z, self.sensitive_subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)
