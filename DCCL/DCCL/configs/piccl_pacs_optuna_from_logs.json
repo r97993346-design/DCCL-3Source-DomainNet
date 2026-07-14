@@ -1,0 +1,45 @@
+{
+  "study_name": "piccl_pacs_from_logs",
+  "dataset": "PACS",
+  "algorithm": "PICCL",
+  "model": "resnet50",
+  "seed": 0,
+  "trial_seed": 0,
+  "steps": 5000,
+  "checkpoint_freq": 100,
+  "deterministic": true,
+  "optuna": {"sampler": "TPESampler", "seed": 0, "n_startup_trials": 10, "multivariate": true, "group": true, "direction": "maximize"},
+  "search_space": {
+    "lr": {"type": "float", "low": 3e-5, "high": 8e-5, "log": true},
+    "piccl_lr_multiplier": {"type": "float", "low": 0.25, "high": 0.75, "log": false},
+    "piccl_alpha_max": {"type": "float", "low": 0.15, "high": 0.35, "log": false},
+    "piccl_ccc_weight": {"type": "float", "low": 0.3, "high": 1.2, "log": false},
+    "piccl_connectivity_weight": {"type": "float", "low": 0.1, "high": 0.7, "log": false},
+    "piccl_residual_scale": {"type": "float", "low": 0.08, "high": 0.30, "log": false},
+    "piccl_gate_bias": {"type": "float", "low": -3.5, "high": -2.0, "log": false},
+    "piccl_delayed_start_ratio": {"type": "float", "low": 0.05, "high": 0.20, "log": false},
+    "piccl_feature_warmup_ratio": {"type": "float", "low": 0.20, "high": 0.40, "log": false}
+  },
+  "fixed_params": {
+    "weight_decay": 0.0,
+    "piccl_rank": 16,
+    "piccl_isr_weight": 0.05,
+    "piccl_inv_weight": 0.01,
+    "piccl_orth_weight": 0.0001,
+    "piccl_loss_warmup_ratio": 0.25,
+    "piccl_fusion_mode": "residual_gate",
+    "piccl_gt_mode": "keep",
+    "piccl_basis_receive_task_grad": false,
+    "piccl_int_weight": 0.1,
+    "piccl_ref_weight": 1.0,
+    "piccl_warmup_ratio": 0.05,
+    "piccl_ramp_ratio": 0.25,
+    "t": 0.1,
+    "use_piccl": true
+  },
+  "historical_trial_names": [
+    "260712_13-37-00_pacs_piccl_seed0",
+    "260713_22-39-33_piccl_recommended_from_full_results_seed0_full",
+    "260713_22-47-00_pacs_piccl_candidate_preserve_dccl_seed0"
+  ]
+}
