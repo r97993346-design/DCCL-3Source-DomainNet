@@ -1,0 +1,4 @@
+run_name=260713_22-39-33_piccl_recommended_from_full_results_seed0_full
+source_path=/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/train_output/PACS/260713_22-39-33_piccl_recommended_from_full_results_seed0_full
+copied_at=2026-07-14T11:02:40+08:00
+source_git_commit=b70306ffde6d2a5f066ec297a533c816cc4a2052
