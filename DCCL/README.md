@@ -145,6 +145,20 @@ python train_all.py DCCL_VLCS_0 --dataset VLCS --deterministic --trial_seed 0 --
 python train_all.py DCCL_TI_0 --dataset TerraIncognita --deterministic --trial_seed 0 --checkpoint_freq 100 --data_dir ../data
 ```
 
+**DomainNet source-domain sweeps:**
+```bash
+# Original automatic sweep: all 3-source -> 1-target DomainNet combinations
+python train_all.py DCCL_DN_auto_3src --dataset DomainNet --data_dir ../data --deterministic --trial_seed 0 --checkpoint_freq 1000
+
+# New automatic sweep: all 5-source -> 1-target DomainNet combinations
+python train_all.py DCCL_DN_auto_5src --dataset DomainNet --data_dir ../data --domainnet_auto_source_count 5 --deterministic --trial_seed 0 --checkpoint_freq 1000
+
+# Manual split is still supported for either 3-source or 5-source runs
+python train_all.py DCCL_DN_manual_5src_to_sketch --dataset DomainNet --data_dir ../data --source_envs 0 1 2 3 4 --target_env 5 --deterministic --trial_seed 0 --checkpoint_freq 1000
+```
+
+For fixed-target helper sweeps, `scripts/run_domainnet_target_sweep.py` also keeps 3-source as the default and accepts `--source_count 5` for 5-source runs.
+
 ## 📊 Results
 
 The training outputs will be saved in `DCCL/train_output/[DATASET]/[EXPERIMENT_NAME]/` containing:
