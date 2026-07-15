@@ -25,7 +25,7 @@ def parse_bool(value):
     """Backward-compatible alias for PICCL boolean hparams."""
     return _as_bool(value)
 
-
+# 干预视角的"虚假相关性" — 学生对数据增强的额外敏感度
 class PairedInterventionResponseEstimator(nn.Module):
     def forward(self, z, z_int, z_ref, z_int_ref):
         tensors = {"z": z, "z_int": z_int, "z_ref": z_ref, "z_int_ref": z_int_ref}
@@ -37,7 +37,7 @@ class PairedInterventionResponseEstimator(nn.Module):
             raise ValueError(f"PIRE inputs must have identical shapes, got {shapes}")
         return (z_int - z) - (z_int_ref - z_ref).detach()
 
-
+#  "类-域残差原型库"。它的作用是:持续追踪每个类别在每个域上的残差特征,用于提取跨域的响应模式。
 class ClassDomainResidualBank(nn.Module):
     def __init__(self, num_classes, num_domains, feature_dim, momentum=0.99, min_valid_domains=2):
         super().__init__()
@@ -46,6 +46,8 @@ class ClassDomainResidualBank(nn.Module):
         self.feature_dim = feature_dim
         self.momentum = momentum
         self.min_valid_domains = min_valid_domains
+        # 类-域残差原型矩阵
+        # 每个类别在每个域上的残差特征的均值[num_classes, num_domains, feature_dim]
         self.register_buffer("prototypes", torch.zeros(num_classes, num_domains, feature_dim))
         self.register_buffer("initialized", torch.zeros(num_classes, num_domains, dtype=torch.bool))
         self.register_buffer("counts", torch.zeros(num_classes, num_domains, dtype=torch.long))
@@ -66,14 +68,20 @@ class ClassDomainResidualBank(nn.Module):
                 mask = (labels == c) & (domains == d)
                 if not mask.any():
                     continue
+                #	从 batch 中选出属于当前组的所有样本
                 current = residual[mask].mean(dim=0)
                 if self.initialized[c, d]:
+                    #	动量平均让原型有**"遗忘"能力**,更适应训练过程中的模型演变。
                     self.prototypes[c, d].mul_(self.momentum).add_(current, alpha=1.0 - self.momentum)
                 else:
                     self.prototypes[c, d].copy_(current)
                     self.initialized[c, d] = True
                 self.counts[c, d] += int(mask.sum().item())
-
+    #     # 对于猫类别:
+    #   center = (prototype[猫, 0] + prototype[猫, 1]) / 2
+    #   responses += [prototype[猫, 0] - center, prototype[猫, 1] - center]
+    #                ↑ "猫在油画上的特征偏离中心"    ↑ "猫在照片上的特征偏离中心"
+    #                ← 这两个向量就是"域相关的虚假特征方向"!
     def domain_responses(self):
         responses = []
         for c in range(self.num_classes):
@@ -81,6 +89,8 @@ class ClassDomainResidualBank(nn.Module):
             if int(valid.sum().item()) < self.min_valid_domains:
                 continue
             center = self.prototypes[c, valid].mean(dim=0)
+            #这些偏离向量 = "同一个类别,不同域风格带来的特征差异"
+            # = PICCL 想识别并抑制的"域相关虚假特征方向"!
             responses.append(self.prototypes[c, valid] - center)
         if not responses:
             return self.prototypes.new_zeros((0, self.feature_dim))
@@ -94,6 +104,7 @@ class InterventionSensitiveSubspace(nn.Module):
         self.basis = nn.Parameter(torch.randn(feature_dim, rank) * 0.02)
         self.eps = eps
 
+#将可学习的 basis 矩阵正交化,得到一组标准正交基,供后续的投影、覆盖损失等操作使用
     def orthonormal_basis(self, detach=False, dtype=None):
         q = torch.linalg.qr(self.basis.float(), mode="reduced").Q
         if detach:
@@ -107,7 +118,7 @@ class InterventionSensitiveSubspace(nn.Module):
             return v
         q = self.orthonormal_basis(detach=detach_basis, dtype=v.dtype).to(v.device)
         return (v @ q) @ q.t()
-
+    # "覆盖损失" = "干预敏感子空间的响应向量与其在子空间上的投影之间的差异"
     def coverage_loss(self, responses):
         if responses.numel() == 0:
             return self.basis.sum() * 0.0
@@ -118,7 +129,7 @@ class InterventionSensitiveSubspace(nn.Module):
         v = responses[nonzero]
         proj = self.project(v, detach_basis=False)
         return ((v - proj).pow(2).sum(dim=1) / (v.pow(2).sum(dim=1) + self.eps)).mean()
-
+    # "正交损失" = "干预敏感子空间的基向量之间的正交性差异"
     def orthogonality_loss(self):
         b = F.normalize(self.basis, dim=0, eps=self.eps)
         eye = torch.eye(b.shape[1], device=b.device, dtype=b.dtype)
@@ -134,7 +145,11 @@ class InterventionSensitiveSubspace(nn.Module):
         v = responses[nonzero]
         proj = self.project(v, detach_basis=True)
         return (proj.pow(2).sum(dim=1) / (v.pow(2).sum(dim=1) + self.eps)).mean()
+# 训练初期 (step 小) alpha = 0.0 → 不做任何抑制 → piccl_m = z (等同于普通 DCCL)
 
+# 训练中期 (step 中等) alpha = 0.5 → 部分抑制虚假方向 → 部分保留内容特征
+
+# 训练后期 (step 大) alpha = 1.0 → 完全去掉虚假方向分量 → piccl_m = z - sensitive (虚假方向完全去除)
 
 class CausalMediatorProjection(nn.Module):
     def __init__(self, feature_dim):
@@ -145,7 +160,7 @@ class CausalMediatorProjection(nn.Module):
         sensitive = subspace.project(z, detach_basis=detach_basis)
         return self.layer_norm(z - alpha * sensitive)
 
-
+# 简单版用于 `fusion_mode="legacy"`,门控版用于 `fusion_mode="residual_gate"`。
 class ResidualGateFusion(nn.Module):
     def __init__(self, feature_dim, gate_bias=-4.0):
         super().__init__()
@@ -155,11 +170,16 @@ class ResidualGateFusion(nn.Module):
         self.gate_bias = float(gate_bias)
 
     def forward(self, original, piccl_feature, scale, alpha):
+           # Step 1: 根据原始特征生成门控信号
         gate = torch.sigmoid(self.linear(original) + self.gate_bias)
+        # Step 2: 门控融合
+    #   fused = original + scale * alpha * gate * (piccl_feature - original)
+    #   相当于: 在 original 和 piccl_feature 之间做 gate 控制的插值
         fused = original + float(scale) * alpha.to(original.device, original.dtype) * gate * (piccl_feature - original)
         return fused, gate
 
-
+# PICCLForwardModel 是一个封装了 featurizer、subspace、mediator 和 classifier 的前向模型,
+# 用于在推理阶段使用 PICCL 的特征处理流程。
 class PICCLForwardModel(nn.Module):
     def __init__(self, featurizer, subspace, mediator, classifier):
         super().__init__()
@@ -230,7 +250,19 @@ class PICCL(DCCL):
         super().train(mode)
         self.pre_featurizer.eval()
         return self
+#     PICCL 通过三套独立的 ramp 调度实现"温和训练":
 
+# 1) alpha 调度: 让"抑制强度"从 0 逐步升到 max_alpha
+#    避免训练初期强行抑制还没学好的方向
+
+# 2) loss_scale 调度: 让"子空间学习的损失权重"从 0 逐步升到 1
+#    让模型先学好分类特征,再逐步引入"检测虚假方向"的任务
+
+# 3) feature_alpha 调度: 让"门控融合"的强度从 0 逐步升到 1
+#    让 residual_gate 的线性层先学好,再逐步介入
+
+# 三者协同,保证 PICCL 的介入是"渐进式"的,
+# 不会在训练初期就破坏 DCCL 已经学好的特征表示。
     def _ramp_value(self, step, start_ratio, warmup_ratio, max_value=1.0):
         total = max(int(self.hparams.get("piccl_total_steps", 1)) - 1, 1)
         progress = float(step) / float(total)
@@ -266,7 +298,7 @@ class PICCL(DCCL):
 
     def _domain_ids(self, x):
         return torch.cat([torch.full((xi.shape[0],), i, dtype=torch.long, device=xi.device) for i, xi in enumerate(x)])
-
+    #对应loss_inv可能有问题
     def _nt_xent(self, q, q_int):
         if q.shape[0] < 2:
             return q.sum() * 0.0
