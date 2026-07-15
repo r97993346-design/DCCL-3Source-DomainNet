@@ -2,8 +2,8 @@
 """Fixed-batch PICCL bypass diagnostic.
 
 This script documents and checks the four intended Stage-0 comparison modes:
-A) DCCL, B) PICCL use_piccl=false, C) PICCL residual_scale=0 with auxiliary
-losses active, and D) PICCL strict bypass.  It uses lightweight tensors so it
+A) DCCL, B) PICCL use_piccl=false, C) PICCL residual_scale=0 with causal
+ISR/orth losses active, and D) PICCL strict bypass. It uses lightweight tensors so it
 can run in CI without PACS data or CUDA.
 """
 import argparse
@@ -45,13 +45,13 @@ def run_mode(seed, mode):
     piccl_feature = z * 0.5 + 0.1
     if mode in {"A_dccl", "B_piccl_disabled", "D_strict_bypass"}:
         fused = z
-        piccl_loss = z.sum() * 0.0
-        piccl_executed = 0.0
+        causal_loss = z.sum() * 0.0
+        causal_executed = 0.0
     elif mode == "C_scale0_aux_active":
         fused, _ = gate(z, piccl_feature, scale=0, alpha=torch.tensor(1.0))
-        # Auxiliary loss remains attached to z, matching residual_scale=0 semantics.
-        piccl_loss = piccl_feature.pow(2).mean()
-        piccl_executed = 1.0
+        # Causal ISR/orth losses are independent of residual_scale semantics.
+        causal_loss = piccl_feature.pow(2).mean()
+        causal_executed = 1.0
     else:
         raise ValueError(mode)
 
@@ -59,7 +59,7 @@ def run_mode(seed, mode):
     cls_loss = F.cross_entropy(logits, y)
     q = F.normalize(projector(fused), dim=1)
     dccl_loss = -(q @ q.T).diag().mean()
-    total = cls_loss + dccl_loss + piccl_loss
+    total = cls_loss + dccl_loss + causal_loss
     total.backward()
     before = backbone.weight.detach().clone()
     opt = torch.optim.SGD(list(backbone.parameters()) + list(projector.parameters()) + list(classifier.parameters()), lr=1e-2)
@@ -72,17 +72,17 @@ def run_mode(seed, mode):
         "logits": logits.detach(),
         "classification_loss": float(cls_loss.detach()),
         "dccl_loss": float(dccl_loss.detach()),
-        "piccl_loss": float(piccl_loss.detach()),
+        "causal_loss": float(causal_loss.detach()),
         "total_loss": float(total.detach()),
         "backbone_grad_norm": grad_norm(backbone),
         "classifier_grad_norm": grad_norm(classifier),
         "first_step_delta": (backbone.weight.detach() - before).detach(),
-        "piccl_executed": piccl_executed,
+        "causal_executed": causal_executed,
     }
 
 
 def first_diff(a, b):
-    for key in ["feature", "fused", "logits", "classification_loss", "dccl_loss", "piccl_loss", "total_loss", "backbone_grad_norm", "classifier_grad_norm", "first_step_delta"]:
+    for key in ["feature", "fused", "logits", "classification_loss", "dccl_loss", "causal_loss", "total_loss", "backbone_grad_norm", "classifier_grad_norm", "first_step_delta"]:
         av, bv = a[key], b[key]
         if torch.is_tensor(av):
             if not torch.allclose(av, bv, atol=1e-7, rtol=1e-7):
@@ -104,7 +104,7 @@ def main():
         summary[m] = {"first_difference": key, "max_abs_delta": delta}
     print(json.dumps(summary, indent=2, sort_keys=True))
     assert summary["D_strict_bypass"]["first_difference"] is None
-    assert summary["C_scale0_aux_active"]["first_difference"] == "piccl_loss"
+    assert summary["C_scale0_aux_active"]["first_difference"] == "causal_loss"
 
 if __name__ == "__main__":
     main()

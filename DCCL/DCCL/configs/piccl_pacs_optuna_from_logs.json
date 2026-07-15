@@ -24,7 +24,6 @@
     "weight_decay": 0.0,
     "piccl_rank": 16,
     "piccl_isr_weight": 0.05,
-    "piccl_inv_weight": 0.01,
     "piccl_orth_weight": 0.0001,
     "piccl_loss_warmup_ratio": 0.25,
     "piccl_fusion_mode": "residual_gate",

@@ -326,6 +326,22 @@ class DCCL(Algorithm):
             optimized_list
         )
 
+    def _post_backbone_feature(self, feature, role=None, **kwargs):
+        """Hook for subclasses that transform pooled backbone features before DCCL losses."""
+        return feature
+
+    def _extra_dccl_losses(self, **kwargs):
+        """Hook for subclasses to add losses/metrics while reusing the DCCL loss flow."""
+        feature = kwargs.get("feature_x")
+        if feature is None:
+            feature = kwargs.get("raw_feature_x")
+        zero = 0.0 if feature is None else feature.new_tensor(0.0)
+        return zero, {}
+
+    def _post_backward_dccl_metrics(self):
+        """Hook for subclasses that report gradient diagnostics before optimizer.step()."""
+        return {}
+
     def update(self, x, y, **kwargs):
         all_x = torch.cat(x)
         all_y = torch.cat(y)
@@ -335,8 +351,10 @@ class DCCL(Algorithm):
             # all_x = self.TN_network(all_x)
             # update generator
             all_x_2, sp_loss = self.TN_network(all_x_2)
-            feature_x = self.featurizer(all_x)
-            feature_x_2 = self.featurizer(all_x_2)
+            raw_feature_x = self.featurizer(all_x)
+            raw_feature_x_2 = self.featurizer(all_x_2)
+            feature_x = self._post_backbone_feature(raw_feature_x, role="tn_x", all_x=all_x, all_y=all_y, kwargs=kwargs)
+            feature_x_2 = self._post_backbone_feature(raw_feature_x_2, role="tn_x_2", all_x=all_x_2, all_y=all_y, kwargs=kwargs)
             embed_2 = self.proj_head(feature_x_2)
             embed_1 = self.proj_head(feature_x)
             view_1 = nn.functional.normalize(embed_1)
@@ -364,17 +382,19 @@ class DCCL(Algorithm):
             lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (all_x.size()[-1] * all_x.size()[-2]))
             # mix up
             # all_x = all_x*lam + all_x[rand_index]*(1-lam)
-            feature_x, inter_feats = self.featurizer(all_x, ret_feats=True)
+            raw_feature_x, inter_feats = self.featurizer(all_x, ret_feats=True)
+            feature_x = self._post_backbone_feature(raw_feature_x, role="x", all_x=all_x, all_y=all_y, kwargs=kwargs)
             pred_x = self.classifier(feature_x)
             loss = F.cross_entropy(pred_x, target_a)*lam+F.cross_entropy(pred_x, target_b)*(1-lam)
         else:
-            # 基础分类损失
-            feature_x, inter_feats = self.featurizer(all_x, ret_feats=True)
+            raw_feature_x, inter_feats = self.featurizer(all_x, ret_feats=True)
+            feature_x = self._post_backbone_feature(raw_feature_x, role="x", all_x=all_x, all_y=all_y, kwargs=kwargs)
             pred_x = self.classifier(feature_x)
             loss = F.cross_entropy(pred_x, all_y)
         ce_loss = loss.item()
 
-        feature_x_2, inter_feats_2 = self.featurizer(all_x_2, ret_feats=True)
+        raw_feature_x_2, inter_feats_2 = self.featurizer(all_x_2, ret_feats=True)
+        feature_x_2 = self._post_backbone_feature(raw_feature_x_2, role="x_2", all_x=all_x_2, all_y=all_y, kwargs=kwargs)
         if self.two_ce:
             loss = loss/2+F.cross_entropy(self.classifier(feature_x_2), all_y)/2
         with torch.no_grad():
@@ -414,7 +434,8 @@ class DCCL(Algorithm):
             else:
                 if self.sample_d:
                     all_x_2_d = torch.cat(kwargs["x_2_d"])
-                    feature_x_2_d = self.featurizer(all_x_2_d)
+                    raw_feature_x_2_d = self.featurizer(all_x_2_d)
+                    feature_x_2_d = self._post_backbone_feature(raw_feature_x_2_d, role="x_2_d", all_x=all_x_2_d, all_y=all_y, kwargs=kwargs)
                     embed_2_d = self.proj_head(feature_x_2_d)
                     view_2_d = nn.functional.normalize(embed_2_d)
                     add_pos = torch.cat([view_2_d,view_2_d],0)
@@ -450,11 +471,21 @@ class DCCL(Algorithm):
             else:
                 pre_cl_loss += self.supcon_loss_pre(features, all_y_pre)
             loss += self.l_layer*pre_cl_loss
+        extra_loss, extra_metrics = self._extra_dccl_losses(
+            all_x=all_x, all_y=all_y, all_x_2=all_x_2, kwargs=kwargs,
+            raw_feature_x=raw_feature_x, raw_feature_x_2=raw_feature_x_2,
+            feature_x=feature_x, feature_x_2=feature_x_2,
+            inter_feats=inter_feats, inter_feats_2=inter_feats_2,
+            pre_pred_x=pre_pred_x, pre_feats=pre_feats,
+        )
+        loss = loss + extra_loss
         loss_opt = loss
         self.optimizer.zero_grad()
         loss_opt.backward()
+        extra_metrics.update(self._post_backward_dccl_metrics())
         self.optimizer.step()
         loss_dict = {"loss": loss.item(), "ce_loss": ce_loss}
+        loss_dict.update(extra_metrics)
         if self.l:
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
         if self.l_layer:

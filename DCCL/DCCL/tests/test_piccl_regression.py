@@ -39,22 +39,18 @@ def test_residual_gate_accepts_zero_scale_without_defaulting():
     assert values.min() >= 0 and values.max() <= 1
 
 
-def test_scale_zero_but_auxiliary_loss_can_update_shared_feature():
+def test_scale_zero_closes_feature_fusion_but_gate_remains_trainable_when_open():
     torch.manual_seed(0)
-    backbone = torch.nn.Linear(4, 4)
     gate = ResidualGateFusion(4)
-    classifier = torch.nn.Linear(4, 2)
-    x = torch.randn(6, 4)
-    y = torch.tensor([0, 1, 0, 1, 0, 1])
-    z = backbone(x)
+    z = torch.randn(6, 4, requires_grad=True)
     piccl_feature = z * 0.5
-    fused, _ = gate(z, piccl_feature, scale=0, alpha=torch.tensor(1.0))
-    torch.testing.assert_close(fused, z)
-    cls_loss = torch.nn.functional.cross_entropy(classifier(fused), y)
-    aux_loss = piccl_feature.pow(2).mean()
-    (cls_loss + aux_loss).backward()
-    assert backbone.weight.grad is not None
-    assert backbone.weight.grad.norm().item() > 0
+    fused_zero, _ = gate(z, piccl_feature, scale=0, alpha=torch.tensor(1.0))
+    torch.testing.assert_close(fused_zero, z)
+
+    fused_open, _ = gate(z, piccl_feature, scale=0.5, alpha=torch.tensor(1.0))
+    fused_open.pow(2).mean().backward()
+    assert gate.linear.weight.grad is not None
+    assert gate.linear.weight.grad.norm().item() > 0
 
 
 def test_piccl_optimizer_has_no_duplicate_parameters_with_dummy_instance():
@@ -89,7 +85,7 @@ def test_piccl_parameter_gradients_can_flow_through_residual_gate():
 
 def test_piccl_diagnostics_do_not_return_string_lr_list():
     import inspect
-    source = inspect.getsource(PICCL.update)
+    source = inspect.getsource(PICCL._extra_dccl_losses)
     assert "param_group_lrs" not in source
     assert "param_group_lr_" in source
     assert "piccl_executed" in source
