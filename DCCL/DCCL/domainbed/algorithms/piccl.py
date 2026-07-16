@@ -298,7 +298,6 @@ class PICCL(DCCL):
 
     def _domain_ids(self, x):
         return torch.cat([torch.full((xi.shape[0],), i, dtype=torch.long, device=xi.device) for i, xi in enumerate(x)])
-    #对应loss_inv可能有问题
     def _nt_xent(self, q, q_int):
         if q.shape[0] < 2:
             return q.sum() * 0.0
@@ -366,30 +365,70 @@ class PICCL(DCCL):
             raise ValueError(f"Unknown piccl_fusion_mode={fusion_mode}")
         logits = self.classifier(m)
         loss_cls = F.cross_entropy(logits, all_y)
-        q = F.normalize(self.proj_head(m), dim=1)
-        q_int = F.normalize(self.proj_head(m_int), dim=1)
-        loss_int = self._nt_xent(q, q_int)
-        loss_cross = self._cross_domain_supcon(q, all_y, domains)
+        loss = loss_cls
+        loss_sup_cl = m.new_tensor(0.0)
+        if self.l:
+            embed_2 = self.proj_head(m_int)
+            embed_1 = self.proj_head(m)
+            view_1 = nn.functional.normalize(embed_1)
+            view_2 = nn.functional.normalize(embed_2)
+            features = torch.stack([view_1, view_2], dim=1)
+            if self.re_w:
+                all_d = torch.cat(kwargs["d"])
+                all_d_2 = torch.cat(kwargs["d_2"])
+                d = torch.unsqueeze(torch.cat([all_d, all_d_2]), 1).float()
+                neg_mask = torch.eq(d, d.T).float()
+                if self.pos_mask:
+                    pos_mask = 1 - neg_mask
+                else:
+                    pos_mask = None
+                loss_sup_cl = self.supcon_loss(features, all_y, neg_mask=neg_mask, pos_mask=pos_mask)
+            else:
+                if self.sample_d:
+                    all_x_2_d = torch.cat(kwargs["x_2_d"])
+                    feature_x_2_d = self.featurizer(all_x_2_d)
+                    piccl_x_2_d = self.causal_mediator(feature_x_2_d, self.sensitive_subspace, alpha.to(dtype=feature_x_2_d.dtype), detach_basis=detach_basis)
+                    if fusion_mode == "residual_gate":
+                        piccl_x_2_d, _ = self.residual_gate(feature_x_2_d, piccl_x_2_d, self.hparams.get("piccl_residual_scale", 0.1), feature_alpha)
+                    embed_2_d = self.proj_head(piccl_x_2_d)
+                    view_2_d = nn.functional.normalize(embed_2_d)
+                    add_pos = torch.cat([view_2_d, view_2_d], 0)
+                    loss_sup_cl = self.supcon_loss(features, all_y, add_pos=add_pos)
+                else:
+                    loss_sup_cl = self.supcon_loss(features, all_y)
+            loss = loss + self.l * loss_sup_cl
+        pre_cl_loss = m.new_tensor(0.0)
         with torch.no_grad():
             z_ref_det = z_ref.detach()
-        ref_features = torch.stack([F.normalize(self.pre_proj_head(m), dim=1), F.normalize(self.pre_proj_head(z_ref_det), dim=1)], dim=1)
-        loss_ref = self.supcon_loss_pre(ref_features, all_y)
-        current_int_weight = float(self.hparams.get("piccl_int_weight", 0.1)) * (float(alpha.item()) / max(float(self.hparams.get("piccl_alpha_max", 0.5)), 1e-12))
-        loss_ccc = (float(self.hparams.get("piccl_connectivity_weight", 1.0)) * loss_cross
-                    + current_int_weight * loss_int
-                    + float(self.hparams.get("piccl_ref_weight", 1.0)) * loss_ref)
-        loss_isr = self.sensitive_subspace.coverage_loss(responses)
-        loss_orth = self.sensitive_subspace.orthogonality_loss()
-        loss_inv = (1.0 - F.cosine_similarity(m, m_int, dim=1)).mean()
+        if self.l_layer:
+            embed_1 = self.pre_proj_head(m)
+            embed_2 = self.pre_proj_head(z_ref_det)
+            view_1 = nn.functional.normalize(embed_1)
+            view_2 = nn.functional.normalize(embed_2)
+            features = torch.stack([view_1, view_2], dim=1)
+            all_y_pre = all_y
+            if self.re_w:
+                all_d = torch.cat(kwargs["d"])
+                all_d_2 = torch.cat(kwargs["d_2"])
+                d = torch.unsqueeze(torch.cat([all_d, all_d_2]), 1).float()
+                neg_mask = torch.eq(d, d.T).float()
+                if self.pos_mask:
+                    pos_mask = 1 - neg_mask
+                else:
+                    pos_mask = None
+                pre_cl_loss = self.supcon_loss_pre(features, all_y_pre, neg_mask=neg_mask, pos_mask=pos_mask)
+            else:
+                pre_cl_loss = self.supcon_loss_pre(features, all_y_pre)
+            loss = loss + self.l_layer * pre_cl_loss
         loss_gt = z.new_tensor(0.0)
         if self.hparams.get("piccl_gt_mode", "replace") == "keep" and self.l_d:
             loss_gt = self._gt_loss(inter_feats, pre_feats)
-        loss_scale = self._loss_scale(step)
-        weighted_ccc = loss_scale * float(self.hparams.get("piccl_ccc_weight", 1.0)) * loss_ccc
-        weighted_isr = loss_scale * float(self.hparams.get("piccl_isr_weight", 0.1)) * loss_isr
-        weighted_orth = loss_scale * float(self.hparams.get("piccl_orth_weight", 0.001)) * loss_orth
-        weighted_inv = loss_scale * float(self.hparams.get("piccl_inv_weight", 0.05)) * loss_inv
-        loss = loss_cls + weighted_ccc + weighted_isr + weighted_orth + weighted_inv + self.l_d * loss_gt
+            loss = loss + self.l_d * loss_gt
+        loss_isr = self.sensitive_subspace.coverage_loss(responses)
+        loss_orth = self.sensitive_subspace.orthogonality_loss()
+        weighted_isr = float(self.hparams.get("piccl_isr_weight", 0.1)) * loss_isr
+        weighted_orth = float(self.hparams.get("piccl_orth_weight", 0.001)) * loss_orth
+        loss = loss + weighted_isr + weighted_orth
         self.optimizer.zero_grad()
         loss.backward()
         grad_stats = self._diagnostic_grad_norms()
@@ -404,23 +443,19 @@ class PICCL(DCCL):
             orth_err = self.sensitive_subspace.orthogonality_loss()
             cap = self.sensitive_subspace.capture_ratio(responses)
         metrics = {
-            "loss": float(loss.item()), "loss_cls": float(loss_cls.item()), "loss_ccc": float(loss_ccc.item()),
-            "loss_cross": float(loss_cross.item()), "loss_int": float(loss_int.item()), "loss_ref": float(loss_ref.item()),
-            "loss_isr": float(loss_isr.item()), "loss_orth": float(loss_orth.item()), "loss_inv": float(loss_inv.item()),
+            "loss": float(loss.item()), "loss_cls": float(loss_cls.item()),
+            "loss_isr": float(loss_isr.item()), "loss_orth": float(loss_orth.item()),
             "loss_gt": float(loss_gt.item()), "piccl_alpha": float(alpha.item()),
             "paired_response_norm": float(delta_pair_target.norm(dim=1).mean().item()),
             "domain_response_norm": float(delta_dom.norm(dim=1).mean().item()) if delta_dom.numel() else 0.0,
             "valid_domain_response_count": float(delta_dom.shape[0]), "basis_orth_error": float(orth_err.item()),
             "response_capture_ratio": float(cap.item()), "raw_intervention_cosine": float(raw_cos.item()),
             "mediator_intervention_cosine": float(med_cos.item()),
-            "ce_loss": float(loss_cls.item()), "sup_cl_loss": float(loss_cross.item()), "pre_cl_loss": float(loss_ref.item()),
-            "dccl_total_loss": float((loss_cls + self.l * loss_cross + self.l_layer * loss_ref + self.l_d * loss_gt).item()),
-            "weighted_loss_ccc": float(weighted_ccc.item()), "weighted_loss_isr": float(weighted_isr.item()),
-            "weighted_loss_orth": float(weighted_orth.item()), "weighted_loss_inv": float(weighted_inv.item()),
-            "piccl_loss_scale": float(loss_scale), "piccl_feature_scale": float(self._feature_scale(step)),
+            "ce_loss": float(loss_cls.item()), "sup_cl_loss": float(loss_sup_cl.item()), "pre_cl_loss": float(pre_cl_loss.item()),
+            "dccl_total_loss": float((loss_cls + self.l * loss_sup_cl + self.l_layer * pre_cl_loss + self.l_d * loss_gt).item()),
+            "weighted_loss_isr": float(weighted_isr.item()), "weighted_loss_orth": float(weighted_orth.item()),
+            "piccl_feature_scale": float(self._feature_scale(step)),
             "residual_scale_effective": float(self.hparams.get("piccl_residual_scale", 0.1)),
-            "piccl_loss_weight_effective": float(self.hparams.get("piccl_ccc_weight", 1.0)) * float(loss_scale),
-            "connectivity_weight_effective": float(self.hparams.get("piccl_connectivity_weight", 1.0)) * float(loss_scale),
             "residual_delta_norm": float(delta_norm.item()),
             "fused_original_cosine": float(fused_cos.item()),
             "piccl_executed": 1.0,

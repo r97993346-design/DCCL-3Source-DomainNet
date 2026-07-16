@@ -51,7 +51,6 @@ def _hparams(algorithm, dataset, random_state):
         hparams["piccl_ref_weight"] = (1.0, float(random_state.choice([0.5, 1.0])))
         hparams["piccl_isr_weight"] = (0.1, float(random_state.choice([0.05, 0.1, 0.2])))
         hparams["piccl_orth_weight"] = (0.001, 0.001)
-        hparams["piccl_inv_weight"] = (0.05, 0.05)
         hparams["piccl_eps"] = (1e-8, 1e-8)
         hparams["piccl_gt_mode"] = ("replace", "replace")
         hparams["piccl_basis_receive_task_grad"] = (False, False)
