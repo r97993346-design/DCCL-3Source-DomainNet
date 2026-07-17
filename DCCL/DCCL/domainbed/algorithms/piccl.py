@@ -363,7 +363,7 @@ class PICCL(DCCL):
             m_int, _ = self.residual_gate(z_int, piccl_m_int, self.hparams.get("piccl_residual_scale", 0.1), feature_alpha)
         else:
             raise ValueError(f"Unknown piccl_fusion_mode={fusion_mode}")
-        logits = self.classifier(m)
+        logits = self.classifier(z)
         loss_cls = F.cross_entropy(logits, all_y)
         loss = loss_cls
         loss_sup_cl = m.new_tensor(0.0)
