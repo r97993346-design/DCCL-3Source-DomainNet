@@ -363,9 +363,9 @@ class PICCL(DCCL):
             m_int, _ = self.residual_gate(z_int, piccl_m_int, self.hparams.get("piccl_residual_scale", 0.1), feature_alpha)
         else:
             raise ValueError(f"Unknown piccl_fusion_mode={fusion_mode}")
-        logits = self.classifier(z)
-        # 这里修改一下
-        #logits = self.classifier(m)
+        #logits = self.classifier(z)
+        # 这里修改一下2——2都经过因果
+        logits = self.classifier(m)
         loss_cls = F.cross_entropy(logits, all_y)
         loss = loss_cls
         loss_sup_cl = m.new_tensor(0.0)
@@ -489,18 +489,18 @@ class PICCL(DCCL):
             "classifier_grad_norm": norm(self.classifier.parameters()),
         }
 
-    # def predict_embed(self, x):
-    #     if self.piccl_strict_bypass or not _as_bool(self.hparams.get("use_piccl", True)):
-    #         return self.featurizer(x)
-    #     z = self.featurizer(x)
-    #     piccl_m = self.causal_mediator(z, self.sensitive_subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)
-    #     if self.hparams.get("piccl_fusion_mode", "legacy") == "residual_gate":
-    #         fused, _ = self.residual_gate(z, piccl_m, self.hparams.get("piccl_residual_scale", 0.1), self.piccl_alpha.to(z.device, z.dtype))
-    #         return fused
-    #     return piccl_m
-    # 尝试一下都不经过因果模块
     def predict_embed(self, x):
-        return self.featurizer(x)
+        if self.piccl_strict_bypass or not _as_bool(self.hparams.get("use_piccl", True)):
+            return self.featurizer(x)
+        z = self.featurizer(x)
+        piccl_m = self.causal_mediator(z, self.sensitive_subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)
+        if self.hparams.get("piccl_fusion_mode", "legacy") == "residual_gate":
+            fused, _ = self.residual_gate(z, piccl_m, self.hparams.get("piccl_residual_scale", 0.1), self.piccl_alpha.to(z.device, z.dtype))
+            return fused
+        return piccl_m
+    # 尝试一下都不经过因果模块
+    # def predict_embed(self, x):
+    #     return self.featurizer(x)
 
 
     def predict(self, x):
