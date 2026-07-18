@@ -99,12 +99,14 @@ def main():
     parser.add_argument("--label_ratio", type=float, default=1.0, help="Ratio of labeled data to use")
     
     # Core DCCL hyperparameters (main tuning parameters)
-    parser.add_argument("--l", type=float, default=1, help="Weight for contrastive loss between augmented views")
-    parser.add_argument("--l_d", type=float, default=0.05, help="Weight for domain alignment regularization loss")
-    parser.add_argument("--l_layer", type=float, default=1, help="Weight for layer-wise contrastive loss with pre-trained features")
-    parser.add_argument("--t", type=float, default=0.1, help="Temperature parameter for contrastive loss")
-    parser.add_argument("--t_pre", type=float, default=0.2, help="Temperature parameter for pre-trained feature contrastive loss")
-    parser.add_argument("--n_layer", type=int, default=1, help="Number of layers in projection head")
+    # Defaults stay in setup_alg_hparams(); None lets CLI values override
+    # dataset-specific hparams only when the user explicitly provides them.
+    parser.add_argument("--l", type=float, default=None, help="Weight for contrastive loss between augmented views")
+    parser.add_argument("--l_d", type=float, default=None, help="Weight for domain alignment regularization loss")
+    parser.add_argument("--l_layer", type=float, default=None, help="Weight for layer-wise contrastive loss with pre-trained features")
+    parser.add_argument("--t", type=float, default=None, help="Temperature parameter for contrastive loss")
+    parser.add_argument("--t_pre", type=float, default=None, help="Temperature parameter for pre-trained feature contrastive loss")
+    parser.add_argument("--n_layer", type=int, default=None, help="Number of layers in projection head")
     
     # Additional DCCL options (not in use, only for debugging and testing ideas)
     parser.add_argument("--sample_d", action="store_true", help="Enable domain-aware positive sampling")
@@ -127,6 +129,10 @@ def main():
     keys = [open(key, encoding="utf8") for key in keys]
     hparams = Config(*keys, default=hparams)
     hparams.argv_update(left_argv)
+    for key in ["l", "l_d", "l_layer", "t", "t_pre", "n_layer"]:
+        value = getattr(args, key)
+        if value is not None:
+            hparams[key] = value
     hparams = normalize_hparam_types(hparams)
     if args.algorithm == "ERM" and args.weak_erm:
         hparams = apply_weak_erm_hparams(hparams)
