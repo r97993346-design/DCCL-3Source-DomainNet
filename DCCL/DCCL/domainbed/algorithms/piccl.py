@@ -181,12 +181,22 @@ class ResidualGateFusion(nn.Module):
 # PICCLForwardModel 是一个封装了 featurizer、subspace、mediator 和 classifier 的前向模型,
 # 用于在推理阶段使用 PICCL 的特征处理流程。
 class PICCLForwardModel(nn.Module):
-    def __init__(self, featurizer, subspace, mediator, classifier):
+    """Inference model used by SWAD and checkpoint averaging.
+
+    Keep this graph identical to :meth:`PICCL.predict_embed`.  In particular,
+    residual-gate PICCL checkpoints must not silently become mediator-only
+    models when they are passed through ``AveragedModel``.
+    """
+    def __init__(self, featurizer, subspace, mediator, residual_gate, classifier,
+                 fusion_mode="legacy", residual_scale=0.1):
         super().__init__()
         self.featurizer = featurizer
         self.subspace = subspace
         self.mediator = mediator
+        self.residual_gate = residual_gate
         self.classifier = classifier
+        self.fusion_mode = fusion_mode
+        self.residual_scale = float(residual_scale)
         self.register_buffer("piccl_alpha", torch.tensor(0.0))
 
     def forward(self, x):
@@ -194,12 +204,26 @@ class PICCLForwardModel(nn.Module):
 
     def predict(self, x):
         z = self.featurizer(x)
-        m = self.mediator(z, self.subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)
+        alpha = self.piccl_alpha.to(z.device, z.dtype)
+        piccl_m = self.mediator(z, self.subspace, alpha, detach_basis=True)
+        if self.fusion_mode == "residual_gate":
+            m, _ = self.residual_gate(z, piccl_m, self.residual_scale, alpha)
+        elif self.fusion_mode == "legacy":
+            m = piccl_m
+        else:
+            raise ValueError(f"Unknown piccl_fusion_mode={self.fusion_mode}")
         return self.classifier(m)
 
     def predict_embed(self, x):
         z = self.featurizer(x)
-        return self.mediator(z, self.subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)
+        alpha = self.piccl_alpha.to(z.device, z.dtype)
+        piccl_m = self.mediator(z, self.subspace, alpha, detach_basis=True)
+        if self.fusion_mode == "residual_gate":
+            fused, _ = self.residual_gate(z, piccl_m, self.residual_scale, alpha)
+            return fused
+        if self.fusion_mode == "legacy":
+            return piccl_m
+        raise ValueError(f"Unknown piccl_fusion_mode={self.fusion_mode}")
 
 
 class PICCL(DCCL):
@@ -509,7 +533,15 @@ class PICCL(DCCL):
     def get_forward_model(self):
         if self.piccl_strict_bypass or not _as_bool(self.hparams.get("use_piccl", True)):
             return super().get_forward_model()
-        model = PICCLForwardModel(self.featurizer, self.sensitive_subspace, self.causal_mediator, self.classifier)
+        model = PICCLForwardModel(
+            self.featurizer,
+            self.sensitive_subspace,
+            self.causal_mediator,
+            self.residual_gate,
+            self.classifier,
+            fusion_mode=self.hparams.get("piccl_fusion_mode", "legacy"),
+            residual_scale=self.hparams.get("piccl_residual_scale", 0.1),
+        )
         model.piccl_alpha.copy_(self.piccl_alpha.detach().cpu())
         return model
 

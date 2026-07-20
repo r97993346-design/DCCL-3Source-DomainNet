@@ -2,7 +2,15 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from domainbed.algorithms.piccl import CausalMediatorProjection, PICCL, ResidualGateFusion, parse_bool
+from domainbed.algorithms.piccl import (
+    CausalMediatorProjection,
+    InterventionSensitiveSubspace,
+    PICCL,
+    PICCLForwardModel,
+    ResidualGateFusion,
+    parse_bool,
+)
+from domainbed.lib.swa_utils import AveragedModel
 
 
 def _ids(groups):
@@ -100,3 +108,41 @@ def test_parse_bool_alias_handles_false_and_zero_values():
     assert parse_bool("0") is False
     assert parse_bool(0) is False
     assert parse_bool("true") is True
+
+
+def test_piccl_forward_model_preserves_residual_gate_path():
+    torch.manual_seed(0)
+    featurizer = torch.nn.Linear(4, 4, bias=False)
+    subspace = InterventionSensitiveSubspace(4, rank=1)
+    mediator = CausalMediatorProjection(4)
+    gate = ResidualGateFusion(4, gate_bias=0.0)
+    classifier = torch.nn.Linear(4, 2, bias=False)
+    model = PICCLForwardModel(
+        featurizer, subspace, mediator, gate, classifier,
+        fusion_mode="residual_gate", residual_scale=1.0,
+    )
+    with torch.no_grad():
+        gate.linear.weight.fill_(0.2)
+        model.piccl_alpha.fill_(0.5)
+    x = torch.randn(3, 4)
+    z = featurizer(x)
+    mediated = mediator(z, subspace, model.piccl_alpha, detach_basis=True)
+    expected_embed, _ = gate(z, mediated, 1.0, model.piccl_alpha)
+    torch.testing.assert_close(model.predict_embed(x), expected_embed)
+    torch.testing.assert_close(model.predict(x), classifier(expected_embed))
+
+
+def test_swad_copies_piccl_alpha_buffer_from_latest_model():
+    class BufferModel(torch.nn.Module):
+        def __init__(self, alpha):
+            super().__init__()
+            self.weight = torch.nn.Parameter(torch.tensor([1.0]))
+            self.register_buffer("piccl_alpha", torch.tensor(alpha))
+
+        def forward(self, x):
+            return self.weight * x
+
+    averaged = AveragedModel(BufferModel(0.0))
+    source = BufferModel(0.75)
+    averaged.update_parameters(source)
+    assert averaged.module.piccl_alpha.item() == pytest.approx(0.75)

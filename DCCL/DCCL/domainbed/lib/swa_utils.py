@@ -85,6 +85,18 @@ class AveragedModel(Module):
                 p_swa.detach().copy_(
                     self.avg_fn(p_swa.detach(), p_model_, self.n_averaged.to(device))
                 )
+
+        # Parameters alone are insufficient for a faithful averaged model.
+        # PICCL's intervention strength is stored in the ``piccl_alpha``
+        # buffer, so preserve the latest buffer values from the source model.
+        # This also keeps non-averaged state (for example counters) aligned
+        # with the most recent checkpoint; BatchNorm statistics are refreshed
+        # separately by ``update_bn`` when required.
+        source_buffers = dict(model.named_buffers())
+        for name, buffer_swa in self.module.named_buffers():
+            buffer_model = source_buffers.get(name)
+            if buffer_model is not None and buffer_swa.shape == buffer_model.shape:
+                buffer_swa.detach().copy_(buffer_model.detach().to(buffer_swa.device))
         self.n_averaged += 1
 
         if step is not None:
