@@ -57,6 +57,15 @@ def main():
         default=None,
         help="Checkpoint every N steps. Default is dataset-dependent.",
     )
+    parser.add_argument(
+            "--output_root",
+            type=str,
+            default=None,
+            help=(
+                "Directory that contains experiment outputs and TensorBoard runs. "
+                "Default: train_output/<dataset>."
+            ),
+        )    
     parser.add_argument("--test_envs", type=int, nargs="+", default=None)  # sketch in PACS
     parser.add_argument("--source_envs", type=int, nargs="+", default=None, help="Source env indices for DomainNet (e.g., 0 1 2)")
     parser.add_argument("--target_env", type=int, default=None, help="Target env index for DomainNet (e.g., 5)")
@@ -135,7 +144,14 @@ def main():
     args.work_dir = Path(".")
     args.data_dir = Path(args.data_dir)
 
-    args.out_root = args.work_dir / Path("train_output") / args.dataset
+    # args.out_root = args.work_dir / Path("train_output") / args.dataset
+    # Preserve the legacy train_output/<dataset> layout unless an explicit
+    # output root is requested (for example --output_root train_output/PACS2_RISE).
+    args.out_root = (
+        args.work_dir / Path(args.output_root)
+        if args.output_root is not None
+        else args.work_dir / Path("train_output") / args.dataset
+    )    
     args.out_dir = args.out_root / args.unique_name
     args.out_dir.mkdir(exist_ok=True, parents=True)
 
