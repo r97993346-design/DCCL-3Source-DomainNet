@@ -31,6 +31,56 @@ def to_minibatch(x, y):
     return minibatches
 
 
+def _as_bool(value):
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes", "y", "on"}
+    return bool(value)
+
+
+def rise_js_reliability(causal_logits, intervened_causal_logits, beta=5.0, eps=1e-8):
+    """Return per-sample JS divergence and detached intervention reliability."""
+    if causal_logits.shape != intervened_causal_logits.shape:
+        raise ValueError("causal_logits and intervened_causal_logits must have identical [B, C] shapes.")
+    p = F.softmax(causal_logits, dim=-1).clamp_min(eps)
+    q = F.softmax(intervened_causal_logits, dim=-1).clamp_min(eps)
+    m = (0.5 * (p + q)).clamp_min(eps)
+    js = 0.5 * ((p * (p.log() - m.log())).sum(-1) + (q * (q.log() - m.log())).sum(-1))
+    return js, torch.exp(-beta * js).detach()
+
+
+def rise_gated_kd(teacher_logits, causal_logits, labels, temperature, gate_mode="none",
+                  intervened_causal_logits=None, beta=5.0, eps=1e-8):
+    """Teacher||student KL with source-label confidence and causal stability gates."""
+    if temperature <= 0 or beta < 0 or eps <= 0:
+        raise ValueError("rise KD requires temperature > 0, beta >= 0, and eps > 0.")
+    if gate_mode not in {"none", "confidence", "stability", "joint"}:
+        raise ValueError("rise_kd_gate_mode must be one of none, confidence, stability, joint.")
+    teacher_probs_t = F.softmax(teacher_logits.detach() / temperature, dim=-1)
+    kd_per_sample = F.kl_div(F.log_softmax(causal_logits / temperature, dim=-1),
+                              teacher_probs_t, reduction="none").sum(-1) * temperature ** 2
+    teacher_probs_gate = F.softmax(teacher_logits.detach(), dim=-1)
+    confidence = teacher_probs_gate.gather(1, labels.long().unsqueeze(1)).squeeze(1).detach()
+    js = reliability = None
+    if gate_mode in {"stability", "joint"}:
+        if intervened_causal_logits is None:
+            raise ValueError("rise_kd_gate_mode=%s requires intervened_causal_logits from the PICCL intervention branch." % gate_mode)
+        js, reliability = rise_js_reliability(causal_logits, intervened_causal_logits, beta, eps)
+    if gate_mode == "none":
+        weight = torch.ones_like(kd_per_sample)
+    elif gate_mode == "confidence":
+        weight = confidence
+    elif gate_mode == "stability":
+        weight = reliability
+    else:
+        weight = confidence * reliability
+    weight = weight.detach()
+    gated = (weight * kd_per_sample).sum() / weight.sum().clamp_min(eps)
+    return {"loss_rise_kd": gated, "loss_rise_kd_raw": kd_per_sample.mean(),
+            "kd_per_sample": kd_per_sample, "teacher_confidence": confidence,
+            "intervention_js": js, "intervention_reliability": reliability,
+            "gate_weight": weight, "teacher_top1": teacher_probs_gate.argmax(-1)}
+
+
 class Algorithm(torch.nn.Module):
     """
     A subclass of Algorithm implements a domain generalization algorithm.
@@ -246,6 +296,7 @@ class DCCL(Algorithm):
         else:
             self.proj_head = nn.Sequential(nn.Linear(self.featurizer.n_outputs, hidden_num_1), nn.BatchNorm1d(hidden_num_1), nn.ReLU(), nn.Linear(hidden_num_1, hidden_num_2))
         self.proj = nn.Sequential(self.featurizer, self.proj_head)
+        self._init_rise(num_classes)
         # 一个逐层的概率对齐,而不仅仅是最终输出对齐
         shapes = get_shapes(self.pre_featurizer, self.input_shape)
         self.mean_encoders = nn.ModuleList([
@@ -321,10 +372,125 @@ class DCCL(Algorithm):
             [{"params": self.TN_network.parameters(), "lr": self.hparams["lr"]}]
             )
         
+        optimized_list += self._rise_optimizer_groups()
         self.optimizer = get_optimizer(
             hparams["optimizer"],
             optimized_list
         )
+
+    def _init_rise(self, num_classes):
+        """Create optional frozen CLIP supervision without polluting inference."""
+        self.use_rise = _as_bool(self.hparams.get("use_rise", False))
+        self.rise_active = self.use_rise and (_as_bool(self.hparams.get("use_rise_kd", True)) or
+                                              _as_bool(self.hparams.get("use_rise_ad", self.hparams.get("use_rise_proto", True))))
+        self.rise_clip = None
+        self.rise_projector = None
+        if not self.rise_active:
+            return
+        from domainbed import rise
+        self.rise_normalize = rise.CLIPInputNormalize()
+        self.rise_clip, clip_module = rise.load_clip_teacher(
+            self.hparams.get("rise_clip_model_name", "ViT-B/32"), device="cpu",
+            freeze=_as_bool(self.hparams.get("rise_freeze_clip", True)),
+            download_root=self.hparams.get("rise_clip_download_root"))
+        for p in self.rise_clip.parameters():
+            p.requires_grad = False
+        names = self.hparams.get("class_names")
+        if not names or len(names) != num_classes:
+            raise ValueError("RISE requires class_names matching num_classes before algorithm initialization.")
+        self.register_buffer("text_prototypes", rise.build_text_prototypes(
+            self.rise_clip, clip_module, names, self.hparams.get("rise_prompt_mode", "rise80"), "cpu"))
+        self.rise_projector = nn.Linear(self.featurizer.n_outputs,
+                                        int(self.hparams.get("rise_projection_dim", 512)))
+
+    def _rise_optimizer_groups(self):
+        if self.rise_projector is None:
+            return []
+        return [{"params": self.rise_projector.parameters(), "lr": self.hparams["lr"],
+                 "weight_decay": self.hparams["weight_decay"]}]
+
+    def train(self, mode=True):
+        super().train(mode)
+        if self.rise_clip is not None:
+            self.rise_clip.eval()
+        return self
+
+    def state_dict(self, *args, **kwargs):
+        """Do not serialize the immutable CLIP teacher in student checkpoints."""
+        state = super().state_dict(*args, **kwargs)
+        for key in [key for key in state if key.startswith("rise_clip.")]:
+            del state[key]
+        return state
+
+    def load_state_dict(self, state_dict, strict=True):
+        # A student-only checkpoint intentionally has no frozen teacher keys.
+        if self.use_rise:
+            return super().load_state_dict(state_dict, strict=False)
+        return super().load_state_dict(state_dict, strict=strict)
+
+    def _compute_rise_losses(self, images, labels, student_features, student_logits, step,
+                             intervened_causal_logits=None):
+        zero = student_features.sum() * 0.0
+        out = {"loss_rise_kd": zero, "loss_rise_kd_raw": zero, "loss_rise_ad": zero, "rise_ramp": 0.0}
+        if not self.rise_active:
+            return out
+        from domainbed import rise
+        total = max(1, int(self.hparams.get("piccl_total_steps", 1)))
+        warmup = max(1, int(total * float(self.hparams.get("rise_warmup_ratio", .1))))
+        ramp = min(max(float(step) / warmup, 0.0), 1.0)
+        out["rise_ramp"] = ramp
+        if _as_bool(self.hparams.get("use_rise_kd", True)):
+            with torch.no_grad():
+                clip_images = self.rise_normalize(images).to(next(self.rise_clip.parameters()).device)
+                image_features = F.normalize(self.rise_clip.encode_image(clip_images).float(), dim=1)
+                logit_scale = getattr(self.rise_clip, "logit_scale", None)
+                scale = logit_scale.exp().detach() if logit_scale is not None else 1.0
+                teacher_logits = scale * (image_features @ self.text_prototypes.to(image_features.device).t())
+            gate = rise_gated_kd(teacher_logits, student_logits, labels.to(teacher_logits.device),
+                                 float(self.hparams.get("rise_kd_temperature", 2.0)),
+                                 self.hparams.get("rise_kd_gate_mode", "none"),
+                                 intervened_causal_logits, float(self.hparams.get("rise_kd_gate_beta", 5.0)),
+                                 float(self.hparams.get("rise_kd_gate_eps", 1e-8)))
+            out.update(gate)
+        if _as_bool(self.hparams.get("use_rise_ad", self.hparams.get("use_rise_proto", True))):
+            out["loss_rise_ad"], _ = rise.prototype_alignment_loss(
+                self.rise_projector(student_features), labels, self.text_prototypes)
+        return out
+
+    def _cross_domain_supcon(self, q, labels, domains):
+        """SupCon with same-class positives restricted to different domains."""
+        n = q.shape[0]
+        if n < 2:
+            return q.sum() * 0.0
+        logits = q @ q.t() / self.hparams["t"]
+        logits = logits - logits.max(dim=1, keepdim=True).values.detach()
+        diagonal = torch.eye(n, device=q.device, dtype=torch.bool)
+        positives = ((labels[:, None] == labels[None, :]) &
+                     (domains[:, None] != domains[None, :]) & ~diagonal)
+        valid = positives.any(dim=1)
+        if not valid.any():
+            return q.sum() * 0.0
+        log_denominator = torch.log(torch.exp(logits).masked_fill(diagonal, 0).sum(1).clamp_min(1e-12))
+        log_prob = logits - log_denominator[:, None]
+        return -((log_prob * positives.float()).sum(1)[valid] /
+                 positives.sum(1)[valid].float()).mean()
+
+    @staticmethod
+    def _rise_metrics(out, temperature, gate_mode):
+        metrics = {"loss_rise_kd_raw": float(out["loss_rise_kd_raw"].detach()),
+                   "loss_rise_kd_gated": float(out["loss_rise_kd"].detach()),
+                   "rise_kd_temperature": float(temperature), "rise_kd_gate_mode": str(gate_mode)}
+        for prefix, value in (("rise_teacher_conf", out.get("teacher_confidence")),
+                              ("rise_intervention_js", out.get("intervention_js")),
+                              ("rise_intervention_reliability", out.get("intervention_reliability")),
+                              ("rise_kd_gate_weight", out.get("gate_weight"))):
+            if value is not None:
+                metrics.update({prefix + "_mean": float(value.mean()), prefix + "_min": float(value.min()), prefix + "_max": float(value.max())})
+        if out.get("teacher_top1") is not None:
+            metrics["rise_teacher_top1_acc"] = float((out["teacher_top1"] == out["labels"]).float().mean())
+        if out.get("gate_weight") is not None:
+            metrics["rise_kd_effective_sample_ratio"] = float((out["gate_weight"] > .1).float().mean())
+        return metrics
 
     def update(self, x, y, **kwargs):
         all_x = torch.cat(x)
@@ -400,7 +566,10 @@ class DCCL(Algorithm):
             view_2 = nn.functional.normalize(embed_2)
             features = torch.stack([view_1, view_2], dim=1)
             #三种对比策略策略 A:域感知(域掩码)
-            if self.re_w:
+            if self.hparams.get("dccl_contrast_mode", "dccl_original") == "cross_domain_only":
+                domains = torch.cat(kwargs["d"]).to(all_y.device)
+                loss_sup_cl = self._cross_domain_supcon(view_1, all_y, domains)
+            elif self.re_w:
                 all_d = torch.cat(kwargs["d"])
                 all_d_2 = torch.cat(kwargs["d_2"])
                 d = torch.unsqueeze(torch.cat([all_d, all_d_2]), 1).float()
@@ -450,11 +619,19 @@ class DCCL(Algorithm):
             else:
                 pre_cl_loss += self.supcon_loss_pre(features, all_y_pre)
             loss += self.l_layer*pre_cl_loss
+        rise_output = self._compute_rise_losses(all_x, all_y, feature_x, pred_x, kwargs.get("step", 0))
+        rise_output["labels"] = all_y
+        loss = loss + rise_output["rise_ramp"] * (
+            float(self.hparams.get("rise_kd_weight", .1)) * rise_output["loss_rise_kd"] +
+            float(self.hparams.get("rise_ad_weight", self.hparams.get("rise_proto_weight", .05))) * rise_output["loss_rise_ad"])
         loss_opt = loss
         self.optimizer.zero_grad()
         loss_opt.backward()
         self.optimizer.step()
-        loss_dict = {"loss": loss.item(), "ce_loss": ce_loss}
+        loss_dict = {"loss": loss.item(), "ce_loss": ce_loss,
+                     "loss_rise_kd": rise_output["loss_rise_kd"].item(),
+                     "loss_rise_ad": rise_output["loss_rise_ad"].item(), "rise_ramp": rise_output["rise_ramp"]}
+        loss_dict.update(self._rise_metrics(rise_output, self.hparams.get("rise_kd_temperature", 2.0), self.hparams.get("rise_kd_gate_mode", "none")))
         if self.l:
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
         if self.l_layer:
