@@ -45,6 +45,15 @@ class MultipleDomainDataset:
     ENVIRONMENTS = None  # Subclasses should override
     INPUT_SHAPE = None  # Subclasses should override
 
+    def _set_class_metadata(self):
+        mappings = [getattr(dataset, "class_to_idx", None) for dataset in self.datasets]
+        if not mappings or any(mapping is None for mapping in mappings):
+            return
+        if any(mapping != mappings[0] for mapping in mappings[1:]):
+            raise ValueError("All dataset domains must have identical class_to_idx mappings for RISE.")
+        self.class_to_idx = dict(mappings[0])
+        self.class_names = [name for name, _ in sorted(self.class_to_idx.items(), key=lambda pair: pair[1])]
+
     def __getitem__(self, index):
         """
         Return: sub-dataset for specific domain
@@ -218,6 +227,8 @@ class MultipleEnvironmentImageFolder(MultipleDomainDataset):
             env_dataset = ImageFolder(path)
 
             self.datasets.append(env_dataset)
+
+        self._set_class_metadata()
 
         self.input_shape = (3, 224, 224)
         self.num_classes = len(self.datasets[-1].classes)

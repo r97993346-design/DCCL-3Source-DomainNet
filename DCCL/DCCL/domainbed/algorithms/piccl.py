@@ -259,7 +259,7 @@ class PICCL(DCCL):
             {"params": self.mean_encoders.parameters(), "lr": self.hparams["lr"] * 10},
             {"params": self.var_encoders.parameters(), "lr": self.hparams["lr"] * 10},
             {"params": self.pre_proj_head.parameters(), "lr": self.hparams["lr"] / 10},
-        ]
+        ] + self._rise_optimizer_groups()
 
     def _optimizer_groups(self):
         if _as_bool(self.hparams.get("piccl_strict_bypass", False)):
@@ -390,6 +390,7 @@ class PICCL(DCCL):
         #logits = self.classifier(z)
         # 这里修改一下2——2都经过因果
         logits = self.classifier(m)
+        intervened_causal_logits = self.classifier(m_int)
         loss_cls = F.cross_entropy(logits, all_y)
         loss = loss_cls
         loss_sup_cl = m.new_tensor(0.0)
@@ -399,7 +400,10 @@ class PICCL(DCCL):
             view_1 = nn.functional.normalize(embed_1)
             view_2 = nn.functional.normalize(embed_2)
             features = torch.stack([view_1, view_2], dim=1)
-            if self.re_w:
+            if self.hparams.get("dccl_contrast_mode", "dccl_original") == "cross_domain_only":
+                # Deliberately use only m: m_int remains an intervention signal, not a positive view.
+                loss_sup_cl = self._cross_domain_supcon(view_1, all_y, domains)
+            elif self.re_w:
                 all_d = torch.cat(kwargs["d"])
                 all_d_2 = torch.cat(kwargs["d_2"])
                 d = torch.unsqueeze(torch.cat([all_d, all_d_2]), 1).float()
@@ -455,6 +459,13 @@ class PICCL(DCCL):
         weighted_isr = float(self.hparams.get("piccl_isr_weight", 0.1)) * loss_isr
         weighted_orth = float(self.hparams.get("piccl_orth_weight", 0.001)) * loss_orth
         loss = loss + weighted_isr + weighted_orth
+        rise_output = self._compute_rise_losses(
+            images=all_x, labels=all_y, student_features=m, student_logits=logits, step=step,
+            intervened_causal_logits=intervened_causal_logits)
+        rise_output["labels"] = all_y
+        weighted_kd = rise_output["rise_ramp"] * float(self.hparams.get("rise_kd_weight", .1)) * rise_output["loss_rise_kd"]
+        weighted_ad = rise_output["rise_ramp"] * float(self.hparams.get("rise_ad_weight", self.hparams.get("rise_proto_weight", .05))) * rise_output["loss_rise_ad"]
+        loss = loss + weighted_kd + weighted_ad
         self.optimizer.zero_grad()
         loss.backward()
         grad_stats = self._diagnostic_grad_norms()
@@ -471,6 +482,8 @@ class PICCL(DCCL):
         metrics = {
             "loss": float(loss.item()), "loss_cls": float(loss_cls.item()),
             "loss_isr": float(loss_isr.item()), "loss_orth": float(loss_orth.item()),
+            "loss_rise_kd": float(rise_output["loss_rise_kd"].item()), "loss_rise_ad": float(rise_output["loss_rise_ad"].item()),
+            "rise_ramp": rise_output["rise_ramp"],
             "loss_gt": float(loss_gt.item()), "piccl_alpha": float(alpha.item()),
             "paired_response_norm": float(delta_pair_target.norm(dim=1).mean().item()),
             "domain_response_norm": float(delta_dom.norm(dim=1).mean().item()) if delta_dom.numel() else 0.0,
@@ -496,6 +509,8 @@ class PICCL(DCCL):
             "classifier_grad_norm": grad_stats["classifier_grad_norm"],
             "has_nan_or_inf": float(any(not torch.isfinite(t).all().item() for t in [loss, z, m, logits])),
         }
+        metrics.update(self._rise_metrics(rise_output, self.hparams.get("rise_kd_temperature", 2.0),
+                                          self.hparams.get("rise_kd_gate_mode", "none")))
         for i, group in enumerate(self.optimizer.param_groups):
             metrics[f"param_group_lr_{i}"] = float(group["lr"])
         return metrics
