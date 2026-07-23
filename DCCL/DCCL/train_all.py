@@ -36,7 +36,7 @@ def str2bool(value):
 
 
 def normalize_hparam_types(hparams):
-    for key in ("use_piccl", "piccl_basis_receive_task_grad", "piccl_strict_bypass"):
+    for key in ("use_piccl",):
         if key in hparams:
             hparams[key] = str2bool(hparams[key])
     return hparams
@@ -97,6 +97,7 @@ def main():
     parser.add_argument("--prebuild_loader", action="store_true", help="Pre-build eval loaders")
     parser.add_argument("--model", type=str, default="resnet50", help="Backbone model architecture")
     parser.add_argument("--label_ratio", type=float, default=1.0, help="Ratio of labeled data to use")
+    parser.add_argument("--selection_key", type=str, default="SWAD", help="Required model-selection metric; no mixed-metric fallback is allowed")
     
     # Core DCCL hyperparameters (main tuning parameters)
     parser.add_argument("--l", type=float, default=1, help="Weight for contrastive loss between augmented views")
@@ -286,9 +287,11 @@ def main():
                     [tgt], args=erm_args, hparams=erm_hparams, n_steps=n_steps,
                     checkpoint_freq=checkpoint_freq, logger=logger, writer=writer
                 )
-                key = "test_out"
-                main_acc = float(res.get(key, np.mean(list(res.values()))))
-                erm_acc = float(erm_res.get(key, np.mean(list(erm_res.values()))))
+                selection_key = args.selection_key
+                if selection_key not in res or selection_key not in erm_res:
+                    raise KeyError(f"Missing required selection_key={selection_key!r} in run results")
+                main_acc = float(res[selection_key])
+                erm_acc = float(erm_res[selection_key])
                 rel_drop = (erm_acc - main_acc) / max(erm_acc, 1e-12)
                 combo_rows.append((srcs, tgt, main_acc, erm_acc, rel_drop))
                 all_records.append(records)

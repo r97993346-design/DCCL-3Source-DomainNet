@@ -8,7 +8,7 @@ import argparse, csv, json, math, os, shutil, subprocess, sys
 from pathlib import Path
 from statistics import mean, pstdev
 
-PICCL_KEYS = ["lr","weight_decay","piccl_rank","piccl_alpha_max","piccl_lr_multiplier","piccl_ccc_weight","piccl_connectivity_weight","piccl_isr_weight","piccl_orth_weight","piccl_residual_scale","piccl_gate_bias","piccl_delayed_start_ratio","piccl_loss_warmup_ratio","piccl_feature_warmup_ratio","piccl_fusion_mode","t","piccl_gt_mode","piccl_int_weight","piccl_ref_weight","piccl_warmup_ratio","piccl_ramp_ratio"]
+PICCL_KEYS = ["piccl_rank", "piccl_beta_max", "piccl_isr_weight", "use_piccl"]
 
 
 def load_jsonl(path):
@@ -36,7 +36,7 @@ def source_score(row):
 
 def global_objective(scores):
     vals=[float(scores[i]['source_score']) for i in range(4)]
-    return mean(vals) - 0.25*pstdev(vals)
+    return mean(vals) - 0.2*pstdev(vals)
 
 def recover_params(row):
     hp=row.get('hparams',{}); args=row.get('args',{}); out={}
@@ -50,7 +50,15 @@ def read_history(history_root):
     root=Path(history_root)
     for d in sorted([x for x in root.iterdir() if x.is_dir()]):
         row=final_row(d); params=recover_params(row); tgt=target_env(row)
-        runs.append({'name':d.name,'algorithm':row.get('args',{}).get('algorithm'),'step':row.get('step'),'target_env':tgt,'params':params,'source_score':source_score(row),'source_mean':mean([float(row[f'env{i}_out']) for i in range(4) if i!=tgt and f'env{i}_out' in row]),'target_report_only':row.get(f'env{tgt}_out'),'train_out':row.get('train_out'),'metrics':{k:row.get(k) for k in ['loss_cls','loss_ccc','weighted_loss_ccc','weighted_loss_isr','weighted_loss_orth','backbone_grad_norm','piccl_grad_norm','feature_delta_ratio','original_fused_cosine','gate_mean','piccl_alpha','response_capture_ratio','has_nan_or_inf'] if k in row}})
+        runs.append({'name': d.name, 'algorithm': row.get('args', {}).get('algorithm'),
+                     'step': row.get('step'), 'target_env': tgt, 'params': params,
+                     'source_score': source_score(row),
+                     'source_mean': mean([float(row[f'env{i}_out']) for i in range(4)
+                                          if i != tgt and f'env{i}_out' in row]),
+                     'target_report_only': row.get(f"env{tgt}_out"),
+                     'train_out': row.get('train_out'),
+                     'metrics': {k: row.get(k) for k in ['loss_cls', 'weighted_loss_isr',
+                                 'loss_isr_aug', 'loss_isr_dom', 'piccl_beta', 'has_nan_or_inf'] if k in row}})
     return runs
 
 def suggest_params(trial, cfg):

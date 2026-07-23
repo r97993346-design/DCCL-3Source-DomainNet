@@ -76,7 +76,11 @@ class AveragedModel(Module):
         model = self.filter(model)
         if isinstance(model, AveragedModel):
             model = model.module
-        for p_swa, p_model in zip(self.parameters(), model.parameters()):
+        source_parameters = dict(model.named_parameters())
+        for name, p_swa in self.module.named_parameters():
+            p_model = source_parameters.get(name)
+            if p_model is None or p_model.shape != p_swa.shape:
+                continue
             device = p_swa.device
             p_model_ = p_model.detach().to(device)
             if self.n_averaged == 0:
@@ -85,6 +89,13 @@ class AveragedModel(Module):
                 p_swa.detach().copy_(
                     self.avg_fn(p_swa.detach(), p_model_, self.n_averaged.to(device))
                 )
+        # Buffers are model state too. In particular PICCL's projection strength
+        # must not remain at its constructor value in the SWAD forward model.
+        source_buffers = dict(model.named_buffers())
+        for name, buffer_swa in self.module.named_buffers():
+            buffer_model = source_buffers.get(name)
+            if buffer_model is not None and buffer_model.shape == buffer_swa.shape:
+                buffer_swa.detach().copy_(buffer_model.detach().to(buffer_swa.device))
         self.n_averaged += 1
 
         if step is not None:

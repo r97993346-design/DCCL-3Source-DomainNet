@@ -1,16 +1,5 @@
 # Recommended PICCL config for three-source DomainNet runs.
 piccl_rank: 16
-piccl_alpha_max: 0.5
-piccl_warmup_ratio: 0.10
-piccl_ramp_ratio: 0.20
-piccl_proto_momentum: 0.99
-piccl_num_interventions: 1
-piccl_ccc_weight: 1.0
-piccl_int_weight: 0.1
-piccl_ref_weight: 1.0
-piccl_isr_weight: 0.1
-piccl_orth_weight: 0.001
-piccl_eps: 1.0e-8
-piccl_gt_mode: replace
-piccl_basis_receive_task_grad: false
-piccl_min_valid_domains: 2
+piccl_beta_max: 0.20
+piccl_isr_weight: 0.03
+use_piccl: true
