@@ -503,7 +503,8 @@ class SupConLoss(nn.Module):
         self.mask_out = mask_out
         self.not_sup = not_sup
 
-    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None):
+    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None,
+                positive_weights=None):
         """Compute loss for model. If both `labels` and `mask` are None,
         it degenerates to SimCLR unsupervised loss:
         https://arxiv.org/pdf/2002.05709.pdf
@@ -588,15 +589,35 @@ class SupConLoss(nn.Module):
             exp_logits = exp_logits*mask_out
         log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True))
 
-        # compute mean of log-likelihood over positive
+        # compute mean of log-likelihood over positive. The unweighted branch is
+        # deliberately preserved verbatim for DCCL backward compatibility.
         if pos_mask is not None:
             log_prob = log_prob*pos_mask
-        if add_pos is not None:
-            add_logits = torch.sum(add_pos*contrast_feature, 1, keepdim=True)/self.temperature - logits_max.detach()
-            add_logits = torch.squeeze(add_logits)
-            mean_log_prob_pos = ((mask * log_prob).sum(1)+add_logits) / (mask.sum(1)+1)
+        if positive_weights is None:
+            if add_pos is not None:
+                add_logits = torch.sum(add_pos*contrast_feature, 1, keepdim=True)/self.temperature - logits_max.detach()
+                add_logits = torch.squeeze(add_logits)
+                mean_log_prob_pos = ((mask * log_prob).sum(1)+add_logits) / (mask.sum(1)+1)
+            else:
+                mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
         else:
-            mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
+            if positive_weights.shape != mask.shape:
+                raise ValueError("positive_weights must match the expanded SupCon mask")
+            weighted_positive_mask = mask * positive_weights.to(device=device, dtype=mask.dtype)
+            positive_denominator = weighted_positive_mask.sum(1)
+            if add_pos is not None:
+                # sample_d contributes an additional positive outside the contrast
+                # matrix and intentionally remains unweighted.
+                add_logits = torch.sum(add_pos * contrast_feature, 1, keepdim=True) / self.temperature - logits_max.detach()
+                numerator = (weighted_positive_mask * log_prob).sum(1) + torch.squeeze(add_logits)
+                positive_denominator = positive_denominator + 1
+            else:
+                numerator = (weighted_positive_mask * log_prob).sum(1)
+            # Match the original safe behavior for anchors with no positives while
+            # avoiding NaN/Inf in degenerate batches.
+            mean_log_prob_pos = numerator / positive_denominator.clamp_min(1e-12)
+            mean_log_prob_pos = torch.where(positive_denominator > 0, mean_log_prob_pos,
+                                            torch.zeros_like(mean_log_prob_pos))
 
         # loss
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos

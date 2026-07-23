@@ -44,6 +44,12 @@ def _hparams(algorithm, dataset, random_state):
         hparams["piccl_beta_max"] = (0.20, float(random_state.uniform(0.10, 0.35)))
         hparams["piccl_isr_weight"] = (0.03, float(10 ** random_state.uniform(-2, -1.096910013)))
         hparams["use_piccl"] = (True, True)
+        hparams["piccl_use_causal_reliability"] = (False, False)
+        hparams["piccl_reliability_min"] = (0.2, 0.2)
+        hparams["piccl_reliability_warmup_ratio"] = (0.1, 0.1)
+        hparams["piccl_reliability_ramp_ratio"] = (0.2, 0.2)
+        hparams["piccl_reliability_detach"] = (True, True)
+        hparams["piccl_reliability_cross_domain_only"] = (True, True)
 
     if algorithm in ["DANN", "CDANN"]:
         if dataset not in SMALL_IMAGES:

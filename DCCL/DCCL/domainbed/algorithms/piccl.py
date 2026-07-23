@@ -182,6 +182,59 @@ class PICCL(DCCL):
     def _project(self, z, beta):
         return self.causal_mediator(z, self.sensitive_subspace, beta)
 
+    @staticmethod
+    def _pooled_features(features):
+        """Convert [B,C,H,W] or [B,D] causal features to [B,D]."""
+        if features.dim() == 4:
+            return F.adaptive_avg_pool2d(features, 1).flatten(1)
+        if features.dim() == 2:
+            return features
+        raise ValueError("causal features must have shape [B,D] or [B,C,H,W]")
+
+    def _causal_reliability(self, h_factual, h_intervened):
+        """Detached cosine agreement of factual and intervention features, [B]."""
+        factual = F.normalize(self._pooled_features(h_factual), dim=1)
+        intervened = F.normalize(self._pooled_features(h_intervened), dim=1)
+        reliability = ((factual * intervened).sum(1) + 1.).div(2.).clamp(0., 1.)
+        # Reliability is a fixed loss weight: never allow the model to change it
+        # through gradient descent, even if a legacy config sets the flag false.
+        reliability = reliability.detach()
+        if not torch.isfinite(reliability).all():
+            raise RuntimeError("causal reliability contains NaN or Inf")
+        return reliability
+
+    def _reliability_gamma(self, step):
+        total_steps = max(int(self.hparams.get("piccl_total_steps", 1)), 1)
+        warmup = total_steps * float(self.hparams["piccl_reliability_warmup_ratio"])
+        ramp = total_steps * float(self.hparams["piccl_reliability_ramp_ratio"])
+        if step < warmup:
+            return 0.0
+        if ramp <= 0:
+            return 1.0
+        return min(max((step - warmup) / ramp, 0.0), 1.0)
+
+    @staticmethod
+    def _expand_view_major(values, num_views=2):
+        """Expand [B,...] as cat(unbind(features, dim=1)): all view 0 then view 1."""
+        return values.repeat((num_views,) + (1,) * (values.dim() - 1))
+
+    def _causal_positive_pair_weights(self, labels, domain_ids, sample_ids, view_ids,
+                                      reliability, reliability_min, cross_domain_only=True):
+        """Build [B*V,B*V] weights; only cross-domain same-class pairs vary."""
+        same_class = labels[:, None].eq(labels[None, :])
+        same_domain = domain_ids[:, None].eq(domain_ids[None, :])
+        self_augmentation = sample_ids[:, None].eq(sample_ids[None, :]) & view_ids[:, None].ne(view_ids[None, :])
+        cross_domain_positive_mask = same_class & ~same_domain if cross_domain_only else torch.zeros_like(same_class)
+        pair_reliability = torch.sqrt(reliability[:, None] * reliability[None, :])
+        weights = torch.ones_like(pair_reliability)
+        cross_weights = reliability_min + (1. - reliability_min) * pair_reliability
+        weights = torch.where(cross_domain_positive_mask, cross_weights, weights)
+        if not torch.isfinite(weights).all() or not ((weights >= reliability_min) & (weights <= 1.)).all():
+            raise RuntimeError("causal positive weights are outside [reliability_min, 1]")
+        if not torch.all(weights[self_augmentation] == 1) or not torch.all(weights[same_class & same_domain] == 1):
+            raise RuntimeError("non-cross-domain positive weights must be one")
+        return weights, cross_domain_positive_mask, self_augmentation
+
     def _isr_loss(self, delta_pair, delta_domain):
         aug = self.sensitive_subspace.coverage_loss(delta_pair)
         dom_valid = delta_domain.numel() > 0 and bool((delta_domain.pow(2).sum(1) > 1e-8).any())
@@ -217,9 +270,65 @@ class PICCL(DCCL):
         if self.two_ce:
             loss_cls = .5 * (loss_cls + F.cross_entropy(self.classifier(m_int), all_y))
         loss_sup_cl = m.new_zeros(())
+        loss_sup_cl_unweighted = m.new_zeros(())
+        reliability_metrics = {}
         if self.l:
             features = torch.stack([F.normalize(self.proj_head(m)), F.normalize(self.proj_head(m_int))], 1)
-            if self.re_w:
+            use_reliability = parse_bool(self.hparams["piccl_use_causal_reliability"])
+            if use_reliability:
+                # z/z_int are factual features; m/m_int are their independently
+                # intervened/fused causal representations. All metadata follows
+                # SupCon's view-major cat(unbind(..., dim=1)) expansion.
+                raw_reliability = torch.cat([self._causal_reliability(z, m),
+                                               self._causal_reliability(z_int, m_int)])
+                gamma = self._reliability_gamma(kwargs.get("step", 0))
+                causal_reliability = (1. - gamma) + gamma * raw_reliability
+                base_domains = self._domain_ids(x)
+                base_samples = torch.arange(all_y.shape[0], device=all_y.device)
+                expanded_labels = self._expand_view_major(all_y)
+                expanded_domains = self._expand_view_major(base_domains)
+                expanded_samples = self._expand_view_major(base_samples)
+                expanded_views = torch.cat([torch.zeros_like(base_samples), torch.ones_like(base_samples)])
+                if not (expanded_labels.shape[0] == expanded_domains.shape[0] == expanded_samples.shape[0]
+                        == causal_reliability.shape[0] == features.shape[0] * features.shape[1]):
+                    raise RuntimeError("SupCon metadata does not match contrast feature expansion")
+                weights, cross_mask, _ = self._causal_positive_pair_weights(
+                    expanded_labels, expanded_domains, expanded_samples, expanded_views,
+                    causal_reliability, float(self.hparams["piccl_reliability_min"]),
+                    parse_bool(self.hparams["piccl_reliability_cross_domain_only"]))
+                if self.re_w:
+                    d = torch.unsqueeze(torch.cat([torch.cat(kwargs["d"]), torch.cat(kwargs["d_2"])]), 1).float()
+                    neg_mask = torch.eq(d, d.T).float()
+                    loss_sup_cl_unweighted = self.supcon_loss(features, all_y, neg_mask=neg_mask,
+                                                               pos_mask=1-neg_mask if self.pos_mask else None)
+                    loss_sup_cl = self.supcon_loss(features, all_y, neg_mask=neg_mask,
+                                                    pos_mask=1-neg_mask if self.pos_mask else None,
+                                                    positive_weights=weights)
+                elif self.sample_d:
+                    m_2_d = self._project(self.featurizer(torch.cat(kwargs["x_2_d"])), beta)
+                    add_pos = F.normalize(self.proj_head(m_2_d))
+                    add_pos = torch.cat([add_pos, add_pos])
+                    loss_sup_cl_unweighted = self.supcon_loss(features, all_y, add_pos=add_pos)
+                    loss_sup_cl = self.supcon_loss(features, all_y, add_pos=add_pos, positive_weights=weights)
+                else:
+                    loss_sup_cl_unweighted = self.supcon_loss(features, all_y)
+                    loss_sup_cl = self.supcon_loss(features, all_y, positive_weights=weights)
+                cross_weights = weights[cross_mask]
+                reliability_metrics = {
+                    "causal_reliability_mean": raw_reliability.mean().item(),
+                    "causal_reliability_std": raw_reliability.std(unbiased=False).item(),
+                    "causal_reliability_min": raw_reliability.min().item(),
+                    "causal_reliability_max": raw_reliability.max().item(),
+                    "causal_reliability_gamma": gamma,
+                    "cross_domain_positive_pairs": int(cross_mask.sum().item()),
+                    "cross_domain_positive_weight_mean": cross_weights.mean().item() if cross_weights.numel() else 1.,
+                    "cross_domain_positive_weight_min": cross_weights.min().item() if cross_weights.numel() else 1.,
+                    "cross_domain_positive_weight_max": cross_weights.max().item() if cross_weights.numel() else 1.,
+                    "loss_sup_cl_unweighted": loss_sup_cl_unweighted.item(),
+                    "loss_sup_cl_weighted": loss_sup_cl.item(),
+                    "reliability_nan_count": int((~torch.isfinite(raw_reliability)).sum().item()),
+                }
+            elif self.re_w:
                 d = torch.unsqueeze(torch.cat([torch.cat(kwargs["d"]), torch.cat(kwargs["d_2"])]), 1).float()
                 neg_mask = torch.eq(d, d.T).float()
                 loss_sup_cl = self.supcon_loss(features, all_y, neg_mask=neg_mask,
@@ -245,9 +354,11 @@ class PICCL(DCCL):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        return {"loss": loss.item(), "loss_cls": loss_cls.item(), "sup_cl_loss": loss_sup_cl.item(),
-                "pre_cl_loss": pre_cl_loss.item(), "reg_loss": reg_loss.item(), "loss_isr": loss_isr.item(),
-                "loss_isr_aug": loss_isr_aug.item(), "loss_isr_dom": loss_isr_dom.item(), "piccl_beta": beta.item()}
+        metrics = {"loss": loss.item(), "loss_cls": loss_cls.item(), "sup_cl_loss": loss_sup_cl.item(),
+                   "pre_cl_loss": pre_cl_loss.item(), "reg_loss": reg_loss.item(), "loss_isr": loss_isr.item(),
+                   "loss_isr_aug": loss_isr_aug.item(), "loss_isr_dom": loss_isr_dom.item(), "piccl_beta": beta.item()}
+        metrics.update(reliability_metrics)
+        return metrics
 
     def predict_embed(self, x):
         if not self.use_piccl:
