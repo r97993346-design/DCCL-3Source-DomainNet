@@ -61,3 +61,53 @@ def test_swad_copies_piccl_beta_buffer():
     averaged = AveragedModel(source)
     averaged.update_parameters(source)
     assert averaged.module.piccl_beta.item() == pytest.approx(.2)
+
+
+def test_pire_is_zero_for_identical_initial_networks():
+    z = torch.randn(5, 8, requires_grad=True)
+    z_aug = torch.randn(5, 8, requires_grad=True)
+    delta = PairedInterventionResponseEstimator()(z, z_aug, z.detach().clone(), z_aug.detach().clone())
+    assert torch.allclose(delta, torch.zeros_like(delta), atol=1e-7)
+
+
+def test_residual_bank_tracks_update_counts_without_gradients():
+    bank = ClassDomainResidualBank(2, 2, 3, min_count=1)
+    residual = torch.randn(4, 3, requires_grad=True)
+    labels = torch.tensor([0, 0, 0, 0])
+    domains = torch.tensor([0, 0, 1, 1])
+    bank.update(residual, labels, domains)
+    assert bank.update_counts[0].tolist() == [1, 1]
+    assert bank.counts[0].tolist() == [2, 2]
+    assert not bank.prototypes.requires_grad
+
+
+def test_warmup_then_ramp_controls_beta():
+    obj = object.__new__(PICCL)
+    torch.nn.Module.__init__(obj)
+    obj.hparams = {"piccl_total_steps": 100, "piccl_warmup_steps": 5,
+                   "piccl_ramp_steps": 10, "piccl_beta_max": .1,
+                   "piccl_residual_scale": -1.}
+    obj.register_buffer("piccl_beta", torch.tensor(0.))
+    assert PICCL._piccl_schedule(obj, 0) == 0
+    assert PICCL._piccl_schedule(obj, 10) == pytest.approx(.5)
+    assert PICCL._beta(obj, 15).item() == pytest.approx(.1)
+
+
+def test_piccl_disabled_update_is_an_exact_dccl_delegation(monkeypatch):
+    """PICCL must not create or use causal state when its strict bypass is selected."""
+    obj = object.__new__(PICCL)
+    torch.nn.Module.__init__(obj)
+    obj.use_piccl = False
+    logits = torch.randn(3, 2)
+    expected = {"logits": logits, "loss_cls": 1.25, "sup_cl_loss": 2.5}
+
+    def dccl_update(self, *args, **kwargs):
+        return expected
+
+    monkeypatch.setattr("domainbed.algorithms.piccl.DCCL.update", dccl_update)
+    actual = PICCL.update(obj, [torch.randn(3, 4)], [torch.tensor([0, 1, 0])], x_2=[torch.randn(3, 4)])
+    assert actual is expected
+    assert torch.equal(actual["logits"], expected["logits"])
+    assert actual["loss_cls"] == expected["loss_cls"]
+    assert actual["sup_cl_loss"] == expected["sup_cl_loss"]
+    assert not hasattr(obj, "residual_bank")

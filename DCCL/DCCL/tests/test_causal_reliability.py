@@ -19,6 +19,7 @@ def _metadata():
 def test_causal_pair_weights_scope_and_formula():
     labels, domains, samples, views, reliability = _metadata()
     obj = object.__new__(PICCL)
+    torch.nn.Module.__init__(obj)
     weights, cross, self_aug = PICCL._causal_positive_pair_weights(
         obj, labels, domains, samples, views, reliability, .2)
     # Same sample across views and same-domain same-class pairs remain exactly one.
@@ -37,6 +38,7 @@ def test_weighted_supcon_matches_unweighted_at_one_and_backpropagates():
     features = torch.randn(4, 2, 5, requires_grad=True)
     labels, domains, samples, views, _ = _metadata()
     obj = object.__new__(PICCL)
+    torch.nn.Module.__init__(obj)
     weights, _, _ = PICCL._causal_positive_pair_weights(
         obj, labels, domains, samples, views, torch.ones(8), .2)
     loss_fn = SupConLoss(.1)
@@ -49,6 +51,7 @@ def test_weighted_supcon_matches_unweighted_at_one_and_backpropagates():
 
 def test_reliability_is_finite_bounded_and_detached():
     obj = object.__new__(PICCL)
+    torch.nn.Module.__init__(obj)
     obj.hparams = {"piccl_reliability_detach": True}
     factual = torch.randn(4, 3, requires_grad=True)
     intervened = torch.randn(4, 3, requires_grad=True)
@@ -60,6 +63,7 @@ def test_reliability_is_finite_bounded_and_detached():
 
 def test_gamma_schedule_and_cross_domain_switch():
     obj = object.__new__(PICCL)
+    torch.nn.Module.__init__(obj)
     obj.hparams = {"piccl_total_steps": 100, "piccl_reliability_warmup_ratio": .1,
                    "piccl_reliability_ramp_ratio": .2}
     assert PICCL._reliability_gamma(obj, 0) == 0

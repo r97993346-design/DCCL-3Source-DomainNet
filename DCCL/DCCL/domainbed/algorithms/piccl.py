@@ -19,7 +19,7 @@ def parse_bool(value):
             return False
     return bool(value)
 
-
+# 增强干预差分“把当前样本的干预响应，减去参考分布中的干预响应，得到一个更纯粹的因果/干预差异信号。”
 class PairedInterventionResponseEstimator(nn.Module):
     def forward(self, z, z_int, z_ref, z_int_ref):
         tensors = {"z": z, "z_int": z_int, "z_ref": z_ref, "z_int_ref": z_int_ref}
@@ -29,7 +29,11 @@ class PairedInterventionResponseEstimator(nn.Module):
             raise ValueError("PIRE inputs must have identical shapes")
         return (z_int - z) - (z_int_ref - z_ref).detach()
 
+#这段实现的是一个“类-域残差原型缓存（Class/Domain Residual Bank）”。它的目标是：
 
+# 记录每个类别、每个域里“残差”的长期平均表征
+# 用 EMA（指数移动平均）来维护这些原型
+# 只有在某个类别/域有足够样本后，才认为它已经“稳定”并可用于后续对齐或约束
 class ClassDomainResidualBank(nn.Module):
     """EMA class/domain residual prototypes, usable only after sufficient data."""
     def __init__(self, num_classes, num_domains, feature_dim, momentum=0.99,
@@ -37,26 +41,31 @@ class ClassDomainResidualBank(nn.Module):
         super().__init__()
         self.num_classes, self.num_domains, self.feature_dim = num_classes, num_domains, feature_dim
         self.momentum, self.min_count, self.min_valid_domains = momentum, min_count, min_valid_domains
+        #存储每个类别-域组合的残差原型中心
         self.register_buffer("prototypes", torch.zeros(num_classes, num_domains, feature_dim))
         self.register_buffer("initialized", torch.zeros(num_classes, num_domains, dtype=torch.bool))
         self.register_buffer("counts", torch.zeros(num_classes, num_domains, dtype=torch.long))
+        self.register_buffer("update_counts", torch.zeros(num_classes, num_domains, dtype=torch.long))
 
     @torch.no_grad()
-    def update(self, residual, labels, domains):
+    def update(self, residual, labels, domains, min_norm=0.0):
         for c in labels.detach().long().unique().tolist():
             for d in domains.detach().long().unique().tolist():
                 if not (0 <= c < self.num_classes and 0 <= d < self.num_domains):
                     continue
                 mask = (labels == c) & (domains == d)
+                if min_norm > 0:
+                    mask = mask & (residual.detach().norm(dim=1) >= min_norm)
                 if not mask.any():
                     continue
-                current = residual.detach()[mask].mean(0)
+                current = residual.detach()[mask].mean(dim=0)
                 if self.initialized[c, d]:
                     self.prototypes[c, d].mul_(self.momentum).add_(current, alpha=1 - self.momentum)
                 else:
                     self.prototypes[c, d].copy_(current)
                     self.initialized[c, d] = True
                 self.counts[c, d].add_(int(mask.sum()))
+                self.update_counts[c, d].add_(1)
 
     def domain_responses(self):
         responses = []
@@ -89,14 +98,33 @@ class InterventionSensitiveSubspace(nn.Module):
             q = q.detach()
         return (v @ q) @ q.T
 
-    def coverage_loss(self, responses):
+    def coverage_loss(self, responses, weights=None, min_norm=0.0):
+        """Directional reconstruction error for intervention responses [N,D]."""
         responses = responses.detach()
-        valid = responses.pow(2).sum(1) > self.eps
+        norms = responses.norm(dim=1)
+        valid = norms > max(float(min_norm), self.eps)
         if not valid.any():
             return self.basis.sum() * 0
-        v = responses[valid]
-        projected = self.project(v, detach_basis=False)
-        return ((v - projected).pow(2).sum(1) / (v.pow(2).sum(1) + self.eps)).mean()
+        directions = responses[valid] / norms[valid].unsqueeze(1).clamp_min(self.eps)
+        residual = directions - self.project(directions, detach_basis=False)
+        errors = residual.pow(2).sum(1)
+        if weights is None:
+            return errors.mean()
+        valid_weights = weights.detach()[valid].to(errors).clamp_min(0.)
+        return (errors * valid_weights).sum() / valid_weights.sum().clamp_min(self.eps)
+
+    def orthogonality_loss(self):
+        gram = self.basis.float().T @ self.basis.float()
+        identity = torch.eye(gram.shape[0], device=gram.device, dtype=gram.dtype)
+        return (gram - identity).pow(2).mean().to(self.basis.dtype)
+
+    @torch.no_grad()
+    def diagnostics(self):
+        q = self.orthonormal_basis()
+        gram = self.basis.float().T @ self.basis.float()
+        return {"basis_orthogonality_error": (gram - torch.eye(gram.shape[0], device=gram.device)).pow(2).mean(),
+                "basis_rank": int(torch.linalg.matrix_rank(q).item()),
+                "basis_norm": self.basis.norm()}
 
 
 class CausalMediatorProjection(nn.Module):
@@ -139,7 +167,8 @@ class PICCL(DCCL):
         self.pre_featurizer.eval()
         dim = self.featurizer.n_outputs
         self.pire = PairedInterventionResponseEstimator()
-        self.residual_bank = ClassDomainResidualBank(num_classes, num_domains, dim)
+        self.residual_bank = ClassDomainResidualBank(
+            num_classes, num_domains, dim, min_count=int(hparams["piccl_min_domain_samples"]))
         self.sensitive_subspace = InterventionSensitiveSubspace(dim, hparams["piccl_rank"])
         self.causal_mediator = CausalMediatorProjection()
         self.register_buffer("piccl_beta", torch.tensor(0.0))
@@ -168,11 +197,23 @@ class PICCL(DCCL):
             self.pre_featurizer.eval()
         return self
 
+    def _piccl_schedule(self, step):
+        total = max(int(self.hparams.get("piccl_total_steps", 1)), 1)
+        warmup = int(self.hparams.get("piccl_warmup_steps", 0))
+        ramp = int(self.hparams.get("piccl_ramp_steps", 0))
+        warmup = warmup if warmup > 0 else int(total * float(self.hparams.get("piccl_warmup_ratio", .05)))
+        ramp = ramp if ramp > 0 else int(total * float(self.hparams.get("piccl_ramp_ratio", .10)))
+        if step < warmup:
+            return 0.0
+        if ramp <= 0:
+            return 1.0
+        return min(max((step - warmup) / ramp, 0.0), 1.0)
+
     def _beta(self, step):
-        total = max(int(self.hparams.get("piccl_total_steps", 1)) - 1, 1)
-        progress = step / total
-        beta = 0.0 if progress <= .10 else min((progress - .10) / .20, 1.0) * self.hparams["piccl_beta_max"]
-        self.piccl_beta.fill_(beta)
+        scale = self._piccl_schedule(step)
+        beta_max = self.hparams.get("piccl_residual_scale", -1.)
+        beta_max = self.hparams["piccl_beta_max"] if float(beta_max) < 0 else beta_max
+        self.piccl_beta.fill_(scale * float(beta_max))
         return self.piccl_beta
 
     @staticmethod
@@ -235,13 +276,28 @@ class PICCL(DCCL):
             raise RuntimeError("non-cross-domain positive weights must be one")
         return weights, cross_domain_positive_mask, self_augmentation
 
-    def _isr_loss(self, delta_pair, delta_domain):
-        aug = self.sensitive_subspace.coverage_loss(delta_pair)
-        dom_valid = delta_domain.numel() > 0 and bool((delta_domain.pow(2).sum(1) > 1e-8).any())
-        if not dom_valid:
-            return aug, aug, aug
-        dom = self.sensitive_subspace.coverage_loss(delta_domain)
-        return .5 * (aug + dom), aug, dom
+    def _isr_loss(self, delta_aug, delta_dom, augmentation_weights=None):
+        """Keep sample-level augmentation and prototype-level domain ISR separate."""
+        min_norm = float(self.hparams["piccl_min_delta_norm"])
+        aug = self.sensitive_subspace.coverage_loss(delta_aug, augmentation_weights, min_norm)
+        dom = self.sensitive_subspace.coverage_loss(delta_dom, min_norm=min_norm) if delta_dom.numel() else aug * 0
+        total = (float(self.hparams["piccl_isr_aug_weight"]) * aug
+                 + float(self.hparams["piccl_isr_dom_weight"]) * dom)
+        return total, aug, dom
+
+    @staticmethod
+    def _response_stats(responses, min_norm):
+        if responses.numel() == 0:
+            return 0, 0., 0.
+        norms = responses.detach().norm(dim=1)
+        return int((norms >= min_norm).sum().item()), norms.mean().item(), norms.max().item()
+
+    @staticmethod
+    def _semantic_confidence(logits_src, logits_aug, labels, min_weight):
+        probabilities_src = logits_src.detach().softmax(dim=1).gather(1, labels[:, None]).squeeze(1)
+        probabilities_aug = logits_aug.detach().softmax(dim=1).gather(1, labels[:, None]).squeeze(1)
+        raw_confidence = torch.sqrt(probabilities_src * probabilities_aug).detach()
+        return raw_confidence.clamp(float(min_weight), 1.), raw_confidence
 
     def _gt_loss(self, inter_feats, pre_feats):
         from domainbed.lib import misc
@@ -255,20 +311,31 @@ class PICCL(DCCL):
         if not self.use_piccl:
             return super().update(x, y, **kwargs)
         all_x, all_y, all_x_2 = torch.cat(x), torch.cat(y), torch.cat(kwargs["x_2"])
-        beta = self._beta(kwargs.get("step", 0)).to(all_x.device)
-        z, inter_feats = self.featurizer(all_x, ret_feats=True)
-        z_int, _ = self.featurizer(all_x_2, ret_feats=True)
+        step = kwargs.get("step", 0)
+        lambda_piccl = self._piccl_schedule(step)
+        beta = self._beta(step).to(all_x.device)
+        z, inter_feats = self.featurizer(all_x, ret_feats=True)  # [B,D]
+        z_int, _ = self.featurizer(all_x_2, ret_feats=True)  # [B,D]
         with torch.no_grad():
             z_ref, pre_feats = self.pre_featurizer(all_x, ret_feats=True)
             z_int_ref = self.pre_featurizer(all_x_2)
-        delta_pair = self.pire(z, z_int, z_ref, z_int_ref).detach()
-        self.residual_bank.update((z - z_ref).detach(), all_y, self._domain_ids(x))
-        delta_domain = self.residual_bank.domain_responses().to(z.device, z.dtype)
-        loss_isr, loss_isr_aug, loss_isr_dom = self._isr_loss(delta_pair, delta_domain)
+        delta_aug = self.pire(z, z_int, z_ref, z_int_ref).detach()  # [B,D]
+        min_norm = float(self.hparams["piccl_min_delta_norm"])
+        if lambda_piccl > 0:
+            self.residual_bank.update((z - z_ref).detach(), all_y, self._domain_ids(x), min_norm=min_norm)
+        delta_dom = self.residual_bank.domain_responses().to(z.device, z.dtype)  # [N,D]
         m, m_int = self._project(z, beta), self._project(z_int, beta)
-        loss_cls = F.cross_entropy(self.classifier(m), all_y)
+        logits_src, logits_aug = self.classifier(m), self.classifier(m_int)
+        loss_cls = F.cross_entropy(logits_src, all_y)
         if self.two_ce:
-            loss_cls = .5 * (loss_cls + F.cross_entropy(self.classifier(m_int), all_y))
+            loss_cls = .5 * (loss_cls + F.cross_entropy(logits_aug, all_y))
+        semantic_confidence, raw_semantic_confidence = self._semantic_confidence(
+            logits_src, logits_aug, all_y, self.hparams["piccl_semantic_min_weight"])
+        valid_aug = ((raw_semantic_confidence >= float(self.hparams["piccl_semantic_threshold"]))
+                     & (delta_aug.norm(dim=1) >= min_norm))
+        augmentation_weights = semantic_confidence * valid_aug.to(semantic_confidence.dtype)
+        loss_isr, loss_isr_aug, loss_isr_dom = self._isr_loss(delta_aug, delta_dom, augmentation_weights)
+        loss_orth = self.sensitive_subspace.orthogonality_loss()
         loss_sup_cl = m.new_zeros(())
         loss_sup_cl_unweighted = m.new_zeros(())
         reliability_metrics = {}
@@ -276,12 +343,9 @@ class PICCL(DCCL):
             features = torch.stack([F.normalize(self.proj_head(m)), F.normalize(self.proj_head(m_int))], 1)
             use_reliability = parse_bool(self.hparams["piccl_use_causal_reliability"])
             if use_reliability:
-                # z/z_int are factual features; m/m_int are their independently
-                # intervened/fused causal representations. All metadata follows
-                # SupCon's view-major cat(unbind(..., dim=1)) expansion.
                 raw_reliability = torch.cat([self._causal_reliability(z, m),
                                                self._causal_reliability(z_int, m_int)])
-                gamma = self._reliability_gamma(kwargs.get("step", 0))
+                gamma = self._reliability_gamma(step)
                 causal_reliability = (1. - gamma) + gamma * raw_reliability
                 base_domains = self._domain_ids(x)
                 base_samples = torch.arange(all_y.shape[0], device=all_y.device)
@@ -296,38 +360,20 @@ class PICCL(DCCL):
                     expanded_labels, expanded_domains, expanded_samples, expanded_views,
                     causal_reliability, float(self.hparams["piccl_reliability_min"]),
                     parse_bool(self.hparams["piccl_reliability_cross_domain_only"]))
-                if self.re_w:
-                    d = torch.unsqueeze(torch.cat([torch.cat(kwargs["d"]), torch.cat(kwargs["d_2"])]), 1).float()
-                    neg_mask = torch.eq(d, d.T).float()
-                    loss_sup_cl_unweighted = self.supcon_loss(features, all_y, neg_mask=neg_mask,
-                                                               pos_mask=1-neg_mask if self.pos_mask else None)
-                    loss_sup_cl = self.supcon_loss(features, all_y, neg_mask=neg_mask,
-                                                    pos_mask=1-neg_mask if self.pos_mask else None,
-                                                    positive_weights=weights)
-                elif self.sample_d:
-                    m_2_d = self._project(self.featurizer(torch.cat(kwargs["x_2_d"])), beta)
-                    add_pos = F.normalize(self.proj_head(m_2_d))
-                    add_pos = torch.cat([add_pos, add_pos])
-                    loss_sup_cl_unweighted = self.supcon_loss(features, all_y, add_pos=add_pos)
-                    loss_sup_cl = self.supcon_loss(features, all_y, add_pos=add_pos, positive_weights=weights)
-                else:
-                    loss_sup_cl_unweighted = self.supcon_loss(features, all_y)
-                    loss_sup_cl = self.supcon_loss(features, all_y, positive_weights=weights)
+                # The unweighted comparison is a diagnostic only; it does not receive gradients.
+                with torch.no_grad():
+                    loss_sup_cl_unweighted = self.supcon_loss(features.detach(), all_y)
+                loss_sup_cl = self.supcon_loss(features, all_y, positive_weights=weights)
                 cross_weights = weights[cross_mask]
-                reliability_metrics = {
-                    "causal_reliability_mean": raw_reliability.mean().item(),
+                reliability_metrics = {"causal_reliability_mean": raw_reliability.mean().item(),
                     "causal_reliability_std": raw_reliability.std(unbiased=False).item(),
-                    "causal_reliability_min": raw_reliability.min().item(),
-                    "causal_reliability_max": raw_reliability.max().item(),
-                    "causal_reliability_gamma": gamma,
-                    "cross_domain_positive_pairs": int(cross_mask.sum().item()),
+                    "causal_reliability_min": raw_reliability.min().item(), "causal_reliability_max": raw_reliability.max().item(),
+                    "causal_reliability_gamma": gamma, "cross_domain_positive_pairs": int(cross_mask.sum().item()),
                     "cross_domain_positive_weight_mean": cross_weights.mean().item() if cross_weights.numel() else 1.,
                     "cross_domain_positive_weight_min": cross_weights.min().item() if cross_weights.numel() else 1.,
                     "cross_domain_positive_weight_max": cross_weights.max().item() if cross_weights.numel() else 1.,
-                    "loss_sup_cl_unweighted": loss_sup_cl_unweighted.item(),
-                    "loss_sup_cl_weighted": loss_sup_cl.item(),
-                    "reliability_nan_count": int((~torch.isfinite(raw_reliability)).sum().item()),
-                }
+                    "loss_sup_cl_unweighted": loss_sup_cl_unweighted.item(), "loss_sup_cl_weighted": loss_sup_cl.item(),
+                    "reliability_nan_count": int((~torch.isfinite(raw_reliability)).sum().item())}
             elif self.re_w:
                 d = torch.unsqueeze(torch.cat([torch.cat(kwargs["d"]), torch.cat(kwargs["d_2"])]), 1).float()
                 neg_mask = torch.eq(d, d.T).float()
@@ -345,18 +391,33 @@ class PICCL(DCCL):
             if self.re_w:
                 d = torch.unsqueeze(torch.cat([torch.cat(kwargs["d"]), torch.cat(kwargs["d_2"])]), 1).float()
                 neg_mask = torch.eq(d, d.T).float()
-                pre_cl_loss = self.supcon_loss_pre(features, all_y, neg_mask=neg_mask,
-                                                    pos_mask=1-neg_mask if self.pos_mask else None)
+                pre_cl_loss = self.supcon_loss_pre(features, all_y, neg_mask=neg_mask, pos_mask=1-neg_mask if self.pos_mask else None)
             else:
                 pre_cl_loss = self.supcon_loss_pre(features, all_y)
         reg_loss = self._gt_loss(inter_feats, pre_feats) if self.l_d else m.new_zeros(())
-        loss = loss_cls + self.l * loss_sup_cl + self.l_layer * pre_cl_loss + self.l_d * reg_loss + self.hparams["piccl_isr_weight"] * loss_isr
+        piccl_regularizer = (float(self.hparams["piccl_isr_weight"]) * loss_isr
+                             + float(self.hparams["piccl_orth_weight"]) * loss_orth)
+        loss = loss_cls + self.l * loss_sup_cl + self.l_layer * pre_cl_loss + self.l_d * reg_loss + lambda_piccl * piccl_regularizer
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        valid_aug_count, aug_norm_mean, aug_norm_max = self._response_stats(delta_aug, min_norm)
+        valid_dom_count, dom_norm_mean, dom_norm_max = self._response_stats(delta_dom, min_norm)
+        bank_valid = self.residual_bank.initialized & (self.residual_bank.counts >= int(self.hparams["piccl_min_domain_samples"]))
+        basis_stats = self.sensitive_subspace.diagnostics()
+        projection_ratio = self.sensitive_subspace.project(delta_aug).pow(2).sum(1).div(delta_aug.pow(2).sum(1).clamp_min(1e-8)).mean()
         metrics = {"loss": loss.item(), "loss_cls": loss_cls.item(), "sup_cl_loss": loss_sup_cl.item(),
                    "pre_cl_loss": pre_cl_loss.item(), "reg_loss": reg_loss.item(), "loss_isr": loss_isr.item(),
-                   "loss_isr_aug": loss_isr_aug.item(), "loss_isr_dom": loss_isr_dom.item(), "piccl_beta": beta.item()}
+                   "loss_isr_aug": loss_isr_aug.item(), "loss_isr_dom": loss_isr_dom.item(), "loss_orth": loss_orth.item(),
+                   "piccl_lambda": lambda_piccl, "piccl_beta": beta.item(), "valid_augmentation_differences": valid_aug_count,
+                   "valid_class_domain_prototypes": valid_dom_count, "delta_aug_norm_mean": aug_norm_mean,
+                   "delta_aug_norm_max": aug_norm_max, "delta_dom_norm_mean": dom_norm_mean,
+                   "delta_dom_norm_max": dom_norm_max, "projection_ratio": projection_ratio.item(),
+                   "basis_orthogonality_error": basis_stats["basis_orthogonality_error"].item(),
+                   "basis_rank": basis_stats["basis_rank"], "basis_norm": basis_stats["basis_norm"].item(),
+                   "residual_bank_valid_classes": int(bank_valid.any(dim=1).sum().item()),
+                   "residual_bank_valid_class_domains": int(bank_valid.sum().item()),
+                   "piccl_has_nan_or_inf": int(not torch.isfinite(loss).item())}
         metrics.update(reliability_metrics)
         return metrics
 

@@ -9,3 +9,16 @@ piccl_reliability_warmup_ratio: 0.1
 piccl_reliability_ramp_ratio: 0.2
 piccl_reliability_detach: true
 piccl_reliability_cross_domain_only: true
+piccl_orth_weight: 0.001
+piccl_isr_aug_weight: 1.0
+piccl_isr_dom_weight: 0.25
+piccl_warmup_steps: 0
+piccl_ramp_steps: 0
+piccl_warmup_ratio: 0.05
+piccl_ramp_ratio: 0.10
+piccl_min_delta_norm: 0.0001
+piccl_min_domain_samples: 8
+piccl_semantic_threshold: 0.2
+piccl_semantic_min_weight: 0.2
+piccl_residual_scale: -1.0
+piccl_strict_bypass: true
