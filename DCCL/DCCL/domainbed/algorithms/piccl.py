@@ -232,49 +232,66 @@ class PICCL(DCCL):
             return features
         raise ValueError("causal features must have shape [B,D] or [B,C,H,W]")
 
-    def _causal_reliability(self, h_factual, h_intervened):
-        """Detached cosine agreement of factual and intervention features, [B]."""
-        factual = F.normalize(self._pooled_features(h_factual), dim=1)
-        intervened = F.normalize(self._pooled_features(h_intervened), dim=1)
-        reliability = ((factual * intervened).sum(1) + 1.).div(2.).clamp(0., 1.)
-        # Reliability is a fixed loss weight: never allow the model to change it
-        # through gradient descent, even if a legacy config sets the flag false.
-        reliability = reliability.detach()
-        if not torch.isfinite(reliability).all():
-            raise RuntimeError("causal reliability contains NaN or Inf")
-        return reliability
-
-    def _reliability_gamma(self, step):
-        total_steps = max(int(self.hparams.get("piccl_total_steps", 1)), 1)
-        warmup = total_steps * float(self.hparams["piccl_reliability_warmup_ratio"])
-        ramp = total_steps * float(self.hparams["piccl_reliability_ramp_ratio"])
+    def _reliable_contrast_gamma(self, step):
+        """Return the bounded reliable-positive interpolation strength."""
+        # The causal subspace has no reliable signal during its own warm-up.
+        if self._piccl_schedule(step) <= 0:
+            return 0.0
+        warmup = int(self.hparams.get("piccl_reliable_contrast_warmup_steps", 0))
+        ramp = int(self.hparams.get("piccl_reliable_contrast_ramp_steps", 0))
         if step < warmup:
             return 0.0
-        if ramp <= 0:
-            return 1.0
-        return min(max((step - warmup) / ramp, 0.0), 1.0)
+        progress = 1.0 if ramp <= 0 else min(max((step - warmup) / ramp, 0.0), 1.0)
+        return float(self.hparams.get("piccl_reliable_contrast_gamma_max", .3)) * progress
 
     @staticmethod
     def _expand_view_major(values, num_views=2):
         """Expand [B,...] as cat(unbind(features, dim=1)): all view 0 then view 1."""
         return values.repeat((num_views,) + (1,) * (values.dim() - 1))
 
-    def _causal_positive_pair_weights(self, labels, domain_ids, sample_ids, view_ids,
-                                      reliability, reliability_min, cross_domain_only=True):
-        """Build [B*V,B*V] weights; only cross-domain same-class pairs vary."""
+    @torch.no_grad()
+    def _pair_reliability(self, z_src, labels, domain_ids):
+        """Detached [B,B] reliability from P_s(z_i-z_j), evaluated only on valid pairs."""
         same_class = labels[:, None].eq(labels[None, :])
-        same_domain = domain_ids[:, None].eq(domain_ids[None, :])
-        self_augmentation = sample_ids[:, None].eq(sample_ids[None, :]) & view_ids[:, None].ne(view_ids[None, :])
-        cross_domain_positive_mask = same_class & ~same_domain if cross_domain_only else torch.zeros_like(same_class)
-        pair_reliability = torch.sqrt(reliability[:, None] * reliability[None, :])
-        weights = torch.ones_like(pair_reliability)
-        cross_weights = reliability_min + (1. - reliability_min) * pair_reliability
-        weights = torch.where(cross_domain_positive_mask, cross_weights, weights)
-        if not torch.isfinite(weights).all() or not ((weights >= reliability_min) & (weights <= 1.)).all():
-            raise RuntimeError("causal positive weights are outside [reliability_min, 1]")
-        if not torch.all(weights[self_augmentation] == 1) or not torch.all(weights[same_class & same_domain] == 1):
-            raise RuntimeError("non-cross-domain positive weights must be one")
-        return weights, cross_domain_positive_mask, self_augmentation
+        cross_domain = domain_ids[:, None].ne(domain_ids[None, :])
+        cross_positive = same_class & cross_domain
+        reliability = torch.ones((z_src.shape[0], z_src.shape[0]), device=z_src.device, dtype=z_src.dtype)
+        pair_i, pair_j = cross_positive.nonzero(as_tuple=True)
+        if pair_i.numel() == 0:
+            return reliability, cross_positive, z_src.new_empty(0), z_src.new_empty(0)
+        delta = z_src.detach()[pair_i] - z_src.detach()[pair_j]
+        sensitive = self.sensitive_subspace.project(delta, detach_basis=True)
+        remaining = delta - sensitive
+        sensitive_energy = sensitive.square().sum(1)
+        remaining_energy = remaining.square().sum(1)
+        delta_norm = delta.norm(dim=1)
+        eps = torch.finfo(z_src.dtype).eps
+        raw = sensitive_energy / (sensitive_energy + remaining_energy + eps)
+        raw = torch.where(delta_norm < float(self.hparams["piccl_reliable_contrast_min_delta_norm"]),
+                          torch.ones_like(raw), raw).clamp(0., 1.)
+        reliability[pair_i, pair_j] = raw
+        reliability = .5 * (reliability + reliability.T)
+        return reliability.detach(), cross_positive, raw.detach(), delta_norm.detach()
+
+    def _reliable_positive_pair_weights(self, pair_reliability, labels, domain_ids, gamma):
+        """Expand sample reliability view-major; only cross-domain positives differ from one."""
+        batch_size = labels.shape[0]
+        sample_ids = torch.arange(batch_size, device=labels.device).repeat(2)
+        expanded_labels = labels.repeat(2)
+        expanded_domains = domain_ids.repeat(2)
+        expanded_views = torch.cat([torch.zeros(batch_size, device=labels.device, dtype=torch.long),
+                                    torch.ones(batch_size, device=labels.device, dtype=torch.long)])
+        same_class = expanded_labels[:, None].eq(expanded_labels[None, :])
+        cross_domain_positive = same_class & expanded_domains[:, None].ne(expanded_domains[None, :])
+        self_aug = sample_ids[:, None].eq(sample_ids[None, :]) & expanded_views[:, None].ne(expanded_views[None, :])
+        pair_reliability_2v = pair_reliability[sample_ids[:, None], sample_ids[None, :]]
+        clipped = pair_reliability_2v.clamp(float(self.hparams["piccl_reliable_contrast_min_weight"]), 1.)
+        cross_weights = 1. + float(gamma) * (clipped - 1.)
+        positive_weights = torch.ones_like(pair_reliability_2v)
+        positive_weights = torch.where(cross_domain_positive, cross_weights, positive_weights)
+        if not torch.all(positive_weights[self_aug] == 1):
+            raise RuntimeError("self augmentation positives must keep unit weight")
+        return positive_weights.detach(), cross_domain_positive, self_aug, pair_reliability_2v.detach()
 
     def _isr_loss(self, delta_aug, delta_dom, augmentation_weights=None):
         """Keep sample-level augmentation and prototype-level domain ISR separate."""
@@ -338,42 +355,52 @@ class PICCL(DCCL):
         loss_orth = self.sensitive_subspace.orthogonality_loss()
         loss_sup_cl = m.new_zeros(())
         loss_sup_cl_unweighted = m.new_zeros(())
-        reliability_metrics = {}
+        reliability_metrics = {"reliable_contrast_enabled": 0, "reliable_contrast_gamma": 0.,
+                               "cross_domain_positive_pair_count": 0, "valid_reliability_pair_count": 0}
         if self.l:
             features = torch.stack([F.normalize(self.proj_head(m)), F.normalize(self.proj_head(m_int))], 1)
-            use_reliability = parse_bool(self.hparams["piccl_use_causal_reliability"])
+            use_reliability = parse_bool(self.hparams["piccl_use_reliable_contrast"])
             if use_reliability:
-                raw_reliability = torch.cat([self._causal_reliability(z, m),
-                                               self._causal_reliability(z_int, m_int)])
-                gamma = self._reliability_gamma(step)
-                causal_reliability = (1. - gamma) + gamma * raw_reliability
                 base_domains = self._domain_ids(x)
-                base_samples = torch.arange(all_y.shape[0], device=all_y.device)
-                expanded_labels = self._expand_view_major(all_y)
-                expanded_domains = self._expand_view_major(base_domains)
-                expanded_samples = self._expand_view_major(base_samples)
-                expanded_views = torch.cat([torch.zeros_like(base_samples), torch.ones_like(base_samples)])
-                if not (expanded_labels.shape[0] == expanded_domains.shape[0] == expanded_samples.shape[0]
-                        == causal_reliability.shape[0] == features.shape[0] * features.shape[1]):
+                pair_reliability, base_cross_mask, raw_reliability, pair_delta_norm = self._pair_reliability(
+                    z, all_y, base_domains)
+                gamma = self._reliable_contrast_gamma(step)
+                weights, cross_mask, self_aug_mask, pair_reliability_2v = self._reliable_positive_pair_weights(
+                    pair_reliability, all_y, base_domains, gamma)
+                if weights.shape != (features.shape[0] * features.shape[1],) * 2:
                     raise RuntimeError("SupCon metadata does not match contrast feature expansion")
-                weights, cross_mask, _ = self._causal_positive_pair_weights(
-                    expanded_labels, expanded_domains, expanded_samples, expanded_views,
-                    causal_reliability, float(self.hparams["piccl_reliability_min"]),
-                    parse_bool(self.hparams["piccl_reliability_cross_domain_only"]))
                 # The unweighted comparison is a diagnostic only; it does not receive gradients.
                 with torch.no_grad():
                     loss_sup_cl_unweighted = self.supcon_loss(features.detach(), all_y)
                 loss_sup_cl = self.supcon_loss(features, all_y, positive_weights=weights)
                 cross_weights = weights[cross_mask]
-                reliability_metrics = {"causal_reliability_mean": raw_reliability.mean().item(),
-                    "causal_reliability_std": raw_reliability.std(unbiased=False).item(),
-                    "causal_reliability_min": raw_reliability.min().item(), "causal_reliability_max": raw_reliability.max().item(),
-                    "causal_reliability_gamma": gamma, "cross_domain_positive_pairs": int(cross_mask.sum().item()),
-                    "cross_domain_positive_weight_mean": cross_weights.mean().item() if cross_weights.numel() else 1.,
-                    "cross_domain_positive_weight_min": cross_weights.min().item() if cross_weights.numel() else 1.,
-                    "cross_domain_positive_weight_max": cross_weights.max().item() if cross_weights.numel() else 1.,
-                    "loss_sup_cl_unweighted": loss_sup_cl_unweighted.item(), "loss_sup_cl_weighted": loss_sup_cl.item(),
-                    "reliability_nan_count": int((~torch.isfinite(raw_reliability)).sum().item())}
+                self_contribution = (self_aug_mask.float() * weights).sum().item()
+                cross_contribution = cross_weights.sum().item()
+                domain_pair_weights = {}
+                for source_domain in base_domains.unique().tolist():
+                    for target_domain in base_domains.unique().tolist():
+                        if source_domain == target_domain:
+                            continue
+                        domain_pair = base_cross_mask & (base_domains[:, None] == source_domain) & (base_domains[None, :] == target_domain)
+                        if domain_pair.any():
+                            domain_pair_weights[f"reliable_contrast_domain_{source_domain}_{target_domain}_mean"] = pair_reliability[domain_pair].clamp(float(self.hparams["piccl_reliable_contrast_min_weight"]), 1.).mul(gamma).add(1. - gamma).mean().item()
+                reliability_metrics = {"reliable_contrast_enabled": 1, "reliable_contrast_gamma": gamma,
+                    "cross_domain_positive_pair_count": int(cross_mask.sum().item()),
+                    "valid_reliability_pair_count": int(raw_reliability.numel()),
+                    "pair_reliability_raw_mean": raw_reliability.mean().item() if raw_reliability.numel() else 1.,
+                    "pair_reliability_raw_min": raw_reliability.min().item() if raw_reliability.numel() else 1.,
+                    "pair_reliability_raw_max": raw_reliability.max().item() if raw_reliability.numel() else 1.,
+                    "pair_weight_effective_mean": cross_weights.mean().item() if cross_weights.numel() else 1.,
+                    "pair_weight_effective_min": cross_weights.min().item() if cross_weights.numel() else 1.,
+                    "pair_weight_effective_max": cross_weights.max().item() if cross_weights.numel() else 1.,
+                    "pair_weight_below_0_9_ratio": (cross_weights < .9).float().mean().item() if cross_weights.numel() else 0.,
+                    "pair_weight_below_0_8_ratio": (cross_weights < .8).float().mean().item() if cross_weights.numel() else 0.,
+                    "mean_sensitive_energy_ratio": raw_reliability.mean().item() if raw_reliability.numel() else 1.,
+                    "mean_pair_delta_norm": pair_delta_norm.mean().item() if pair_delta_norm.numel() else 0.,
+                    "weighted_contrastive_loss": loss_sup_cl.item(), "unweighted_contrastive_loss": loss_sup_cl_unweighted.item(),
+                    "self_aug_positive_contribution": self_contribution, "cross_domain_positive_contribution": cross_contribution,
+                    "reliable_contrast_has_nan_or_inf": int(not (torch.isfinite(pair_reliability).all() and torch.isfinite(weights).all()).item())}
+                reliability_metrics.update(domain_pair_weights)
             elif self.re_w:
                 d = torch.unsqueeze(torch.cat([torch.cat(kwargs["d"]), torch.cat(kwargs["d_2"])]), 1).float()
                 neg_mask = torch.eq(d, d.T).float()

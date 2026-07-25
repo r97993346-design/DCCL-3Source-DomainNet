@@ -3,73 +3,73 @@ import pytest
 torch = pytest.importorskip("torch")
 
 from domainbed.algorithms.algorithms import SupConLoss
-from domainbed.algorithms.piccl import PICCL
+from domainbed.algorithms.piccl import InterventionSensitiveSubspace, PICCL
 
 
-def _metadata():
-    # View-major order: original samples 0..3, followed by their second views.
-    labels = torch.tensor([0, 0, 1, 1]).repeat(2)
-    domains = torch.tensor([0, 1, 0, 1]).repeat(2)
-    samples = torch.arange(4).repeat(2)
-    views = torch.cat([torch.zeros(4, dtype=torch.long), torch.ones(4, dtype=torch.long)])
-    reliability = torch.tensor([1.0, .25, .75, 0.0, 1.0, .25, .75, 0.0])
-    return labels, domains, samples, views, reliability
-
-
-def test_causal_pair_weights_scope_and_formula():
-    labels, domains, samples, views, reliability = _metadata()
+def _piccl_for_reliable_contrast():
     obj = object.__new__(PICCL)
     torch.nn.Module.__init__(obj)
-    weights, cross, self_aug = PICCL._causal_positive_pair_weights(
-        obj, labels, domains, samples, views, reliability, .2)
-    # Same sample across views and same-domain same-class pairs remain exactly one.
+    obj.sensitive_subspace = InterventionSensitiveSubspace(3, rank=1)
+    with torch.no_grad():
+        obj.sensitive_subspace.basis.copy_(torch.tensor([[1.], [0.], [0.]]))
+    obj.hparams = {"piccl_reliable_contrast_min_delta_norm": 1e-6,
+                   "piccl_reliable_contrast_min_weight": .5,
+                   "piccl_reliable_contrast_gamma_max": .3,
+                   "piccl_reliable_contrast_warmup_steps": 0,
+                   "piccl_reliable_contrast_ramp_steps": 10,
+                   "piccl_total_steps": 100, "piccl_warmup_steps": 0,
+                   "piccl_ramp_steps": 0, "piccl_warmup_ratio": 0., "piccl_ramp_ratio": 0.}
+    return obj
+
+
+def test_pair_reliability_is_symmetric_detached_and_handles_near_zero_delta():
+    obj = _piccl_for_reliable_contrast()
+    z = torch.tensor([[0., 0., 0.], [2., 0., 0.], [0., 3., 0.], [0., 0., 0.]], requires_grad=True)
+    labels, domains = torch.tensor([0, 0, 1, 1]), torch.tensor([0, 1, 0, 1])
+    reliability, cross, raw, _ = PICCL._pair_reliability(obj, z, labels, domains)
+    assert not reliability.requires_grad and not raw.requires_grad
+    assert torch.allclose(reliability, reliability.T, atol=1e-6)
+    assert reliability[0, 1] == pytest.approx(1.)  # difference lies in P_s
+    assert reliability[2, 3] == pytest.approx(1.)  # near-zero delta is reliable
+    assert torch.all(reliability[cross].isfinite())
+
+
+def test_masks_weights_and_view_major_expansion():
+    obj = _piccl_for_reliable_contrast()
+    labels, domains = torch.tensor([0, 0, 1, 1]), torch.tensor([0, 1, 0, 1])
+    pair = torch.tensor([[1., .6, 1., 1.], [.6, 1., 1., 1.], [1., 1., 1., .5], [1., 1., .5, 1.]])
+    weights, cross, self_aug, expanded = PICCL._reliable_positive_pair_weights(obj, pair, labels, domains, .3)
+    assert weights.shape == (8, 8)
+    assert expanded[0, 1] == pytest.approx(.6)
+    assert expanded[0, 5] == pytest.approx(.6)  # view-major sample ids
+    assert weights[0, 1] == pytest.approx(.88)
     assert torch.all(weights[self_aug] == 1)
-    same_domain_positive = labels[:, None].eq(labels[None, :]) & domains[:, None].eq(domains[None, :])
-    assert torch.all(weights[same_domain_positive] == 1)
-    # sample 0/class 0/domain 0 vs sample 1/class 0/domain 1 is cross-domain.
-    expected = .2 + .8 * (.25 ** .5)
-    assert cross[0, 1] and weights[0, 1].item() == pytest.approx(expected)
-    assert not cross[0, 2]  # different classes are never positive.
-    assert torch.all((weights >= .2) & (weights <= 1))
+    assert not cross[0, 2] and weights[0, 2] == 1  # different class
+    logits_mask = 1 - torch.eye(8, dtype=weights.dtype)
+    assert torch.all((weights * logits_mask).diag() == 0)
 
 
-def test_weighted_supcon_matches_unweighted_at_one_and_backpropagates():
+@pytest.mark.parametrize("gamma,min_weight", [(0., .5), (.3, 1.)])
+def test_weighted_supcon_degenerates_to_original(gamma, min_weight):
     torch.manual_seed(4)
+    obj = _piccl_for_reliable_contrast()
+    obj.hparams["piccl_reliable_contrast_min_weight"] = min_weight
     features = torch.randn(4, 2, 5, requires_grad=True)
-    labels, domains, samples, views, _ = _metadata()
-    obj = object.__new__(PICCL)
-    torch.nn.Module.__init__(obj)
-    weights, _, _ = PICCL._causal_positive_pair_weights(
-        obj, labels, domains, samples, views, torch.ones(8), .2)
+    labels, domains = torch.tensor([0, 0, 1, 1]), torch.tensor([0, 1, 0, 1])
+    weights, _, _, _ = PICCL._reliable_positive_pair_weights(obj, torch.full((4, 4), .5), labels, domains, gamma)
     loss_fn = SupConLoss(.1)
-    plain = loss_fn(features, labels[:4])
-    weighted = loss_fn(features, labels[:4], positive_weights=weights)
-    assert torch.allclose(plain, weighted, atol=1e-6, rtol=1e-5)
+    plain, weighted = loss_fn(features, labels), loss_fn(features, labels, positive_weights=weights)
+    assert torch.allclose(plain, weighted, atol=1e-6, rtol=1e-6)
     weighted.backward()
     assert features.grad is not None and torch.isfinite(features.grad).all()
 
 
-def test_reliability_is_finite_bounded_and_detached():
-    obj = object.__new__(PICCL)
-    torch.nn.Module.__init__(obj)
-    obj.hparams = {"piccl_reliability_detach": True}
-    factual = torch.randn(4, 3, requires_grad=True)
-    intervened = torch.randn(4, 3, requires_grad=True)
-    reliability = PICCL._causal_reliability(obj, factual, intervened)
-    assert not reliability.requires_grad
-    assert torch.isfinite(reliability).all()
-    assert torch.all((reliability >= 0) & (reliability <= 1))
-
-
-def test_gamma_schedule_and_cross_domain_switch():
-    obj = object.__new__(PICCL)
-    torch.nn.Module.__init__(obj)
-    obj.hparams = {"piccl_total_steps": 100, "piccl_reliability_warmup_ratio": .1,
-                   "piccl_reliability_ramp_ratio": .2}
-    assert PICCL._reliability_gamma(obj, 0) == 0
-    assert PICCL._reliability_gamma(obj, 20) == pytest.approx(.5)
-    assert PICCL._reliability_gamma(obj, 30) == 1
-    labels, domains, samples, views, reliability = _metadata()
-    weights, cross, _ = PICCL._causal_positive_pair_weights(
-        obj, labels, domains, samples, views, reliability, .2, cross_domain_only=False)
-    assert not cross.any() and torch.all(weights == 1)
+def test_gamma_respects_piccl_warmup_and_ramp():
+    obj = _piccl_for_reliable_contrast()
+    obj.hparams.update({"piccl_warmup_steps": 5, "piccl_ramp_steps": 1,
+                        "piccl_reliable_contrast_warmup_steps": 5,
+                        "piccl_reliable_contrast_ramp_steps": 10})
+    assert PICCL._reliable_contrast_gamma(obj, 0) == 0.
+    assert PICCL._reliable_contrast_gamma(obj, 5) == 0.
+    assert PICCL._reliable_contrast_gamma(obj, 10) == pytest.approx(.15)
+    assert PICCL._reliable_contrast_gamma(obj, 15) == pytest.approx(.3)

@@ -57,12 +57,13 @@ def _hparams(algorithm, dataset, random_state):
         hparams["piccl_residual_scale"] = (-1.0, -1.0)
         hparams["piccl_strict_bypass"] = (True, True)
         hparams["use_piccl"] = (True, True)
-        hparams["piccl_use_causal_reliability"] = (False, False)
-        hparams["piccl_reliability_min"] = (0.2, 0.2)
-        hparams["piccl_reliability_warmup_ratio"] = (0.1, 0.1)
-        hparams["piccl_reliability_ramp_ratio"] = (0.2, 0.2)
-        hparams["piccl_reliability_detach"] = (True, True)
-        hparams["piccl_reliability_cross_domain_only"] = (True, True)
+        # Reliable contrast is deliberately opt-in so its disabled path is DCCL/PICCL.
+        hparams["piccl_use_reliable_contrast"] = (False, False)
+        hparams["piccl_reliable_contrast_min_weight"] = (0.5, 0.5)
+        hparams["piccl_reliable_contrast_gamma_max"] = (0.3, 0.3)
+        hparams["piccl_reliable_contrast_warmup_steps"] = (0, 0)
+        hparams["piccl_reliable_contrast_ramp_steps"] = (0, 0)
+        hparams["piccl_reliable_contrast_min_delta_norm"] = (1e-6, 1e-6)
 
     if algorithm in ["DANN", "CDANN"]:
         if dataset not in SMALL_IMAGES:
