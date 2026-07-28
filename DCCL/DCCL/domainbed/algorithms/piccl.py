@@ -46,7 +46,7 @@ class ClassDomainResidualBank(nn.Module):
         self.register_buffer("initialized", torch.zeros(num_classes, num_domains, dtype=torch.bool))
         self.register_buffer("counts", torch.zeros(num_classes, num_domains, dtype=torch.long))
         self.register_buffer("update_counts", torch.zeros(num_classes, num_domains, dtype=torch.long))
-
+    #计算残差self.prototypes[c, d] = momentum * old + (1-momentum) * current
     @torch.no_grad()
     def update(self, residual, labels, domains, min_norm=0.0):
         for c in labels.detach().long().unique().tolist():
@@ -66,7 +66,7 @@ class ClassDomainResidualBank(nn.Module):
                     self.initialized[c, d] = True
                 self.counts[c, d].add_(int(mask.sum()))
                 self.update_counts[c, d].add_(1)
-
+    # 计算每个类的域响应 
     def domain_responses(self):
         responses = []
         for c in range(self.num_classes):
@@ -79,17 +79,19 @@ class ClassDomainResidualBank(nn.Module):
             return self.prototypes.new_zeros((0, self.feature_dim))
         return torch.cat(responses).detach()
 
-
+#学习一个低秩的“干预敏感子空间”，使干预差分尽可能被该子空间解释。
 class InterventionSensitiveSubspace(nn.Module):
+    # 随机初始化一个低秩矩阵作为敏感子空间的基向量，并提供正交化和投影方法。
     def __init__(self, feature_dim, rank=16, eps=1e-8):
         super().__init__()
         self.basis = nn.Parameter(torch.randn(feature_dim, min(int(rank), feature_dim)) * .02)
         self.eps = eps
-
+    # 通过 QR 得到实际使用的基
+    # 随着训练进行，敏感基逐渐旋转到能够解释干预响应的方向。
     def orthonormal_basis(self, dtype=None):
         q = torch.linalg.qr(self.basis.float(), mode="reduced").Q
         return q if dtype is None else q.to(dtype=dtype)
-
+    # 对向量 v 进行敏感子空间投影（行向量）尝试重构干预差分
     def project(self, v, detach_basis=True):
         if v.numel() == 0:
             return v
@@ -97,7 +99,8 @@ class InterventionSensitiveSubspace(nn.Module):
         if detach_basis:
             q = q.detach()
         return (v @ q) @ q.T
-
+  
+    # 干预响应中未被低秩敏感子空间解释的能量比例
     def coverage_loss(self, responses, weights=None, min_norm=0.0):
         """Directional reconstruction error for intervention responses [N,D]."""
         responses = responses.detach()
@@ -105,6 +108,7 @@ class InterventionSensitiveSubspace(nn.Module):
         valid = norms > max(float(min_norm), self.eps)
         if not valid.any():
             return self.basis.sum() * 0
+        # 响应每个响应只贡献方向，不直接按照原始幅值贡献能量。
         directions = responses[valid] / norms[valid].unsqueeze(1).clamp_min(self.eps)
         residual = directions - self.project(directions, detach_basis=False)
         errors = residual.pow(2).sum(1)
@@ -125,7 +129,7 @@ class InterventionSensitiveSubspace(nn.Module):
         return {"basis_orthogonality_error": (gram - torch.eye(gram.shape[0], device=gram.device)).pow(2).mean(),
                 "basis_rank": int(torch.linalg.matrix_rank(q).item()),
                 "basis_norm": self.basis.norm()}
-
+   
 
 class CausalMediatorProjection(nn.Module):
     """Orthogonal low-rank causal projection; beta=0 is bitwise identity."""
