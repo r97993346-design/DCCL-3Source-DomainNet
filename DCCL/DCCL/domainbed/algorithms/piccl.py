@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from domainbed.algorithms.algorithms import DCCL, ForwardModel
+from domainbed.algorithms.algorithms import DCCL
 from domainbed.optimizers import get_optimizer
 
 
@@ -77,11 +77,7 @@ class ClassDomainResidualBank(nn.Module):
                     self.prototypes[c, d].copy_(current)
                     self.initialized[c, d] = True
                 self.counts[c, d] += int(mask.sum().item())
-    #     # 对于猫类别:
-    #   center = (prototype[猫, 0] + prototype[猫, 1]) / 2
-    #   responses += [prototype[猫, 0] - center, prototype[猫, 1] - center]
-    #                ↑ "猫在油画上的特征偏离中心"    ↑ "猫在照片上的特征偏离中心"
-    #                ← 这两个向量就是"域相关的虚假特征方向"!
+
     def domain_responses(self):
         responses = []
         for c in range(self.num_classes):
@@ -250,19 +246,7 @@ class PICCL(DCCL):
         super().train(mode)
         self.pre_featurizer.eval()
         return self
-#     PICCL 通过三套独立的 ramp 调度实现"温和训练":
-
-# 1) alpha 调度: 让"抑制强度"从 0 逐步升到 max_alpha
-#    避免训练初期强行抑制还没学好的方向
-
-# 2) loss_scale 调度: 让"子空间学习的损失权重"从 0 逐步升到 1
-#    让模型先学好分类特征,再逐步引入"检测虚假方向"的任务
-
-# 3) feature_alpha 调度: 让"门控融合"的强度从 0 逐步升到 1
-#    让 residual_gate 的线性层先学好,再逐步介入
-
-# 三者协同,保证 PICCL 的介入是"渐进式"的,
-# 不会在训练初期就破坏 DCCL 已经学好的特征表示。
+    # Gradually introduce feature suppression and optional residual fusion.
     def _ramp_value(self, step, start_ratio, warmup_ratio, max_value=1.0):
         total = max(int(self.hparams.get("piccl_total_steps", 1)) - 1, 1)
         progress = float(step) / float(total)
@@ -290,35 +274,12 @@ class PICCL(DCCL):
         self.piccl_alpha.fill_(alpha)
         return self.piccl_alpha
 
-    def _loss_scale(self, step):
-        return self._ramp_value(step, self.hparams.get("piccl_delayed_start_ratio", 0.0), self.hparams.get("piccl_loss_warmup_ratio", 0.0), 1.0)
 
     def _feature_scale(self, step):
         return self._ramp_value(step, self.hparams.get("piccl_delayed_start_ratio", 0.0), self.hparams.get("piccl_feature_warmup_ratio", 0.0), 1.0)
 
     def _domain_ids(self, x):
         return torch.cat([torch.full((xi.shape[0],), i, dtype=torch.long, device=xi.device) for i, xi in enumerate(x)])
-    def _nt_xent(self, q, q_int):
-        if q.shape[0] < 2:
-            return q.sum() * 0.0
-        logits = q @ q_int.t() / self.hparams["t"]
-        targets = torch.arange(q.shape[0], device=q.device)
-        return 0.5 * (F.cross_entropy(logits, targets) + F.cross_entropy(logits.t(), targets))
-
-    def _cross_domain_supcon(self, q, labels, domains):
-        n = q.shape[0]
-        if n < 2:
-            return q.sum() * 0.0
-        logits = q @ q.t() / self.hparams["t"]
-        logits = logits - logits.max(dim=1, keepdim=True).values.detach()
-        self_mask = torch.eye(n, device=q.device, dtype=torch.bool)
-        pos = (labels[:, None] == labels[None, :]) & (domains[:, None] != domains[None, :]) & (~self_mask)
-        valid = pos.sum(dim=1) > 0
-        if not valid.any():
-            return q.sum() * 0.0
-        exp_logits = torch.exp(logits).masked_fill(self_mask, 0.0)
-        log_prob = logits - torch.log(exp_logits.sum(dim=1, keepdim=True).clamp_min(1e-12))
-        return -(log_prob * pos.float()).sum(dim=1)[valid].div(pos.sum(dim=1)[valid].float()).mean()
 
     def _gt_loss(self, inter_feats, pre_feats):
         reg_loss = inter_feats[0].new_tensor(0.0)
@@ -363,8 +324,7 @@ class PICCL(DCCL):
             m_int, _ = self.residual_gate(z_int, piccl_m_int, self.hparams.get("piccl_residual_scale", 0.1), feature_alpha)
         else:
             raise ValueError(f"Unknown piccl_fusion_mode={fusion_mode}")
-        #logits = self.classifier(z)
-        # 这里修改一下2——2都经过因果
+        # Use mediated features consistently for classification.
         logits = self.classifier(m)
         loss_cls = F.cross_entropy(logits, all_y)
         loss = loss_cls
@@ -498,10 +458,6 @@ class PICCL(DCCL):
             fused, _ = self.residual_gate(z, piccl_m, self.hparams.get("piccl_residual_scale", 0.1), self.piccl_alpha.to(z.device, z.dtype))
             return fused
         return piccl_m
-    # 尝试一下都不经过因果模块
-    # def predict_embed(self, x):
-    #     return self.featurizer(x)
-
 
     def predict(self, x):
         return self.classifier(self.predict_embed(x))
