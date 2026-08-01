@@ -9,7 +9,7 @@ piccl_ramp_ratio: 0.20
 piccl_isr_weight: 0.05
 piccl_isr_aug_weight: 0.25
 piccl_isr_dom_weight: 0.75
-piccl_orth_weight: 0.0001
+piccl_orth_weight: 0.0000
 piccl_proto_momentum: 0.99
 piccl_min_domain_samples: 8
 piccl_min_valid_domains: 2
