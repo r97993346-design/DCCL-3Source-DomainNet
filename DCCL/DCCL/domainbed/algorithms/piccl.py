@@ -183,7 +183,10 @@ class PICCLForwardModel(nn.Module):
         self.subspace = subspace
         self.mediator = mediator
         self.classifier = classifier
-        self.register_buffer("piccl_alpha", torch.tensor(0.0))
+        self.piccl_alpha = nn.Parameter(
+            torch.tensor(0.0),
+            requires_grad=False,
+        )
 
     def forward(self, x):
         return self.predict(x)
@@ -463,10 +466,26 @@ class PICCL(DCCL):
         return self.classifier(self.predict_embed(x))
 
     def get_forward_model(self):
-        if self.piccl_strict_bypass or not _as_bool(self.hparams.get("use_piccl", True)):
+        if self.piccl_strict_bypass or not _as_bool(
+            self.hparams.get("use_piccl", True)
+        ):
             return super().get_forward_model()
-        model = PICCLForwardModel(self.featurizer, self.sensitive_subspace, self.causal_mediator, self.classifier)
-        model.piccl_alpha.copy_(self.piccl_alpha.detach().cpu())
+
+        model = PICCLForwardModel(
+            self.featurizer,
+            self.sensitive_subspace,
+            self.causal_mediator,
+            self.classifier,
+        )
+
+        with torch.no_grad():
+            model.piccl_alpha.copy_(
+                self.piccl_alpha.detach().to(
+                    device=model.piccl_alpha.device,
+                    dtype=model.piccl_alpha.dtype,
+                )
+            )
+
         return model
 
     def clone(self):
