@@ -108,7 +108,7 @@ class InterventionSensitiveSubspace(nn.Module):
         valid = norms > max(float(min_norm), self.eps)
         if not valid.any():
             return self.basis.sum() * 0
-        # 响应每个响应只贡献方向，不直接按照原始幅值贡献能量。
+        # 响应每个响应只贡献方向，不直接按照原始幅值贡献能量。#归一化
         directions = responses[valid] / norms[valid].unsqueeze(1).clamp_min(self.eps)
         residual = directions - self.project(directions, detach_basis=False)
         errors = residual.pow(2).sum(1)
@@ -126,7 +126,7 @@ class InterventionSensitiveSubspace(nn.Module):
     def diagnostics(self):
         q = self.orthonormal_basis()
         gram = self.basis.float().T @ self.basis.float()
-        return {"basis_orthogonality_error": (gram - torch.eye(gram.shape[0], device=gram.device)).pow(2).mean(),
+        return {"basis_orthogonal  ity_error": (gram - torch.eye(gram.shape[0], device=gram.device)).pow(2).mean(),
                 "basis_rank": int(torch.linalg.matrix_rank(q).item()),
                 "basis_norm": self.basis.norm()}
    
