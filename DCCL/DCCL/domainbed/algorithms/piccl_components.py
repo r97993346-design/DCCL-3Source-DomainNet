@@ -201,7 +201,15 @@ def causal_pair_reliability(
     subspace,
     min_delta_norm=1e-6,
 ):
-    """Sensitive-energy ratio for cross-domain, same-class sample pairs."""
+    """Causal reliability for cross-domain, same-class sample pairs.
+
+    Reliability is the fraction of pairwise energy *outside* the learned
+    intervention-sensitive subspace.  A pair explained entirely by the
+    sensitive subspace is therefore unreliable (zero), while an invariant
+    pair is reliable (one).  Near-duplicate pairs are treated as reliable
+    because their ratio is numerically undefined and there is no meaningful
+    domain discrepancy to suppress.
+    """
     labels = labels.detach().long()
     domains = domains.detach().long()
     same_class = labels[:, None].eq(labels[None, :])
@@ -216,16 +224,25 @@ def causal_pair_reliability(
     delta = z.detach()[pair_i] - z.detach()[pair_j]
     sensitive = subspace.project(delta, detach_basis=True)
     delta_energy = delta.square().sum(dim=1)
-    raw = sensitive.square().sum(dim=1) / delta_energy.clamp_min(
+    sensitive_ratio = sensitive.square().sum(dim=1) / delta_energy.clamp_min(
         torch.finfo(z.dtype).eps
     )
     delta_norm = delta_energy.sqrt()
-    raw = torch.where(
-        delta_norm < float(min_delta_norm), torch.ones_like(raw), raw
-    ).clamp(0.0, 1.0)
-    reliability[pair_i, pair_j] = raw
+    sensitive_ratio = sensitive_ratio.clamp(0.0, 1.0)
+    raw_reliability = 1.0 - sensitive_ratio
+    raw_reliability = torch.where(
+        delta_norm < float(min_delta_norm),
+        torch.ones_like(raw_reliability),
+        raw_reliability,
+    )
+    reliability[pair_i, pair_j] = raw_reliability
     reliability = 0.5 * (reliability + reliability.transpose(0, 1))
-    return reliability.detach(), cross_positive, raw.detach(), delta_norm.detach()
+    return (
+        reliability.detach(),
+        cross_positive,
+        raw_reliability.detach(),
+        delta_norm.detach(),
+    )
 
 
 @torch.no_grad()

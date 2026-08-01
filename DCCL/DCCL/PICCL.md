@@ -24,13 +24,15 @@ before it perturbs DCCL features.
 ## Reliability
 
 Reliable contrast is a separate, opt-in stage. For a cross-domain same-class
-pair, reliability is the fraction of the original feature difference explained
-by `Q`. Only those positive contributions are weighted. Self-augmentation and
+pair, reliability is one minus the fraction of the original feature difference
+explained by `Q`. Consequently, nuisance-heavy pairs receive less positive
+weight and invariant pairs retain full weight. Self-augmentation and
 same-domain positives keep weight one; negative logits and masks are unchanged.
 The original DCCL `SupConLoss` is not modified.
 
 ## Equivalence switches
 
+- Selecting `--algorithm PICCL` enables causal projection by default.
 - `PICCL --use_piccl false` directly delegates training and inference to DCCL.
 - With `beta=0` and zero auxiliary weights, the causal task path is an identity.
 - `piccl_use_reliable_contrast=false` uses the original unweighted DCCL SupCon.

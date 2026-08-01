@@ -78,6 +78,70 @@ def test_forward_model_uses_exported_q_and_beta():
     assert "basis_q" in dict(model.named_buffers())
 
 
+def _projection_only_piccl(use_gate, gate_bias=-2.0):
+    obj = object.__new__(PICCL)
+    torch.nn.Module.__init__(obj)
+    obj.use_piccl = True
+    obj.use_residual_gate = use_gate
+    obj.sensitive_subspace = InterventionSensitiveSubspace(8, 2)
+    obj.causal_mediator = CausalMediatorProjection()
+    if use_gate:
+        obj.gate_logit = torch.nn.Parameter(torch.tensor(gate_bias))
+    return obj
+
+
+def test_disabled_residual_gate_is_exact_v6_projection():
+    obj = _projection_only_piccl(False)
+    z = torch.randn(4, 8, requires_grad=True)
+    beta = torch.tensor(0.2)
+    expected = obj.causal_mediator(z, obj.sensitive_subspace, beta)
+    actual = PICCL._project(obj, z, beta)
+    assert torch.equal(actual, expected)
+    assert not hasattr(obj, "gate_logit")
+
+
+def test_gated_projection_beta_zero_is_strict_identity():
+    obj = _projection_only_piccl(True)
+    z = torch.randn(4, 8, requires_grad=True)
+    assert PICCL._project(obj, z, torch.tensor(0.0)) is z
+
+
+def test_scalar_gate_gets_task_gradient_while_q_stays_detached():
+    obj = _projection_only_piccl(True)
+    assert obj.gate_logit.numel() == 1
+    z = torch.randn(4, 8, requires_grad=True)
+    PICCL._project(obj, z, torch.tensor(0.2)).square().sum().backward()
+    assert obj.gate_logit.grad is not None
+    assert torch.isfinite(obj.gate_logit.grad)
+    assert obj.sensitive_subspace.basis.grad is None
+
+
+def test_gated_training_and_forward_models_match_and_are_finite():
+    torch.manual_seed(7)
+    featurizer = torch.nn.Linear(3, 8)
+    classifier = torch.nn.Linear(8, 2)
+    obj = _projection_only_piccl(True, gate_bias=-1.5)
+    q = obj.sensitive_subspace.orthonormal_basis(detach=True)
+    beta = torch.tensor(0.2)
+    model = PICCLForwardModel(
+        featurizer,
+        q,
+        classifier,
+        beta,
+        use_residual_gate=True,
+        gate_logit=obj.gate_logit,
+    )
+    x = torch.randn(5, 3)
+    z = featurizer(x)
+    train_embed = PICCL._project(obj, z, beta)
+    inference_embed = model.predict_embed(x)
+    task_loss = model(x).square().mean()
+    assert torch.allclose(train_embed, inference_embed)
+    assert torch.isfinite(train_embed).all()
+    assert torch.isfinite(model(x)).all()
+    assert torch.isfinite(task_loss)
+
+
 def test_swad_copies_only_explicit_latest_piccl_buffers():
     source = torch.nn.Module()
     source.get_forward_model = lambda: source
@@ -127,3 +191,4 @@ def test_piccl_disabled_update_is_exact_dccl_delegation(monkeypatch):
     )
     assert actual is expected
     assert not hasattr(obj, "residual_bank")
+    assert not hasattr(obj, "gate_logit")

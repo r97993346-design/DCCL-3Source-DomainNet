@@ -28,12 +28,25 @@ from .reliable_supcon import ReliableSupConLoss
 class PICCLForwardModel(nn.Module):
     """Inference/SWAD model with the latest Q and beta stored as buffers."""
 
-    def __init__(self, featurizer, basis_q, classifier, beta):
+    def __init__(
+        self,
+        featurizer,
+        basis_q,
+        classifier,
+        beta,
+        use_residual_gate=False,
+        gate_logit=None,
+    ):
         super().__init__()
         self.featurizer = featurizer
         self.classifier = classifier
         self.register_buffer("basis_q", basis_q.detach().clone())
         self.register_buffer("piccl_beta", beta.detach().clone())
+        self.use_residual_gate = bool(use_residual_gate)
+        if self.use_residual_gate:
+            if gate_logit is None or gate_logit.numel() != 1:
+                raise ValueError("gate_logit must be a scalar when gating is enabled")
+            self.gate_logit = nn.Parameter(gate_logit.detach().clone().reshape(()))
         # swa_utils copies only these explicitly opted-in buffers.  DCCL and
         # other algorithms retain their original SWAD buffer behavior.
         self.swa_latest_buffer_names = ("basis_q", "piccl_beta")
@@ -48,7 +61,10 @@ class PICCLForwardModel(nn.Module):
         if float(beta.detach().item()) == 0.0:
             return z
         q = self.basis_q.to(z.device, z.dtype)
-        return z - beta * ((z @ q) @ q.transpose(0, 1))
+        z_causal = z - beta * ((z @ q) @ q.transpose(0, 1))
+        if not self.use_residual_gate:
+            return z_causal
+        return z + torch.sigmoid(self.gate_logit).to(z.dtype) * (z_causal - z)
 
     def predict(self, x):
         return self.classifier(self.predict_embed(x))
@@ -88,6 +104,13 @@ class PICCL(DCCL):
             eps=hparams.get("piccl_eps", 1e-8),
         )
         self.causal_mediator = CausalMediatorProjection()
+        self.use_residual_gate = parse_bool(
+            hparams.get("piccl_use_residual_gate", False)
+        )
+        if self.use_residual_gate:
+            self.gate_logit = nn.Parameter(
+                torch.tensor(float(hparams.get("piccl_gate_bias", -2.0)))
+            )
         self.reliable_supcon_loss = ReliableSupConLoss(hparams["t"])
         self.register_buffer("piccl_beta", torch.tensor(0.0))
         self.optimizer = get_optimizer(
@@ -127,6 +150,14 @@ class PICCL(DCCL):
                 "weight_decay": self.hparams.get("piccl_basis_weight_decay", 0.0),
             }
         )
+        if self.use_residual_gate:
+            groups.append(
+                {
+                    "params": [self.gate_logit],
+                    "lr": self.hparams["lr"],
+                    "weight_decay": 0.0,
+                }
+            )
         return groups
 
     def train(self, mode=True):
@@ -196,7 +227,10 @@ class PICCL(DCCL):
         ) * progress
 
     def _project(self, z, beta):
-        return self.causal_mediator(z, self.sensitive_subspace, beta)
+        z_causal = self.causal_mediator(z, self.sensitive_subspace, beta)
+        if z_causal is z or not self.use_residual_gate:
+            return z_causal
+        return z + torch.sigmoid(self.gate_logit).to(z.dtype) * (z_causal - z)
 
     def _isr_loss(self, delta_aug, delta_dom):
         min_norm = float(self.hparams.get("piccl_min_delta_norm", 1e-4))
@@ -465,7 +499,13 @@ class PICCL(DCCL):
 
         with torch.no_grad():
             basis_stats = self.sensitive_subspace.diagnostics()
-            feature_delta = (causal_x - feature_x).norm(dim=1).mean()
+            gated_projection_delta = (causal_x - feature_x).norm(dim=1).mean()
+            direct_causal_x = self.causal_mediator(
+                feature_x, self.sensitive_subspace, beta
+            )
+            direct_projection_delta = (
+                direct_causal_x - feature_x
+            ).norm(dim=1).mean()
             original_norm = feature_x.norm(dim=1).mean().clamp_min(1e-12)
             if delta_aug.numel():
                 projected = self.sensitive_subspace.project(
@@ -492,8 +532,24 @@ class PICCL(DCCL):
             "weighted_loss_isr": float(weighted_isr.item()),
             "weighted_loss_orth": float(weighted_orth.item()),
             "piccl_beta": float(beta.item()),
-            "feature_delta_norm": float(feature_delta.item()),
-            "feature_delta_ratio": float((feature_delta / original_norm).item()),
+            "feature_delta_norm": float(gated_projection_delta.item()),
+            "feature_delta_ratio": float(
+                (gated_projection_delta / original_norm).item()
+            ),
+            "piccl_gate_value": float(
+                torch.sigmoid(self.gate_logit).item()
+            )
+            if self.use_residual_gate
+            else 1.0,
+            "direct_projection_delta_norm": float(
+                direct_projection_delta.item()
+            ),
+            "gated_projection_delta_norm": float(
+                gated_projection_delta.item()
+            ),
+            "gated_feature_delta_ratio": float(
+                (gated_projection_delta / original_norm).item()
+            ),
             "projection_ratio": float(projection_ratio.item()),
             "valid_domain_response_count": float(delta_dom.shape[0]),
             "basis_orthogonality_error": float(
@@ -528,7 +584,12 @@ class PICCL(DCCL):
             detach=True, dtype=torch.float32
         )
         return PICCLForwardModel(
-            self.featurizer, q, self.classifier, self.piccl_beta
+            self.featurizer,
+            q,
+            self.classifier,
+            self.piccl_beta,
+            use_residual_gate=self.use_residual_gate,
+            gate_logit=self.gate_logit if self.use_residual_gate else None,
         )
 
     def clone(self):

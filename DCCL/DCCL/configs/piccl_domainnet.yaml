@@ -2,6 +2,8 @@
 # Reliable positive weighting stays disabled until the causal projection passes
 # the DCCL-equivalence and causal-only ablations.
 use_piccl: true
+piccl_use_residual_gate: false
+piccl_gate_bias: -2.0
 piccl_rank: 16
 piccl_beta_max: 0.10
 piccl_warmup_ratio: 0.10

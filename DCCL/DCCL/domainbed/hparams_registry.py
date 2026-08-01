@@ -60,8 +60,13 @@ def _hparams(algorithm, dataset, random_state):
         hparams["piccl_basis_lr_multiplier"] = (1.0, 1.0)
         hparams["piccl_basis_weight_decay"] = (0.0, 0.0)
         hparams["piccl_eps"] = (1e-8, 1e-8)
-        # Opt-in defaults make `PICCL --use_piccl false` an exact DCCL path.
-        hparams["use_piccl"] = (False, False)
+        # Selecting the PICCL algorithm must enable it.  An explicit
+        # `--use_piccl false` remains available for the exact DCCL ablation.
+        hparams["use_piccl"] = (True, True)
+        # Fixed ablation defaults must be registered so sconf accepts command-line
+        # overrides; these are not added to the random HPO search space.
+        hparams["piccl_use_residual_gate"] = (False, False)
+        hparams["piccl_gate_bias"] = (-2.0, -2.0)
         hparams["piccl_use_reliable_contrast"] = (False, False)
         hparams["piccl_reliable_contrast_min_weight"] = (0.5, 0.5)
         hparams["piccl_reliable_contrast_gamma_max"] = (0.3, 0.3)

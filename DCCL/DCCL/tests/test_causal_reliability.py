@@ -32,9 +32,21 @@ def test_pair_reliability_uses_raw_feature_difference_and_is_detached():
     )
     assert not reliability.requires_grad and not raw.requires_grad
     assert torch.allclose(reliability, reliability.T, atol=1e-6)
-    assert reliability[0, 1] == pytest.approx(1.0)  # entirely sensitive
+    assert reliability[0, 1] == pytest.approx(0.0)  # entirely sensitive
     assert reliability[2, 3] == pytest.approx(1.0)  # near-zero pair is safe
     assert torch.all(reliability[cross].isfinite())
+
+
+def test_pair_reliability_rewards_invariant_not_sensitive_directions():
+    subspace = _x_axis_subspace()
+    z = torch.tensor([[0.0, 0.0, 0.0], [0.0, 2.0, 0.0]])
+    labels = torch.tensor([0, 0])
+    domains = torch.tensor([0, 1])
+    reliability, _, raw, _ = causal_pair_reliability(
+        z, labels, domains, subspace
+    )
+    assert reliability[0, 1] == pytest.approx(1.0)
+    assert raw.tolist() == pytest.approx([1.0, 1.0])
 
 
 def test_only_cross_domain_same_class_positives_are_weighted():
