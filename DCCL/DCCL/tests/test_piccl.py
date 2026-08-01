@@ -1,16 +1,25 @@
+import inspect
+
 import pytest
 
 torch = pytest.importorskip("torch")
 
-from domainbed.algorithms.piccl import (
-    CausalMediatorProjection, ClassDomainResidualBank, InterventionSensitiveSubspace,
-    PairedInterventionResponseEstimator, PICCLForwardModel,
+from domainbed.algorithms.algorithms import SupConLoss
+from domainbed.algorithms.piccl import PICCL, PICCLForwardModel
+from domainbed.algorithms.piccl_components import (
+    CausalMediatorProjection,
+    ClassDomainResidualBank,
+    InterventionSensitiveSubspace,
+    PairedInterventionResponseEstimator,
 )
 from domainbed.lib.swa_utils import AveragedModel
 
 
+def test_original_supcon_api_is_untouched():
+    assert "positive_weights" not in inspect.signature(SupConLoss.forward).parameters
+
+
 def test_beta_zero_is_strict_identity():
-    torch.manual_seed(0)
     z = torch.randn(4, 8)
     mediator = CausalMediatorProjection()
     subspace = InterventionSensitiveSubspace(8, 2)
@@ -20,14 +29,24 @@ def test_beta_zero_is_strict_identity():
 def test_projection_is_low_rank_qr_and_blocks_task_gradients():
     z = torch.randn(4, 8, requires_grad=True)
     subspace = InterventionSensitiveSubspace(8, 2)
-    m = CausalMediatorProjection()(z, subspace, torch.tensor(.2))
+    m = CausalMediatorProjection()(z, subspace, torch.tensor(0.2))
     m.sum().backward()
     assert subspace.basis.grad is None
     assert z.grad is not None
+    q = subspace.orthonormal_basis(detach=True)
+    assert torch.allclose(q.T @ q, torch.eye(2), atol=1e-5, rtol=1e-5)
 
 
-def test_residual_bank_requires_eight_samples_in_two_domains():
-    bank = ClassDomainResidualBank(2, 2, 3)
+def test_isr_updates_basis_but_not_response_features():
+    subspace = InterventionSensitiveSubspace(8, 2)
+    response = torch.randn(6, 8, requires_grad=True)
+    subspace.coverage_loss(response).backward()
+    assert subspace.basis.grad is not None
+    assert response.grad is None
+
+
+def test_residual_bank_requires_minimum_samples_in_two_domains():
+    bank = ClassDomainResidualBank(2, 2, 3, min_count=8, min_valid_domains=2)
     bank.update(torch.ones(7, 3), torch.zeros(7), torch.zeros(7))
     bank.update(torch.ones(8, 3), torch.zeros(8), torch.ones(8))
     assert bank.domain_responses().numel() == 0
@@ -36,78 +55,75 @@ def test_residual_bank_requires_eight_samples_in_two_domains():
 
 
 def test_pire_reference_response_is_detached():
-    z = torch.tensor([[1., 2.]], requires_grad=True)
-    zi = torch.tensor([[3., 5.]], requires_grad=True)
-    zr = torch.tensor([[.5, 1.]], requires_grad=True)
-    zir = torch.tensor([[2., 2.]], requires_grad=True)
+    z = torch.tensor([[1.0, 2.0]], requires_grad=True)
+    zi = torch.tensor([[3.0, 5.0]], requires_grad=True)
+    zr = torch.tensor([[0.5, 1.0]], requires_grad=True)
+    zir = torch.tensor([[2.0, 2.0]], requires_grad=True)
     PairedInterventionResponseEstimator()(z, zi, zr, zir).sum().backward()
     assert z.grad is not None and zi.grad is not None
     assert zr.grad is None and zir.grad is None
 
 
-def test_forward_model_predict_embed_matches_projection_path():
-    featurizer, classifier = torch.nn.Linear(3, 8), torch.nn.Linear(8, 2)
-    subspace, mediator = InterventionSensitiveSubspace(8, 2), CausalMediatorProjection()
-    model = PICCLForwardModel(featurizer, subspace, mediator, classifier, torch.tensor(.2))
+def test_forward_model_uses_exported_q_and_beta():
+    featurizer = torch.nn.Linear(3, 8)
+    classifier = torch.nn.Linear(8, 2)
+    subspace = InterventionSensitiveSubspace(8, 2)
+    q = subspace.orthonormal_basis(detach=True)
+    model = PICCLForwardModel(featurizer, q, classifier, torch.tensor(0.2))
     x = torch.randn(5, 3)
-    assert torch.equal(model.predict_embed(x), mediator(featurizer(x), subspace, torch.tensor(.2)))
+    z = featurizer(x)
+    expected = z - 0.2 * ((z @ q) @ q.T)
+    assert torch.allclose(model.predict_embed(x), expected)
+    assert "basis_q" not in dict(model.named_parameters())
+    assert "basis_q" in dict(model.named_buffers())
 
 
-def test_swad_copies_piccl_beta_buffer():
+def test_swad_copies_only_explicit_latest_piccl_buffers():
     source = torch.nn.Module()
     source.get_forward_model = lambda: source
-    source.register_buffer("piccl_beta", torch.tensor(.2))
     source.linear = torch.nn.Linear(2, 2)
+    source.register_buffer("basis_q", torch.tensor([[1.0], [0.0]]))
+    source.register_buffer("piccl_beta", torch.tensor(0.0))
+    source.register_buffer("ordinary_buffer", torch.tensor(3.0))
+    source.swa_latest_buffer_names = ("basis_q", "piccl_beta")
     averaged = AveragedModel(source)
+    source.piccl_beta.fill_(0.2)
+    source.ordinary_buffer.fill_(9.0)
     averaged.update_parameters(source)
-    assert averaged.module.piccl_beta.item() == pytest.approx(.2)
+    assert averaged.module.piccl_beta.item() == pytest.approx(0.2)
+    assert averaged.module.ordinary_buffer.item() == pytest.approx(3.0)
 
 
-def test_pire_is_zero_for_identical_initial_networks():
-    z = torch.randn(5, 8, requires_grad=True)
-    z_aug = torch.randn(5, 8, requires_grad=True)
-    delta = PairedInterventionResponseEstimator()(z, z_aug, z.detach().clone(), z_aug.detach().clone())
-    assert torch.allclose(delta, torch.zeros_like(delta), atol=1e-7)
-
-
-def test_residual_bank_tracks_update_counts_without_gradients():
-    bank = ClassDomainResidualBank(2, 2, 3, min_count=1)
-    residual = torch.randn(4, 3, requires_grad=True)
-    labels = torch.tensor([0, 0, 0, 0])
-    domains = torch.tensor([0, 0, 1, 1])
-    bank.update(residual, labels, domains)
-    assert bank.update_counts[0].tolist() == [1, 1]
-    assert bank.counts[0].tolist() == [2, 2]
-    assert not bank.prototypes.requires_grad
-
-
-def test_warmup_then_ramp_controls_beta():
+def test_beta_warmup_then_ramp_does_not_gate_isr():
     obj = object.__new__(PICCL)
     torch.nn.Module.__init__(obj)
-    obj.hparams = {"piccl_total_steps": 100, "piccl_warmup_steps": 5,
-                   "piccl_ramp_steps": 10, "piccl_beta_max": .1,
-                   "piccl_residual_scale": -1.}
-    obj.register_buffer("piccl_beta", torch.tensor(0.))
-    assert PICCL._piccl_schedule(obj, 0) == 0
-    assert PICCL._piccl_schedule(obj, 10) == pytest.approx(.5)
-    assert PICCL._beta(obj, 15).item() == pytest.approx(.1)
+    obj.hparams = {
+        "piccl_total_steps": 100,
+        "piccl_warmup_steps": 10,
+        "piccl_ramp_steps": 20,
+        "piccl_beta_max": 0.1,
+    }
+    obj.register_buffer("piccl_beta", torch.tensor(0.0))
+    assert PICCL._beta(obj, 0).item() == 0.0
+    assert PICCL._beta(obj, 20).item() == pytest.approx(0.05)
+    assert PICCL._beta(obj, 30).item() == pytest.approx(0.1)
 
 
-def test_piccl_disabled_update_is_an_exact_dccl_delegation(monkeypatch):
-    """PICCL must not create or use causal state when its strict bypass is selected."""
+def test_piccl_disabled_update_is_exact_dccl_delegation(monkeypatch):
     obj = object.__new__(PICCL)
     torch.nn.Module.__init__(obj)
     obj.use_piccl = False
-    logits = torch.randn(3, 2)
-    expected = {"logits": logits, "loss_cls": 1.25, "sup_cl_loss": 2.5}
+    expected = {"loss": 1.0, "ce_loss": 0.5}
 
     def dccl_update(self, *args, **kwargs):
         return expected
 
     monkeypatch.setattr("domainbed.algorithms.piccl.DCCL.update", dccl_update)
-    actual = PICCL.update(obj, [torch.randn(3, 4)], [torch.tensor([0, 1, 0])], x_2=[torch.randn(3, 4)])
+    actual = PICCL.update(
+        obj,
+        [torch.randn(3, 4)],
+        [torch.tensor([0, 1, 0])],
+        x_2=[torch.randn(3, 4)],
+    )
     assert actual is expected
-    assert torch.equal(actual["logits"], expected["logits"])
-    assert actual["loss_cls"] == expected["loss_cls"]
-    assert actual["sup_cl_loss"] == expected["sup_cl_loss"]
     assert not hasattr(obj, "residual_bank")

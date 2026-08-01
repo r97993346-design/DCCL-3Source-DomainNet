@@ -26,7 +26,7 @@ def test_search_range_from_config():
     cfg = json.loads(CONFIG.read_text())
     assert list(cfg["search_space"]) == ["piccl_rank", "piccl_beta_max", "piccl_isr_weight"]
     assert cfg["search_space"]["piccl_rank"]["choices"] == [8, 16]
-    assert cfg["search_space"]["piccl_beta_max"]["low"] == 0.10
+    assert cfg["search_space"]["piccl_beta_max"]["low"] == 0.05
     assert cfg["search_space"]["piccl_isr_weight"]["log"] is True
 
 

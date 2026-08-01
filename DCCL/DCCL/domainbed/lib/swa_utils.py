@@ -76,11 +76,7 @@ class AveragedModel(Module):
         model = self.filter(model)
         if isinstance(model, AveragedModel):
             model = model.module
-        source_parameters = dict(model.named_parameters())
-        for name, p_swa in self.module.named_parameters():
-            p_model = source_parameters.get(name)
-            if p_model is None or p_model.shape != p_swa.shape:
-                continue
+        for p_swa, p_model in zip(self.parameters(), model.parameters()):
             device = p_swa.device
             p_model_ = p_model.detach().to(device)
             if self.n_averaged == 0:
@@ -89,13 +85,23 @@ class AveragedModel(Module):
                 p_swa.detach().copy_(
                     self.avg_fn(p_swa.detach(), p_model_, self.n_averaged.to(device))
                 )
-        # Buffers are model state too. In particular PICCL's projection strength
-        # must not remain at its constructor value in the SWAD forward model.
-        source_buffers = dict(model.named_buffers())
-        for name, buffer_swa in self.module.named_buffers():
-            buffer_model = source_buffers.get(name)
-            if buffer_model is not None and buffer_model.shape == buffer_swa.shape:
-                buffer_swa.detach().copy_(buffer_model.detach().to(buffer_swa.device))
+
+        # Preserve original SWAD behavior unless a forward model explicitly
+        # opts selected buffers into latest-value copying.  PICCL uses this for
+        # its learned orthonormal Q and beta; its backbone/classifier parameters
+        # continue through the unchanged averaging loop above.
+        latest_buffer_names = getattr(model, "swa_latest_buffer_names", ())
+        if latest_buffer_names:
+            source_buffers = dict(model.named_buffers())
+            averaged_buffers = dict(self.module.named_buffers())
+            for name in latest_buffer_names:
+                source = source_buffers.get(name)
+                averaged = averaged_buffers.get(name)
+                if source is None or averaged is None or source.shape != averaged.shape:
+                    raise RuntimeError(
+                        "Invalid SWAD latest buffer declaration: {}".format(name)
+                    )
+                averaged.detach().copy_(source.detach().to(averaged.device))
         self.n_averaged += 1
 
         if step is not None:

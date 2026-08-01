@@ -6,10 +6,10 @@
   "trials": 24,
   "budgets": [500, 1500],
   "full_steps": 5001,
-  "base_args": ["--dataset", "PACS", "--algorithm", "PICCL", "--deterministic", "--trial_seed", "0", "--checkpoint_freq", "100", "--data_dir", "../data"],
+  "base_args": ["--dataset", "PACS", "--algorithm", "PICCL", "--use_piccl", "true", "--piccl_use_reliable_contrast", "false", "--deterministic", "--trial_seed", "0", "--checkpoint_freq", "100", "--data_dir", "../data"],
   "search_space": {
     "piccl_rank": [8, 16],
-    "piccl_beta_max": {"type": "uniform", "min": 0.10, "max": 0.35},
-    "piccl_isr_weight": {"type": "loguniform", "min": 0.01, "max": 0.08}
+    "piccl_beta_max": {"type": "uniform", "min": 0.05, "max": 0.20},
+    "piccl_isr_weight": {"type": "loguniform", "min": 0.01, "max": 0.10}
   }
 }

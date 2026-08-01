@@ -181,8 +181,7 @@ class ForwardModel(nn.Module):
 
     # def predict_embed(self, x):
     #     return self.network[0](x)
-# 对输入的增强视图 all_x_2 额外施加一个可学习的空间变换
-# 产生对抗性增强:模型学习如何"修饰"输入图像,使对比学习更困难
+
 class TN(nn.Module):
     def __init__(self):
         super().__init__()
@@ -246,7 +245,7 @@ class DCCL(Algorithm):
         else:
             self.proj_head = nn.Sequential(nn.Linear(self.featurizer.n_outputs, hidden_num_1), nn.BatchNorm1d(hidden_num_1), nn.ReLU(), nn.Linear(hidden_num_1, hidden_num_2))
         self.proj = nn.Sequential(self.featurizer, self.proj_head)
-        # 一个逐层的概率对齐,而不仅仅是最终输出对齐
+
         shapes = get_shapes(self.pre_featurizer, self.input_shape)
         self.mean_encoders = nn.ModuleList([
             MeanEncoder(shape) for shape in shapes
@@ -256,16 +255,9 @@ class DCCL(Algorithm):
         ])
 
         # loss trade-offs
-        # --l_layer: layer-wise contrastive loss weight
-        # --l: contrastive loss weight
-        # --l_d: generative alignment regularization loss weight
-        # 学生分布对齐老师分布分类损失
         self.l_layer = hparams["l_layer"]
-        # 最后对比学习损失
         self.l = hparams["l"]
-        #逐层对齐损失
         self.l_d = hparams["l_d"]
-        #增强试图损失
         self.two_ce = hparams["two_ce"]
         self.pos_mask = hparams["pos_mask"]
         self.TN = hparams["TN"]
@@ -277,9 +269,6 @@ class DCCL(Algorithm):
         self.weight_matrix=None
         
         # losses - simplified to only essential parameters
-        # --t: temperature for contrastive loss
-        # --t_pre: temperature for pre-trained features
-        # supcon_loss: supervised contrastive loss for final features
         self.supcon_loss = SupConLoss(hparams["t"])
         self.supcon_loss_pre = SupConLoss(hparams["t_pre"])
         self.con_loss = ConLoss(hparams["t"])
@@ -289,25 +278,9 @@ class DCCL(Algorithm):
             self.pre_proj_head = nn.Sequential(nn.Linear(self.featurizer.n_outputs, hidden_num_1))
         else:
             self.pre_proj_head = nn.Sequential(nn.Linear(self.featurizer.n_outputs, hidden_num_1), nn.BatchNorm1d(hidden_num_1), nn.ReLU(), nn.Linear(hidden_num_1, hidden_num_2))
-        
-        
-        # lower learning rates for classifier and projection head to stabilize training
         lower_cls=0.1
         lower_proj=10
         
-        #         #optimized_list = [
-        #     # featurizer: 基础 lr
-        #     {'params': self.featurizer.parameters(), 'lr': lr, 'weight_decay': wd},
-        #     # classifier: 10× lr(更快收敛的分类头)
-        #     {'params': self.classifier.parameters(), 'lr': lr/0.1, 'weight_decay': wd},
-        #     # proj_head: 0.1× lr(投影头需要更慢的学习率)
-        #     {'params': self.proj_head.parameters(), 'lr': lr/10, 'weight_decay': wd},
-        #     # mean_encoders/var_encoders: 10× lr(教师模型的轻量级对齐器需要快速调整)
-        #     {"params": self.mean_encoders.parameters(), "lr": lr * 10},
-        #     {"params": self.var_encoders.parameters(), "lr": lr * 10},
-        #     # pre_proj_head: 与 proj_head 相同
-        #     {"params": self.pre_proj_head.parameters(), "lr": lr/10}
-        # ]
         optimized_list = [{'params':self.featurizer.parameters(), 'lr':self.hparams["lr"], 'weight_decay':self.hparams["weight_decay"]}, 
             {'params':self.classifier.parameters(), 'lr':self.hparams["lr"]/lower_cls, 'weight_decay':self.hparams["weight_decay"]}, 
             {'params':self.proj_head.parameters(), 'lr':self.hparams["lr"]/lower_proj, 'weight_decay':self.hparams["weight_decay"]},
@@ -343,12 +316,10 @@ class DCCL(Algorithm):
             view_2 = nn.functional.normalize(embed_2)
             features = torch.stack([view_1, view_2], dim=1)
             loss_sup_cl = self.supcon_loss(features, all_y)
-            #   # 关键: TN 要最大化对比损失(让变换后的图像更难对比,因此取负号)
             loss = -loss_sup_cl-self.lamda*sp_loss
             self.optimizer_TN.zero_grad()
             loss.backward()
             self.optimizer_TN.step()
-            # 4) 主训练使用 TN 变换后的 x_2(但 TN 不再被梯度影响):
             # update main
             with torch.no_grad():
                 all_x_2, sp_loss = self.TN_network(all_x_2)
@@ -368,7 +339,6 @@ class DCCL(Algorithm):
             pred_x = self.classifier(feature_x)
             loss = F.cross_entropy(pred_x, target_a)*lam+F.cross_entropy(pred_x, target_b)*(1-lam)
         else:
-            # 基础分类损失
             feature_x, inter_feats = self.featurizer(all_x, ret_feats=True)
             pred_x = self.classifier(feature_x)
             loss = F.cross_entropy(pred_x, all_y)
@@ -379,8 +349,6 @@ class DCCL(Algorithm):
             loss = loss/2+F.cross_entropy(self.classifier(feature_x_2), all_y)/2
         with torch.no_grad():
             pre_pred_x, pre_feats = self.pre_featurizer(all_x, ret_feats=True)
-         #    ↑ 教师特征提取器(冻结),提供每层的"锚点"
-         # 逐层教师模型对齐
         if self.l_d:
             
             reg_loss = 0.
@@ -391,7 +359,6 @@ class DCCL(Algorithm):
                 reg_loss += vlb.mean() / 2.
 
             loss += self.l_d*reg_loss
-        #跨增强视图监督对比学习
         if self.l:
             embed_2 = self.proj_head(feature_x_2)
             embed_1 = self.proj_head(feature_x)
@@ -399,7 +366,6 @@ class DCCL(Algorithm):
             view_1 = nn.functional.normalize(embed_1)
             view_2 = nn.functional.normalize(embed_2)
             features = torch.stack([view_1, view_2], dim=1)
-            #三种对比策略策略 A:域感知(域掩码)
             if self.re_w:
                 all_d = torch.cat(kwargs["d"])
                 all_d_2 = torch.cat(kwargs["d_2"])
@@ -423,7 +389,6 @@ class DCCL(Algorithm):
                     loss_sup_cl = self.supcon_loss(features, all_y)
             loss += self.l*loss_sup_cl
         pre_cl_loss = 0.
-        #与冻结教师特征对齐的对比学习
         if self.l_layer:
 
             embed_1 = self.pre_proj_head(feature_x)
@@ -490,7 +455,7 @@ def rand_bbox(size, lam):
     bby2 = np.clip(cy + cut_h // 2, 0, H)
 
     return bbx1, bby1, bbx2, bby2
-#锚点就是"当前以谁为中心组织对比损失"。多锚点模式让每个视图都有自己的损失视角,信息利用更充分,但计算量也更大
+
 class SupConLoss(nn.Module):
     """Supervised Contrastive Learning: https://arxiv.org/pdf/2004.11362.pdf.
     It also supports the unsupervised contrastive loss in SimCLR"""
@@ -503,8 +468,7 @@ class SupConLoss(nn.Module):
         self.mask_out = mask_out
         self.not_sup = not_sup
 
-    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None,
-                positive_weights=None):
+    def forward(self, features, labels=None, mask=None, neg_mask=None, pos_mask=None, add_pos=None):
         """Compute loss for model. If both `labels` and `mask` are None,
         it degenerates to SimCLR unsupervised loss:
         https://arxiv.org/pdf/2002.05709.pdf
@@ -589,44 +553,24 @@ class SupConLoss(nn.Module):
             exp_logits = exp_logits*mask_out
         log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True))
 
-        # compute mean of log-likelihood over positive. The unweighted branch is
-        # deliberately preserved verbatim for DCCL backward compatibility.
+        # compute mean of log-likelihood over positive
         if pos_mask is not None:
             log_prob = log_prob*pos_mask
-        if positive_weights is None:
-            if add_pos is not None:
-                add_logits = torch.sum(add_pos*contrast_feature, 1, keepdim=True)/self.temperature - logits_max.detach()
-                add_logits = torch.squeeze(add_logits)
-                mean_log_prob_pos = ((mask * log_prob).sum(1)+add_logits) / (mask.sum(1)+1)
-            else:
-                mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
+        if add_pos is not None:
+            add_logits = torch.sum(add_pos*contrast_feature, 1, keepdim=True)/self.temperature - logits_max.detach()
+            add_logits = torch.squeeze(add_logits)
+            mean_log_prob_pos = ((mask * log_prob).sum(1)+add_logits) / (mask.sum(1)+1)
         else:
-            if positive_weights.shape != mask.shape:
-                raise ValueError("positive_weights must match the expanded SupCon mask")
-            weighted_positive_mask = mask * positive_weights.to(device=device, dtype=mask.dtype)
-            positive_denominator = weighted_positive_mask.sum(1)
-            if add_pos is not None:
-                # sample_d contributes an additional positive outside the contrast
-                # matrix and intentionally remains unweighted.
-                add_logits = torch.sum(add_pos * contrast_feature, 1, keepdim=True) / self.temperature - logits_max.detach()
-                numerator = (weighted_positive_mask * log_prob).sum(1) + torch.squeeze(add_logits)
-                positive_denominator = positive_denominator + 1
-            else:
-                numerator = (weighted_positive_mask * log_prob).sum(1)
-            # Match the original safe behavior for anchors with no positives while
-            # avoiding NaN/Inf in degenerate batches.
-            mean_log_prob_pos = numerator / positive_denominator.clamp_min(1e-12)
-            mean_log_prob_pos = torch.where(positive_denominator > 0, mean_log_prob_pos,
-                                            torch.zeros_like(mean_log_prob_pos))
+            mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
 
         # loss
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
         loss = loss.view(anchor_count, batch_size).mean()
 
         return loss
-#SupConLoss:所有 (同类样本, 同类样本) 都是正样本,只有异类才是负样本 —— 监督
 
-#ConLoss:只有 (x_i, x_i)(同索引的两个视图)是正样本,其他都是负样本 —— 无监督ConLoss:只有 (x_i, x_i)(同索引的两个视图)是正样本,其他都是负样本 —— 无监督
+
+
 class ConLoss(nn.Module):
     def __init__(self, temperature=0.3, contrast_mode='all'):
         super(ConLoss, self).__init__()

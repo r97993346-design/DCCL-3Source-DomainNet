@@ -1,24 +1,24 @@
-# Recommended PICCL config for three-source DomainNet runs.
-piccl_rank: 16
-piccl_beta_max: 0.20
-piccl_isr_weight: 0.03
+# Conservative causal-only PICCL configuration for the first v6 experiments.
+# Reliable positive weighting stays disabled until the causal projection passes
+# the DCCL-equivalence and causal-only ablations.
 use_piccl: true
+piccl_rank: 16
+piccl_beta_max: 0.10
+piccl_warmup_ratio: 0.10
+piccl_ramp_ratio: 0.20
+piccl_isr_weight: 0.05
+piccl_isr_aug_weight: 0.25
+piccl_isr_dom_weight: 0.75
+piccl_orth_weight: 0.0001
+piccl_proto_momentum: 0.99
+piccl_min_domain_samples: 8
+piccl_min_valid_domains: 2
+piccl_min_delta_norm: 0.0001
+piccl_basis_lr_multiplier: 1.0
+piccl_basis_weight_decay: 0.0
 piccl_use_reliable_contrast: false
 piccl_reliable_contrast_min_weight: 0.5
 piccl_reliable_contrast_gamma_max: 0.3
-piccl_reliable_contrast_warmup_steps: 0
-piccl_reliable_contrast_ramp_steps: 0
+piccl_reliable_contrast_warmup_ratio: 0.30
+piccl_reliable_contrast_ramp_ratio: 0.10
 piccl_reliable_contrast_min_delta_norm: 1.0e-6
-piccl_orth_weight: 0.001
-piccl_isr_aug_weight: 1.0
-piccl_isr_dom_weight: 0.25
-piccl_warmup_steps: 0
-piccl_ramp_steps: 0
-piccl_warmup_ratio: 0.05
-piccl_ramp_ratio: 0.10
-piccl_min_delta_norm: 0.0001
-piccl_min_domain_samples: 8
-piccl_semantic_threshold: 0.2
-piccl_semantic_min_weight: 0.2
-piccl_residual_scale: -1.0
-piccl_strict_bypass: true

@@ -11,13 +11,14 @@
   "optuna": {"sampler": "TPESampler", "seed": 0, "n_startup_trials": 10, "multivariate": true, "group": true, "direction": "maximize"},
   "search_space": {
     "piccl_rank": {"type": "categorical", "choices": [8, 16]},
-    "piccl_beta_max": {"type": "float", "low": 0.10, "high": 0.35, "log": false},
-    "piccl_isr_weight": {"type": "float", "low": 0.01, "high": 0.08, "log": true}
+    "piccl_beta_max": {"type": "float", "low": 0.05, "high": 0.20, "log": false},
+    "piccl_isr_weight": {"type": "float", "low": 0.01, "high": 0.10, "log": true}
   },
   "fixed_params": {
     "weight_decay": 0.0,
     "t": 0.1,
-    "use_piccl": true
+    "use_piccl": true,
+    "piccl_use_reliable_contrast": false
   },
   "historical_trial_names": [
     "260712_13-37-00_pacs_piccl_seed0",

@@ -41,28 +41,34 @@ def _hparams(algorithm, dataset, random_state):
 
     if algorithm == "PICCL":
         hparams["piccl_rank"] = (16, int(random_state.choice([8, 16])))
-        hparams["piccl_beta_max"] = (0.20, float(random_state.uniform(0.10, 0.35)))
-        hparams["piccl_isr_weight"] = (0.03, float(10 ** random_state.uniform(-2, -1.096910013)))
-        hparams["piccl_orth_weight"] = (1e-3, 1e-3)
-        hparams["piccl_isr_aug_weight"] = (1.0, 1.0)
-        hparams["piccl_isr_dom_weight"] = (0.25, 0.25)
+        hparams["piccl_beta_max"] = (0.10, float(random_state.uniform(0.05, 0.20)))
+        hparams["piccl_isr_weight"] = (
+            0.05,
+            float(10 ** random_state.uniform(-2, -1)),
+        )
+        hparams["piccl_orth_weight"] = (1e-4, 1e-4)
+        hparams["piccl_isr_aug_weight"] = (0.25, 0.25)
+        hparams["piccl_isr_dom_weight"] = (0.75, 0.75)
         hparams["piccl_warmup_steps"] = (0, 0)
         hparams["piccl_ramp_steps"] = (0, 0)
-        hparams["piccl_warmup_ratio"] = (0.05, 0.05)
-        hparams["piccl_ramp_ratio"] = (0.10, 0.10)
+        hparams["piccl_warmup_ratio"] = (0.10, 0.10)
+        hparams["piccl_ramp_ratio"] = (0.20, 0.20)
         hparams["piccl_min_delta_norm"] = (1e-4, 1e-4)
         hparams["piccl_min_domain_samples"] = (8, 8)
-        hparams["piccl_semantic_threshold"] = (0.2, 0.2)
-        hparams["piccl_semantic_min_weight"] = (0.2, 0.2)
-        hparams["piccl_residual_scale"] = (-1.0, -1.0)
-        hparams["piccl_strict_bypass"] = (True, True)
-        hparams["use_piccl"] = (True, True)
-        # Reliable contrast is deliberately opt-in so its disabled path is DCCL/PICCL.
+        hparams["piccl_min_valid_domains"] = (2, 2)
+        hparams["piccl_proto_momentum"] = (0.99, 0.99)
+        hparams["piccl_basis_lr_multiplier"] = (1.0, 1.0)
+        hparams["piccl_basis_weight_decay"] = (0.0, 0.0)
+        hparams["piccl_eps"] = (1e-8, 1e-8)
+        # Opt-in defaults make `PICCL --use_piccl false` an exact DCCL path.
+        hparams["use_piccl"] = (False, False)
         hparams["piccl_use_reliable_contrast"] = (False, False)
         hparams["piccl_reliable_contrast_min_weight"] = (0.5, 0.5)
         hparams["piccl_reliable_contrast_gamma_max"] = (0.3, 0.3)
         hparams["piccl_reliable_contrast_warmup_steps"] = (0, 0)
         hparams["piccl_reliable_contrast_ramp_steps"] = (0, 0)
+        hparams["piccl_reliable_contrast_warmup_ratio"] = (0.30, 0.30)
+        hparams["piccl_reliable_contrast_ramp_ratio"] = (0.10, 0.10)
         hparams["piccl_reliable_contrast_min_delta_norm"] = (1e-6, 1e-6)
 
     if algorithm in ["DANN", "CDANN"]:
