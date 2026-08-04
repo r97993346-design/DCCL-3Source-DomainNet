@@ -156,24 +156,15 @@ class CausalMediatorProjection(nn.Module):
         sensitive = subspace.project(z, detach_basis=detach_basis)
         return self.layer_norm(z - alpha * sensitive)
 
-class ResidualGateFusion(nn.Module):
-    """固定残差融合，仅使用 scale 控制 PICCL 修正强度。"""
-
-    def forward(self, original, piccl_feature, scale):
-        return original + scale * (piccl_feature - original)
-
 # PICCLForwardModel 是一个封装了 featurizer、subspace、mediator 和 classifier 的前向模型,
 # 用于在推理阶段使用 PICCL 的特征处理流程。
 class PICCLForwardModel(nn.Module):
-    def __init__(self, featurizer, subspace, mediator, classifier,
-                 residual_gate, residual_scale):
+    def __init__(self, featurizer, subspace, mediator, classifier):
         super().__init__()
         self.featurizer = featurizer
         self.subspace = subspace
         self.mediator = mediator
         self.classifier = classifier
-        self.residual_gate = residual_gate
-        self.residual_scale = residual_scale
         self.piccl_alpha = nn.Parameter(
             torch.tensor(0.0),
             requires_grad=False,
@@ -193,7 +184,7 @@ class PICCLForwardModel(nn.Module):
             self.piccl_alpha.to(device=z.device, dtype=z.dtype),
             detach_basis=True,
         )
-        return self.residual_gate(z, piccl_m, self.residual_scale)
+        return piccl_m
 
 
 class PICCL(DCCL):
@@ -217,7 +208,6 @@ class PICCL(DCCL):
             feature_dim, hparams.get("piccl_rank", 16), hparams.get("piccl_eps", 1e-8)
         )
         self.causal_mediator = CausalMediatorProjection(feature_dim)
-        self.residual_gate = ResidualGateFusion()
         self.register_buffer("piccl_alpha", torch.tensor(0.0))
         self.optimizer = get_optimizer(hparams["optimizer"], self._optimizer_groups())
 
@@ -296,9 +286,8 @@ class PICCL(DCCL):
 
         piccl_m = self.causal_mediator(z, self.sensitive_subspace, alpha.to(dtype=z.dtype), detach_basis=detach_basis)
         piccl_m_int = self.causal_mediator(z_int, self.sensitive_subspace, alpha.to(dtype=z.dtype), detach_basis=detach_basis)
-        residual_scale = self.hparams.get("piccl_residual_scale", 0.1)
-        m = self.residual_gate(z, piccl_m, residual_scale)
-        m_int = self.residual_gate(z_int, piccl_m_int, residual_scale)
+        m = piccl_m
+        m_int = piccl_m_int
         # Use mediated features consistently for classification.
         logits = self.classifier(m)
         loss_cls = F.cross_entropy(logits, all_y)
@@ -325,9 +314,6 @@ class PICCL(DCCL):
                     all_x_2_d = torch.cat(kwargs["x_2_d"])
                     feature_x_2_d = self.featurizer(all_x_2_d)
                     piccl_x_2_d = self.causal_mediator(feature_x_2_d, self.sensitive_subspace, alpha.to(dtype=feature_x_2_d.dtype), detach_basis=detach_basis)
-                    piccl_x_2_d = self.residual_gate(
-                        feature_x_2_d, piccl_x_2_d, residual_scale
-                    )
                     embed_2_d = self.proj_head(piccl_x_2_d)
                     view_2_d = nn.functional.normalize(embed_2_d)
                     add_pos = torch.cat([view_2_d, view_2_d], 0)
@@ -392,7 +378,6 @@ class PICCL(DCCL):
             "ce_loss": float(loss_cls.item()), "sup_cl_loss": float(loss_sup_cl.item()), "pre_cl_loss": float(pre_cl_loss.item()),
             "dccl_total_loss": float((loss_cls + self.l * loss_sup_cl + self.l_layer * pre_cl_loss + self.l_d * loss_gt).item()),
             "weighted_loss_isr": float(weighted_isr.item()), "weighted_loss_orth": float(weighted_orth.item()),
-            "piccl_residual_scale": float(self.hparams.get("piccl_residual_scale", 0.1)),
             "residual_delta_norm": float(delta_norm.item()),
             "fused_original_cosine": float(fused_cos.item()),
             "piccl_executed": 1.0,
@@ -425,9 +410,7 @@ class PICCL(DCCL):
             return self.featurizer(x)
         z = self.featurizer(x)
         piccl_m = self.causal_mediator(z, self.sensitive_subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)
-        return self.residual_gate(
-            z, piccl_m, self.hparams.get("piccl_residual_scale", 0.1)
-        )
+        return piccl_m
 
     def predict(self, x):
         return self.classifier(self.predict_embed(x))
@@ -443,8 +426,6 @@ class PICCL(DCCL):
             self.sensitive_subspace,
             self.causal_mediator,
             self.classifier,
-            self.residual_gate,
-            self.hparams.get("piccl_residual_scale", 0.1),
         )
 
         with torch.no_grad():
