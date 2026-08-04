@@ -27,18 +27,27 @@ def _get_hparam(hparams, name, default):
         return default
 
 
-class OfficialBridgePreResNet(networks.PreResNet):
-    """PreResNet with the official Bridge CBB before global pooling."""
+class OfficialBridgePreResNet(nn.Module):
+    """Wrap DCCL's existing PreResNet and insert CBB before global pooling."""
 
-    def __init__(self, input_shape, hparams, freeze=0):
+    def __init__(self, base_featurizer, hparams):
+        super().__init__()
         model_name = hparams["model"]
         if model_name not in ("resnet18", "resnet50"):
             raise ValueError(
                 "DCCLBridgeOfficial currently supports torchvision resnet18/resnet50 "
                 f"only, got model={model_name!r}."
             )
+        if not isinstance(base_featurizer, networks.PreResNet):
+            raise TypeError(
+                "DCCLBridgeOfficial requires DCCL's PreResNet featurizer, got "
+                f"{type(base_featurizer).__name__}."
+            )
 
-        super().__init__(input_shape, hparams, freeze=freeze)
+        # Reuse the exact DCCL-initialized backbone instead of constructing a
+        # second ResNet. This preserves its initialization and feature hooks.
+        self.base_featurizer = base_featurizer
+        self.n_outputs = base_featurizer.n_outputs
 
         self.bridge_block = MultiScaleBasisBlock(
             in_channels=self.n_outputs,
@@ -66,8 +75,9 @@ class OfficialBridgePreResNet(networks.PreResNet):
 
     def forward(self, x, ret_feats=False):
         """Run ResNet, apply CBB to layer4 map, then preserve DCCL output API."""
-        self.clear_features()
-        network = self.network
+        base = self.base_featurizer
+        base.clear_features()
+        network = base.network
 
         x = network.conv1(x)
         x = network.bn1(x)
@@ -85,12 +95,12 @@ class OfficialBridgePreResNet(networks.PreResNet):
 
         x = network.avgpool(x)
         x = torch.flatten(x, 1)
-        out = self.dropout(x)
+        out = base.dropout(x)
 
         if ret_feats:
             # Hooks registered by PreResNet still expose the same stem/layer
             # tensors used by DCCL's original layer-wise regularization.
-            return out, self._features
+            return out, base._features
         return out
 
 
@@ -102,10 +112,11 @@ class DCCLBridgeOfficial(DCCL):
         # pretrained anchor and all original loss modules.
         super().__init__(input_shape, num_classes, num_domains, hparams)
 
-        # Replace only the trainable feature path. The frozen pre_featurizer is
-        # intentionally left unchanged and never passes through Bridge.
+        # Wrap only the existing trainable feature path. The frozen
+        # pre_featurizer is intentionally left unchanged and never passes
+        # through Bridge.
         self.featurizer = OfficialBridgePreResNet(
-            input_shape, self.hparams, freeze=0
+            self.featurizer, self.hparams
         )
         self.network = nn.Sequential(self.featurizer, self.classifier)
         self.proj = nn.Sequential(self.featurizer, self.proj_head)
