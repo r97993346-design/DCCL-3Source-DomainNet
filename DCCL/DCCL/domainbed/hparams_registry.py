@@ -22,6 +22,17 @@ def _hparams(algorithm, dataset, random_state):
     hparams["freeze_bn"] = (True, True)
     hparams["pretrained"] = (True, True)  # only for ResNet
 
+    if algorithm == "DCCLBridgeOfficial":
+        # Defaults copied from the official Bridge MultiScaleBasisBlock.
+        hparams["bridge_basis_reduction"] = (2, 2)
+        hparams["bridge_basis_reduction_mode"] = ("div", "div")
+        hparams["bridge_with_ssp"] = (True, True)
+        hparams["bridge_with_query"] = (True, True)
+        hparams["bridge_with_input_subspace"] = (False, False)
+        hparams["bridge_with_dropout"] = (False, False)
+        hparams["bridge_basis_normalize"] = (True, True)
+        hparams["bridge_conv_kernel_size"] = (3, 3)
+
     if dataset not in SMALL_IMAGES:
         hparams["lr"] = (5e-5, 10 ** random_state.uniform(-5, -3.5))
         if dataset == "DomainNet":
