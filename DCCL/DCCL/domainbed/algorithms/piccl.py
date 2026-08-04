@@ -156,33 +156,24 @@ class CausalMediatorProjection(nn.Module):
         sensitive = subspace.project(z, detach_basis=detach_basis)
         return self.layer_norm(z - alpha * sensitive)
 
-# 简单版用于 `fusion_mode="legacy"`,门控版用于 `fusion_mode="residual_gate"`。
 class ResidualGateFusion(nn.Module):
-    def __init__(self, feature_dim, gate_bias=-4.0):
-        super().__init__()
-        self.linear = nn.Linear(feature_dim, feature_dim)
-        nn.init.zeros_(self.linear.weight)
-        nn.init.zeros_(self.linear.bias)
-        self.gate_bias = float(gate_bias)
+    """固定残差融合，仅使用 scale 控制 PICCL 修正强度。"""
 
-    def forward(self, original, piccl_feature, scale, alpha):
-           # Step 1: 根据原始特征生成门控信号
-        gate = torch.sigmoid(self.linear(original) + self.gate_bias)
-        # Step 2: 门控融合
-    #   fused = original + scale * alpha * gate * (piccl_feature - original)
-    #   相当于: 在 original 和 piccl_feature 之间做 gate 控制的插值
-        fused = original + float(scale) * alpha.to(original.device, original.dtype) * gate * (piccl_feature - original)
-        return fused, gate
+    def forward(self, original, piccl_feature, scale):
+        return original + scale * (piccl_feature - original)
 
 # PICCLForwardModel 是一个封装了 featurizer、subspace、mediator 和 classifier 的前向模型,
 # 用于在推理阶段使用 PICCL 的特征处理流程。
 class PICCLForwardModel(nn.Module):
-    def __init__(self, featurizer, subspace, mediator, classifier):
+    def __init__(self, featurizer, subspace, mediator, classifier,
+                 residual_gate, residual_scale):
         super().__init__()
         self.featurizer = featurizer
         self.subspace = subspace
         self.mediator = mediator
         self.classifier = classifier
+        self.residual_gate = residual_gate
+        self.residual_scale = residual_scale
         self.piccl_alpha = nn.Parameter(
             torch.tensor(0.0),
             requires_grad=False,
@@ -192,13 +183,17 @@ class PICCLForwardModel(nn.Module):
         return self.predict(x)
 
     def predict(self, x):
-        z = self.featurizer(x)
-        m = self.mediator(z, self.subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)
-        return self.classifier(m)
+        return self.classifier(self.predict_embed(x))
 
     def predict_embed(self, x):
         z = self.featurizer(x)
-        return self.mediator(z, self.subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)
+        piccl_m = self.mediator(
+            z,
+            self.subspace,
+            self.piccl_alpha.to(device=z.device, dtype=z.dtype),
+            detach_basis=True,
+        )
+        return self.residual_gate(z, piccl_m, self.residual_scale)
 
 
 class PICCL(DCCL):
@@ -222,7 +217,7 @@ class PICCL(DCCL):
             feature_dim, hparams.get("piccl_rank", 16), hparams.get("piccl_eps", 1e-8)
         )
         self.causal_mediator = CausalMediatorProjection(feature_dim)
-        self.residual_gate = ResidualGateFusion(feature_dim, hparams.get("piccl_gate_bias", -4.0))
+        self.residual_gate = ResidualGateFusion()
         self.register_buffer("piccl_alpha", torch.tensor(0.0))
         self.optimizer = get_optimizer(hparams["optimizer"], self._optimizer_groups())
 
@@ -242,7 +237,6 @@ class PICCL(DCCL):
         return self._dccl_optimizer_groups() + [
             {"params": self.sensitive_subspace.parameters(), "lr": self.hparams["lr"] * float(self.hparams.get("piccl_lr_multiplier", 1.0)), "weight_decay": self.hparams["weight_decay"]},
             {"params": self.causal_mediator.parameters(), "lr": self.hparams["lr"] * float(self.hparams.get("piccl_lr_multiplier", 1.0)), "weight_decay": self.hparams["weight_decay"]},
-            {"params": self.residual_gate.parameters(), "lr": self.hparams["lr"] * float(self.hparams.get("piccl_lr_multiplier", 1.0)), "weight_decay": self.hparams["weight_decay"]},
         ]
 
     def train(self, mode=True):
@@ -276,10 +270,6 @@ class PICCL(DCCL):
             alpha = max_alpha * ((progress - delayed - warm) / ramp)
         self.piccl_alpha.fill_(alpha)
         return self.piccl_alpha
-
-
-    def _feature_scale(self, step):
-        return self._ramp_value(step, self.hparams.get("piccl_delayed_start_ratio", 0.0), self.hparams.get("piccl_feature_warmup_ratio", 0.0), 1.0)
 
     def _domain_ids(self, x):
         return torch.cat([torch.full((xi.shape[0],), i, dtype=torch.long, device=xi.device) for i, xi in enumerate(x)])
@@ -317,16 +307,9 @@ class PICCL(DCCL):
 
         piccl_m = self.causal_mediator(z, self.sensitive_subspace, alpha.to(dtype=z.dtype), detach_basis=detach_basis)
         piccl_m_int = self.causal_mediator(z_int, self.sensitive_subspace, alpha.to(dtype=z.dtype), detach_basis=detach_basis)
-        gate = None
-        fusion_mode = self.hparams.get("piccl_fusion_mode", "legacy")
-        if fusion_mode == "legacy":
-            m, m_int = piccl_m, piccl_m_int
-        elif fusion_mode == "residual_gate":
-            feature_alpha = z.new_tensor(self._feature_scale(step))
-            m, gate = self.residual_gate(z, piccl_m, self.hparams.get("piccl_residual_scale", 0.1), feature_alpha)
-            m_int, _ = self.residual_gate(z_int, piccl_m_int, self.hparams.get("piccl_residual_scale", 0.1), feature_alpha)
-        else:
-            raise ValueError(f"Unknown piccl_fusion_mode={fusion_mode}")
+        residual_scale = self.hparams.get("piccl_residual_scale", 0.1)
+        m = self.residual_gate(z, piccl_m, residual_scale)
+        m_int = self.residual_gate(z_int, piccl_m_int, residual_scale)
         # Use mediated features consistently for classification.
         logits = self.classifier(m)
         loss_cls = F.cross_entropy(logits, all_y)
@@ -353,8 +336,9 @@ class PICCL(DCCL):
                     all_x_2_d = torch.cat(kwargs["x_2_d"])
                     feature_x_2_d = self.featurizer(all_x_2_d)
                     piccl_x_2_d = self.causal_mediator(feature_x_2_d, self.sensitive_subspace, alpha.to(dtype=feature_x_2_d.dtype), detach_basis=detach_basis)
-                    if fusion_mode == "residual_gate":
-                        piccl_x_2_d, _ = self.residual_gate(feature_x_2_d, piccl_x_2_d, self.hparams.get("piccl_residual_scale", 0.1), feature_alpha)
+                    piccl_x_2_d = self.residual_gate(
+                        feature_x_2_d, piccl_x_2_d, residual_scale
+                    )
                     embed_2_d = self.proj_head(piccl_x_2_d)
                     view_2_d = nn.functional.normalize(embed_2_d)
                     add_pos = torch.cat([view_2_d, view_2_d], 0)
@@ -419,18 +403,13 @@ class PICCL(DCCL):
             "ce_loss": float(loss_cls.item()), "sup_cl_loss": float(loss_sup_cl.item()), "pre_cl_loss": float(pre_cl_loss.item()),
             "dccl_total_loss": float((loss_cls + self.l * loss_sup_cl + self.l_layer * pre_cl_loss + self.l_d * loss_gt).item()),
             "weighted_loss_isr": float(weighted_isr.item()), "weighted_loss_orth": float(weighted_orth.item()),
-            "piccl_feature_scale": float(self._feature_scale(step)),
-            "residual_scale_effective": float(self.hparams.get("piccl_residual_scale", 0.1)),
+            "piccl_residual_scale": float(self.hparams.get("piccl_residual_scale", 0.1)),
             "residual_delta_norm": float(delta_norm.item()),
             "fused_original_cosine": float(fused_cos.item()),
             "piccl_executed": 1.0,
             "original_feature_norm": float(original_norm.item()), "piccl_feature_norm": float(piccl_m.norm(dim=1).mean().item()),
             "feature_delta_norm": float(delta_norm.item()), "feature_delta_ratio": float((delta_norm / original_norm).item()),
             "original_fused_cosine": float(fused_cos.item()),
-            "gate_mean": float(gate.mean().item()) if gate is not None else 0.0,
-            "gate_std": float(gate.std().item()) if gate is not None else 0.0,
-            "gate_min": float(gate.min().item()) if gate is not None else 0.0,
-            "gate_max": float(gate.max().item()) if gate is not None else 0.0,
             "backbone_grad_norm": grad_stats["backbone_grad_norm"], "piccl_grad_norm": grad_stats["piccl_grad_norm"],
             "classifier_grad_norm": grad_stats["classifier_grad_norm"],
             "has_nan_or_inf": float(any(not torch.isfinite(t).all().item() for t in [loss, z, m, logits])),
@@ -445,7 +424,7 @@ class PICCL(DCCL):
             if not vals:
                 return 0.0
             return float(torch.stack(vals).norm().item())
-        piccl_params = list(self.sensitive_subspace.parameters()) + list(self.causal_mediator.parameters()) + list(self.residual_gate.parameters())
+        piccl_params = list(self.sensitive_subspace.parameters()) + list(self.causal_mediator.parameters())
         return {
             "backbone_grad_norm": norm(self.featurizer.parameters()),
             "piccl_grad_norm": norm(piccl_params),
@@ -457,10 +436,9 @@ class PICCL(DCCL):
             return self.featurizer(x)
         z = self.featurizer(x)
         piccl_m = self.causal_mediator(z, self.sensitive_subspace, self.piccl_alpha.to(z.device, z.dtype), detach_basis=True)
-        if self.hparams.get("piccl_fusion_mode", "legacy") == "residual_gate":
-            fused, _ = self.residual_gate(z, piccl_m, self.hparams.get("piccl_residual_scale", 0.1), self.piccl_alpha.to(z.device, z.dtype))
-            return fused
-        return piccl_m
+        return self.residual_gate(
+            z, piccl_m, self.hparams.get("piccl_residual_scale", 0.1)
+        )
 
     def predict(self, x):
         return self.classifier(self.predict_embed(x))
@@ -476,6 +454,8 @@ class PICCL(DCCL):
             self.sensitive_subspace,
             self.causal_mediator,
             self.classifier,
+            self.residual_gate,
+            self.hparams.get("piccl_residual_scale", 0.1),
         )
 
         with torch.no_grad():

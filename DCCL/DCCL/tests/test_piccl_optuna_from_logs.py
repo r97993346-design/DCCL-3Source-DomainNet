@@ -30,8 +30,8 @@ def test_search_range_from_config():
     cfg = json.loads(CONFIG.read_text())
     assert list(cfg["search_space"]) == [
         "lr", "piccl_lr_multiplier", "piccl_alpha_max", "piccl_ccc_weight",
-        "piccl_connectivity_weight", "piccl_residual_scale", "piccl_gate_bias",
-        "piccl_delayed_start_ratio", "piccl_feature_warmup_ratio",
+        "piccl_connectivity_weight", "piccl_residual_scale",
+        "piccl_delayed_start_ratio",
     ]
     assert cfg["search_space"]["piccl_ccc_weight"]["low"] == 0.3
     assert cfg["fixed_params"]["piccl_rank"] == 16

@@ -36,7 +36,7 @@ def run_mode(seed, mode):
     backbone = torch.nn.Linear(5, 4)
     projector = torch.nn.Linear(4, 3)
     classifier = torch.nn.Linear(4, 2)
-    gate = ResidualGateFusion(4)
+    gate = ResidualGateFusion()
     x = torch.randn(8, 5)
     y = torch.tensor([0, 1, 0, 1, 0, 1, 0, 1])
     domains = torch.tensor([0, 0, 1, 1, 2, 2, 0, 1])
@@ -48,7 +48,7 @@ def run_mode(seed, mode):
         piccl_loss = z.sum() * 0.0
         piccl_executed = 0.0
     elif mode == "C_scale0_aux_active":
-        fused, _ = gate(z, piccl_feature, scale=0, alpha=torch.tensor(1.0))
+        fused = gate(z, piccl_feature, scale=0)
         # Auxiliary loss remains attached to z, matching residual_scale=0 semantics.
         piccl_loss = piccl_feature.pow(2).mean()
         piccl_executed = 1.0
