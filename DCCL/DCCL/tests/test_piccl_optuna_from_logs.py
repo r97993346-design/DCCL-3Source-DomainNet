@@ -20,8 +20,6 @@ def test_four_historical_logs_read_and_params_recovered():
     by = {r["name"]: r for r in runs}
     assert by["260712_13-48-25_pacs_dccl_seed0"]["algorithm"] == "DCCL"
     cand = by["260713_22-47-00_pacs_piccl_candidate_preserve_dccl_seed0"]
-    assert cand["params"]["piccl_ccc_weight"] == 1.0
-    assert cand["params"]["piccl_connectivity_weight"] == 0.5
     assert cand["params"]["piccl_residual_scale"] == 0.25
     assert cand["source_score"] > by["260712_13-48-25_pacs_dccl_seed0"]["source_score"]
 
@@ -29,11 +27,10 @@ def test_four_historical_logs_read_and_params_recovered():
 def test_search_range_from_config():
     cfg = json.loads(CONFIG.read_text())
     assert list(cfg["search_space"]) == [
-        "lr", "piccl_lr_multiplier", "piccl_alpha_max", "piccl_ccc_weight",
-        "piccl_connectivity_weight", "piccl_residual_scale",
-        "piccl_delayed_start_ratio",
+        "lr", "piccl_lr_multiplier", "piccl_alpha_max",
+        "piccl_residual_scale", "piccl_delayed_start_ratio",
     ]
-    assert cfg["search_space"]["piccl_ccc_weight"]["low"] == 0.3
+    assert cfg["search_space"]["piccl_residual_scale"]["low"] == 0.08
     assert cfg["fixed_params"]["piccl_rank"] == 16
 
 
@@ -61,7 +58,7 @@ def test_pacs_four_commands_same_params(tmp_path):
     cmds = [tuner.build_env_command(args, cfg, params, tmp_path / "trial_0000", i) for i in range(4)]
     assert [c[c.index("--test_envs") + 1] for c in cmds] == ["0", "1", "2", "3"]
     stripped = [[x for j,x in enumerate(c) if not (j>0 and c[j-1] in {"--test_envs", "--output_root"})] for c in cmds]
-    assert all("--piccl_ccc_weight" in c for c in stripped)
+    assert all("--piccl_residual_scale" in c for c in stripped)
     assert len({tuple(s[3:]) for s in stripped}) == 1
 
 

@@ -13,8 +13,6 @@
     "lr": {"type": "float", "low": 3e-5, "high": 8e-5, "log": true},
     "piccl_lr_multiplier": {"type": "float", "low": 0.25, "high": 0.75, "log": false},
     "piccl_alpha_max": {"type": "float", "low": 0.15, "high": 0.35, "log": false},
-    "piccl_ccc_weight": {"type": "float", "low": 0.3, "high": 1.2, "log": false},
-    "piccl_connectivity_weight": {"type": "float", "low": 0.1, "high": 0.7, "log": false},
     "piccl_residual_scale": {"type": "float", "low": 0.08, "high": 0.30, "log": false},
     "piccl_delayed_start_ratio": {"type": "float", "low": 0.05, "high": 0.20, "log": false}
   },
@@ -23,11 +21,12 @@
     "piccl_rank": 16,
     "piccl_isr_weight": 0.05,
     "piccl_orth_weight": 0.0001,
+<<<<<<< ours
     "piccl_loss_warmup_ratio": 0.25,
+=======
+>>>>>>> theirs
     "piccl_gt_mode": "keep",
     "piccl_basis_receive_task_grad": false,
-    "piccl_int_weight": 0.1,
-    "piccl_ref_weight": 1.0,
     "piccl_warmup_ratio": 0.05,
     "piccl_ramp_ratio": 0.25,
     "t": 0.1,

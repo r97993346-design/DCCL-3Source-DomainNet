@@ -8,7 +8,7 @@ import argparse, csv, json, math, os, shutil, subprocess, sys
 from pathlib import Path
 from statistics import mean, pstdev
 
-PICCL_KEYS = ["lr","weight_decay","piccl_rank","piccl_alpha_max","piccl_lr_multiplier","piccl_ccc_weight","piccl_connectivity_weight","piccl_isr_weight","piccl_orth_weight","piccl_residual_scale","piccl_delayed_start_ratio","piccl_loss_warmup_ratio","t","piccl_gt_mode","piccl_int_weight","piccl_ref_weight","piccl_warmup_ratio","piccl_ramp_ratio"]
+PICCL_KEYS = ["lr","weight_decay","piccl_rank","piccl_alpha_max","piccl_lr_multiplier","piccl_isr_weight","piccl_orth_weight","piccl_residual_scale","piccl_delayed_start_ratio","t","piccl_gt_mode","piccl_warmup_ratio","piccl_ramp_ratio"]
 
 
 def load_jsonl(path):

@@ -243,18 +243,7 @@ class PICCL(DCCL):
         super().train(mode)
         self.pre_featurizer.eval()
         return self
-    # Gradually introduce feature suppression and optional residual fusion.
-    def _ramp_value(self, step, start_ratio, warmup_ratio, max_value=1.0):
-        total = max(int(self.hparams.get("piccl_total_steps", 1)) - 1, 1)
-        progress = float(step) / float(total)
-        start = float(start_ratio)
-        warmup = float(warmup_ratio)
-        if progress <= start:
-            return 0.0
-        if warmup <= 0:
-            return float(max_value)
-        return float(max_value) * min(max((progress - start) / warmup, 0.0), 1.0)
-
+    # Gradually introduce feature suppression.
     def _alpha(self, step):
         total = max(int(self.hparams.get("piccl_total_steps", 1)) - 1, 1)
         progress = float(step) / float(total)
