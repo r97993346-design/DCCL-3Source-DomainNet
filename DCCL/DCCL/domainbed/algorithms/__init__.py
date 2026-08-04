@@ -1,4 +1,5 @@
 from .algorithms import *
+from .dccl_bridge import DCCLBridgeOfficial
 
 
 def get_algorithm_class(algorithm_name):
