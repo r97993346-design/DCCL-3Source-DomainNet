@@ -26,30 +26,42 @@ from .reliable_supcon import ReliableSupConLoss
 
 
 class PICCLForwardModel(nn.Module):
-    """Inference/SWAD model with the latest Q and beta stored as buffers."""
+    """Inference/SWAD model using v2-style parameter averaging."""
 
     def __init__(
         self,
         featurizer,
-        basis_q,
+        sensitive_subspace,
         classifier,
         beta,
         use_residual_gate=False,
         gate_logit=None,
     ):
         super().__init__()
+
         self.featurizer = featurizer
+        self.sensitive_subspace = sensitive_subspace
         self.classifier = classifier
-        self.register_buffer("basis_q", basis_q.detach().clone())
-        self.register_buffer("piccl_beta", beta.detach().clone())
+
+        # 与 v2 一样，让 beta 进入 SWAD 参数平均；
+        # requires_grad=False，不参与梯度更新。
+        self.piccl_beta = nn.Parameter(
+            beta.detach().clone().reshape(()),
+            requires_grad=False,
+        )
+
         self.use_residual_gate = bool(use_residual_gate)
         if self.use_residual_gate:
             if gate_logit is None or gate_logit.numel() != 1:
-                raise ValueError("gate_logit must be a scalar when gating is enabled")
-            self.gate_logit = nn.Parameter(gate_logit.detach().clone().reshape(()))
-        # swa_utils copies only these explicitly opted-in buffers.  DCCL and
-        # other algorithms retain their original SWAD buffer behavior.
-        self.swa_latest_buffer_names = ("basis_q", "piccl_beta")
+                raise ValueError(
+                    "gate_logit must be a scalar when gating is enabled"
+                )
+            self.gate_logit = nn.Parameter(
+                gate_logit.detach().clone().reshape(())
+            )
+
+        # 不再设置：
+        # self.swa_latest_buffer_names = ("basis_q", "piccl_beta")
 
     @property
     def network(self):
@@ -57,14 +69,25 @@ class PICCLForwardModel(nn.Module):
 
     def predict_embed(self, x):
         z = self.featurizer(x)
-        beta = self.piccl_beta.to(z.device, z.dtype)
+        beta = self.piccl_beta.to(device=z.device, dtype=z.dtype)
+
         if float(beta.detach().item()) == 0.0:
             return z
-        q = self.basis_q.to(z.device, z.dtype)
-        z_causal = z - beta * ((z @ q) @ q.transpose(0, 1))
+
+        # 使用 SWAD 平均后的 raw basis，重新通过 QR 得到 Q
+        q = self.sensitive_subspace.orthonormal_basis(
+            detach=True,
+            dtype=z.dtype,
+        ).to(z.device)
+
+        sensitive = (z @ q) @ q.transpose(0, 1)
+        z_causal = z - beta * sensitive
+
         if not self.use_residual_gate:
             return z_causal
-        return z + torch.sigmoid(self.gate_logit).to(z.dtype) * (z_causal - z)
+
+        gate = torch.sigmoid(self.gate_logit).to(z.dtype)
+        return z + gate * (z_causal - z)
 
     def predict(self, x):
         return self.classifier(self.predict_embed(x))
@@ -341,7 +364,15 @@ class PICCL(DCCL):
             ) / 2
 
         with torch.no_grad():
-            pre_pred_x, pre_feats = self.pre_featurizer(all_x, ret_feats=True)
+            # 原图经过冻结参考网络
+            pre_pred_x, pre_feats = self.pre_featurizer(
+                all_x, ret_feats=True
+            )
+
+            # 保存原图逐层特征的独立容器，避免下一次 forward 覆盖
+            pre_feats = tuple(pre_feats)
+
+            # 增强图经过冻结参考网络，仅取最终特征用于 PIRE
             pre_pred_x_2 = self.pre_featurizer(all_x_2)
 
         domains = self._domain_ids(x)
@@ -580,12 +611,10 @@ class PICCL(DCCL):
     def get_forward_model(self):
         if not self.use_piccl:
             return super().get_forward_model()
-        q = self.sensitive_subspace.orthonormal_basis(
-            detach=True, dtype=torch.float32
-        )
+
         return PICCLForwardModel(
             self.featurizer,
-            q,
+            self.sensitive_subspace,
             self.classifier,
             self.piccl_beta,
             use_residual_gate=self.use_residual_gate,

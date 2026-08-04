@@ -64,18 +64,33 @@ def test_pire_reference_response_is_detached():
     assert zr.grad is None and zir.grad is None
 
 
-def test_forward_model_uses_exported_q_and_beta():
+def test_forward_model_uses_exported_subspace_and_beta():
     featurizer = torch.nn.Linear(3, 8)
     classifier = torch.nn.Linear(8, 2)
     subspace = InterventionSensitiveSubspace(8, 2)
-    q = subspace.orthonormal_basis(detach=True)
-    model = PICCLForwardModel(featurizer, q, classifier, torch.tensor(0.2))
+
+    model = PICCLForwardModel(
+        featurizer,
+        subspace,
+        classifier,
+        torch.tensor(0.2),
+    )
+
     x = torch.randn(5, 3)
     z = featurizer(x)
+    q = subspace.orthonormal_basis(detach=True)
     expected = z - 0.2 * ((z @ q) @ q.T)
+
     assert torch.allclose(model.predict_embed(x), expected)
-    assert "basis_q" not in dict(model.named_parameters())
-    assert "basis_q" in dict(model.named_buffers())
+
+    parameters = dict(model.named_parameters())
+    buffers = dict(model.named_buffers())
+
+    assert "sensitive_subspace.basis" in parameters
+    assert "piccl_beta" in parameters
+    assert parameters["piccl_beta"].requires_grad is False
+    assert "basis_q" not in buffers
+    assert not hasattr(model, "swa_latest_buffer_names")
 
 
 def _projection_only_piccl(use_gate, gate_bias=-2.0):
@@ -121,11 +136,10 @@ def test_gated_training_and_forward_models_match_and_are_finite():
     featurizer = torch.nn.Linear(3, 8)
     classifier = torch.nn.Linear(8, 2)
     obj = _projection_only_piccl(True, gate_bias=-1.5)
-    q = obj.sensitive_subspace.orthonormal_basis(detach=True)
     beta = torch.tensor(0.2)
     model = PICCLForwardModel(
         featurizer,
-        q,
+        obj.sensitive_subspace,
         classifier,
         beta,
         use_residual_gate=True,
