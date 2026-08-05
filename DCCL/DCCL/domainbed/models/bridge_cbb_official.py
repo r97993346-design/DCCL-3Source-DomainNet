@@ -299,3 +299,40 @@ class MultiScaleBasisBlock(nn.Module):
             + expected_mediator_feature
         )
         return self.fusion_conv(fused_feature)
+
+
+class ResidualBridgeBlock(nn.Module):
+    """Apply CBB through a bottleneck without destroying pretrained features."""
+
+    def __init__(
+        self,
+        in_channels,
+        bridge_channels=256,
+        gate_init=0.0,
+        **bridge_kwargs,
+    ):
+        super().__init__()
+        self.in_channels = int(in_channels)
+        self.bridge_channels = int(bridge_channels)
+        if self.in_channels <= 0:
+            raise ValueError(f"in_channels must be positive, got {self.in_channels}")
+        if self.bridge_channels <= 0:
+            raise ValueError(
+                f"bridge_channels must be positive, got {self.bridge_channels}"
+            )
+
+        self.reduce = nn.Conv2d(
+            self.in_channels, self.bridge_channels, kernel_size=1, bias=False
+        )
+        self.bridge_block = MultiScaleBasisBlock(
+            in_channels=self.bridge_channels, **bridge_kwargs
+        )
+        self.expand = nn.Conv2d(
+            self.bridge_channels, self.in_channels, kernel_size=1, bias=False
+        )
+        self.gate = nn.Parameter(torch.tensor(float(gate_init)))
+
+    def forward(self, x):
+        bridge_delta = self.expand(self.bridge_block(self.reduce(x)))
+        gate = self.gate.to(device=bridge_delta.device, dtype=bridge_delta.dtype)
+        return x + gate * bridge_delta

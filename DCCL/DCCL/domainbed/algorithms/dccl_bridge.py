@@ -1,10 +1,11 @@
 """Official Bridge CBB integration for DCCL.
 
 The CBB internals come from the official Bridge implementation. This module
-only adapts the feature interface: for torchvision ResNet-18/50, the CBB is
-inserted after ``layer4`` and before global average pooling. DCCL's losses,
-positive/negative construction, pretrained anchor, and SWAD interface remain
-inherited unchanged from :class:`DCCL`.
+adapts the feature interface for torchvision ResNet-18/50. The high-dimensional
+``layer4`` map is reduced to the channel width used by the official module,
+processed by CBB, expanded again, and fused through an identity-initialized
+residual gate. DCCL's losses, positive/negative construction, pretrained
+anchor, and SWAD interface remain inherited from :class:`DCCL`.
 """
 
 import torch
@@ -12,7 +13,7 @@ import torch.nn as nn
 
 from domainbed import networks
 from domainbed.optimizers import get_optimizer
-from domainbed.models.bridge_cbb_official import MultiScaleBasisBlock
+from domainbed.models.bridge_cbb_official import ResidualBridgeBlock
 
 from .algorithms import DCCL
 
@@ -49,8 +50,10 @@ class OfficialBridgePreResNet(nn.Module):
         self.base_featurizer = base_featurizer
         self.n_outputs = base_featurizer.n_outputs
 
-        self.bridge_block = MultiScaleBasisBlock(
+        self.bridge_adapter = ResidualBridgeBlock(
             in_channels=self.n_outputs,
+            bridge_channels=int(_get_hparam(hparams, "bridge_channels", 256)),
+            gate_init=float(_get_hparam(hparams, "bridge_gate_init", 0.0)),
             basis_reduction=_get_hparam(
                 hparams, "bridge_basis_reduction", 2
             ),
@@ -73,6 +76,12 @@ class OfficialBridgePreResNet(nn.Module):
             ),
         )
 
+    def backbone_parameters(self):
+        return self.base_featurizer.parameters()
+
+    def bridge_parameters(self):
+        return self.bridge_adapter.parameters()
+
     def forward(self, x, ret_feats=False):
         """Run ResNet, apply CBB to layer4 map, then preserve DCCL output API."""
         base = self.base_featurizer
@@ -89,9 +98,14 @@ class OfficialBridgePreResNet(nn.Module):
         x = network.layer3(x)
         x = network.layer4(x)
 
-        # The only DCCL-specific interface adaptation: official CBB receives
-        # the final 4-D feature map before ResNet's global average pooling.
-        x = self.bridge_block(x)
+        # CBB sees a compact representation and starts as an exact identity
+        # residual, preserving the pretrained DCCL feature distribution.
+        x = self.bridge_adapter(x)
+
+        # The final generative-alignment target must describe the feature map
+        # consumed by the classifier, rather than the pre-Bridge layer4 map.
+        if base._features:
+            base._features[-1] = x
 
         x = network.avgpool(x)
         x = torch.flatten(x, 1)
@@ -121,15 +135,22 @@ class DCCLBridgeOfficial(DCCL):
         self.network = nn.Sequential(self.featurizer, self.classifier)
         self.proj = nn.Sequential(self.featurizer, self.proj_head)
 
-        # Rebuild the optimizer with exactly the same DCCL parameter-group
-        # learning-rate policy, now including official CBB parameters through
-        # self.featurizer.parameters().
+        # Keep the pretrained backbone on its fine-tuning LR while allowing the
+        # randomly initialized adapter to learn at a separately controlled LR.
         lower_cls = 0.1
         lower_proj = 10
+        bridge_lr = self.hparams["lr"] * float(
+            _get_hparam(self.hparams, "bridge_lr_multiplier", 10.0)
+        )
         optimized_list = [
             {
-                "params": self.featurizer.parameters(),
+                "params": self.featurizer.backbone_parameters(),
                 "lr": self.hparams["lr"],
+                "weight_decay": self.hparams["weight_decay"],
+            },
+            {
+                "params": self.featurizer.bridge_parameters(),
+                "lr": bridge_lr,
                 "weight_decay": self.hparams["weight_decay"],
             },
             {

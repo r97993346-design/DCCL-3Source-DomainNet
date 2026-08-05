@@ -23,7 +23,11 @@ def _hparams(algorithm, dataset, random_state):
     hparams["pretrained"] = (True, True)  # only for ResNet
 
     if algorithm == "DCCLBridgeOfficial":
-        # Defaults copied from the official Bridge MultiScaleBasisBlock.
+        # Run the official 256-channel CBB through an identity-initialized
+        # residual adapter instead of applying it directly at 2048 channels.
+        hparams["bridge_channels"] = (256, 256)
+        hparams["bridge_gate_init"] = (0.0, 0.0)
+        hparams["bridge_lr_multiplier"] = (10.0, 10.0)
         hparams["bridge_basis_reduction"] = (2, 2)
         hparams["bridge_basis_reduction_mode"] = ("div", "div")
         hparams["bridge_with_ssp"] = (True, True)

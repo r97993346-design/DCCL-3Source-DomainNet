@@ -2,7 +2,10 @@
 
 import torch
 
-from domainbed.models.bridge_cbb_official import MultiScaleBasisBlock
+from domainbed.models.bridge_cbb_official import (
+    MultiScaleBasisBlock,
+    ResidualBridgeBlock,
+)
 
 
 def main():
@@ -38,9 +41,55 @@ def main():
     for name, grad in required_grads.items():
         assert torch.isfinite(grad).all(), f"Non-finite gradient: {name}"
 
+    adapter_kwargs = {
+        "bridge_channels": 32,
+        "gate_init": 0.0,
+        "basis_reduction": 2,
+        "basis_reduction_mode": "div",
+        "with_ssp": True,
+        "with_query": True,
+        "with_input_subspace": False,
+        "with_dropout": False,
+        "basis_normalize": True,
+        "conv_kernel_size": 3,
+    }
+    adapter = ResidualBridgeBlock(64, **adapter_kwargs)
+    residual_input = torch.randn(2, 64, 7, 7, requires_grad=True)
+    identity_output = adapter(residual_input)
+    assert torch.equal(identity_output, residual_input), (
+        "zero-initialized Bridge gate must preserve pretrained features exactly"
+    )
+
+    identity_output.square().mean().backward()
+    assert adapter.gate.grad is not None
+    assert torch.isfinite(adapter.gate.grad).all()
+
+    adapter.zero_grad(set_to_none=True)
+    residual_input.grad = None
+    with torch.no_grad():
+        adapter.gate.fill_(0.1)
+    adapter(residual_input).square().mean().backward()
+    missing_adapter_grads = [
+        name
+        for name, parameter in adapter.named_parameters()
+        if parameter.grad is None
+    ]
+    assert not missing_adapter_grads, (
+        f"Missing residual-adapter gradients: {missing_adapter_grads}"
+    )
+
+    resnet50_adapter = ResidualBridgeBlock(
+        2048, **{**adapter_kwargs, "bridge_channels": 256}
+    )
+    adapter_parameter_count = sum(
+        parameter.numel() for parameter in resnet50_adapter.parameters()
+    )
+    assert adapter_parameter_count < 5_000_000, adapter_parameter_count
+
     print("Bridge CBB official-port test passed")
     print(f"input/output shape: {tuple(x.shape)}")
     print(f"num reduced basis: {block.num_reduced_basis}")
+    print(f"resnet50 adapter parameters: {adapter_parameter_count}")
 
 
 if __name__ == "__main__":
