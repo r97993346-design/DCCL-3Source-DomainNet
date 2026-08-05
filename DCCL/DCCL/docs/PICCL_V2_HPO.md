@@ -1,8 +1,11 @@
 # PICCL v2 hyperparameter search
 
-This workflow keeps the PICCL v2 model and all DCCL hyperparameters fixed. It
-ranks trials only with source-domain `SWAD (inD)` and stores target-domain
-`SWAD` as report-only evidence.
+This workflow keeps the PICCL v2 model and all DCCL hyperparameters fixed. Every
+Optuna search, full-budget confirmation, and multi-seed confirmation ranks
+configurations by the mean final target-domain `SWAD`. `SWAD (inD)` is retained
+only as a diagnostic value.
+
+This is explicitly a target-domain/Oracle hyperparameter-selection protocol.
 
 Install Optuna once:
 
@@ -63,5 +66,5 @@ Use the same four commands with
 5,000-step core budget, an 8,000-step schedule budget, and 15,000-step full
 confirmation runs.
 
-Do not rank or manually choose trials using `target_swad_report_only`. It exists
-only for the final locked-configuration report.
+All generated `ranking.json`, `ranking.csv`, and `best_config.json` files are
+ordered by mean target-domain `SWAD`.

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Leakage-safe, staged hyperparameter search for the fixed PICCL v2 model.
+"""Target-SWAD staged hyperparameter search for the fixed PICCL v2 model.
 
-The objective uses only ``SWAD (inD)`` from source-domain validation.  The
-target-domain ``SWAD`` value is persisted for final reporting but is never used
-for ranking, pruning, or best-configuration selection.
+Every search and confirmation stage maximizes the final target-domain ``SWAD``
+mean. ``SWAD (inD)`` is retained only as a diagnostic value. This is an Oracle
+target-domain selection protocol and is labelled as such in every summary.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from statistics import mean, pstdev
+from statistics import mean
 
 
 SWAD_RE = re.compile(r"SWAD\s*=\s*([0-9]+(?:\.[0-9]+)?)%")
@@ -46,21 +46,21 @@ def parse_swad_metrics(text: str) -> dict[str, float]:
     """Return the final target and source-validation SWAD values as fractions."""
     source_matches = SWAD_IND_RE.findall(text)
     target_matches = SWAD_RE.findall(text)
-    if not source_matches:
-        raise ValueError("log does not contain a 'SWAD (inD)' result")
-    result = {"swad_indomain": float(source_matches[-1]) / 100.0}
-    if target_matches:
-        result["swad_target_report_only"] = float(target_matches[-1]) / 100.0
+    if not target_matches:
+        raise ValueError("log does not contain a final target-domain 'SWAD' result")
+    result = {"swad_target": float(target_matches[-1]) / 100.0}
+    if source_matches:
+        result["swad_indomain_report_only"] = float(source_matches[-1]) / 100.0
     return result
 
 
-def source_objective(source_scores: list[float], std_penalty: float) -> float:
-    """Aggregate only source-validation scores; target scores are not accepted."""
-    if not source_scores:
-        raise ValueError("at least one source-domain SWAD score is required")
-    if any(not math.isfinite(value) for value in source_scores):
-        raise ValueError("source-domain SWAD scores must be finite")
-    return mean(source_scores) - float(std_penalty) * pstdev(source_scores)
+def selection_objective(target_scores: list[float]) -> float:
+    """Use the mean final target-domain SWAD as the Optuna objective."""
+    if not target_scores:
+        raise ValueError("at least one target-domain SWAD score is required")
+    if any(not math.isfinite(value) for value in target_scores):
+        raise ValueError("target-domain SWAD scores must be finite")
+    return mean(target_scores)
 
 
 def validate_search_space(search_space: dict) -> None:
@@ -267,13 +267,15 @@ def evaluate_params(
         for future in futures:
             results.append(future.result())
 
-    source_scores = [item["swad_indomain"] for item in results]
-    objective = source_objective(source_scores, cfg.get("objective_std_penalty", 0.1))
+    target_scores = [item["swad_target"] for item in results]
+    objective = selection_objective(target_scores)
     summary = {
         "objective": objective,
-        "source_swad_indomain": source_scores,
-        "target_swad_report_only": [
-            item.get("swad_target_report_only") for item in results
+        "selection_protocol": "target_swad_oracle",
+        "selection_metric": "mean_target_swad",
+        "target_swad": target_scores,
+        "source_swad_indomain_report_only": [
+            item.get("swad_indomain_report_only") for item in results
         ],
         "task_metrics": results,
     }
@@ -321,6 +323,8 @@ def ranked_trials(study, base_params: dict) -> list[dict]:
             {
                 "trial": trial.number,
                 "objective": float(trial.value),
+                "selection_protocol": "target_swad_oracle",
+                "selection_metric": "mean_target_swad",
                 "params": {**base_params, **trial.params},
             }
         )
@@ -370,9 +374,10 @@ def run_search(args, cfg: dict, repo_root: Path, output_root: Path) -> None:
             args.max_concurrent,
             args.resume,
         )
-        trial.set_user_attr("source_swad_indomain", summary["source_swad_indomain"])
+        trial.set_user_attr("target_swad", summary["target_swad"])
         trial.set_user_attr(
-            "target_swad_report_only", summary["target_swad_report_only"]
+            "source_swad_indomain_report_only",
+            summary["source_swad_indomain_report_only"],
         )
         return summary["objective"]
 
@@ -387,7 +392,13 @@ def run_search(args, cfg: dict, repo_root: Path, output_root: Path) -> None:
     write_csv(
         stage_root / "ranking.csv",
         [
-            {"trial": row["trial"], "objective": row["objective"], **row["params"]}
+            {
+                "trial": row["trial"],
+                "objective": row["objective"],
+                "selection_protocol": row["selection_protocol"],
+                "selection_metric": row["selection_metric"],
+                **row["params"],
+            }
             for row in ranking
         ],
     )
@@ -408,8 +419,8 @@ def run_confirmation(args, cfg: dict, repo_root: Path, output_root: Path) -> Non
     confirmation_root = stage_root / "confirmation"
     rows = []
     for candidate_index, candidate in enumerate(ranking):
-        source_scores = []
-        target_report_only = []
+        target_scores = []
+        source_indomain_report_only = []
         for seed in args.confirm_seeds:
             summary = evaluate_params(
                 cfg,
@@ -423,17 +434,19 @@ def run_confirmation(args, cfg: dict, repo_root: Path, output_root: Path) -> Non
                 args.max_concurrent,
                 args.resume,
             )
-            source_scores.extend(summary["source_swad_indomain"])
-            target_report_only.extend(summary["target_swad_report_only"])
+            target_scores.extend(summary["target_swad"])
+            source_indomain_report_only.extend(
+                summary["source_swad_indomain_report_only"]
+            )
         rows.append(
             {
                 "candidate": candidate_index,
                 "search_trial": candidate["trial"],
-                "objective": source_objective(
-                    source_scores, cfg.get("objective_std_penalty", 0.1)
-                ),
-                "source_swad_indomain": source_scores,
-                "target_swad_report_only": target_report_only,
+                "objective": selection_objective(target_scores),
+                "selection_protocol": "target_swad_oracle",
+                "selection_metric": "mean_target_swad",
+                "target_swad": target_scores,
+                "source_swad_indomain_report_only": source_indomain_report_only,
                 "params": candidate["params"],
             }
         )
@@ -449,6 +462,8 @@ def run_confirmation(args, cfg: dict, repo_root: Path, output_root: Path) -> Non
                 "candidate": row["candidate"],
                 "search_trial": row["search_trial"],
                 "objective": row["objective"],
+                "selection_protocol": row["selection_protocol"],
+                "selection_metric": row["selection_metric"],
                 **row["params"],
             }
             for row in rows

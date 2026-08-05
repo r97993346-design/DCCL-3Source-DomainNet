@@ -1,5 +1,5 @@
 {
-  "study_name": "piccl_v2_pacs_swad",
+  "study_name": "piccl_v2_pacs_target_swad_oracle",
   "dataset": "PACS",
   "algorithm": "PICCL",
   "model": "resnet50",
@@ -8,7 +8,8 @@
   "trial_seed": 0,
   "deterministic": true,
   "full_steps": 5000,
-  "objective_std_penalty": 0.1,
+  "selection_protocol": "target_swad_oracle",
+  "selection_metric": "mean_target_swad",
   "optuna": {
     "seed": 0,
     "n_startup_trials": 8,

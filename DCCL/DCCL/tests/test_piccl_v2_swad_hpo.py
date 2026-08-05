@@ -23,12 +23,12 @@ class HPOTests(unittest.TestCase):
         )
         self.assertEqual(
             HPO.parse_swad_metrics(text),
-            {"swad_indomain": 0.9125, "swad_target_report_only": 0.825},
+            {"swad_target": 0.825, "swad_indomain_report_only": 0.9125},
         )
 
-    def test_source_objective_uses_only_values_passed_as_source_scores(self):
-        self.assertAlmostEqual(HPO.source_objective([0.9, 0.9], 0.1), 0.9)
-        self.assertAlmostEqual(HPO.source_objective([0.8, 1.0], 0.1), 0.89)
+    def test_selection_objective_is_mean_target_swad(self):
+        self.assertAlmostEqual(HPO.selection_objective([0.9, 0.9]), 0.9)
+        self.assertAlmostEqual(HPO.selection_objective([0.8, 1.0]), 0.9)
 
     def test_search_space_rejects_dead_and_dccl_parameters(self):
         with self.assertRaisesRegex(ValueError, "dead v2"):
