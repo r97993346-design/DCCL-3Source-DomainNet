@@ -15,16 +15,20 @@ import json
 import math
 import os
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
 from statistics import mean
 
 
-SWAD_RE = re.compile(r"SWAD\s*=\s*([0-9]+(?:\.[0-9]+)?)%")
-SWAD_IND_RE = re.compile(
+LEGACY_SWAD_RE = re.compile(r"SWAD\s*=\s*([0-9]+(?:\.[0-9]+)?)%")
+LEGACY_SWAD_IND_RE = re.compile(
     r"SWAD\s*\(inD\)\s*=\s*([0-9]+(?:\.[0-9]+)?)%",
 )
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+SUMMARY_ROW_RE = re.compile(r"^\s*\|\s*(SWAD(?:\s*\(inD\))?)\s*\|(.*)\|\s*$")
+PERCENT_RE = re.compile(r"([0-9]+(?:\.[0-9]+)?)%")
 
 # This parameter remains registered for compatibility, but the fixed v2
 # forward path no longer consumes it. Searching it would create fake trials.
@@ -42,10 +46,114 @@ BASE_DCCL_SEARCH_PARAMS = {
 }
 
 
+class TrialExecutionError(RuntimeError):
+    """A per-trial training failure which must not abort the whole study."""
+
+
+def registered_hparams(cfg: dict) -> dict:
+    from domainbed import hparams_registry
+
+    return hparams_registry.default_hparams(cfg["algorithm"], cfg["dataset"])
+
+
+def _representative_value(spec: dict):
+    return spec["choices"][0] if spec["type"] == "categorical" else spec["low"]
+
+
+def preflight(cfg: dict, gpus: list[str], max_concurrent: int) -> dict:
+    """Validate configuration against train_all's real registry before training."""
+    if cfg.get("algorithm") != "PICCL":
+        raise ValueError("preflight requires algorithm=PICCL")
+    registry = registered_hparams(cfg)
+    searched = set()
+    for stage in cfg.get("stages", {}).values():
+        validate_search_space(stage.get("search_space", {}))
+        searched.update(stage.get("search_space", {}))
+    invalid = sorted((searched | set(cfg.get("fixed_params", {}))) - set(registry))
+    if invalid:
+        raise ValueError(f"unregistered hparams: {invalid}")
+    for name, value in cfg.get("fixed_params", {}).items():
+        expected = type(registry[name])
+        if expected is bool:
+            valid = isinstance(value, bool)
+        elif expected is int:
+            valid = isinstance(value, int) and not isinstance(value, bool)
+        elif expected is float:
+            valid = isinstance(value, (int, float)) and not isinstance(value, bool)
+        else:
+            valid = isinstance(value, expected)
+        if not valid:
+            raise TypeError(f"fixed {name} does not match registry type {expected.__name__}")
+    for stage in cfg["stages"].values():
+        for name, spec in stage["search_space"].items():
+            kind = spec.get("type")
+            if kind not in {"categorical", "float", "int"}:
+                raise ValueError(f"invalid search type for {name}: {kind}")
+            values = (
+                spec.get("choices")
+                if kind == "categorical"
+                else [spec.get("low"), spec.get("high")]
+            )
+            if not values or any(value is None for value in values):
+                raise ValueError(f"empty/incomplete search range for {name}")
+            expected = type(registry[name])
+            valid_types = (
+                (bool,)
+                if expected is bool
+                else (int,)
+                if expected is int
+                else (int, float)
+                if expected is float
+                else (expected,)
+            )
+            if any(not isinstance(value, valid_types) for value in values):
+                raise TypeError(f"{name} values do not match registry type {expected.__name__}")
+            if kind != "categorical" and spec["low"] > spec["high"]:
+                raise ValueError(f"invalid bounds for {name}")
+    rank_specs = [
+        stage["search_space"].get("piccl_rank") for stage in cfg["stages"].values()
+    ]
+    ranks = [
+        rank
+        for spec in rank_specs
+        if spec
+        for rank in spec.get("choices", [spec.get("high")])
+    ]
+    if "piccl_rank" in cfg.get("fixed_params", {}):
+        ranks.append(cfg["fixed_params"]["piccl_rank"])
+    if any(rank <= 0 or rank > 2048 for rank in ranks):
+        raise ValueError("piccl_rank must fit the ResNet-50 feature dimension [1, 2048]")
+    if len(gpus) != len(set(gpus)):
+        raise ValueError("--gpus contains duplicate device IDs")
+    if gpus and max_concurrent > len(gpus):
+        raise ValueError("--max-concurrent cannot exceed the number of unique GPUs")
+    return registry
+
+
 def parse_swad_metrics(text: str) -> dict[str, float]:
-    """Return the final target and source-validation SWAD values as fractions."""
-    source_matches = SWAD_IND_RE.findall(text)
-    target_matches = SWAD_RE.findall(text)
+    """Return final SWAD values, preferring train_all's final summary table.
+
+    ``train_all.py`` emits PrettyTable rows such as ``| SWAD | ... | Avg. |``;
+    older logs used ``SWAD = ...``.  The exact row label prevents the report-only
+    ``SWAD (inD)`` row from being mistaken for the target-domain objective.
+    """
+    table_values: dict[str, list[float]] = {}
+    for raw_line in text.splitlines():
+        line = ANSI_RE.sub("", raw_line)
+        match = SUMMARY_ROW_RE.match(line)
+        if match:
+            values = [float(value) / 100.0 for value in PERCENT_RE.findall(match.group(2))]
+            if values:
+                # The last percentage is the PrettyTable Avg. column.
+                table_values[match.group(1)] = values
+    if "SWAD" in table_values:
+        result = {"swad_target": table_values["SWAD"][-1]}
+        if "SWAD (inD)" in table_values:
+            result["swad_indomain_report_only"] = table_values["SWAD (inD)"][-1]
+        return result
+
+    source_matches = LEGACY_SWAD_IND_RE.findall(text)
+    target_matches = LEGACY_SWAD_RE.findall(text)
     if not target_matches:
         raise ValueError("log does not contain a final target-domain 'SWAD' result")
     result = {"swad_target": float(target_matches[-1]) / 100.0}
@@ -88,11 +196,14 @@ def suggest_params(trial, search_space: dict) -> dict:
         if kind == "categorical":
             params[name] = trial.suggest_categorical(name, spec["choices"])
         elif kind == "float":
+            kwargs = {"log": bool(spec.get("log", False))}
+            if "step" in spec:
+                kwargs["step"] = float(spec["step"])
             params[name] = trial.suggest_float(
                 name,
                 float(spec["low"]),
                 float(spec["high"]),
-                log=bool(spec.get("log", False)),
+                **kwargs,
             )
         elif kind == "int":
             params[name] = trial.suggest_int(
@@ -188,12 +299,16 @@ def run_task(
     resume: bool,
 ) -> dict:
     metrics_path = task_root / "metrics.json"
-    if resume and metrics_path.exists():
-        return json.loads(metrics_path.read_text(encoding="utf-8"))
+    command = build_command(cfg, params, task, task_root, data_dir, steps, seed)
+    command_path = task_root / "command.json"
+    if resume and metrics_path.exists() and command_path.exists():
+        cached = json.loads(metrics_path.read_text(encoding="utf-8"))
+        previous_command = json.loads(command_path.read_text(encoding="utf-8"))
+        if cached.get("status") == "complete" and previous_command == command:
+            return cached
 
     task_root.mkdir(parents=True, exist_ok=True)
-    command = build_command(cfg, params, task, task_root, data_dir, steps, seed)
-    (task_root / "command.json").write_text(
+    command_path.write_text(
         json.dumps(command, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     env = os.environ.copy()
@@ -209,16 +324,38 @@ def run_task(
     (task_root / "stdout.log").write_text(process.stdout, encoding="utf-8")
     (task_root / "stderr.log").write_text(process.stderr, encoding="utf-8")
     if process.returncode != 0:
-        raise RuntimeError(f"{task['name']} exited with code {process.returncode}")
+        failure = {
+            "status": "failed", "task": task["name"], "returncode": process.returncode,
+            "reason": f"subprocess exited with code {process.returncode}",
+            "command": command, "params": params,
+            "stdout": "stdout.log", "stderr": "stderr.log",
+        }
+        (task_root / "failure.json").write_text(
+            json.dumps(failure, indent=2, sort_keys=True), encoding="utf-8"
+        )
+        raise TrialExecutionError(f"{task['name']} exited with code {process.returncode}")
 
     log_path = latest_log(task_root)
     log_text = log_path.read_text(errors="ignore") if log_path else process.stdout
+    try:
+        parsed_metrics = parse_swad_metrics(log_text)
+    except (ValueError, OverflowError) as error:
+        failure = {
+            "status": "failed", "task": task["name"], "returncode": 0,
+            "reason": str(error), "command": command, "params": params,
+            "stdout": "stdout.log", "stderr": "stderr.log",
+        }
+        (task_root / "failure.json").write_text(
+            json.dumps(failure, indent=2, sort_keys=True), encoding="utf-8"
+        )
+        raise TrialExecutionError(f"{task['name']}: {error}") from error
     metrics = {
+        "status": "complete",
         "task": task["name"],
         "seed": seed,
         "steps": steps,
         "git_commit": git_commit(repo_root),
-        **parse_swad_metrics(log_text),
+        **parsed_metrics,
     }
     metrics_path.write_text(
         json.dumps(metrics, indent=2, sort_keys=True), encoding="utf-8"
@@ -243,29 +380,29 @@ def evaluate_params(
         json.dumps(params, indent=2, sort_keys=True), encoding="utf-8"
     )
     tasks = cfg["tasks"]
-    workers = max(1, min(max_concurrent, len(tasks)))
+    workers = max(
+        1, min(max_concurrent, len(tasks), len(gpus) if gpus else max_concurrent)
+    )
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = []
+        queues = [[] for _ in range(workers)]
         for index, task in enumerate(tasks):
-            gpu = gpus[index % len(gpus)] if gpus else None
-            futures.append(
-                pool.submit(
-                    run_task,
-                    cfg,
-                    params,
-                    task,
-                    trial_root / task["name"],
-                    data_dir,
-                    repo_root,
-                    steps,
-                    seed,
-                    gpu,
-                    resume,
-                )
-            )
+            queues[index % workers].append(task)
+
+        def run_queue(index, queue):
+            gpu = gpus[index] if gpus else None
+            return [
+                run_task(cfg, params, task, trial_root / task["name"], data_dir,
+                         repo_root, steps, seed, gpu, resume)
+                for task in queue
+            ]
+
+        futures = [
+            pool.submit(run_queue, index, queue)
+            for index, queue in enumerate(queues)
+        ]
         for future in futures:
-            results.append(future.result())
+            results.extend(future.result())
 
     target_scores = [item["swad_target"] for item in results]
     objective = selection_objective(target_scores)
@@ -384,7 +521,9 @@ def run_search(args, cfg: dict, repo_root: Path, output_root: Path) -> None:
     n_trials = int(args.n_trials or stage_cfg["n_trials"])
     remaining_trials = max(n_trials - len(study.trials), 0)
     if remaining_trials:
-        study.optimize(objective, n_trials=remaining_trials)
+        study.optimize(
+            objective, n_trials=remaining_trials, catch=(TrialExecutionError,)
+        )
     ranking = ranked_trials(study, base_params)
     (stage_root / "ranking.json").write_text(
         json.dumps(ranking, indent=2, sort_keys=True), encoding="utf-8"
@@ -492,6 +631,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--top-k", type=int, default=3)
     parser.add_argument("--confirm-seeds", default="0,1,2")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="preflight and print commands without training",
+    )
     return parser.parse_args()
 
 
@@ -508,6 +651,26 @@ def main() -> None:
     output_root = args.output_root.resolve()
     data_dir = args.data_dir.resolve()
     args.data_dir = data_dir
+    preflight(cfg, args.gpus, args.max_concurrent)
+    if args.dry_run:
+        stage = cfg["stages"][args.stage]
+        params = dict(cfg.get("fixed_params", {}))
+        params.update(
+            {
+                name: _representative_value(spec)
+                for name, spec in stage["search_space"].items()
+            }
+        )
+        steps = int(args.steps or stage["steps"])
+        print("protocol=target_swad_oracle")
+        for index, task in enumerate(cfg["tasks"]):
+            command = build_command(
+                cfg, params, task, output_root / "dry_run" / task["name"],
+                data_dir, steps, args.seed,
+            )
+            gpu = args.gpus[index % len(args.gpus)] if args.gpus else "unset"
+            print(f"gpu={gpu} {shlex.join(command)}")
+        return
     if args.mode == "search":
         run_search(args, cfg, repo_root, output_root)
     else:

@@ -17,7 +17,7 @@
     "group": true
   },
   "fixed_params": {
-    "lr": 0.00005,
+    "lr": 5e-05,
     "batch_size": 32,
     "weight_decay": 0.0,
     "piccl_rank": 16,
@@ -29,7 +29,7 @@
     "piccl_orth_weight": 0.001,
     "piccl_lr_multiplier": 1.0,
     "piccl_delayed_start_ratio": 0.0,
-    "piccl_eps": 1e-8,
+    "piccl_eps": 1e-08,
     "piccl_gt_mode": "replace",
     "piccl_basis_receive_task_grad": false,
     "piccl_min_valid_domains": 2,
@@ -37,31 +37,121 @@
     "piccl_strict_bypass": false
   },
   "tasks": [
-    {"name": "env0", "test_envs": [0]},
-    {"name": "env1", "test_envs": [1]},
-    {"name": "env2", "test_envs": [2]},
-    {"name": "env3", "test_envs": [3]}
+    {
+      "name": "env0",
+      "test_envs": [
+        0
+      ]
+    },
+    {
+      "name": "env1",
+      "test_envs": [
+        1
+      ]
+    },
+    {
+      "name": "env2",
+      "test_envs": [
+        2
+      ]
+    },
+    {
+      "name": "env3",
+      "test_envs": [
+        3
+      ]
+    }
   ],
   "stages": {
     "core": {
-      "n_trials": 24,
-      "steps": 3000,
+      "n_trials": 36,
+      "steps": 4000,
       "search_space": {
-        "piccl_alpha_max": {"type": "float", "low": 0.1, "high": 0.5},
-        "piccl_rank": {"type": "categorical", "choices": [8, 16, 32]},
-        "piccl_isr_weight": {"type": "categorical", "choices": [0.02, 0.05, 0.1, 0.2]},
-        "piccl_lr_multiplier": {"type": "categorical", "choices": [0.25, 0.5, 1.0]},
-        "piccl_orth_weight": {"type": "categorical", "choices": [0.0, 0.0001, 0.001]}
+        "piccl_alpha_max": {
+          "type": "float",
+          "low": 0.0,
+          "high": 0.5,
+          "step": 0.05
+        },
+        "piccl_rank": {
+          "type": "categorical",
+          "choices": [
+            8,
+            16,
+            32
+          ]
+        },
+        "piccl_isr_weight": {
+          "type": "categorical",
+          "choices": [
+            0.02,
+            0.05,
+            0.1,
+            0.2
+          ]
+        },
+        "piccl_lr_multiplier": {
+          "type": "categorical",
+          "choices": [
+            0.25,
+            0.5,
+            1.0
+          ]
+        },
+        "piccl_orth_weight": {
+          "type": "categorical",
+          "choices": [
+            0.0,
+            0.0001,
+            0.001
+          ]
+        }
       }
     },
     "schedule": {
       "inherits": "core",
-      "n_trials": 16,
+      "n_trials": 24,
       "steps": 5000,
       "search_space": {
-        "piccl_delayed_start_ratio": {"type": "categorical", "choices": [0.0, 0.05, 0.1, 0.2]},
-        "piccl_ramp_ratio": {"type": "categorical", "choices": [0.1, 0.2, 0.4]},
-        "piccl_proto_momentum": {"type": "categorical", "choices": [0.95, 0.99, 0.995]}
+        "piccl_alpha_max": {
+          "type": "float",
+          "low": 0.0,
+          "high": 0.5,
+          "step": 0.05
+        },
+        "piccl_rank": {
+          "type": "categorical",
+          "choices": [
+            8,
+            16,
+            32
+          ]
+        },
+        "piccl_delayed_start_ratio": {
+          "type": "categorical",
+          "choices": [
+            0.0,
+            0.05,
+            0.1,
+            0.2
+          ]
+        },
+        "piccl_ramp_ratio": {
+          "type": "categorical",
+          "choices": [
+            0.1,
+            0.2,
+            0.4
+          ]
+        },
+        "piccl_proto_momentum": {
+          "type": "categorical",
+          "choices": [
+            0.95,
+            0.99,
+            0.995
+          ]
+        }
       }
     }
   }
