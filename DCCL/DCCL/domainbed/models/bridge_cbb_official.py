@@ -6,9 +6,10 @@ Commit: 88946a9793e61016f65f4f99ee30e326ae992c54
 Source: mmdet/models/backbones/cim_utils.py
 
 The basis projection, expectation estimation, mediator path, fusion order, and
-initialization follow the official implementation. The only adaptation is a
-small local replacement for ``mmcv.cnn.ConvModule`` so that the DCCL codebase
-does not need MMDetection/MMCV as a runtime dependency.
+initialization follow the official implementation. A small local replacement
+for ``mmcv.cnn.ConvModule`` removes the MMDetection/MMCV runtime dependency.
+For DCCL's SWAD evaluation, the estimators share the block's GroupNorm
+configuration so averaged weights are not paired with stale BatchNorm buffers.
 """
 
 import torch
@@ -237,6 +238,9 @@ class MultiScaleBasisBlock(nn.Module):
             feat_dim=in_channels,
             num_basis=self.num_reduced_basis,
             num_samples=in_channels,
+            # Keep every CBB normalization stateless. DCCL's custom SWAD
+            # averages parameters but not BatchNorm running statistics.
+            norm_cfg=norm_cfg,
             with_ssp=with_ssp,
             with_query=with_query,
             basis_normalize=basis_normalize,
@@ -246,6 +250,7 @@ class MultiScaleBasisBlock(nn.Module):
             feat_dim=in_channels,
             num_basis=self.num_reduced_basis,
             num_samples=in_channels,
+            norm_cfg=norm_cfg,
             with_ssp=with_ssp,
             with_query=with_query,
             basis_normalize=basis_normalize,
