@@ -13,6 +13,32 @@ def main():
     block = MultiScaleBasisBlock(in_channels=64, basis_reduction=2)
     x = torch.randn(2, 64, 7, 7, requires_grad=True)
 
+    bridge_batch_norms = [
+        name
+        for name, module in block.named_modules()
+        if isinstance(module, torch.nn.modules.batchnorm._BatchNorm)
+    ]
+    assert not bridge_batch_norms, (
+        "CBB must not keep BatchNorm running buffers under SWAD: "
+        f"{bridge_batch_norms}"
+    )
+    assert isinstance(
+        block.expected_input_estimator.refine_conv.norm, torch.nn.GroupNorm
+    )
+    assert isinstance(
+        block.expected_mediator_estimator.refine_conv.norm, torch.nn.GroupNorm
+    )
+
+    with torch.no_grad():
+        block.train()
+        train_output = block(x.detach())
+        block.eval()
+        eval_output = block(x.detach())
+    assert torch.allclose(train_output, eval_output, atol=1e-6, rtol=1e-5), (
+        "stateless CBB normalization must behave consistently in train/eval"
+    )
+    block.train()
+
     y = block(x)
     assert y.shape == x.shape, (y.shape, x.shape)
     assert torch.isfinite(y).all(), "CBB output contains NaN or Inf"
