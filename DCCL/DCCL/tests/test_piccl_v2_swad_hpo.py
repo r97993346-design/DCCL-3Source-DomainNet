@@ -121,6 +121,26 @@ class HPOTests(unittest.TestCase):
             self.assertTrue((root / "command.json").exists())
             self.assertTrue((root / "stdout.log").exists())
 
+    def test_single_gpu_runs_all_environments_on_gpu_zero(self):
+        cfg = {"tasks": [{"name": f"env{i}"} for i in range(4)]}
+        calls = []
+
+        def fake_run(_cfg, _params, task, *_args):
+            calls.append((task["name"], _args[-2]))
+            return {"swad_target": .8, "swad_indomain_report_only": .9}
+
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory, mock.patch.object(
+            HPO, "run_task", side_effect=fake_run
+        ):
+            summary = HPO.evaluate_params(
+                cfg, {}, Path(directory), Path(directory), ROOT,
+                1, 0, ["0"], 1, False,
+            )
+        self.assertEqual(calls, [(f"env{i}", "0") for i in range(4)])
+        self.assertAlmostEqual(summary["objective"], .8)
+        self.assertEqual(summary["selection_protocol"], "target_swad_oracle")
+
     def test_two_gpu_assignment_serializes_each_gpu(self):
         cfg = {"tasks": [{"name": f"env{i}"} for i in range(4)]}
         calls = []

@@ -23,14 +23,14 @@ python scripts/tune_piccl_v2_swad.py \
   --data-dir ../data \
   --output-root train_output/PACS/v2_hpo \
   --stage core --mode search \
-  --gpus 0,1,2,3 --max-concurrent 4 --resume
+  --gpus 0 --max-concurrent 1 --resume
 
 python scripts/tune_piccl_v2_swad.py \
   --config configs/piccl_v2_pacs_hpo.json \
   --data-dir ../data \
   --output-root train_output/PACS/v2_hpo \
   --stage core --mode confirm --top-k 6 --confirm-seeds 0 \
-  --gpus 0,1,2,3 --max-concurrent 4 --resume
+  --gpus 0 --max-concurrent 1 --resume
 ```
 
 Then search the schedule around the confirmed core winner and confirm the best
@@ -42,14 +42,14 @@ python scripts/tune_piccl_v2_swad.py \
   --data-dir ../data \
   --output-root train_output/PACS/v2_hpo \
   --stage schedule --mode search \
-  --gpus 0,1,2,3 --max-concurrent 4 --resume
+  --gpus 0 --max-concurrent 1 --resume
 
 python scripts/tune_piccl_v2_swad.py \
   --config configs/piccl_v2_pacs_hpo.json \
   --data-dir ../data \
   --output-root train_output/PACS/v2_hpo \
   --stage schedule --mode confirm --top-k 3 --confirm-seeds 0,1,2 \
-  --gpus 0,1,2,3 --max-concurrent 4 --resume
+  --gpus 0 --max-concurrent 1 --resume
 ```
 
 The final parameters are written to:
@@ -80,12 +80,23 @@ and unsafe/duplicate GPU specifications. A command-only check is:
 python scripts/tune_piccl_v2_swad.py \
   --config configs/piccl_v2_pacs_hpo.json --data-dir ../data \
   --output-root train_output/PACS/v2_hpo --stage core --dry-run \
+<<<<<<< ours
   --gpus 0,1 --max-concurrent 2
 ```
 
 With two GPUs, each worker owns one `CUDA_VISIBLE_DEVICES` value and processes
 its assigned environments serially, so environments 0/2 use GPU 0 and 1/3 use
 GPU 1 without overlap. Failed runs retain `command.json`, `params.json`,
+=======
+  --gpus 0 --max-concurrent 1
+```
+
+The documented default is single-GPU execution. With `--gpus 0
+--max-concurrent 1`, environments 0, 1, 2, and 3 run sequentially on GPU 0.
+The trial is scored only after all four final target-domain SWAD values exist,
+so single-GPU execution preserves exactly the same `target_swad_oracle`
+objective as multi-GPU execution; it changes wall-clock time only. Failed runs retain `command.json`, `params.json`,
+>>>>>>> theirs
 `stdout.log`, `stderr.log`, and `failure.json`; Optuna marks that trial `FAIL`
 and continues. `--resume` reuses only a `status=complete` metrics file whose
 saved command exactly matches the command now requested. Old failed or
