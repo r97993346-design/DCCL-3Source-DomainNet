@@ -8,8 +8,12 @@ Source: mmdet/models/backbones/cim_utils.py
 The basis projection, expectation estimation, mediator path, fusion order, and
 initialization follow the official implementation. A small local replacement
 for ``mmcv.cnn.ConvModule`` removes the MMDetection/MMCV runtime dependency.
-For DCCL's SWAD evaluation, the estimators share the block's GroupNorm
-configuration so averaged weights are not paired with stale BatchNorm buffers.
+
+Normalization intentionally follows the official mixed design: the outer
+mediator/fusion convolutions use GroupNorm, while the two expectation-estimator
+refine convolutions use BatchNorm. The Bridge BatchNorm statistics are refreshed
+selectively on the final SWAD model; frozen ResNet BatchNorm buffers are never
+reset by that refresh.
 """
 
 import torch
@@ -224,6 +228,7 @@ class MultiScaleBasisBlock(nn.Module):
                 self.num_reduced_basis, in_channels
             )
 
+        # Official CBB: mediator/fusion use the block-level GN configuration.
         self.mediator_conv = ConvModule(
             in_channels,
             in_channels,
@@ -234,13 +239,12 @@ class MultiScaleBasisBlock(nn.Module):
             act_cfg=act_cfg,
         )
 
+        # Official CBB: estimator refine convolutions keep their own default BN.
+        # Do not pass the outer GN configuration into these estimators.
         self.expected_input_estimator = ExpectationEstimator(
             feat_dim=in_channels,
             num_basis=self.num_reduced_basis,
             num_samples=in_channels,
-            # Keep every CBB normalization stateless. DCCL's custom SWAD
-            # averages parameters but not BatchNorm running statistics.
-            norm_cfg=norm_cfg,
             with_ssp=with_ssp,
             with_query=with_query,
             basis_normalize=basis_normalize,
@@ -250,7 +254,6 @@ class MultiScaleBasisBlock(nn.Module):
             feat_dim=in_channels,
             num_basis=self.num_reduced_basis,
             num_samples=in_channels,
-            norm_cfg=norm_cfg,
             with_ssp=with_ssp,
             with_query=with_query,
             basis_normalize=basis_normalize,
@@ -307,23 +310,34 @@ class MultiScaleBasisBlock(nn.Module):
 
 
 class ResidualBridgeBlock(nn.Module):
-    """Apply CBB through a bottleneck without destroying pretrained features."""
+    """Apply CBB through a stable fixed-scale residual adapter.
+
+    The expansion layer is zero-initialized, so the adapter starts as an exact
+    identity without a learnable scalar gate. This preserves the pretrained
+    feature distribution at step 0 while avoiding the gate=0 gradient bottleneck
+    and the extra gate-times-weights interaction under SWAD parameter averaging.
+    """
 
     def __init__(
         self,
         in_channels,
         bridge_channels=256,
-        gate_init=0.0,
+        residual_scale=0.1,
         **bridge_kwargs,
     ):
         super().__init__()
         self.in_channels = int(in_channels)
         self.bridge_channels = int(bridge_channels)
+        self.residual_scale = float(residual_scale)
         if self.in_channels <= 0:
             raise ValueError(f"in_channels must be positive, got {self.in_channels}")
         if self.bridge_channels <= 0:
             raise ValueError(
                 f"bridge_channels must be positive, got {self.bridge_channels}"
+            )
+        if self.residual_scale < 0.0:
+            raise ValueError(
+                f"residual_scale must be non-negative, got {self.residual_scale}"
             )
 
         self.reduce = nn.Conv2d(
@@ -335,9 +349,8 @@ class ResidualBridgeBlock(nn.Module):
         self.expand = nn.Conv2d(
             self.bridge_channels, self.in_channels, kernel_size=1, bias=False
         )
-        self.gate = nn.Parameter(torch.tensor(float(gate_init)))
+        nn.init.zeros_(self.expand.weight)
 
     def forward(self, x):
         bridge_delta = self.expand(self.bridge_block(self.reduce(x)))
-        gate = self.gate.to(device=bridge_delta.device, dtype=bridge_delta.dtype)
-        return x + gate * bridge_delta
+        return x + self.residual_scale * bridge_delta
