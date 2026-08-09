@@ -6,6 +6,49 @@ from torch.nn import Module
 from copy import deepcopy
 
 
+def _is_bridge_bn(name, module):
+    return (
+        "bridge_adapter" in name
+        and isinstance(module, torch.nn.modules.batchnorm._BatchNorm)
+        and module.track_running_stats
+    )
+
+
+def _copy_bridge_bn_buffers(target_model, source_model):
+    """Keep SWA Bridge BN buffers current while parameters are averaged.
+
+    SWAD averages parameters only. For Bridge, stale BN buffers can distort the
+    checkpoint/segment validation used by LossValley before the final explicit
+    BN recalibration. Copying the latest training-model Bridge BN buffers keeps
+    segment evaluation coherent without touching frozen ResNet BN buffers.
+    """
+    source_modules = dict(source_model.named_modules())
+    with torch.no_grad():
+        for name, target_module in target_model.named_modules():
+            if not _is_bridge_bn(name, target_module):
+                continue
+            source_module = source_modules.get(name)
+            if source_module is None or not _is_bridge_bn(name, source_module):
+                continue
+            if target_module.running_mean is not None:
+                target_module.running_mean.copy_(
+                    source_module.running_mean.to(target_module.running_mean.device)
+                )
+            if target_module.running_var is not None:
+                target_module.running_var.copy_(
+                    source_module.running_var.to(target_module.running_var.device)
+                )
+            if (
+                target_module.num_batches_tracked is not None
+                and source_module.num_batches_tracked is not None
+            ):
+                target_module.num_batches_tracked.copy_(
+                    source_module.num_batches_tracked.to(
+                        target_module.num_batches_tracked.device
+                    )
+                )
+
+
 class AveragedModel(Module):
 
     def filter(self, model):
@@ -85,6 +128,13 @@ class AveragedModel(Module):
                 p_swa.detach().copy_(
                     self.avg_fn(p_swa.detach(), p_model_, self.n_averaged.to(device))
                 )
+
+        # Bridge BN buffers are not parameters and therefore are not handled by
+        # the loop above. Keep the segment/final candidate synchronized with the
+        # latest source model for reliable SWAD valley selection. Final SWAD is
+        # still explicitly recalibrated from training data by update_bn().
+        _copy_bridge_bn_buffers(self.module, model)
+
         self.n_averaged += 1
 
         if step is not None:
