@@ -185,3 +185,67 @@ class DCCLBridgeOfficial(DCCL):
             hparams["optimizer"],
             optimized_list,
         )
+
+
+class DCCLBridgeNoLD(DCCLBridgeOfficial):
+    """Version-A ablation: DCCL + official Bridge CBB with ``l_d`` removed.
+
+    This keeps the original DCCL CE, SupCon and ``l_layer`` paths unchanged,
+    while removing the generative alignment path (``l_d``) and its dedicated
+    mean/variance encoders. The existing Bridge adapter, gate, learning-rate
+    multiplier, BN handling and SWAD behavior are intentionally unchanged so
+    the experiment isolates exactly one architectural change: ``- l_d``.
+    """
+
+    def __init__(self, input_shape, num_classes, num_domains, hparams):
+        # Force l_d off before DCCL constructs the inherited loss state. The
+        # registry also sets this to zero so logs match the actual algorithm.
+        no_ld_hparams = copy.deepcopy(hparams)
+        no_ld_hparams["l_d"] = 0.0
+        super().__init__(input_shape, num_classes, num_domains, no_ld_hparams)
+        self.hparams = no_ld_hparams
+        self.l_d = 0.0
+
+        # mean_encoders / var_encoders serve only DCCL's l_d VLB path. Remove
+        # them entirely so they do not add parameters, optimizer state or random
+        # initialization to the no-l_d experiment.
+        if hasattr(self, "mean_encoders"):
+            del self.mean_encoders
+        if hasattr(self, "var_encoders"):
+            del self.var_encoders
+
+        lower_cls = 0.1
+        lower_proj = 10
+        bridge_lr = self.hparams["lr"] * float(
+            _get_hparam(self.hparams, "bridge_lr_multiplier", 10.0)
+        )
+        optimized_list = [
+            {
+                "params": self.featurizer.backbone_parameters(),
+                "lr": self.hparams["lr"],
+                "weight_decay": self.hparams["weight_decay"],
+            },
+            {
+                "params": self.featurizer.bridge_parameters(),
+                "lr": bridge_lr,
+                "weight_decay": self.hparams["weight_decay"],
+            },
+            {
+                "params": self.classifier.parameters(),
+                "lr": self.hparams["lr"] / lower_cls,
+                "weight_decay": self.hparams["weight_decay"],
+            },
+            {
+                "params": self.proj_head.parameters(),
+                "lr": self.hparams["lr"] / lower_proj,
+                "weight_decay": self.hparams["weight_decay"],
+            },
+            {
+                "params": self.pre_proj_head.parameters(),
+                "lr": self.hparams["lr"] / lower_proj,
+            },
+        ]
+        self.optimizer = get_optimizer(
+            self.hparams["optimizer"],
+            optimized_list,
+        )
