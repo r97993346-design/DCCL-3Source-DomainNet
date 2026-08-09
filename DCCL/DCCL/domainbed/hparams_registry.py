@@ -24,9 +24,11 @@ def _hparams(algorithm, dataset, random_state):
 
     if algorithm == "DCCLBridgeOfficial":
         # Run the official 256-channel CBB through an identity-initialized
-        # residual adapter instead of applying it directly at 2048 channels.
+        # fixed-scale residual adapter instead of applying it directly at 2048
+        # channels. The zero-initialized expand layer preserves identity at step
+        # zero while the fixed scale avoids a learnable scalar gate under SWAD.
         hparams["bridge_channels"] = (256, 256)
-        hparams["bridge_gate_init"] = (0.0, 0.0)
+        hparams["bridge_residual_scale"] = (0.1, 0.1)
         hparams["bridge_lr_multiplier"] = (10.0, 10.0)
         hparams["bridge_basis_reduction"] = (2, 2)
         hparams["bridge_basis_reduction_mode"] = ("div", "div")
