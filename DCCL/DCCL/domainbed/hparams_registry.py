@@ -22,7 +22,7 @@ def _hparams(algorithm, dataset, random_state):
     hparams["freeze_bn"] = (True, True)
     hparams["pretrained"] = (True, True)  # only for ResNet
 
-    if algorithm == "DCCLBridgeOfficial":
+    if algorithm in ("DCCLBridgeOfficial", "DCCLBridgeNoLD"):
         # Run the official 256-channel CBB through an identity-initialized
         # residual adapter instead of applying it directly at 2048 channels.
         hparams["bridge_channels"] = (256, 256)
