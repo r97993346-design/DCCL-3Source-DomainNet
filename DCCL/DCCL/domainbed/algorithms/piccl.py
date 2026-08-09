@@ -154,7 +154,7 @@ class CausalMediatorProjection(nn.Module):
 
     def forward(self, z, subspace, alpha, detach_basis=True):
         sensitive = subspace.project(z, detach_basis=detach_basis)
-        return self.layer_norm(z - alpha * sensitive)
+        return z - alpha * sensitive
 
 # PICCLForwardModel 是一个封装了 featurizer、subspace、mediator 和 classifier 的前向模型,
 # 用于在推理阶段使用 PICCL 的特征处理流程。
