@@ -23,12 +23,11 @@ def _hparams(algorithm, dataset, random_state):
     hparams["pretrained"] = (True, True)  # only for ResNet
 
     if algorithm == "DCCLBridgeOfficial":
-        # Run the official 256-channel CBB through an identity-initialized
-        # fixed-scale residual adapter instead of applying it directly at 2048
-        # channels. The zero-initialized expand layer preserves identity at step
-        # zero while the fixed scale avoids a learnable scalar gate under SWAD.
+        # Preserve the original residual-gate integration used by the previous
+        # Bridge experiments; normalization/SWAD fixes must not change this
+        # optimization mechanism in the same ablation.
         hparams["bridge_channels"] = (256, 256)
-        hparams["bridge_residual_scale"] = (0.1, 0.1)
+        hparams["bridge_gate_init"] = (0.0, 0.0)
         hparams["bridge_lr_multiplier"] = (10.0, 10.0)
         hparams["bridge_basis_reduction"] = (2, 2)
         hparams["bridge_basis_reduction_mode"] = ("div", "div")
@@ -76,7 +75,7 @@ def _hparams(algorithm, dataset, random_state):
         hparams["beta1"] = (0.5, random_state.choice([0.0, 0.5]))
         hparams["mlp_width"] = (256, int(2 ** random_state.uniform(6, 10)))
         hparams["mlp_depth"] = (3, int(random_state.choice([3, 4, 5])))
-        hparams["mlp_dropout"] = (0.0, random_state.choice([0.0, 0.1, 0.5]))
+        hparams["mlp_dropout"] = (0.0, random_state.choice([0.0, 0.5]))
     elif algorithm == "RSC":
         hparams["rsc_f_drop_factor"] = (1 / 3, random_state.uniform(0, 0.5))
         hparams["rsc_b_drop_factor"] = (1 / 3, random_state.uniform(0, 0.5))
