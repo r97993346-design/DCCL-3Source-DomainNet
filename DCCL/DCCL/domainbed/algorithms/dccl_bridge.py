@@ -6,12 +6,6 @@ adapts the feature interface for torchvision ResNet-18/50. The high-dimensional
 processed by CBB, expanded again, and fused through an identity-initialized
 residual gate. DCCL's losses, positive/negative construction, pretrained
 anchor, and SWAD interface remain inherited from :class:`DCCL`.
-
-Only two integration fixes are applied here:
-1. the returned hook feature list is snapshotted so a second forward cannot
-   overwrite the first forward's DCCL regularization features;
-2. ResNet BN remains frozen even though the outer hparams flag enables the
-   final Bridge-only SWAD BN recalibration path.
 """
 
 import copy
@@ -106,12 +100,13 @@ class OfficialBridgePreResNet(nn.Module):
         x = network.layer3(x)
         x = network.layer4(x)
 
-        # Preserve the original Bridge integration used by the previous best
-        # experiment: CBB remains on the representation seen by all DCCL losses.
+        # CBB sees a compact representation and starts as an exact identity
+        # residual, preserving the pretrained DCCL feature distribution.
         x = self.bridge_adapter(x)
 
-        # The final generative-alignment target describes the feature map
-        # consumed by the classifier, matching the original Bridge branch.
+        # Preserve the exact feature semantics of the previously evaluated
+        # Bridge branch. The inter-feature alias issue will be tested separately
+        # rather than mixed into the BN/SWAD ablation.
         if base._features:
             base._features[-1] = x
 
@@ -120,11 +115,7 @@ class OfficialBridgePreResNet(nn.Module):
         out = base.dropout(x)
 
         if ret_feats:
-            # Critical bug fix only: snapshot the hook list. PreResNet clears
-            # the same mutable list on every forward, so returning it directly
-            # lets the augmented-view forward overwrite the original-view
-            # features before DCCL computes reg_loss.
-            return out, list(base._features)
+            return out, base._features
         return out
 
 
@@ -132,9 +123,9 @@ class DCCLBridgeOfficial(DCCL):
     """DCCL with the official Bridge MultiScaleBasisBlock feature module."""
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
-        # The trainer uses hparams['freeze_bn']=False to trigger final SWAD BN
-        # recalibration. Build DCCL itself from a private copy with freeze_bn=True
-        # so the pretrained ResNet BN behavior stays identical to the baseline.
+        # ``freeze_bn=False`` is exposed only to trigger the trainer's final
+        # SWAD BN refresh. Build DCCL from a private copy with freeze_bn=True so
+        # the pretrained ResNet BN behavior is unchanged from the baseline.
         dccl_hparams = copy.deepcopy(hparams)
         dccl_hparams["freeze_bn"] = True
         super().__init__(input_shape, num_classes, num_domains, dccl_hparams)
