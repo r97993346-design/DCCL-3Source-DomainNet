@@ -11,7 +11,7 @@ from domainbed.models.bridge_cbb_official import (
 
 
 class _ToySelectiveBNModel(nn.Module):
-    """Model with a frozen-backbone BN and a Bridge BN for SWAD refresh tests."""
+    """Model with a backbone BN and a Bridge BN for SWAD refresh tests."""
 
     def __init__(self):
         super().__init__()
@@ -33,8 +33,8 @@ def main():
     block = MultiScaleBasisBlock(in_channels=64, basis_reduction=2)
     x = torch.randn(2, 64, 7, 7, requires_grad=True)
 
-    # Match the official mixed normalization design: outer mediator/fusion use
-    # GN, while the two expectation-estimator refine convolutions use BN.
+    # Official mixed normalization: outer CBB paths use GN while expectation
+    # estimator refine convolutions use BN.
     assert isinstance(block.mediator_conv.norm, torch.nn.GroupNorm)
     assert isinstance(block.fusion_conv.norm, torch.nn.GroupNorm)
     assert isinstance(
@@ -75,9 +75,11 @@ def main():
     for name, grad in required_grads.items():
         assert torch.isfinite(grad).all(), f"Non-finite gradient: {name}"
 
+    # Preserve the original learnable residual gate used by the previously
+    # working Bridge branch.
     adapter_kwargs = {
         "bridge_channels": 32,
-        "residual_scale": 0.1,
+        "gate_init": 0.0,
         "basis_reduction": 2,
         "basis_reduction_mode": "div",
         "with_ssp": True,
@@ -91,20 +93,17 @@ def main():
     residual_input = torch.randn(2, 64, 7, 7, requires_grad=True)
     identity_output = adapter(residual_input)
     assert torch.equal(identity_output, residual_input), (
-        "zero-initialized expand layer must preserve pretrained features exactly"
+        "zero-initialized Bridge gate must preserve pretrained features exactly"
     )
 
     identity_output.square().mean().backward()
-    assert adapter.expand.weight.grad is not None
-    assert torch.isfinite(adapter.expand.weight.grad).all()
-    assert adapter.expand.weight.grad.abs().sum() > 0
+    assert adapter.gate.grad is not None
+    assert torch.isfinite(adapter.gate.grad).all()
 
-    # Once the expansion path has moved away from zero, gradients must reach
-    # the entire CBB stack without relying on a learnable scalar gate.
     adapter.zero_grad(set_to_none=True)
     residual_input.grad = None
     with torch.no_grad():
-        adapter.expand.weight.normal_(mean=0.0, std=1e-3)
+        adapter.gate.fill_(0.1)
     adapter(residual_input).square().mean().backward()
     missing_adapter_grads = [
         name
@@ -115,7 +114,7 @@ def main():
         f"Missing residual-adapter gradients: {missing_adapter_grads}"
     )
 
-    # Targeted SWAD BN refresh: Bridge BN changes, backbone BN remains intact.
+    # Final SWAD BN recalibration must touch only Bridge BN, not backbone BN.
     toy = _ToySelectiveBNModel()
     toy.eval()
     with torch.no_grad():
