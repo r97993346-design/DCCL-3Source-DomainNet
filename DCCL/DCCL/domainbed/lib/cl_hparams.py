@@ -62,10 +62,16 @@ def setup_alg_hparams(hparams, args):
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
 
-    # DCCLBridgeOfficial keeps ResNet BN frozen internally, but the trainer's
+    # Version-A Bridge ablation: remove the original DCCL generative alignment
+    # path while keeping CE, SupCon and l_layer unchanged. Set this in the
+    # registry so the logged hparams match the algorithm's actual loss path.
+    if args.algorithm == "DCCLBridgeNoLD":
+        hparams["l_d"] = 0.0
+
+    # Bridge variants keep ResNet BN frozen internally, but the trainer's
     # existing SWAD path uses this flag to decide whether to call update_bn().
     # The update function is Bridge-aware and refreshes only bridge_adapter BN.
-    if args.algorithm == "DCCLBridgeOfficial":
+    if args.algorithm in ("DCCLBridgeOfficial", "DCCLBridgeNoLD"):
         hparams["freeze_bn"] = False
 
     return hparams
