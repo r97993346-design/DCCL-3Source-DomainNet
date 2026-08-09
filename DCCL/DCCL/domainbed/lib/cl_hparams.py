@@ -61,4 +61,11 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+
+    # DCCLBridgeOfficial keeps ResNet BN frozen internally, but the trainer's
+    # existing SWAD path uses this flag to decide whether to call update_bn().
+    # The update function is Bridge-aware and refreshes only bridge_adapter BN.
+    if args.algorithm == "DCCLBridgeOfficial":
+        hparams["freeze_bn"] = False
+
     return hparams
