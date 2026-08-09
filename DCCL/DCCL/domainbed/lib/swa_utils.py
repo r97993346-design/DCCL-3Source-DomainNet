@@ -116,31 +116,64 @@ def cvt_dbiterator_to_loader(dbiterator, n_iter):
         yield all_x, all_y
 
 
+def _batchnorm_targets(model):
+    """Choose BN modules whose running statistics should be recomputed.
+
+    DCCLBridgeOfficial keeps ImageNet ResNet BN frozen and introduces BN only in
+    the Bridge expectation estimators. If such Bridge BN modules are present,
+    refresh only those modules. Other algorithms retain the historical behavior
+    of refreshing all BatchNorm modules.
+    """
+    batch_norms = [
+        (name, module)
+        for name, module in model.named_modules()
+        if isinstance(module, torch.nn.modules.batchnorm._BatchNorm)
+        and module.track_running_stats
+    ]
+    bridge_batch_norms = [
+        (name, module)
+        for name, module in batch_norms
+        if "bridge_adapter" in name
+    ]
+    return bridge_batch_norms if bridge_batch_norms else batch_norms
+
+
 @torch.no_grad()
 def update_bn(iterator, model, n_steps, device="cuda"):
-    momenta = {}
-    for module in model.modules():
-        if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
-            module.running_mean = torch.zeros_like(module.running_mean)
-            module.running_var = torch.ones_like(module.running_var)
-            momenta[module] = module.momentum
+    """Recompute BN running statistics for the final SWAD model.
 
-    if not momenta:
+    When the model contains ``bridge_adapter`` BatchNorm layers, only those
+    Bridge BNs are reset and updated. The pretrained ResNet BatchNorm buffers
+    are left untouched. During the refresh the whole model is put in eval mode
+    and only the selected BN layers are switched to train mode, which also keeps
+    dropout and unrelated stateful layers deterministic.
+    """
+    targets = _batchnorm_targets(model)
+    if not targets:
         return
 
-    was_training = model.training
-    model.train()
-    for module in momenta.keys():
-        module.momentum = None
-        module.num_batches_tracked *= 0
+    momenta = {}
+    for _name, module in targets:
+        module.running_mean.zero_()
+        module.running_var.fill_(1)
+        if module.num_batches_tracked is not None:
+            module.num_batches_tracked.zero_()
+        momenta[module] = module.momentum
 
-    for i in range(n_steps):
+    was_training = model.training
+    model.eval()
+    for _name, module in targets:
+        module.train()
+        module.momentum = None
+
+    for _ in range(n_steps):
         # batches_dictlist: [{env0_data_key: tensor, env0_...}, env1_..., ...]
         batches_dictlist = next(iterator)
         x = torch.cat([dic["x"] for dic in batches_dictlist])
         x = x.to(device)
         model(x)
 
-    for bn_module in momenta.keys():
-        bn_module.momentum = momenta[bn_module]
+    for module, momentum in momenta.items():
+        module.momentum = momentum
+
     model.train(was_training)
