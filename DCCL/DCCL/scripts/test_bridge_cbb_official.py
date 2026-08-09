@@ -1,11 +1,31 @@
 """Lightweight correctness checks for the official Bridge CBB port."""
 
 import torch
+import torch.nn as nn
 
+from domainbed.lib import swa_utils
 from domainbed.models.bridge_cbb_official import (
     MultiScaleBasisBlock,
     ResidualBridgeBlock,
 )
+
+
+class _ToySelectiveBNModel(nn.Module):
+    """Model with a frozen-backbone BN and a Bridge BN for SWAD refresh tests."""
+
+    def __init__(self):
+        super().__init__()
+        self.backbone_bn = nn.BatchNorm2d(4)
+        self.bridge_adapter = nn.Sequential(nn.BatchNorm2d(4))
+
+    def forward(self, x):
+        x = self.backbone_bn(x)
+        return self.bridge_adapter(x)
+
+
+def _toy_iterator():
+    while True:
+        yield [{"x": torch.randn(8, 4, 3, 3) + 2.0}]
 
 
 def main():
@@ -13,32 +33,20 @@ def main():
     block = MultiScaleBasisBlock(in_channels=64, basis_reduction=2)
     x = torch.randn(2, 64, 7, 7, requires_grad=True)
 
-    bridge_batch_norms = [
-        name
-        for name, module in block.named_modules()
-        if isinstance(module, torch.nn.modules.batchnorm._BatchNorm)
-    ]
-    assert not bridge_batch_norms, (
-        "CBB must not keep BatchNorm running buffers under SWAD: "
-        f"{bridge_batch_norms}"
+    # Match the official mixed normalization design: outer mediator/fusion use
+    # GN, while the two expectation-estimator refine convolutions use BN.
+    assert isinstance(block.mediator_conv.norm, torch.nn.GroupNorm)
+    assert isinstance(block.fusion_conv.norm, torch.nn.GroupNorm)
+    assert isinstance(
+        block.expected_input_estimator.refine_conv.norm,
+        torch.nn.BatchNorm2d,
     )
     assert isinstance(
-        block.expected_input_estimator.refine_conv.norm, torch.nn.GroupNorm
-    )
-    assert isinstance(
-        block.expected_mediator_estimator.refine_conv.norm, torch.nn.GroupNorm
+        block.expected_mediator_estimator.refine_conv.norm,
+        torch.nn.BatchNorm2d,
     )
 
-    with torch.no_grad():
-        block.train()
-        train_output = block(x.detach())
-        block.eval()
-        eval_output = block(x.detach())
-    assert torch.allclose(train_output, eval_output, atol=1e-6, rtol=1e-5), (
-        "stateless CBB normalization must behave consistently in train/eval"
-    )
     block.train()
-
     y = block(x)
     assert y.shape == x.shape, (y.shape, x.shape)
     assert torch.isfinite(y).all(), "CBB output contains NaN or Inf"
@@ -69,7 +77,7 @@ def main():
 
     adapter_kwargs = {
         "bridge_channels": 32,
-        "gate_init": 0.0,
+        "residual_scale": 0.1,
         "basis_reduction": 2,
         "basis_reduction_mode": "div",
         "with_ssp": True,
@@ -83,17 +91,20 @@ def main():
     residual_input = torch.randn(2, 64, 7, 7, requires_grad=True)
     identity_output = adapter(residual_input)
     assert torch.equal(identity_output, residual_input), (
-        "zero-initialized Bridge gate must preserve pretrained features exactly"
+        "zero-initialized expand layer must preserve pretrained features exactly"
     )
 
     identity_output.square().mean().backward()
-    assert adapter.gate.grad is not None
-    assert torch.isfinite(adapter.gate.grad).all()
+    assert adapter.expand.weight.grad is not None
+    assert torch.isfinite(adapter.expand.weight.grad).all()
+    assert adapter.expand.weight.grad.abs().sum() > 0
 
+    # Once the expansion path has moved away from zero, gradients must reach
+    # the entire CBB stack without relying on a learnable scalar gate.
     adapter.zero_grad(set_to_none=True)
     residual_input.grad = None
     with torch.no_grad():
-        adapter.gate.fill_(0.1)
+        adapter.expand.weight.normal_(mean=0.0, std=1e-3)
     adapter(residual_input).square().mean().backward()
     missing_adapter_grads = [
         name
@@ -102,6 +113,33 @@ def main():
     ]
     assert not missing_adapter_grads, (
         f"Missing residual-adapter gradients: {missing_adapter_grads}"
+    )
+
+    # Targeted SWAD BN refresh: Bridge BN changes, backbone BN remains intact.
+    toy = _ToySelectiveBNModel()
+    toy.eval()
+    with torch.no_grad():
+        toy.backbone_bn.running_mean.fill_(7.0)
+        toy.backbone_bn.running_var.fill_(3.0)
+        toy.bridge_adapter[0].running_mean.fill_(-5.0)
+        toy.bridge_adapter[0].running_var.fill_(4.0)
+
+    backbone_mean_before = toy.backbone_bn.running_mean.clone()
+    backbone_var_before = toy.backbone_bn.running_var.clone()
+    bridge_mean_before = toy.bridge_adapter[0].running_mean.clone()
+
+    swa_utils.update_bn(
+        _toy_iterator(),
+        toy,
+        n_steps=4,
+        device="cpu",
+    )
+
+    assert torch.equal(toy.backbone_bn.running_mean, backbone_mean_before)
+    assert torch.equal(toy.backbone_bn.running_var, backbone_var_before)
+    assert not torch.equal(
+        toy.bridge_adapter[0].running_mean,
+        bridge_mean_before,
     )
 
     resnet50_adapter = ResidualBridgeBlock(
