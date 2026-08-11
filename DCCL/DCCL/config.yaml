@@ -9,3 +9,15 @@ swad_kwargs:
 test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
+
+# Optional PCL auxiliary alignment for DCCL.
+# Disabled by default so DCCL follows the original baseline path exactly.
+use_pcl: False
+pcl_weight: 0.1
+pcl_align_weight: 1.0
+pcl_uniform_weight: 0.1
+pcl_transport_mass: 0.8
+pcl_sinkhorn_epsilon: 0.05
+pcl_sinkhorn_iters: 50
+pcl_uniform_temperature: 2.0
+pcl_match_threshold: 0.5

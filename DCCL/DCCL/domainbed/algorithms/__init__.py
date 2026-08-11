@@ -1,4 +1,5 @@
 from .algorithms import *
+from .dccl_pcl import DCCL
 
 
 def get_algorithm_class(algorithm_name):
