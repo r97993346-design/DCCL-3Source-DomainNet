@@ -61,4 +61,19 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+
+    # DCCL + CIPT causal/text fusion. These are hparams rather than argparse
+    # options so they can be overridden through sconf's argv_update, e.g.
+    # --cipt_kl_weight 0.1 --cipt_num_text_views 4.
+    hparams["cipt_text_enable"] = True
+    hparams["cipt_num_text_views"] = 4
+    hparams["cipt_kl_weight"] = 0.1
+    hparams["cipt_ind_weight"] = 0.01
+    hparams["cipt_lc_weight"] = 0.1
+    hparams["cipt_clip_model"] = "ViT-B/16"
+    hparams["cipt_clip_path"] = ""
+    hparams["cipt_clip_download_root"] = ""
+    hparams["cipt_text_batch_size"] = 64
+    hparams["cipt_tda_heads"] = 8
+    hparams["cipt_tda_dropout"] = 0.0
     return hparams

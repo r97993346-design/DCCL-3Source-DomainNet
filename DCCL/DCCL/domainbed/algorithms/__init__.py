@@ -1,4 +1,5 @@
 from .algorithms import *
+from .cipt_dccl import *
 
 
 def get_algorithm_class(algorithm_name):
