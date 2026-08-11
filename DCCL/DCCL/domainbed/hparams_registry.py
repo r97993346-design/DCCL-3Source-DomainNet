@@ -19,6 +19,19 @@ def _hparams(algorithm, dataset, random_state):
     hparams["class_balanced"] = (False, False)
     hparams["optimizer"] = ("adam", "adam")
 
+    if algorithm == "CIPTDCCL":
+        hparams["cipt_enabled"] = (True, True)
+        hparams["cipt_clip_backbone"] = ("ViT-B/16", "ViT-B/16")
+        hparams["cipt_clip_path"] = ("", "")
+        hparams["cipt_beta"] = (4.0, 4.0)
+        hparams["cipt_gamma"] = (5.0, 5.0)
+        hparams["cipt_k"] = (4, 4)
+        hparams["cipt_prompt_length"] = (16, 16)
+        hparams["cipt_prompt_init"] = ("a photo of a", "a photo of a")
+        hparams["cipt_tda_heads"] = (1, 1)
+        hparams["cipt_contrastive_weight"] = (1.0, 1.0)
+        hparams["cipt_debug_shapes"] = (False, False)
+
     hparams["freeze_bn"] = (True, True)
     hparams["pretrained"] = (True, True)  # only for ResNet
 

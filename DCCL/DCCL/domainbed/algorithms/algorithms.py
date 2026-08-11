@@ -15,6 +15,13 @@ from domainbed.lib import misc
 from domainbed import networks
 from domainbed.lib.misc import random_pairs_of_minibatches
 from domainbed.optimizers import get_optimizer
+from domainbed.algorithms.cipt_losses import (
+    classification_loss as cipt_classification_loss,
+    decomposition_loss as cipt_decomposition_loss,
+    independence_loss as cipt_independence_loss,
+)
+from domainbed.algorithms.cipt_modules import CausalDecomposition, TextDiversityAugmentation
+from domainbed.algorithms.cipt_prompt import CIPTTextFeatures, load_frozen_clip
 
 from domainbed.models.resnet_mixstyle import (
     resnet18_mixstyle_L234_p0d5_a0d1,
@@ -435,6 +442,132 @@ class DCCL(Algorithm):
     def get_forward_model(self):
         forward_model = ForwardModel(self.network)
         return forward_model
+
+
+class CIPTDCCL(Algorithm):
+    """CIPT causal semantics with the unchanged DCCL SupCon objective."""
+
+    def __init__(self, input_shape, num_classes, num_domains, hparams):
+        super().__init__(input_shape, num_classes, num_domains, hparams)
+        if not hparams["cipt_enabled"]:
+            raise ValueError("CIPTDCCL requires cipt_enabled=true")
+        self.clip_model, tokenize = load_frozen_clip(
+            hparams["cipt_clip_backbone"], hparams["cipt_clip_path"]
+        )
+        dim = int(self.clip_model.visual.output_dim)
+        class_names = hparams.get("cipt_class_names") or ["class {}".format(i) for i in range(num_classes)]
+        self.causal_decomposition = CausalDecomposition(dim)
+        self.text_features = CIPTTextFeatures(
+            class_names, self.clip_model, tokenize, hparams["cipt_prompt_length"],
+            hparams["cipt_prompt_init"], hparams["cipt_k"],
+        )
+        self.tda = TextDiversityAugmentation(dim, hparams["cipt_tda_heads"])
+        hidden = dim // 4
+        if hparams["n_layer"] == 1:
+            self.proj_head = nn.Sequential(nn.Linear(dim, hidden))
+            self.pre_proj_head = nn.Sequential(nn.Linear(dim, hidden))
+        else:
+            self.proj_head = nn.Sequential(nn.Linear(dim, hidden), nn.BatchNorm1d(hidden), nn.ReLU(), nn.Linear(hidden, hidden))
+            self.pre_proj_head = nn.Sequential(nn.Linear(dim, hidden), nn.BatchNorm1d(hidden), nn.ReLU(), nn.Linear(hidden, hidden))
+        # Vector version of DCCL's diagonal Gaussian representation regularizer.
+        self.reg_log_variance = nn.Parameter(torch.full((1, dim), -2.2521685))
+        self.supcon_loss = SupConLoss(hparams["t"])
+        self.supcon_loss_pre = SupConLoss(hparams["t_pre"])
+        self.beta, self.gamma = hparams["cipt_beta"], hparams["cipt_gamma"]
+        self.contrastive_weight = hparams["cipt_contrastive_weight"]
+        self.l_d, self.l_layer = hparams["l_d"], hparams["l_layer"]
+        self.debug_shapes = bool(hparams.get("cipt_debug_shapes", False))
+
+        trainable = [parameter for parameter in self.parameters() if parameter.requires_grad]
+        self.optimizer = get_optimizer(hparams["optimizer"], trainable, lr=hparams["lr"], weight_decay=hparams["weight_decay"])
+        self.trainable_parameter_count = sum(parameter.numel() for parameter in trainable)
+        self.frozen_parameter_count = sum(parameter.numel() for parameter in self.parameters() if not parameter.requires_grad)
+        print("CIPTDCCL parameters: trainable={}, frozen={}".format(
+            self.trainable_parameter_count, self.frozen_parameter_count
+        ))
+        print("CIPTDCCL trainable tensors: {}".format(
+            ", ".join(name for name, parameter in self.named_parameters() if parameter.requires_grad)
+        ))
+
+    def train(self, mode=True):
+        super().train(mode)
+        # Frozen CLIP must stay in inference mode even while adapters train.
+        self.clip_model.eval()
+        return self
+
+    def _visual(self, images):
+        with torch.no_grad():
+            return self.clip_model.encode_image(images).float()
+
+    def _logits(self, embeddings, class_features):
+        scale = self.clip_model.logit_scale.exp().detach().float()
+        return scale * torch.einsum(
+            "bkd,cd->bkc", F.normalize(embeddings, dim=-1), class_features
+        )
+
+    def update(self, x, y, **kwargs):
+        all_x, all_x_aug, labels = torch.cat(x), torch.cat(kwargs["x_2"]), torch.cat(y)
+        visual, visual_aug = self._visual(all_x), self._visual(all_x_aug)
+        causal, spurious = self.causal_decomposition(visual)
+        causal_aug, spurious_aug = self.causal_decomposition(visual_aug)
+        class_features = self.text_features.class_features()
+        causal_logits = self._logits(causal[:, None, :], class_features)[:, 0]
+        spurious_logits = self._logits(spurious[:, None, :], class_features)[:, 0]
+        loss_de = cipt_decomposition_loss(causal_logits, spurious_logits, labels)
+        loss_ind = 0.5 * (
+            cipt_independence_loss(causal, spurious)
+            + cipt_independence_loss(causal_aug, spurious_aug)
+        )
+
+        interventions = self.tda(causal, self.text_features.irrelevant_text_features)
+        logits = self._logits(interventions, class_features)
+        loss_cls = cipt_classification_loss(logits, labels)
+
+        projected = self.proj_head(causal)
+        projected_aug = self.proj_head(causal_aug)
+        contrast_features = torch.stack((F.normalize(projected, dim=-1), F.normalize(projected_aug, dim=-1)), dim=1)
+        loss_contrastive = self.supcon_loss(contrast_features, labels)
+
+        pre_features = torch.stack((
+            F.normalize(self.pre_proj_head(causal), dim=-1),
+            F.normalize(self.pre_proj_head(visual.detach()), dim=-1),
+        ), dim=1)
+        pre_cl_loss = self.supcon_loss_pre(pre_features, labels) if self.l_layer else causal.new_zeros(())
+        variance = F.softplus(self.reg_log_variance) + 1e-5
+        reg_loss = (((causal - visual.detach()).pow(2) / variance) + variance.log()).mean() / 2 if self.l_d else causal.new_zeros(())
+        total = (loss_cls + self.beta * loss_de + self.gamma * loss_ind
+                 + self.contrastive_weight * loss_contrastive
+                 + self.l_layer * pre_cl_loss + self.l_d * reg_loss)
+
+        if self.debug_shapes:
+            print("CIPTDCCL shapes: v={} e={} s={} projected_e={} z_k={} text_features={} logits={}".format(
+                tuple(visual.shape), tuple(causal.shape), tuple(spurious.shape), tuple(projected.shape),
+                tuple(interventions.shape), tuple(class_features.shape), tuple(logits.shape)))
+        self.optimizer.zero_grad()
+        total.backward()
+        self.optimizer.step()
+        return {
+            "total_loss": total.item(), "cipt_cls_loss": loss_cls.item(),
+            "cipt_de_loss": loss_de.item(), "cipt_ind_loss": loss_ind.item(),
+            "dccl_contrastive_loss": loss_contrastive.item(),
+            "pre_cl_loss": pre_cl_loss.item(), "reg_loss": reg_loss.item(),
+            "mean_e_norm": causal.norm(dim=-1).mean().item(),
+            "mean_s_norm": spurious.norm(dim=-1).mean().item(),
+            "mean_es_cosine": F.cosine_similarity(causal, spurious, dim=-1).mean().item(),
+        }
+
+    def predict(self, x):
+        visual = self._visual(x)
+        causal, _ = self.causal_decomposition(visual)
+        interventions = self.tda(causal, self.text_features.irrelevant_text_features)
+        return self._logits(interventions, self.text_features.class_features()).mean(dim=1)
+
+    def predict_embed(self, x):
+        causal, _ = self.causal_decomposition(self._visual(x))
+        return causal
+
+    def get_forward_model(self):
+        return copy.deepcopy(self)
 
 
 

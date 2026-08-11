@@ -98,6 +98,23 @@ def main():
     parser.add_argument("--lamda", type=float, default=5, help="Weight coefficient for Transform Network sparsity loss")
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
+    parser.add_argument("--cipt_enabled", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--cipt_clip_backbone", default="ViT-B/16")
+    parser.add_argument("--cipt_clip_path", default="", help="Local OpenAI CLIP checkpoint (offline-safe)")
+    parser.add_argument("--cipt_beta", type=float, default=4.0)
+    parser.add_argument("--cipt_gamma", type=float, default=5.0)
+    parser.add_argument("--cipt_k", type=int, default=4)
+    parser.add_argument("--cipt_prompt_length", type=int, default=16)
+    parser.add_argument("--cipt_prompt_init", default="a photo of a")
+    parser.add_argument("--cipt_tda_heads", type=int, default=1)
+    parser.add_argument("--cipt_contrastive_weight", type=float, default=1.0)
+    parser.add_argument("--cipt_debug_shapes", action="store_true")
+    parser.add_argument(
+        "--output_root",
+        type=str,
+        default="train_output",
+        help="Root directory for training outputs"
+    )
     args, left_argv = parser.parse_known_args()
 
     # setup hparams
@@ -123,7 +140,7 @@ def main():
     args.work_dir = Path(".")
     args.data_dir = Path(args.data_dir)
 
-    args.out_root = args.work_dir / Path("train_output") / args.dataset
+    args.out_root = Path(args.output_root) / args.dataset
     args.out_dir = args.out_root / args.unique_name
     args.out_dir.mkdir(exist_ok=True, parents=True)
 

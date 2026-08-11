@@ -1,0 +1,35 @@
+"""Small causal decomposition and intervention modules used by CIPT-DCCL."""
+
+import torch
+from torch import nn
+
+
+class CausalDecomposition(nn.Module):
+    """CIPT's two linear, embedding-preserving adapters."""
+
+    def __init__(self, embedding_dim):
+        super().__init__()
+        self.causal_adapter = nn.Linear(embedding_dim, embedding_dim)
+        self.spurious_adapter = nn.Linear(embedding_dim, embedding_dim)
+
+    def forward(self, visual_features):
+        return self.causal_adapter(visual_features), self.spurious_adapter(visual_features)
+
+
+class TextDiversityAugmentation(nn.Module):
+    """The single residual cross-attention layer used for CIPT intervention."""
+
+    def __init__(self, embedding_dim, num_heads=1):
+        super().__init__()
+        self.attention = nn.MultiheadAttention(embedding_dim, num_heads, batch_first=True)
+        self.layer_norm = nn.LayerNorm(embedding_dim)
+
+    def forward(self, causal_features, irrelevant_text_features):
+        # Each intervention is a separate one-token textual context.  Keeping K
+        # in the batch dimension avoids mixing the intervention contexts.
+        batch, dim = causal_features.shape
+        k = irrelevant_text_features.shape[0]
+        query = causal_features[:, None, :].expand(batch, k, dim).reshape(batch * k, 1, dim)
+        context = irrelevant_text_features[None, :, :].expand(batch, k, dim).reshape(batch * k, 1, dim)
+        attended, _ = self.attention(query, context, context, need_weights=False)
+        return self.layer_norm(query + attended).reshape(batch, k, dim)
