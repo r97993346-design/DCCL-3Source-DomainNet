@@ -98,6 +98,12 @@ def main():
     parser.add_argument("--lamda", type=float, default=5, help="Weight coefficient for Transform Network sparsity loss")
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
+    parser.add_argument(
+        "--output_root",
+        type=str,
+        default="train_output",
+        help="Root directory for training outputs"
+    )
     args, left_argv = parser.parse_known_args()
 
     # setup hparams
@@ -123,7 +129,7 @@ def main():
     args.work_dir = Path(".")
     args.data_dir = Path(args.data_dir)
 
-    args.out_root = args.work_dir / Path("train_output") / args.dataset
+    args.out_root = Path(args.output_root) / args.dataset
     args.out_dir = args.out_root / args.unique_name
     args.out_dir.mkdir(exist_ok=True, parents=True)
 
