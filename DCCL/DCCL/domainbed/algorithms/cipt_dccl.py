@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import os
+import math
 import sys
 from pathlib import Path
 
@@ -9,7 +9,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from domainbed import networks
 from domainbed.lib import misc
 from domainbed.optimizers import get_optimizer
 
@@ -19,8 +18,7 @@ __all__ = ["DCCLCIPT"]
 
 
 # Fixed, class-agnostic visual-style contexts adapted from the CIPT
-# ImageNet template bank. They provide perturbation directions only; there is
-# deliberately no PromptLearner or learnable text token branch.
+# ImageNet template bank. They are used as diversity directions only.
 CIPT_STYLE_TEMPLATES = [
     "a bad photo.",
     "a low resolution photo.",
@@ -59,12 +57,48 @@ def _import_local_clip():
 
 
 class FeatureAdapter(nn.Module):
-    """CIPT-style single-linear feature adapter with identity initialization."""
+    """A bounded residual adapter that is an exact identity at initialization.
+
+    The previous implementation inserted an unconstrained D x D linear layer
+    after all DCCL feature regularizers. Even with identity initialization, that
+    layer could quickly overfit source domains. Here the learned residual is
+    gated and bounded, so the initial model is exactly the original DCCL path.
+    """
+
+    def __init__(self, dim, max_scale=0.1):
+        super().__init__()
+        if max_scale < 0:
+            raise ValueError("cipt_adapter_max_scale must be non-negative")
+        self.max_scale = float(max_scale)
+        self.proj = nn.Linear(dim, dim)
+        nn.init.eye_(self.proj.weight)
+        nn.init.zeros_(self.proj.bias)
+        self.gate = nn.Parameter(torch.zeros(()))
+
+    def forward(self, x):
+        if self.max_scale == 0.0:
+            return x
+        scale = self.max_scale * torch.tanh(self.gate)
+        return x + scale * self.proj(x)
+
+    def gate_value(self):
+        if self.max_scale == 0.0:
+            return self.gate.detach().new_tensor(0.0)
+        return self.max_scale * torch.tanh(self.gate.detach())
+
+
+class SpuriousAdapter(nn.Module):
+    """Auxiliary residual branch used only by separation losses.
+
+    It is zero-initialized and receives detached backbone features. Therefore
+    KL/independence objectives cannot erase class information from the shared
+    DCCL backbone, which was a source of destructive gradient conflict in v1.
+    """
 
     def __init__(self, dim):
         super().__init__()
         self.proj = nn.Linear(dim, dim)
-        nn.init.eye_(self.proj.weight)
+        nn.init.zeros_(self.proj.weight)
         nn.init.zeros_(self.proj.bias)
 
     def forward(self, x):
@@ -86,8 +120,6 @@ class FixedTextFeatureBank(nn.Module):
         self.model_path = model_path
         self.download_root = download_root
         self.encode_batch_size = int(encode_batch_size)
-        # Non-persistent: this bank is deterministic from the fixed templates
-        # and CLIP checkpoint and does not need to inflate checkpoints.
         self.register_buffer("bank", torch.empty(0), persistent=False)
 
     def _build(self, device):
@@ -111,14 +143,12 @@ class FixedTextFeatureBank(nn.Module):
                 tokens = clip.tokenize(texts).to(device)
                 encoded = clip_model.encode_text(tokens).float()
                 features.append(F.normalize(encoded, dim=-1))
-        bank = torch.cat(features, dim=0)
+        self.bank = torch.cat(features, dim=0).detach()
 
-        # Only fixed text embeddings are retained; the CLIP visual encoder and
-        # text transformer never participate in DCCL training.
+        # The full CLIP model is used only once to build the tiny fixed bank.
         del clip_model
         if device.type == "cuda":
             torch.cuda.empty_cache()
-        self.bank = bank.detach()
 
     def get(self, num_views, device, training=True):
         if self.bank.numel() == 0:
@@ -137,30 +167,46 @@ class FixedTextFeatureBank(nn.Module):
 
 
 class DiversityAugmentation(nn.Module):
-    """CIPT text-diversity attention adapted to the DCCL feature dimension.
+    """Small residual text perturbations in the native DCCL feature space.
 
-    Input text embeddings are first projected from CLIP's 512-d text space to
-    the native DCCL feature space. The DCCL representation itself is never
-    compressed or replaced by a CLIP visual feature.
+    v1 reshaped MultiheadAttention to [1, B*K, D], making the attention
+    sequence length equal to one. Softmax attention then always had weight 1,
+    so there was no real cross-style attention. This implementation removes the
+    degenerate attention and treats projected CLIP text vectors as bounded
+    residual directions. The perturbation norm is a small, learnable fraction
+    of the input feature norm, and no LayerNorm is inserted before the shared
+    classifier.
     """
 
-    def __init__(self, visual_dim, text_dim=512, num_heads=8, dropout=0.0):
+    def __init__(
+        self,
+        visual_dim,
+        text_dim=512,
+        scale_init=0.02,
+        scale_max=0.10,
+    ):
         super().__init__()
-        if visual_dim % num_heads != 0:
+        if scale_max <= 0:
+            raise ValueError("cipt_text_scale_max must be > 0")
+        if scale_init < 0 or scale_init >= scale_max:
             raise ValueError(
-                "visual_dim={} must be divisible by num_heads={}".format(
-                    visual_dim, num_heads
-                )
+                "cipt_text_scale_init must satisfy 0 <= init < cipt_text_scale_max"
             )
+
         self.text_projection = nn.Linear(text_dim, visual_dim, bias=False)
         nn.init.xavier_uniform_(self.text_projection.weight)
-        # batch_first is intentionally not used for compatibility with the
-        # project's older PyTorch versions.
-        self.attn = nn.MultiheadAttention(
-            visual_dim, num_heads, dropout=dropout
-        )
-        self.norm = nn.LayerNorm(visual_dim)
-        self.dropout = nn.Dropout(dropout)
+
+        self.scale_max = float(scale_max)
+        if scale_init == 0:
+            # Large negative but finite value keeps a tiny gradient available.
+            init_logit = -12.0
+        else:
+            ratio = float(scale_init) / float(scale_max)
+            init_logit = math.log(ratio / (1.0 - ratio))
+        self.scale_logit = nn.Parameter(torch.tensor(init_logit))
+
+    def scale_value(self):
+        return self.scale_max * torch.sigmoid(self.scale_logit)
 
     def forward(self, causal_features, text_features):
         """
@@ -176,34 +222,23 @@ class DiversityAugmentation(nn.Module):
                 "{} and {}".format(causal_features.shape, text_features.shape)
             )
 
-        batch, dim = causal_features.shape
         text_projected = self.text_projection(text_features.float())
         text_projected = F.normalize(text_projected, dim=-1)
-        num_views = text_projected.shape[0]
 
-        # MultiheadAttention in torch 1.7 uses [L, N, E].
-        query = (
-            causal_features[:, None, :]
-            .expand(-1, num_views, -1)
-            .reshape(batch * num_views, 1, dim)
-            .transpose(0, 1)
+        # Keep perturbations small relative to each sample's native feature norm.
+        feature_norm = (
+            causal_features.detach().norm(dim=-1, keepdim=True).clamp_min(1e-6)
         )
-        key_value = (
-            text_projected[None, :, :]
-            .expand(batch, -1, -1)
-            .reshape(batch * num_views, 1, dim)
-            .transpose(0, 1)
+        delta = (
+            self.scale_value()
+            * feature_norm[:, None, :]
+            * text_projected[None, :, :]
         )
-        attn_out, _ = self.attn(
-            query, key_value, key_value, need_weights=False
-        )
-        z = self.norm(query + self.dropout(attn_out))
-        z = z.transpose(0, 1).squeeze(1)
-        return z.reshape(batch, num_views, dim)
+        return causal_features[:, None, :] + delta
 
 
 def spurious_uniform_kl(spurious_logits):
-    """KL(p_uniform || p_spurious), matching CIPT Eq. (11)."""
+    """KL(p_uniform || p_spurious)."""
     num_classes = spurious_logits.shape[-1]
     log_spurious = F.log_softmax(spurious_logits, dim=-1)
     uniform = torch.full_like(log_spurious, 1.0 / float(num_classes))
@@ -211,7 +246,7 @@ def spurious_uniform_kl(spurious_logits):
 
 
 def independence_loss(causal_features, spurious_features, eps=1e-6):
-    """CIPT Eq. (14)-(15): 0.5 * squared cosine correlation."""
+    """0.5 * squared cosine correlation."""
     corr = F.cosine_similarity(
         causal_features, spurious_features, dim=-1, eps=eps
     )
@@ -219,17 +254,14 @@ def independence_loss(causal_features, spurious_features, eps=1e-6):
 
 
 class DCCLCIPT(DCCL):
-    """DCCL with CIPT-inspired causal separation and text perturbation.
+    """DCCL with conservative CIPT-inspired auxiliary regularization.
 
-    Main path:
-        DCCL backbone f
-          -> causal adapter e -> shared DCCL classifier / SupCon
-          -> spurious adapter s -> KL-to-uniform through a detached shared head
-        e -> fixed CLIP text perturbation -> z_k
-          -> shared classifier L_c
-          -> additional SupCon views
+    The inference path stays close to the original DCCL:
+        backbone -> bounded residual causal adapter -> classifier
 
-    No CLIP visual backbone and no learnable prompt branch are used.
+    Separation losses are auxiliary and cannot backpropagate into the backbone
+    or causal path. Text perturbations are small residual views and, by default,
+    are not injected into DCCL's main supervised contrastive loss.
     """
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
@@ -238,14 +270,50 @@ class DCCLCIPT(DCCL):
         )
 
         dim = self.featurizer.n_outputs
-        self.causal_adapter = FeatureAdapter(dim)
-        self.spurious_adapter = FeatureAdapter(dim)
 
+        self.cipt_causal_enable = bool(
+            hparams.get("cipt_causal_enable", True)
+        )
+        self.cipt_separation_enable = bool(
+            hparams.get("cipt_separation_enable", True)
+        )
         self.cipt_text_enable = bool(hparams.get("cipt_text_enable", True))
-        self.cipt_num_text_views = int(hparams.get("cipt_num_text_views", 4))
-        self.cipt_kl_weight = float(hparams.get("cipt_kl_weight", 0.1))
-        self.cipt_ind_weight = float(hparams.get("cipt_ind_weight", 0.01))
-        self.cipt_lc_weight = float(hparams.get("cipt_lc_weight", 0.1))
+        self.cipt_text_in_supcon = bool(
+            hparams.get("cipt_text_in_supcon", False)
+        )
+
+        self.cipt_num_text_views = int(hparams.get("cipt_num_text_views", 2))
+        self.cipt_kl_weight = float(hparams.get("cipt_kl_weight", 0.02))
+        self.cipt_ind_weight = float(hparams.get("cipt_ind_weight", 0.005))
+        self.cipt_recon_weight = float(
+            hparams.get("cipt_recon_weight", 0.05)
+        )
+        self.cipt_lc_weight = float(hparams.get("cipt_lc_weight", 0.05))
+
+        self.cipt_adapter_lr_scale = float(
+            hparams.get("cipt_adapter_lr_scale", 0.1)
+        )
+        self.cipt_spurious_lr_scale = float(
+            hparams.get("cipt_spurious_lr_scale", 0.5)
+        )
+        self.cipt_text_lr_scale = float(
+            hparams.get("cipt_text_lr_scale", 0.1)
+        )
+
+        if self.cipt_causal_enable:
+            self.causal_adapter = FeatureAdapter(
+                dim,
+                max_scale=float(
+                    hparams.get("cipt_adapter_max_scale", 0.1)
+                ),
+            )
+        else:
+            self.causal_adapter = nn.Identity()
+
+        if self.cipt_separation_enable:
+            self.spurious_adapter = SpuriousAdapter(dim)
+        else:
+            self.spurious_adapter = nn.Identity()
 
         self.text_bank = FixedTextFeatureBank(
             model_name=hparams.get("cipt_clip_model", "ViT-B/16"),
@@ -256,13 +324,10 @@ class DCCLCIPT(DCCL):
         self.diversity_augmentation = DiversityAugmentation(
             visual_dim=dim,
             text_dim=512,
-            num_heads=int(hparams.get("cipt_tda_heads", 8)),
-            dropout=float(hparams.get("cipt_tda_dropout", 0.0)),
+            scale_init=float(hparams.get("cipt_text_scale_init", 0.02)),
+            scale_max=float(hparams.get("cipt_text_scale_max", 0.10)),
         )
 
-        # The classifier is shared by e, s and z. KL uses a detached copy of
-        # this same decision boundary so it cannot be minimized by collapsing a
-        # separate spurious classification head.
         self.network = nn.Sequential(
             self.featurizer, self.causal_adapter, self.classifier
         )
@@ -299,22 +364,32 @@ class DCCLCIPT(DCCL):
                 "params": self.pre_proj_head.parameters(),
                 "lr": self.hparams["lr"] / lower_proj,
             },
-            {
-                "params": self.causal_adapter.parameters(),
-                "lr": self.hparams["lr"],
-                "weight_decay": self.hparams["weight_decay"],
-            },
-            {
-                "params": self.spurious_adapter.parameters(),
-                "lr": self.hparams["lr"],
-                "weight_decay": self.hparams["weight_decay"],
-            },
         ]
+
+        causal_params = list(self.causal_adapter.parameters())
+        if causal_params:
+            optimized_list.append(
+                {
+                    "params": causal_params,
+                    "lr": self.hparams["lr"] * self.cipt_adapter_lr_scale,
+                    "weight_decay": self.hparams["weight_decay"],
+                }
+            )
+
+        if self.cipt_separation_enable:
+            optimized_list.append(
+                {
+                    "params": self.spurious_adapter.parameters(),
+                    "lr": self.hparams["lr"] * self.cipt_spurious_lr_scale,
+                    "weight_decay": self.hparams["weight_decay"],
+                }
+            )
+
         if self.cipt_text_enable:
             optimized_list.append(
                 {
                     "params": self.diversity_augmentation.parameters(),
-                    "lr": self.hparams["lr"],
+                    "lr": self.hparams["lr"] * self.cipt_text_lr_scale,
                     "weight_decay": self.hparams["weight_decay"],
                 }
             )
@@ -324,8 +399,7 @@ class DCCLCIPT(DCCL):
         )
 
     def _detached_classifier(self, features):
-        """Apply the shared classifier while freezing the head for KL."""
-        # DCCL defines classifier as Sequential(Linear(...)).
+        """Apply the shared classifier without updating its parameters."""
         linear = self.classifier[0]
         return F.linear(
             features,
@@ -358,8 +432,6 @@ class DCCLCIPT(DCCL):
         all_x_2 = torch.cat(x_2)
 
         if self.TN:
-            # Keep DCCL's optional TN behavior, but perform its contrast in the
-            # causal feature space.
             all_x_2, sp_loss = self.TN_network(all_x_2)
             feature_tn_1 = self.causal_adapter(self.featurizer(all_x))
             feature_tn_2 = self.causal_adapter(self.featurizer(all_x_2))
@@ -381,7 +453,9 @@ class DCCLCIPT(DCCL):
         if self.aug and r < self.aug:
             cutmix_active = True
             lam = np.random.beta(1, 1)
-            rand_index = torch.randperm(all_x.size(0), device=all_x.device)
+            rand_index = torch.randperm(
+                all_x.size(0), device=all_x.device
+            )
             target_a = all_y
             target_b = all_y[rand_index]
             bbx1, bby1, bbx2, bby2 = rand_bbox(all_x.size(), lam)
@@ -396,7 +470,6 @@ class DCCLCIPT(DCCL):
 
         feature_x, inter_feats = self.featurizer(all_x, ret_feats=True)
         causal_x = self.causal_adapter(feature_x)
-        spurious_x = self.spurious_adapter(feature_x)
         pred_x = self.classifier(causal_x)
 
         if cutmix_active:
@@ -407,7 +480,7 @@ class DCCLCIPT(DCCL):
         else:
             loss_ce = F.cross_entropy(pred_x, all_y)
 
-        feature_x_2, inter_feats_2 = self.featurizer(
+        feature_x_2, _inter_feats_2 = self.featurizer(
             all_x_2, ret_feats=True
         )
         causal_x_2 = self.causal_adapter(feature_x_2)
@@ -420,23 +493,35 @@ class DCCLCIPT(DCCL):
 
         loss = loss_ce
 
-        # Split former L_de explicitly:
-        #   L_ce is exactly DCCL's classification CE on e (above).
-        #   L_kl only suppresses category information in s.
-        spurious_logits = self._detached_classifier(spurious_x)
-        loss_kl = spurious_uniform_kl(spurious_logits)
-        loss_ind = independence_loss(causal_x, spurious_x)
-        loss = (
-            loss
-            + self.cipt_kl_weight * loss_kl
-            + self.cipt_ind_weight * loss_ind
-        )
+        # Separation is auxiliary: detached inputs prevent CE-vs-KL gradient
+        # conflict in the shared backbone and prevent independence loss from
+        # rotating the causal feature away from the DCCL optimum.
+        loss_kl = loss.new_tensor(0.0)
+        loss_ind = loss.new_tensor(0.0)
+        loss_recon = loss.new_tensor(0.0)
+        spurious_logits = None
+        if self.cipt_separation_enable:
+            spurious_x = self.spurious_adapter(feature_x.detach())
+            spurious_logits = self._detached_classifier(spurious_x)
+            loss_kl = spurious_uniform_kl(spurious_logits)
+            loss_ind = independence_loss(causal_x.detach(), spurious_x)
+
+            # Keep the auxiliary branch tied to the actual residual removed or
+            # added by the bounded causal adapter instead of allowing a trivial
+            # arbitrary solution.
+            residual_target = feature_x.detach() - causal_x.detach()
+            loss_recon = F.mse_loss(spurious_x, residual_target)
+
+            loss = (
+                loss
+                + self.cipt_kl_weight * loss_kl
+                + self.cipt_ind_weight * loss_ind
+                + self.cipt_recon_weight * loss_recon
+            )
 
         z = None
         loss_c = loss.new_tensor(0.0)
         aug_logits = None
-        # CutMix has a mixed target and therefore no single class-preserving
-        # text intervention target. The default DCCL experiments use aug=0.
         if self.cipt_text_enable and not cutmix_active:
             z = self._make_text_views(causal_x)
             loss_c, aug_logits = self._text_classification_loss(z, all_y)
@@ -469,7 +554,12 @@ class DCCLCIPT(DCCL):
             view_2 = F.normalize(embed_2, dim=-1)
             view_list = [view_1, view_2]
 
-            if z is not None:
+            # Preserve DCCL's calibrated 2-view SupCon objective by default.
+            # Text views can be enabled explicitly for ablations.
+            text_views_in_supcon = (
+                z is not None and self.cipt_text_in_supcon
+            )
+            if text_views_in_supcon:
                 batch, num_text_views, dim = z.shape
                 z_embed = self.proj_head(
                     z.reshape(batch * num_text_views, dim)
@@ -484,7 +574,7 @@ class DCCLCIPT(DCCL):
                 all_d = torch.cat(kwargs["d"])
                 all_d_2 = torch.cat(kwargs["d_2"])
                 domain_views = [all_d, all_d_2]
-                if z is not None:
+                if text_views_in_supcon:
                     domain_views.extend(
                         [all_d for _ in range(z.shape[1])]
                     )
@@ -520,10 +610,10 @@ class DCCLCIPT(DCCL):
 
         pre_cl_loss = loss.new_tensor(0.0)
         if self.l_layer:
-            # Preserve original DCCL pre_cl semantics on the raw backbone
-            # feature, rather than forcing the frozen teacher into the adapter
-            # space.
-            embed_1_pre = self.pre_proj_head(feature_x)
+            # Regularize the actual inference representation. In v1 this loss
+            # was applied before the causal adapter, allowing the adapter to
+            # undo DCCL's pretrained-feature constraint.
+            embed_1_pre = self.pre_proj_head(causal_x)
             embed_2_pre = self.pre_proj_head(pre_pred_x)
             view_1_pre = F.normalize(embed_1_pre, dim=-1)
             view_2_pre = F.normalize(embed_2_pre, dim=-1)
@@ -561,12 +651,19 @@ class DCCLCIPT(DCCL):
         self.optimizer.step()
 
         with torch.no_grad():
-            causal_acc = (pred_x.argmax(dim=1) == all_y).float().mean()
-            spurious_prob = F.softmax(spurious_logits, dim=-1)
-            spurious_entropy = -(
-                spurious_prob
-                * torch.log(spurious_prob.clamp_min(1e-8))
-            ).sum(dim=-1).mean()
+            causal_acc = (
+                pred_x.argmax(dim=1) == all_y
+            ).float().mean()
+
+            if spurious_logits is not None:
+                spurious_prob = F.softmax(spurious_logits, dim=-1)
+                spurious_entropy = -(
+                    spurious_prob
+                    * torch.log(spurious_prob.clamp_min(1e-8))
+                ).sum(dim=-1).mean()
+            else:
+                spurious_entropy = loss.new_tensor(0.0)
+
             if aug_logits is not None:
                 aug_pred = aug_logits.argmax(dim=-1)
                 repeated = (
@@ -580,15 +677,30 @@ class DCCLCIPT(DCCL):
             else:
                 augmented_acc = loss.new_tensor(0.0)
 
+            if isinstance(self.causal_adapter, FeatureAdapter):
+                adapter_gate = self.causal_adapter.gate_value()
+            else:
+                adapter_gate = loss.new_tensor(0.0)
+
+            if self.cipt_text_enable:
+                text_scale = (
+                    self.diversity_augmentation.scale_value().detach()
+                )
+            else:
+                text_scale = loss.new_tensor(0.0)
+
         loss_dict = {
             "loss": loss.item(),
             "ce_loss": loss_ce.item(),
             "kl_loss": loss_kl.item(),
             "ind_loss": loss_ind.item(),
+            "recon_loss": loss_recon.item(),
             "c_loss": loss_c.item(),
             "causal_acc": causal_acc.item(),
             "spurious_entropy": spurious_entropy.item(),
             "augmented_acc": augmented_acc.item(),
+            "adapter_gate": adapter_gate.item(),
+            "text_scale": text_scale.item(),
         }
         if self.l:
             loss_dict["sup_cl_loss"] = loss_sup_cl.item()
@@ -607,8 +719,7 @@ class DCCLCIPT(DCCL):
         return self.causal_adapter(self.featurizer(x))
 
     def get_forward_model(self):
-        # SWAD averages exactly the inference-time path, including the new
-        # causal adapter, while excluding training-only spurious/text modules.
+        # SWAD must average the exact inference-time path only.
         return nn.Sequential(
             self.featurizer, self.causal_adapter, self.classifier
         )
