@@ -61,6 +61,13 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+    # Explicit CLI overrides for DCCL ablation experiments.
+    # Keep dataset-specific defaults when the CLI option is not provided.
+    if args.l_d is not None:
+        hparams["l_d"] = args.l_d
+
+    if args.l_layer is not None:
+        hparams["l_layer"] = args.l_layer
     if args.algorithm == "CIPTDCCL":
         for name in (
             "cipt_enabled", "cipt_clip_backbone", "cipt_clip_path", "cipt_beta",
@@ -68,4 +75,5 @@ def setup_alg_hparams(hparams, args):
             "cipt_tda_heads", "cipt_contrastive_weight", "cipt_debug_shapes",
         ):
             hparams[name] = getattr(args, name)
+
     return hparams

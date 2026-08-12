@@ -80,8 +80,19 @@ def main():
     
     # Core DCCL hyperparameters (main tuning parameters)
     parser.add_argument("--l", type=float, default=1, help="Weight for contrastive loss between augmented views")
-    parser.add_argument("--l_d", type=float, default=0.05, help="Weight for domain alignment regularization loss")
-    parser.add_argument("--l_layer", type=float, default=1, help="Weight for layer-wise contrastive loss with pre-trained features")
+    parser.add_argument(
+        "--l_d",
+        type=float,
+        default=None,
+        help="Override weight for domain/generative regularization loss"
+    )
+
+    parser.add_argument(
+        "--l_layer",
+        type=float,
+        default=None,
+        help="Override weight for pretrained anchoring loss"
+    )
     parser.add_argument("--t", type=float, default=0.1, help="Temperature parameter for contrastive loss")
     parser.add_argument("--t_pre", type=float, default=0.2, help="Temperature parameter for pre-trained feature contrastive loss")
     parser.add_argument("--n_layer", type=int, default=1, help="Number of layers in projection head")
