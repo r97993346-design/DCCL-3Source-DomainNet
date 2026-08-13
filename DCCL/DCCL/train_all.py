@@ -34,6 +34,35 @@ def apply_weak_erm_hparams(hparams):
     hparams["swad"] = None
     return hparams
 
+
+def seed_run(seed, deterministic):
+    """Reset all training RNGs so each sweep run is order-independent."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = deterministic
+    torch.backends.cudnn.benchmark = not deterministic
+
+
+def select_result_metric(result):
+    """Select one semantically valid accuracy instead of averaging metrics."""
+    for key in ("SWAD", "iid", "last"):
+        if key in result:
+            return float(result[key]), key
+    raise KeyError(
+        "No supported selection metric found. Expected one of: SWAD, iid, last."
+    )
+
+
+def close_writer(writer):
+    """Close tensorboardX writer resources when a sweep sub-run finishes."""
+    inner = getattr(writer, "writer", None)
+    if inner is not None:
+        inner.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Domain generalization")
     parser.add_argument("name", type=str)
@@ -63,6 +92,11 @@ def main():
     parser.add_argument("--erm_baseline", choices=["weak", "matched"], default="weak", help="ERM baseline mode for DomainNet auto sweep: weak keeps ImageNet pretraining but disables SWAD; matched uses the same backbone/SWAD settings as the main run.")
     parser.add_argument("--domainnet_auto_source_count", type=int, default=3, choices=[3, 5], help="Number of source domains to use when automatically sweeping DomainNet combinations without --source_envs/--target_env. Use 3 for the original 3-source sweep or 5 for the full 5-source sweep.")
     parser.add_argument("--weak_erm", action="store_true", help="When --algorithm ERM is run directly, use the weak ERM baseline settings (ImageNet pretrained backbone, no SWAD).")
+    parser.add_argument(
+        "--use_pcl",
+        action="store_true",
+        help="Enable the PCL auxiliary loss explicitly for DCCL.",
+    )
     parser.add_argument("--holdout_fraction", type=float, default=0.2)
     parser.add_argument("--model_save", default=None, type=int, help="Model save start step")
     parser.add_argument("--deterministic", action="store_true")
@@ -77,7 +111,7 @@ def main():
     parser.add_argument("--prebuild_loader", action="store_true", help="Pre-build eval loaders")
     parser.add_argument("--model", type=str, default="resnet50", help="Backbone model architecture")
     parser.add_argument("--label_ratio", type=float, default=1.0, help="Ratio of labeled data to use")
-    
+
     # Core DCCL hyperparameters (main tuning parameters)
     parser.add_argument("--l", type=float, default=1, help="Weight for contrastive loss between augmented views")
     parser.add_argument("--l_d", type=float, default=0.05, help="Weight for domain alignment regularization loss")
@@ -85,7 +119,7 @@ def main():
     parser.add_argument("--t", type=float, default=0.1, help="Temperature parameter for contrastive loss")
     parser.add_argument("--t_pre", type=float, default=0.2, help="Temperature parameter for pre-trained feature contrastive loss")
     parser.add_argument("--n_layer", type=int, default=1, help="Number of layers in projection head")
-    
+
     # Additional DCCL options (not in use, only for debugging and testing ideas)
     parser.add_argument("--sample_d", action="store_true", help="Enable domain-aware positive sampling")
     parser.add_argument("--re_w", action="store_true", help="Re-weight negative samples based on domain information")
@@ -113,6 +147,8 @@ def main():
     keys = [open(key, encoding="utf8") for key in keys]
     hparams = Config(*keys, default=hparams)
     hparams.argv_update(left_argv)
+    if args.use_pcl:
+        hparams["use_pcl"] = True
     if args.algorithm == "ERM" and args.weak_erm:
         hparams = apply_weak_erm_hparams(hparams)
 
@@ -159,16 +195,20 @@ def main():
     logger.nofmt("HParams:")
     for line in hparams.dumps().split("\n"):
         logger.nofmt("\t" + line)
+    if args.algorithm == "DCCL":
+        logger.info(
+            "[PCL] enabled=%s weight=%s align_weight=%s uniform_weight=%s",
+            bool(hparams.get("use_pcl", False)),
+            hparams.get("pcl_weight", 0.0),
+            hparams.get("pcl_align_weight", 0.0),
+            hparams.get("pcl_uniform_weight", 0.0),
+        )
 
     if args.show:
         exit()
 
     # seed
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.backends.cudnn.deterministic = args.deterministic
-    torch.backends.cudnn.benchmark = not args.deterministic
+    seed_run(args.seed, args.deterministic)
 
     domainnet_custom_split = (
         args.dataset == "DomainNet"
@@ -247,35 +287,87 @@ def main():
         for tgt in env_ids:
             source_candidates = [e for e in env_ids if e != tgt]
             for srcs in itertools.combinations(source_candidates, source_count):
+                combo_seed = misc.seed_hash(
+                    args.seed, "domainnet-auto", tuple(srcs), tgt
+                )
+                combo_id = f"s{''.join(map(str, srcs))}_t{tgt}"
+
                 run_args = copy.deepcopy(args)
                 run_args.source_envs = list(srcs)
                 run_args.target_env = tgt
                 run_args.test_envs = [[tgt]]
+                run_args.seed = combo_seed
+                main_tag = f"{args.algorithm.lower()}_{combo_id}"
+                run_args.out_dir = args.out_dir / main_tag
+                run_args.out_dir.mkdir(exist_ok=True, parents=True)
+                main_writer = get_writer(
+                    args.out_root / "runs" / args.unique_name / main_tag
+                )
                 logger.info(
                     f"[Main] Combo source_envs={list(srcs)} ({[env_names[i] for i in srcs]}) -> "
-                    f"target_env={tgt} ({env_names[tgt]})"
+                    f"target_env={tgt} ({env_names[tgt]}), seed={combo_seed}, "
+                    f"out_dir={run_args.out_dir}"
                 )
-                res, records = train(
-                    [tgt], args=run_args, hparams=hparams, n_steps=n_steps,
-                    checkpoint_freq=checkpoint_freq, logger=logger, writer=writer
-                )
+                seed_run(combo_seed, args.deterministic)
+                main_hparams = copy.deepcopy(hparams)
+                try:
+                    res, records = train(
+                        [tgt],
+                        args=run_args,
+                        hparams=main_hparams,
+                        n_steps=n_steps,
+                        checkpoint_freq=checkpoint_freq,
+                        logger=logger,
+                        writer=main_writer,
+                    )
+                finally:
+                    close_writer(main_writer)
+
                 erm_args = copy.deepcopy(run_args)
                 erm_args.algorithm = "ERM"
                 erm_args.weak_erm = args.erm_baseline == "weak"
+                erm_tag = f"erm_{combo_id}"
+                erm_args.out_dir = args.out_dir / erm_tag
+                erm_args.out_dir.mkdir(exist_ok=True, parents=True)
+                erm_writer = get_writer(
+                    args.out_root / "runs" / args.unique_name / erm_tag
+                )
                 # Keep all runtime/config keys (for example `indomain_test`) to avoid
                 # missing-key errors inside trainer while swapping only the algorithm.
                 erm_hparams = copy.deepcopy(hparams)
                 if erm_args.weak_erm:
                     erm_hparams = apply_weak_erm_hparams(erm_hparams)
-                erm_res, _ = train(
-                    [tgt], args=erm_args, hparams=erm_hparams, n_steps=n_steps,
-                    checkpoint_freq=checkpoint_freq, logger=logger, writer=writer
-                )
-                key = "test_out"
-                main_acc = float(res.get(key, np.mean(list(res.values()))))
-                erm_acc = float(erm_res.get(key, np.mean(list(erm_res.values()))))
+
+                # Rewind RNGs to the exact same combo seed before the baseline so
+                # initialization/data-loader randomness is not execution-order dependent.
+                seed_run(combo_seed, args.deterministic)
+                try:
+                    erm_res, _ = train(
+                        [tgt],
+                        args=erm_args,
+                        hparams=erm_hparams,
+                        n_steps=n_steps,
+                        checkpoint_freq=checkpoint_freq,
+                        logger=logger,
+                        writer=erm_writer,
+                    )
+                finally:
+                    close_writer(erm_writer)
+
+                main_acc, main_metric = select_result_metric(res)
+                erm_acc, erm_metric = select_result_metric(erm_res)
                 rel_drop = (erm_acc - main_acc) / max(erm_acc, 1e-12)
-                combo_rows.append((srcs, tgt, main_acc, erm_acc, rel_drop))
+                combo_rows.append(
+                    (
+                        srcs,
+                        tgt,
+                        main_acc,
+                        main_metric,
+                        erm_acc,
+                        erm_metric,
+                        rel_drop,
+                    )
+                )
                 all_records.append(records)
     else:
         if args.dataset == "DomainNet" and args.source_envs is not None and args.target_env is not None:
@@ -308,17 +400,50 @@ def main():
     if run_all_domainnet_auto_sweep:
         erm_label = "ERM-weak" if args.erm_baseline == "weak" else "ERM"
         source_count = args.domainnet_auto_source_count
-        combo_table = PrettyTable([f"Sources({source_count})", "Target", "Algo", erm_label, f"RelDrop(vs {erm_label})"])
-        for srcs, tgt, main_acc, erm_acc, rel_drop in combo_rows:
+        algo_label = (
+            f"{args.algorithm}+PCL"
+            if args.algorithm == "DCCL" and bool(hparams.get("use_pcl", False))
+            else args.algorithm
+        )
+        combo_table = PrettyTable(
+            [
+                f"Sources({source_count})",
+                "Target",
+                algo_label,
+                "AlgoMetric",
+                erm_label,
+                f"{erm_label}Metric",
+                f"RelDrop(vs {erm_label})",
+            ]
+        )
+        for (
+            srcs,
+            tgt,
+            main_acc,
+            main_metric,
+            erm_acc,
+            erm_metric,
+            rel_drop,
+        ) in combo_rows:
             src_names = ",".join([dataset.environments[i] for i in srcs])
             tgt_name = dataset.environments[tgt]
             combo_table.add_row(
-                [src_names, tgt_name, f"{main_acc:.3%}", f"{erm_acc:.3%}", f"{rel_drop:.3%}"]
+                [
+                    src_names,
+                    tgt_name,
+                    f"{main_acc:.3%}",
+                    main_metric,
+                    f"{erm_acc:.3%}",
+                    erm_metric,
+                    f"{rel_drop:.3%}",
+                ]
             )
         avg_algo = np.mean([r[2] for r in combo_rows]) if combo_rows else 0.0
-        avg_erm = np.mean([r[3] for r in combo_rows]) if combo_rows else 0.0
-        avg_rel = np.mean([r[4] for r in combo_rows]) if combo_rows else 0.0
-        combo_table.add_row(["AVG", "ALL", f"{avg_algo:.3%}", f"{avg_erm:.3%}", f"{avg_rel:.3%}"])
+        avg_erm = np.mean([r[4] for r in combo_rows]) if combo_rows else 0.0
+        avg_rel = np.mean([r[6] for r in combo_rows]) if combo_rows else 0.0
+        combo_table.add_row(
+            ["AVG", "ALL", f"{avg_algo:.3%}", "-", f"{avg_erm:.3%}", "-", f"{avg_rel:.3%}"]
+        )
         logger.nofmt(combo_table)
     else:
         max_metrics = max((len(v) for v in results.values()), default=0)
