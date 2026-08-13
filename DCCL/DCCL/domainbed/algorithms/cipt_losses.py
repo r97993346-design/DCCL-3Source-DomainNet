@@ -19,6 +19,9 @@ def decomposition_loss(causal_logits, spurious_logits, labels):
     return causal_discrimination + spurious_uniformity
 
 
-def independence_loss(causal_features, spurious_features):
-    """Absolute cosine correlation minimized by CIPT to separate e and s."""
-    return F.cosine_similarity(causal_features, spurious_features, dim=-1).abs().mean()
+def independence_loss(causal_features, spurious_features, eps=1e-6):
+    """Official CIPT independence penalty: 0.5 * mean(cos(e, s)^2)."""
+    cosine = F.cosine_similarity(
+        causal_features, spurious_features, dim=-1, eps=eps
+    )
+    return 0.5 * cosine.square().mean()
