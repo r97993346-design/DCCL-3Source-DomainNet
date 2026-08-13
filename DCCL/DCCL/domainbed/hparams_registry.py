@@ -28,7 +28,10 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_k"] = (4, 4)
         hparams["cipt_prompt_length"] = (16, 16)
         hparams["cipt_prompt_init"] = ("a photo of a", "a photo of a")
-        hparams["cipt_tda_heads"] = (1, 1)
+        hparams["cipt_tda_heads"] = (8, 8)
+        hparams["cipt_lr"] = (2.5e-3, 2.5e-3)
+        hparams["cipt_weight_decay"] = (0.0, 0.0)
+        hparams["cipt_schedule_steps"] = (5001, 5001)
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
         hparams["cipt_debug_shapes"] = (False, False)
 
@@ -68,7 +71,7 @@ def _hparams(algorithm, dataset, random_state):
         hparams["lambda"] = (1.0, 10 ** random_state.uniform(-2, 2))
         hparams["weight_decay_d"] = (0.0, 10 ** random_state.uniform(-6, -2))
         hparams["d_steps_per_g_step"] = (1, int(2 ** random_state.uniform(0, 3)))
-        hparams["grad_penalty"] = (0.0, 10 ** random_state.uniform(-2, 1))
+        hparams["grad_penalty"] = (0.0, random_state.uniform(0, 5))
         hparams["beta1"] = (0.5, random_state.choice([0.0, 0.5]))
         hparams["mlp_width"] = (256, int(2 ** random_state.uniform(6, 10)))
         hparams["mlp_depth"] = (3, int(random_state.choice([3, 4, 5])))
@@ -91,7 +94,7 @@ def _hparams(algorithm, dataset, random_state):
     elif algorithm in ("MMD", "CORAL"):
         hparams["mmd_gamma"] = (1.0, 10 ** random_state.uniform(-1, 1))
     elif algorithm in ("MLDG", "SOMLDG"):
-        hparams["mldg_beta"] = (1.0, 10 ** random_state.uniform(-1, 1))
+        hparams["mldg_beta"] = (1.0, 10 ** random_state.uniform(-2, 2))
     elif algorithm == "MTL":
         hparams["mtl_ema"] = (0.99, random_state.choice([0.5, 0.9, 0.99, 1.0]))
     elif algorithm == "VREx":
