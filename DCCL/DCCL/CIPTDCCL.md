@@ -19,13 +19,24 @@ contrastive extension.
 - TDA uses the OpenAI ImageNet prompt-template bank, formatted with each class
   name. During training, K templates are sampled randomly; inference uses a
   deterministic K-template subset and performs class-conditioned intervention.
-- TDA uses one multi-head-attention layer; official-alignment mode upgrades the
-  legacy single-head default to 8 heads.
+- TDA uses one multi-head-attention layer with 8 heads by default. An explicit
+  `--cipt_tda_heads 1/2/4/8` value is preserved for controlled ablations.
 - `L_de` is causal CE plus `KL(uniform || p_spurious)`.
 - `L_ind = 0.5 * mean(cos(e, s)^2)`.
 - `L_c` is mean cross-entropy over K intervention-specific predictions.
 - CIPT prompt/adapters/TDA use Adam with the upstream default learning rate
   `2.5e-3` and zero weight decay.
+- The CIPT optimizer group follows cosine LR decay over the configured DomainBed
+  training-step horizon. The DCCL extension parameter group keeps the original
+  DCCL learning rate rather than being decayed by the CIPT scheduler.
+
+## SWAD integration
+
+`CIPTDCCL` exposes a lightweight inference-only forward model to SWAD. SWAD
+averages only prediction-relevant trainable parameters (causal adapters, prompt
+context and TDA). Frozen CLIP/text-encoder parameters and optimizer state are
+not traversed by the per-step SWAD averaging loop. This avoids deep-copying or
+averaging the full frozen CLIP training object at every update.
 
 ## DCCL integration
 
