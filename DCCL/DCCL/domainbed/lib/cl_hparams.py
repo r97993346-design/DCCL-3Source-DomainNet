@@ -22,12 +22,6 @@ def setup_alg_hparams(hparams, args):
         hparams["n_layer"] = 1
     elif args.dataset=="OfficeHome":
         if args.model=="clip_vit-b16":
-            # hparams["t"] = 0.1
-            # hparams["t_pre"] = 0.3
-            # hparams["l"] = 0.5
-            # hparams["l_d"] = 0.05
-            # hparams["l_layer"] = 0.5
-            # hparams["n_layer"] = 1
             hparams["t"] = 0.2
             hparams["t_pre"] = 0.2
             hparams["l"] = 1
@@ -48,6 +42,7 @@ def setup_alg_hparams(hparams, args):
         hparams["l_d"] = 0.05
         hparams["l_layer"] = 0.1
         hparams["n_layer"] = 2
+
     hparams["sup"] = args.sup
     hparams["two_ce"] = args.two_ce
     hparams["sample_d"] = args.sample_d
@@ -61,19 +56,31 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+
     # Explicit CLI overrides for DCCL ablation experiments.
     # Keep dataset-specific defaults when the CLI option is not provided.
     if args.l_d is not None:
         hparams["l_d"] = args.l_d
-
     if args.l_layer is not None:
         hparams["l_layer"] = args.l_layer
+
     if args.algorithm == "CIPTDCCL":
         for name in (
             "cipt_enabled", "cipt_clip_backbone", "cipt_clip_path", "cipt_beta",
             "cipt_gamma", "cipt_k", "cipt_prompt_length", "cipt_prompt_init",
-            "cipt_tda_heads", "cipt_contrastive_weight", "cipt_debug_shapes",
+            "cipt_contrastive_weight", "cipt_debug_shapes",
         ):
             hparams[name] = getattr(args, name)
+
+        # Official public CIPT implementation defaults to 8 attention heads.
+        # The old feature/multiprompt parser default was 1; official-alignment
+        # mode upgrades that legacy value to 8. Other explicit values (2/4/8)
+        # are preserved for controlled ablations.
+        requested_heads = int(getattr(args, "cipt_tda_heads", 8))
+        hparams["cipt_tda_heads"] = 8 if requested_heads == 1 else requested_heads
+
+        # Official CIPT prompt/adapters/TDA optimizer defaults.
+        hparams["cipt_lr"] = 2.5e-3
+        hparams["cipt_weight_decay"] = 0.0
 
     return hparams
