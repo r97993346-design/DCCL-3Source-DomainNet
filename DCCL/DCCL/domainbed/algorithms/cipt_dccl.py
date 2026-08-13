@@ -14,6 +14,7 @@ pretrained anchoring and vector regularizer used by feature/multiprompt.
 """
 
 import copy
+import math
 
 import torch
 from torch import nn
@@ -128,6 +129,25 @@ class CIPTDCCL(Algorithm):
             ]
         )
 
+        # Official CIPT uses cosine LR decay. DomainBed/DCCL is step-based rather
+        # than epoch-based, so use the mathematically equivalent cosine curve on
+        # the configured training-step horizon for the CIPT parameter group only.
+        # The DCCL integration group deliberately keeps its original constant LR.
+        self.cipt_schedule_steps = max(
+            1, int(hparams.get("cipt_schedule_steps", 1))
+        )
+
+        def cipt_cosine_factor(step):
+            progress = min(float(step), float(self.cipt_schedule_steps)) / float(
+                self.cipt_schedule_steps
+            )
+            return 0.5 * (1.0 + math.cos(math.pi * progress))
+
+        self.scheduler = torch.optim.lr_scheduler.LambdaLR(
+            self.optimizer,
+            lr_lambda=[cipt_cosine_factor, lambda _step: 1.0],
+        )
+
         self.trainable_parameter_count = sum(
             p.numel() for p in self.parameters() if p.requires_grad
         )
@@ -146,6 +166,11 @@ class CIPTDCCL(Algorithm):
                     for name, parameter in self.named_parameters()
                     if parameter.requires_grad
                 )
+            )
+        )
+        print(
+            "CIPTDCCL optimizer: cipt_lr={}, dccl_lr={}, cosine_steps={}".format(
+                cipt_lr, hparams["lr"], self.cipt_schedule_steps
             )
         )
 
@@ -262,6 +287,7 @@ class CIPTDCCL(Algorithm):
         self.optimizer.zero_grad()
         total.backward()
         self.optimizer.step()
+        self.scheduler.step()
 
         return {
             "total_loss": total.item(),
@@ -271,6 +297,8 @@ class CIPTDCCL(Algorithm):
             "dccl_contrastive_loss": loss_contrastive.item(),
             "pre_cl_loss": pre_cl_loss.item(),
             "reg_loss": reg_loss.item(),
+            "cipt_lr": self.optimizer.param_groups[0]["lr"],
+            "dccl_lr": self.optimizer.param_groups[1]["lr"],
             "mean_v_norm": visual.norm(dim=-1).mean().item(),
             "mean_e_norm": causal.norm(dim=-1).mean().item(),
             "mean_s_norm": spurious.norm(dim=-1).mean().item(),
@@ -318,4 +346,6 @@ class CIPTDCCL(Algorithm):
         return causal
 
     def get_forward_model(self):
+        # The package-level CIPTDCCL routes through cipt_dccl_official.py, which
+        # overrides this with a SWAD-safe lightweight inference wrapper.
         return copy.deepcopy(self)
