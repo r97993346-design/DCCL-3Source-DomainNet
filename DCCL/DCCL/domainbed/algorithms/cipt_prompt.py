@@ -1,4 +1,4 @@
-"""CLIP loading, prompt learning, and CIPT textual contexts."""
+"""Official-aligned CLIP prompt learning and CIPT text intervention contexts."""
 
 from pathlib import Path
 import sys
@@ -7,94 +7,278 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-# The repository vendors the official OpenAI CLIP package.  Import it directly
-# so a local checkpoint works in an offline environment without a pip install.
+# Keep the repository's bundled OpenAI CLIP for offline/reproducible runs.
 _BUNDLED_CLIP = Path(__file__).resolve().parents[4] / "CLIP"
 if str(_BUNDLED_CLIP) not in sys.path:
     sys.path.insert(0, str(_BUNDLED_CLIP))
 import clip
 
 
-IRRELEVANT_TEMPLATES = (
-    "a low quality photo.",
-    "a high quality photo.",
-    "a photo in an unusual style.",
-    "a photo in an unusual context.",
-)
+DEFAULT_CONTEXT_INIT = "a photo of a"
+
+# OpenAI ImageNet prompt templates used by the official CIPT implementation.
+IMAGENET_TEMPLATES = [
+    "a bad photo of a {}.",
+    "a photo of many {}.",
+    "a sculpture of a {}.",
+    "a photo of the hard to see {}.",
+    "a low resolution photo of the {}.",
+    "a rendering of a {}.",
+    "graffiti of a {}.",
+    "a bad photo of the {}.",
+    "a cropped photo of the {}.",
+    "a tattoo of a {}.",
+    "the embroidered {}.",
+    "a photo of a hard to see {}.",
+    "a bright photo of a {}.",
+    "a photo of a clean {}.",
+    "a photo of a dirty {}.",
+    "a dark photo of the {}.",
+    "a drawing of a {}.",
+    "a photo of my {}.",
+    "the plastic {}.",
+    "a photo of the cool {}.",
+    "a close-up photo of a {}.",
+    "a black and white photo of the {}.",
+    "a painting of the {}.",
+    "a painting of a {}.",
+    "a pixelated photo of the {}.",
+    "a sculpture of the {}.",
+    "a bright photo of the {}.",
+    "a cropped photo of a {}.",
+    "a plastic {}.",
+    "a photo of the dirty {}.",
+    "a jpeg corrupted photo of a {}.",
+    "a blurry photo of the {}.",
+    "a photo of the {}.",
+    "a good photo of the {}.",
+    "a rendering of the {}.",
+    "a {} in a video game.",
+    "a photo of one {}.",
+    "a doodle of a {}.",
+    "a close-up photo of the {}.",
+    "a photo of a {}.",
+    "the origami {}.",
+    "the {} in a video game.",
+    "a sketch of a {}.",
+    "a doodle of the {}.",
+    "a origami {}.",
+    "a low resolution photo of a {}.",
+    "the toy {}.",
+    "a rendition of the {}.",
+    "a photo of the clean {}.",
+    "a photo of a large {}.",
+    "a rendition of a {}.",
+    "a photo of a nice {}.",
+    "a photo of a weird {}.",
+    "a blurry photo of a {}.",
+    "a cartoon {}.",
+    "art of a {}.",
+    "a sketch of the {}.",
+    "a embroidered {}.",
+    "a pixelated photo of a {}.",
+    "itap of the {}.",
+    "a jpeg corrupted photo of the {}.",
+    "a good photo of a {}.",
+    "a plushie {}.",
+    "a photo of the nice {}.",
+    "a photo of the small {}.",
+    "a photo of the weird {}.",
+    "the cartoon {}.",
+    "art of the {}.",
+    "a drawing of the {}.",
+    "a photo of the large {}.",
+    "a black and white photo of a {}.",
+    "the plushie {}.",
+    "a dark photo of a {}.",
+    "itap of a {}.",
+    "graffiti of the {}.",
+    "a toy {}.",
+    "itap of my {}.",
+    "a photo of a cool {}.",
+    "a photo of a small {}.",
+    "a tattoo of the {}.",
+]
 
 
 def load_frozen_clip(backbone, local_path=""):
-    """Load OpenAI CLIP, preferring an explicit local checkpoint without network I/O."""
+    """Load and freeze OpenAI CLIP, preferring an explicit local checkpoint."""
     if local_path:
         path = Path(local_path).expanduser()
         if not path.is_file():
-            raise FileNotFoundError("CIPT offline CLIP checkpoint does not exist: {}".format(path))
+            raise FileNotFoundError(
+                "CIPT offline CLIP checkpoint does not exist: {}".format(path)
+            )
         model, _ = clip.load(str(path), device="cpu", jit=False)
     else:
         model, _ = clip.load(backbone, device="cpu", jit=False)
     model.float()
     model.requires_grad_(False)
+    model.eval()
     return model, clip.tokenize
 
 
 class CLIPTextEncoder(nn.Module):
+    """OpenAI CLIP text encoder wrapper for learnable prompt embeddings."""
+
     def __init__(self, clip_model):
         super().__init__()
-        self.clip_model = clip_model
+        self.transformer = clip_model.transformer
+        self.positional_embedding = clip_model.positional_embedding
+        self.ln_final = clip_model.ln_final
+        self.text_projection = clip_model.text_projection
+        self.dtype = clip_model.dtype
 
     def forward(self, prompts, tokenized_prompts):
-        model = self.clip_model
-        x = prompts + model.positional_embedding.to(prompts.dtype)
+        x = prompts.to(dtype=self.dtype)
+        x = x + self.positional_embedding[: x.shape[1]].to(
+            device=x.device, dtype=self.dtype
+        )
         x = x.permute(1, 0, 2)
-        x = model.transformer(x)
+        x = self.transformer(x)
         x = x.permute(1, 0, 2)
-        x = model.ln_final(x).to(prompts.dtype)
-        return x[torch.arange(x.shape[0], device=x.device), tokenized_prompts.argmax(dim=-1)] @ model.text_projection
+        x = self.ln_final(x).to(dtype=self.dtype)
+        eot_indices = tokenized_prompts.argmax(dim=-1)
+        x = x[torch.arange(x.shape[0], device=x.device), eot_indices]
+        return x @ self.text_projection
 
 
 class PromptLearner(nn.Module):
-    """CoOp-style learnable CLIP context tokens used by CIPT."""
+    """CoOp-style learnable context tokens used by official CIPT."""
 
-    def __init__(self, class_names, clip_model, tokenize, prompt_length=16, prompt_init="a photo of a"):
+    def __init__(
+        self,
+        class_names,
+        clip_model,
+        tokenize,
+        prompt_length=16,
+        prompt_init=DEFAULT_CONTEXT_INIT,
+    ):
         super().__init__()
+        if prompt_length < 1:
+            raise ValueError("prompt_length must be positive")
+
+        self.class_names = [name.replace("_", " ") for name in class_names]
+        self.n_cls = len(self.class_names)
+        self.n_ctx = prompt_length
         dtype = clip_model.dtype
-        width = clip_model.ln_final.weight.shape[0]
-        init_words = prompt_init.replace("_", " ").split()
-        if prompt_init and len(init_words) <= prompt_length:
-            initialized = tokenize(prompt_init)
+        device = next(clip_model.parameters()).device
+        ctx_dim = clip_model.token_embedding.weight.shape[1]
+
+        ctx_vectors = torch.empty(
+            prompt_length, ctx_dim, dtype=torch.float32, device=device
+        )
+        nn.init.normal_(ctx_vectors, std=0.02)
+
+        if prompt_init:
+            tokenized = tokenize(prompt_init).to(device)
             with torch.no_grad():
-                init_embedding = clip_model.token_embedding(initialized).to(dtype)
-            context = init_embedding[0, 1 : 1 + len(init_words)]
-            if len(init_words) < prompt_length:
-                context = torch.cat([context, torch.empty(prompt_length-len(init_words), width, dtype=dtype).normal_(std=0.02)])
-        else:
-            context = torch.empty(prompt_length, width, dtype=dtype).normal_(std=0.02)
-        self.context = nn.Parameter(context)
-        names = [name.replace("_", " ") for name in class_names]
-        tokenized = tokenize(["X " * prompt_length + name + "." for name in names])
+                init_embedding = clip_model.token_embedding(tokenized).float()[0]
+            eot_idx = int(tokenized[0].argmax().item())
+            init_len = max(0, min(prompt_length, eot_idx - 1))
+            if init_len > 0:
+                ctx_vectors[:init_len].copy_(init_embedding[1 : 1 + init_len])
+
+        self.context = nn.Parameter(ctx_vectors)
+
+        prompt_prefix = " ".join(["X"] * prompt_length)
+        prompts = ["{} {}.".format(prompt_prefix, name) for name in self.class_names]
+        tokenized_prompts = tokenize(prompts).to(device)
         with torch.no_grad():
-            embedding = clip_model.token_embedding(tokenized).to(dtype)
-        self.register_buffer("token_prefix", embedding[:, :1])
-        self.register_buffer("token_suffix", embedding[:, 1 + prompt_length :])
-        self.register_buffer("tokenized_prompts", tokenized)
+            embedding = clip_model.token_embedding(tokenized_prompts).to(dtype=dtype)
+
+        self.register_buffer("tokenized_prompts", tokenized_prompts)
+        self.register_buffer("token_prefix", embedding[:, :1, :])
+        self.register_buffer("token_suffix", embedding[:, 1 + prompt_length :, :])
 
     def forward(self):
-        context = self.context.unsqueeze(0).expand(self.token_prefix.shape[0], -1, -1)
+        context = self.context.to(dtype=self.token_prefix.dtype)
+        context = context.unsqueeze(0).expand(self.n_cls, -1, -1)
         return torch.cat((self.token_prefix, context, self.token_suffix), dim=1)
 
 
 class CIPTTextFeatures(nn.Module):
-    def __init__(self, class_names, clip_model, tokenize, prompt_length, prompt_init, k):
+    """Learnable class prompts plus the official class-conditioned TDA bank."""
+
+    def __init__(
+        self,
+        class_names,
+        clip_model,
+        tokenize,
+        prompt_length,
+        prompt_init,
+        k,
+        templates=IMAGENET_TEMPLATES,
+        sample_templates=True,
+    ):
         super().__init__()
+        if k < 1:
+            raise ValueError("cipt_k must be positive")
+        if not class_names:
+            raise ValueError("class_names cannot be empty")
+
         self.clip_model = clip_model
         self.text_encoder = CLIPTextEncoder(clip_model)
-        self.prompt_learner = PromptLearner(class_names, clip_model, tokenize, prompt_length, prompt_init)
-        templates = [IRRELEVANT_TEMPLATES[i % len(IRRELEVANT_TEMPLATES)] for i in range(k)]
-        irrelevant_tokens = tokenize(templates)
-        with torch.no_grad():
-            irrelevant = clip_model.encode_text(irrelevant_tokens).float()
-        self.register_buffer("irrelevant_text_features", F.normalize(irrelevant, dim=-1))
+        self.prompt_learner = PromptLearner(
+            class_names,
+            clip_model,
+            tokenize,
+            prompt_length,
+            prompt_init,
+        )
+        self.class_names = [name.replace("_", " ") for name in class_names]
+        self.templates = list(templates)
+        self.k = k
+        self.sample_templates = sample_templates
+        self.tokenize = tokenize
+
+        diverse_features = self._build_diverse_text_features()
+        self.register_buffer(
+            "diverse_text_features", diverse_features, persistent=False
+        )
+
+    @torch.no_grad()
+    def _build_diverse_text_features(self, batch_size=256):
+        device = next(self.clip_model.parameters()).device
+        texts = [
+            template.format(class_name)
+            for class_name in self.class_names
+            for template in self.templates
+        ]
+        features = []
+        for start in range(0, len(texts), batch_size):
+            tokens = self.tokenize(texts[start : start + batch_size]).to(device)
+            encoded = self.clip_model.encode_text(tokens).float()
+            features.append(F.normalize(encoded, dim=-1))
+        return torch.cat(features, dim=0).reshape(
+            len(self.class_names), len(self.templates), -1
+        )
 
     def class_features(self):
-        features = self.text_encoder(self.prompt_learner(), self.prompt_learner.tokenized_prompts)
+        features = self.text_encoder(
+            self.prompt_learner(), self.prompt_learner.tokenized_prompts
+        )
         return F.normalize(features.float(), dim=-1)
+
+    def _select_template_indices(self, device, indices=None):
+        num_available = len(self.templates)
+        k = min(self.k, num_available)
+        if indices is not None:
+            indices = indices.to(device=device, dtype=torch.long)
+            return indices[:k]
+        if self.training and self.sample_templates:
+            return torch.randperm(num_available, device=device)[:k]
+        return torch.arange(k, device=device)
+
+    def select_diverse_features(self, labels=None, indices=None):
+        """Select K official TDA templates.
+
+        Training with labels returns [B, K, D]. Inference without labels returns
+        [C, K, D] so each candidate class is intervened with its own contexts.
+        """
+        bank = self.diverse_text_features
+        idx = self._select_template_indices(bank.device, indices=indices)
+        selected = bank.index_select(1, idx)
+        if labels is None:
+            return selected
+        return selected[labels.to(device=bank.device, dtype=torch.long)]
