@@ -1,6 +1,5 @@
 """Small causal decomposition and intervention modules used by CIPT-DCCL."""
 
-import torch
 from torch import nn
 
 
@@ -25,11 +24,34 @@ class TextDiversityAugmentation(nn.Module):
         self.layer_norm = nn.LayerNorm(embedding_dim)
 
     def forward(self, causal_features, irrelevant_text_features):
-        # Each intervention is a separate one-token textual context.  Keeping K
-        # in the batch dimension avoids mixing the intervention contexts.
+        """Apply K independent one-token text interventions.
+
+        Args:
+            causal_features: [B, D].
+            irrelevant_text_features: either shared [K, D] contexts (B5a/B5c)
+                or sample-specific [B, K, D] contexts (B5b).
+        """
         batch, dim = causal_features.shape
-        k = irrelevant_text_features.shape[0]
+        if irrelevant_text_features.ndim == 2:
+            k = irrelevant_text_features.shape[0]
+            context = irrelevant_text_features[None, :, :].expand(batch, k, dim)
+        elif irrelevant_text_features.ndim == 3:
+            if irrelevant_text_features.shape[0] != batch:
+                raise ValueError(
+                    "Batch mismatch: causal_features has {}, contexts have {}".format(
+                        batch, irrelevant_text_features.shape[0]
+                    )
+                )
+            k = irrelevant_text_features.shape[1]
+            context = irrelevant_text_features
+        else:
+            raise ValueError(
+                "Expected intervention contexts [K,D] or [B,K,D], got {}".format(
+                    tuple(irrelevant_text_features.shape)
+                )
+            )
+
         query = causal_features[:, None, :].expand(batch, k, dim).reshape(batch * k, 1, dim)
-        context = irrelevant_text_features[None, :, :].expand(batch, k, dim).reshape(batch * k, 1, dim)
+        context = context.reshape(batch * k, 1, dim)
         attended, _ = self.attention(query, context, context, need_weights=False)
         return self.layer_norm(query + attended).reshape(batch, k, dim)
