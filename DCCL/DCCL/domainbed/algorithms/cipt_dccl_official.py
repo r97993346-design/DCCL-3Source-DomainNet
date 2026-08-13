@@ -68,3 +68,10 @@ class CIPTDCCL(_CIPTDCCLBase):
         with torch.no_grad():
             visual = self.clip_model.encode_image(clip_images).float()
         return F.normalize(visual, dim=-1)
+
+    def update(self, x, y, **kwargs):
+        metrics = super().update(x, y, **kwargs)
+        # Compatibility aliases for the optional legacy loss logger in trainer.py.
+        metrics["ce_loss"] = metrics["cipt_cls_loss"]
+        metrics["sup_cl_loss"] = metrics["dccl_contrastive_loss"]
+        return metrics
