@@ -23,6 +23,11 @@ def main():
     parser.add_argument("--exp_prefix", type=str, default="exp-domainnet-target")
     parser.add_argument("--erm_baseline", choices=["weak", "matched"], default="weak", help="ERM command mode: weak adds --weak_erm (ImageNet pretrained, no SWAD); matched keeps ERM hparams matched to the main run.")
     parser.add_argument("--source_count", type=int, default=3, choices=[3, 5], help="Number of source domains per fixed-target combo. Default 3 preserves the original sweep; use 5 for full 5-source DomainNet runs.")
+    parser.add_argument(
+        "--use_pcl",
+        action="store_true",
+        help="Enable the PCL auxiliary loss for DCCL runs only.",
+    )
     parser.add_argument("--extra_args", nargs=argparse.REMAINDER, default=[])
     args = parser.parse_args()
 
@@ -32,7 +37,11 @@ def main():
     envs = [0, 1, 2, 3, 4, 5]
     sources = [e for e in envs if e != args.target]
     combos = list(itertools.combinations(sources, args.source_count))
-    print(f"[INFO] target={args.target}, gpu={args.gpu}, source_count={args.source_count}, combos={len(combos)}")
+    print(
+        f"[INFO] target={args.target}, gpu={args.gpu}, "
+        f"source_count={args.source_count}, combos={len(combos)}, "
+        f"use_pcl={args.use_pcl}"
+    )
 
     for srcs in combos:
         combo_tag = f"s{''.join(map(str, srcs))}_t{args.target}"
@@ -45,9 +54,12 @@ def main():
             "--target_env", str(args.target),
         ] + args.extra_args
 
+        dccl_suffix = "dccl_pcl" if args.use_pcl else "dccl"
+        pcl_args = ["--use_pcl"] if args.use_pcl else []
         run(
             base[:2]
-            + [f"{args.exp_prefix}_{combo_tag}_dccl", "--algorithm", "DCCL"]
+            + [f"{args.exp_prefix}_{combo_tag}_{dccl_suffix}", "--algorithm", "DCCL"]
+            + pcl_args
             + base[2:],
             args.gpu,
         )
@@ -60,7 +72,8 @@ def main():
             args.gpu,
         )
 
-    print(f"[DONE] target={args.target} finished all {len(combos)} combos with DCCL+ERM.")
+    mode = "DCCL+PCL" if args.use_pcl else "DCCL"
+    print(f"[DONE] target={args.target} finished all {len(combos)} combos with {mode}+ERM.")
 
 
 if __name__ == "__main__":
