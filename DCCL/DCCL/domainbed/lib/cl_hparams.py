@@ -1,3 +1,12 @@
+import sys
+
+
+def _cli_option_was_provided(name):
+    """Return True for both `--name value` and `--name=value` forms."""
+    flag = "--" + name
+    return any(arg == flag or arg.startswith(flag + "=") for arg in sys.argv[1:])
+
+
 def setup_alg_hparams(hparams, args):
     if args.dataset=="PACS":
         hparams["t"] = 0.1
@@ -72,15 +81,25 @@ def setup_alg_hparams(hparams, args):
         ):
             hparams[name] = getattr(args, name)
 
-        # Official public CIPT implementation defaults to 8 attention heads.
-        # The old feature/multiprompt parser default was 1; official-alignment
-        # mode upgrades that legacy value to 8. Other explicit values (2/4/8)
-        # are preserved for controlled ablations.
-        requested_heads = int(getattr(args, "cipt_tda_heads", 8))
-        hparams["cipt_tda_heads"] = 8 if requested_heads == 1 else requested_heads
+        # Official public CIPT defaults to 8 attention heads. train_all.py kept
+        # the historical parser default=1, so distinguish an omitted flag from
+        # an explicitly requested `--cipt_tda_heads 1` ablation.
+        if _cli_option_was_provided("cipt_tda_heads"):
+            hparams["cipt_tda_heads"] = int(args.cipt_tda_heads)
+        else:
+            hparams["cipt_tda_heads"] = 8
 
         # Official CIPT prompt/adapters/TDA optimizer defaults.
         hparams["cipt_lr"] = 2.5e-3
         hparams["cipt_weight_decay"] = 0.0
+
+        # DomainBed is step-based. Use the requested run horizon (or the dataset
+        # default) for a step-wise cosine decay of only the CIPT optimizer group.
+        if args.steps is not None:
+            hparams["cipt_schedule_steps"] = max(1, int(args.steps))
+        elif args.dataset == "DomainNet":
+            hparams["cipt_schedule_steps"] = 15001
+        else:
+            hparams["cipt_schedule_steps"] = 5001
 
     return hparams
