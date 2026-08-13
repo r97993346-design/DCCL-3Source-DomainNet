@@ -1,4 +1,4 @@
-"""CPU smoke test for the parameter-free PCL auxiliary loss."""
+"""CPU smoke/regression tests for the parameter-free PCL auxiliary loss."""
 
 import torch
 
@@ -33,12 +33,22 @@ def main():
     assert torch.isfinite(features.grad).all()
     assert sum(p.numel() for p in criterion.parameters()) == 0
 
-    print("PCL smoke test passed")
+    # Regression: with epsilon=0.05 and cosine cost=2, exp(-cost/epsilon)
+    # is ~4e-18. The old standard-space Sinkhorn implementation clamped its
+    # scaling denominator to 1e-8 and returned only ~0.04 real-real mass.
+    # Log-domain Sinkhorn must still honor the requested partial transport mass.
+    extreme_cost = torch.tensor([[2.0]], dtype=torch.float64)
+    extreme_plan = criterion._masked_partial_sinkhorn(extreme_cost)
+    assert torch.isfinite(extreme_plan).all(), extreme_plan
+    assert abs(float(extreme_plan.sum()) - 0.8) < 1e-6, extreme_plan
+
+    print("PCL smoke/regression tests passed")
     print(
         {
             "align": float(align.detach()),
             "uniform": float(uniform.detach()),
             **stats,
+            "extreme_transport_mass": float(extreme_plan.sum()),
         }
     )
 
