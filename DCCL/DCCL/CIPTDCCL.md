@@ -1,47 +1,75 @@
 # CIPT + DCCL
 
 `CIPTDCCL` is a separate algorithm; the existing `DCCL` implementation and
-defaults are not changed. It freezes OpenAI CLIP's image/text encoders and
-trains two linear causal-decomposition adapters, one cross-attention TDA layer,
-learnable prompt context tokens, and the original DCCL projection/regularizer
-modules.
+defaults are not changed. The active implementation is routed through
+`domainbed/algorithms/cipt_dccl_official.py` and aligns the CIPT portion with
+the public upstream CIPT implementation while retaining the DCCL causal-space
+contrastive extension.
 
-The training path is:
+## Official-aligned CIPT components
 
-1. CLIP encodes the original and independently augmented images as `v` and
-   `v_aug`; the same linear decomposition produces `(e, s)` and
-   `(e_aug, s_aug)`.
-2. The unchanged `SupConLoss` receives normalized
-   `projection_head(e)` / `projection_head(e_aug)`. Thus its augmentation and
-   same-label positive mask are unchanged, and no TDA output enters DCCL.
-3. The single TDA cross-attention layer makes `K` interventions from `e`.
-   Their cosine similarities to learnable CLIP class prompts produce `K` sets
-   of logits. Mean-per-intervention CE is the only final task classification
-   loss. Inference returns the mean of those `K` logits.
-4. The implemented objective is
-   `L_c + cipt_beta*L_de + cipt_gamma*L_ind +`
-   `cipt_contrastive_weight*L_DCCL + l_layer*pre_cl + l_d*reg_loss`.
+- OpenAI CLIP image/text encoders remain frozen.
+- CLIP image embeddings are L2-normalized before causal decomposition.
+- DomainBed ImageNet-normalized tensors are re-normalized to OpenAI CLIP input
+  statistics inside the CIPT model, so the DCCL data pipeline remains unchanged.
+- Causal and spurious adapters are one linear layer each and use identity-weight,
+  zero-bias initialization.
+- Learnable class prompts use the CoOp-style context initialized from
+  `a photo of a`, with 16 context tokens by default.
+- TDA uses the OpenAI ImageNet prompt-template bank, formatted with each class
+  name. During training, K templates are sampled randomly; inference uses a
+  deterministic K-template subset and performs class-conditioned intervention.
+- TDA uses one multi-head-attention layer; official-alignment mode upgrades the
+  legacy single-head default to 8 heads.
+- `L_de` is causal CE plus `KL(uniform || p_spurious)`.
+- `L_ind = 0.5 * mean(cos(e, s)^2)`.
+- `L_c` is mean cross-entropy over K intervention-specific predictions.
+- CIPT prompt/adapters/TDA use Adam with the upstream default learning rate
+  `2.5e-3` and zero weight decay.
 
-An explicit existing checkpoint makes loading offline-safe (the loader never
-falls back to a model-name download when `--cipt_clip_path` is supplied):
+## DCCL integration
+
+The DCCL extension is intentionally kept separate from the official CIPT core:
+
+1. CLIP encodes original and independently augmented images as `v` and
+   `v_aug`; causal decomposition yields `e` and `e_aug`.
+2. The existing `SupConLoss` receives normalized `projection_head(e)` and
+   `projection_head(e_aug)`. No TDA output enters this DCCL contrastive branch.
+3. The existing feature/multiprompt pretrained anchoring and vector
+   regularization terms remain available through `l_layer` and `l_d`.
+
+The objective is:
+
+`L_c + cipt_beta*L_de + cipt_gamma*L_ind +`
+`cipt_contrastive_weight*L_DCCL + l_layer*pre_cl + l_d*reg_loss`.
+
+For domain generalization, the upstream CIPT settings are `beta=4`, `gamma=5`,
+and `K=4`.
+
+## Smoke test
 
 ```bash
 cd DCCL/DCCL
-python train_all.py cipt_smoke --dataset PACS --algorithm CIPTDCCL \
-  --data_dir /path/to/data --test_envs 0 --steps 5 --checkpoint_freq 5 \
+CUDA_VISIBLE_DEVICES=0 python train_all.py cipt_smoke \
+  --dataset PACS --algorithm CIPTDCCL --data_dir /path/to/data \
+  --test_envs 0 --steps 5 --checkpoint_freq 5 \
   --cipt_clip_backbone ViT-B/16 --cipt_clip_path /path/to/ViT-B-16.pt \
+  --cipt_beta 4 --cipt_gamma 5 --cipt_k 4 \
+  --cipt_prompt_length 16 --cipt_prompt_init "a photo of a" \
+  --cipt_tda_heads 8 --cipt_contrastive_weight 1 \
   --cipt_debug_shapes
 ```
 
-PACS experiment (art-painting as the held-out domain):
+## PACS example
 
 ```bash
 cd DCCL/DCCL
 CUDA_VISIBLE_DEVICES=0 python train_all.py cipt_dccl_pacs_a \
   --dataset PACS --algorithm CIPTDCCL --data_dir /path/to/data \
   --test_envs 0 --deterministic --trial_seed 0 --seed 0 \
+  --checkpoint_freq 200 \
   --cipt_clip_backbone ViT-B/16 --cipt_clip_path /path/to/ViT-B-16.pt \
   --cipt_beta 4 --cipt_gamma 5 --cipt_k 4 \
   --cipt_prompt_length 16 --cipt_prompt_init "a photo of a" \
-  --cipt_tda_heads 1 --cipt_contrastive_weight 1
+  --cipt_tda_heads 8 --cipt_contrastive_weight 1
 ```
