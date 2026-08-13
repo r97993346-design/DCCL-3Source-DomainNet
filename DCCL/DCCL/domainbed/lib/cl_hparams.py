@@ -81,20 +81,27 @@ def setup_alg_hparams(hparams, args):
         ):
             hparams[name] = getattr(args, name)
 
-        # Official public CIPT defaults to 8 attention heads. train_all.py kept
-        # the historical parser default=1, so distinguish an omitted flag from
-        # an explicitly requested `--cipt_tda_heads 1` ablation.
+        # Official CIPT defaults to 8 attention heads. Keep an explicit
+        # --cipt_tda_heads value for controlled ablations.
         if _cli_option_was_provided("cipt_tda_heads"):
             hparams["cipt_tda_heads"] = int(args.cipt_tda_heads)
         else:
             hparams["cipt_tda_heads"] = 8
 
-        # Official CIPT prompt/adapters/TDA optimizer defaults.
-        hparams["cipt_lr"] = 2.5e-3
+        # IMPORTANT FOR THE FUSED METHOD:
+        # The upstream standalone CIPT example uses Adam(lr=2.5e-3), but in
+        # CIPTDCCL the causal adapter also receives DCCL contrastive/anchoring/
+        # regularization gradients. Applying the standalone prompt-tuning LR to
+        # this fused objective caused rapid source/target accuracy collapse.
+        # Use the existing DCCL/DomainBed LR by default for the fused trainable
+        # CIPT modules. The official architecture, losses, templates and TDA are
+        # unchanged; only the integration optimization scale is stabilized.
+        hparams["cipt_lr"] = float(hparams["lr"])
         hparams["cipt_weight_decay"] = 0.0
 
-        # DomainBed is step-based. Use the requested run horizon (or the dataset
-        # default) for a step-wise cosine decay of only the CIPT optimizer group.
+        # DomainBed is step-based. Keep the cosine horizon tied to the requested
+        # run length. At the stabilized small fusion LR this only provides a
+        # gentle late-training decay and does not alter DCCL's LR group.
         if args.steps is not None:
             hparams["cipt_schedule_steps"] = max(1, int(args.steps))
         elif args.dataset == "DomainNet":
