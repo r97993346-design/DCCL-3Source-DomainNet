@@ -69,20 +69,22 @@ class PCLLoss(nn.Module):
             if valid_mask.shape != cost.shape:
                 raise ValueError("valid_mask must have the same shape as cost.")
 
-        # In DCCL this solver is called after class/domain subsetting, so the
-        # class-conditioned mask is normally all True. Keep the mask in the
-        # solver to preserve the masked m-POT interface.
-        kernel_real = torch.exp(-cost / self.sinkhorn_epsilon)
-        kernel_real = kernel_real * valid_mask.to(kernel_real.dtype)
+        # Work in log-space. With cosine cost up to 2 and the default
+        # epsilon=0.05, exp(-cost / epsilon) can be ~4e-18. A standard-space
+        # Sinkhorn update with denominator clamping then changes the requested
+        # real-to-real transport mass. Log-domain scaling avoids that failure.
+        neg_inf = cost.new_tensor(float("-inf"))
+        log_kernel = cost.new_full((n + 1, m + 1), float("-inf"))
+        log_kernel[:n, :m] = torch.where(
+            valid_mask,
+            -cost / self.sinkhorn_epsilon,
+            neg_inf,
+        )
 
-        kernel = cost.new_zeros((n + 1, m + 1))
-        kernel[:n, :m] = kernel_real
-        # Zero-cost dummy edges absorb unmatched mass.
-        kernel[:n, m] = 1.0
-        kernel[n, :m] = 1.0
-        # Forbid dummy -> dummy, otherwise the requested partial mass is not
-        # identifiable.
-        kernel[n, m] = 0.0
+        # Zero-cost dummy edges absorb unmatched mass. Keep dummy -> dummy
+        # forbidden so the real-to-real mass remains identifiable.
+        log_kernel[:n, m] = 0.0
+        log_kernel[n, :m] = 0.0
 
         unmatched = 1.0 - self.transport_mass
         a = cost.new_full((n + 1,), 1.0 / n)
@@ -90,16 +92,21 @@ class PCLLoss(nn.Module):
         a[n] = unmatched
         b[m] = unmatched
 
-        u = torch.ones_like(a)
-        v = torch.ones_like(b)
-        for _ in range(self.sinkhorn_iters):
-            kv = torch.matmul(kernel, v)
-            u = a / kv.clamp_min(self.eps)
-            ktu = torch.matmul(kernel.t(), u)
-            v = b / ktu.clamp_min(self.eps)
+        log_a = torch.where(a > 0, a.log(), neg_inf)
+        log_b = torch.where(b > 0, b.log(), neg_inf)
+        log_u = torch.zeros_like(a)
+        log_v = torch.zeros_like(b)
 
-        plan = u[:, None] * kernel * v[None, :]
-        return plan[:n, :m]
+        for _ in range(self.sinkhorn_iters):
+            log_u = log_a - torch.logsumexp(
+                log_kernel + log_v.unsqueeze(0), dim=1
+            )
+            log_v = log_b - torch.logsumexp(
+                log_kernel.t() + log_u.unsqueeze(0), dim=1
+            )
+
+        log_plan = log_u[:, None] + log_kernel + log_v[None, :]
+        return torch.exp(log_plan[:n, :m])
 
     def _uniformity(self, features):
         """Hyperspherical uniformity loss (lower is more uniform)."""
