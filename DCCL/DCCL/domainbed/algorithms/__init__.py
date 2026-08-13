@@ -1,7 +1,7 @@
 from .algorithms import *
-# Override the legacy feature/multiprompt CIPTDCCL class with the
-# official-aligned implementation while leaving all other algorithms unchanged.
-from .cipt_dccl import CIPTDCCL
+# Route CIPTDCCL to the official-aligned implementation while leaving all
+# original DCCL/DomainBed algorithms unchanged.
+from .cipt_dccl_official import CIPTDCCL
 
 
 def get_algorithm_class(algorithm_name):
