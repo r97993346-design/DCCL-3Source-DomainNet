@@ -74,6 +74,9 @@ def _hparams(algorithm, dataset, random_state):
         hparams["d_steps_per_g_step"] = (1, int(2 ** random_state.uniform(0, 3)))
         hparams["grad_penalty"] = (0.0, 10 ** random_state.uniform(-2, 1))
         hparams["beta1"] = (0.5, random_state.choice([0.0, 0.5]))
+        hparams["mlp_width"] = (256, int(2 ** random_state.uniform(6, 10)))
+        hparams["mlp_depth"] = (3, int(random_state.choice([3, 4, 5])))
+        hparams["mlp_dropout"] = (0.0, random_state.choice([0.0, 0.1, 0.5]))
     elif algorithm == "RSC":
         hparams["rsc_f_drop_factor"] = (1 / 3, random_state.uniform(0, 0.5))
         hparams["rsc_b_drop_factor"] = (1 / 3, random_state.uniform(0, 0.5))
