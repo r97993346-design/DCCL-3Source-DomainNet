@@ -9,3 +9,8 @@ swad_kwargs:
 test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
+
+# Explicit paper-aligned CIPT reproduction path. Because train_all.py uses
+# parse_known_args() + hparams.argv_update(), this can be overridden from CLI
+# with: --cipt_pure true
+cipt_pure: false

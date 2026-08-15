@@ -1,9 +1,12 @@
 """Ablation wrapper for selectable CIPTDCCL intervention prompt banks.
 
-This file deliberately keeps the high-performance feature/multiprompt training
-path unchanged except for:
-1) the selected text intervention bank (B5a/B5b/B5c), and
-2) the official squared-cosine L_ind implemented in cipt_losses.py.
+Two modes are supported:
+1) cipt_pure=False keeps the existing high-performance CIPT+DCCL path.
+2) cipt_pure=True runs a paper-aligned CIPT baseline with only
+   L_cls + beta * L_de + gamma * L_ind.
+
+Pure CIPT also uses the class-conditioned B5b ImageNet prompt bank, identity
+initialization for the causal/spurious adapters, and an 8-head TDA layer.
 """
 
 import torch
@@ -15,27 +18,143 @@ from domainbed.algorithms.cipt_losses import (
     decomposition_loss as cipt_decomposition_loss,
     independence_loss as cipt_independence_loss,
 )
+from domainbed.algorithms.cipt_modules import TextDiversityAugmentation
 
 
 class CIPTDCCL(_BaseCIPTDCCL):
-    """High-performance CIPTDCCL with B5a/B5b/B5c prompt ablations."""
+    """CIPT+DCCL ablations plus an explicit pure-CIPT reproduction path."""
+
+    PURE_TEMPLATE_MODE = "b5b"
+    PURE_TDA_HEADS = 8
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super().__init__(input_shape, num_classes, num_domains, hparams)
-        self.cipt_template_mode = str(
-            hparams.get("cipt_template_mode", "b5a")
-        ).lower()
+        self.cipt_pure = bool(hparams.get("cipt_pure", False))
+
+        configured_mode = str(hparams.get("cipt_template_mode", "b5a")).lower()
+        self.cipt_template_mode = (
+            self.PURE_TEMPLATE_MODE if self.cipt_pure else configured_mode
+        )
         self.text_features.set_template_mode(self.cipt_template_mode)
+
+        effective_heads = hparams["cipt_tda_heads"]
+        if self.cipt_pure:
+            # Match the currently released CIPT implementation more closely:
+            # B5b class-conditioned templates, 8-head TDA, identity adapters,
+            # and no DCCL-only trainable modules/objectives.
+            dim = self.causal_decomposition.causal_adapter.in_features
+            self.tda = TextDiversityAugmentation(dim, self.PURE_TDA_HEADS)
+            effective_heads = self.PURE_TDA_HEADS
+
+            with torch.no_grad():
+                for adapter in (
+                    self.causal_decomposition.causal_adapter,
+                    self.causal_decomposition.spurious_adapter,
+                ):
+                    torch.nn.init.eye_(adapter.weight)
+                    torch.nn.init.zeros_(adapter.bias)
+
+            self.proj_head.requires_grad_(False)
+            self.pre_proj_head.requires_grad_(False)
+            self.reg_log_variance.requires_grad_(False)
+            self.contrastive_weight = 0.0
+            self.l_layer = 0.0
+            self.l_d = 0.0
+
+            # super().__init__ built an optimizer before the pure-CIPT changes
+            # above. Rebuild it so only the effective CIPT parameters are owned.
+            trainable = [
+                parameter for parameter in self.parameters()
+                if parameter.requires_grad
+            ]
+            self.optimizer = self.new_optimizer(trainable)
+            self.trainable_parameter_count = sum(
+                parameter.numel() for parameter in trainable
+            )
+            self.frozen_parameter_count = sum(
+                parameter.numel()
+                for parameter in self.parameters()
+                if not parameter.requires_grad
+            )
+
         print(
-            "CIPTDCCL ablation: template_mode={}, K={}, tda_heads={}, lr={}".format(
+            "CIPTDCCL ablation: pure_cipt={}, template_mode={}, K={}, "
+            "tda_heads={}, lr={}".format(
+                self.cipt_pure,
                 self.cipt_template_mode,
                 hparams["cipt_k"],
-                hparams["cipt_tda_heads"],
+                effective_heads,
                 hparams["lr"],
             )
         )
+        if self.cipt_pure:
+            print(
+                "Pure CIPT objective: L_cls + {} * L_de + {} * L_ind; "
+                "DCCL SupCon/pre-CL/reg disabled".format(self.beta, self.gamma)
+            )
+
+    def _update_pure_cipt(self, x, y):
+        """Paper-aligned CIPT update with no augmented-view/DCCL dependency."""
+        all_x = torch.cat(x)
+        labels = torch.cat(y)
+
+        visual = self._visual(all_x)
+        causal, spurious = self.causal_decomposition(visual)
+
+        class_features = self.text_features.class_features()
+        causal_logits = self._logits(causal[:, None, :], class_features)[:, 0]
+        spurious_logits = self._logits(spurious[:, None, :], class_features)[:, 0]
+
+        loss_de = cipt_decomposition_loss(
+            causal_logits, spurious_logits, labels
+        )
+        loss_ind = cipt_independence_loss(causal, spurious)
+
+        diverse_features = self.text_features.intervention_features(labels=labels)
+        interventions = self.tda(causal, diverse_features)
+        logits = self._logits(interventions, class_features)
+        loss_cls = cipt_classification_loss(logits, labels)
+
+        total = loss_cls + self.beta * loss_de + self.gamma * loss_ind
+
+        if self.debug_shapes:
+            print(
+                "Pure CIPT shapes: mode={} v={} e={} s={} z_k={} "
+                "text_features={} logits={}".format(
+                    self.cipt_template_mode,
+                    tuple(visual.shape),
+                    tuple(causal.shape),
+                    tuple(spurious.shape),
+                    tuple(interventions.shape),
+                    tuple(class_features.shape),
+                    tuple(logits.shape),
+                )
+            )
+
+        self.optimizer.zero_grad()
+        total.backward()
+        self.optimizer.step()
+
+        zero = causal.new_zeros(())
+        return {
+            "total_loss": total.item(),
+            "cipt_cls_loss": loss_cls.item(),
+            "cipt_de_loss": loss_de.item(),
+            "cipt_ind_loss": loss_ind.item(),
+            "dccl_contrastive_loss": zero.item(),
+            "pre_cl_loss": zero.item(),
+            "reg_loss": zero.item(),
+            "mean_e_norm": causal.norm(dim=-1).mean().item(),
+            "mean_s_norm": spurious.norm(dim=-1).mean().item(),
+            "mean_es_cosine": F.cosine_similarity(
+                causal, spurious, dim=-1
+            ).mean().item(),
+        }
 
     def update(self, x, y, **kwargs):
+        if self.cipt_pure:
+            return self._update_pure_cipt(x, y)
+
         # B5a and B5c are class-agnostic [K,D] banks, so the original known-good
         # update path is preserved exactly. cipt_losses.py supplies the new L_ind.
         if self.cipt_template_mode != "b5b":
@@ -109,7 +228,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         if self.debug_shapes:
             print(
-                "CIPTDCCL shapes: mode={} v={} e={} s={} projected_e={} z_k={} text_features={} logits={}".format(
+                "CIPTDCCL shapes: mode={} v={} e={} s={} projected_e={} z_k={} "
+                "text_features={} logits={}".format(
                     self.cipt_template_mode,
                     tuple(visual.shape),
                     tuple(causal.shape),
@@ -135,7 +255,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "reg_loss": reg_loss.item(),
             "mean_e_norm": causal.norm(dim=-1).mean().item(),
             "mean_s_norm": spurious.norm(dim=-1).mean().item(),
-            "mean_es_cosine": F.cosine_similarity(causal, spurious, dim=-1).mean().item(),
+            "mean_es_cosine": F.cosine_similarity(
+                causal, spurious, dim=-1
+            ).mean().item(),
         }
 
     def predict(self, x):
