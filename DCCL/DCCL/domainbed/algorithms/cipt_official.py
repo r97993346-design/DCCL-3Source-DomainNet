@@ -83,6 +83,10 @@ class CIPT(Algorithm):
         self.gamma = float(hparams.get("cipt_gamma", 5.0))
         self.k = int(hparams.get("cipt_k", 4))
         self.debug_shapes = bool(hparams.get("cipt_debug_shapes", False))
+        self.global_batch_size = int(hparams.get("cipt_global_batch_size", 64))
+        self.epochs = int(hparams.get("cipt_epochs", 30))
+        self.steps_per_epoch = max(1, int(hparams.get("cipt_steps_per_epoch", 1)))
+        self._num_updates = 0
 
         self.clip_model, self.tokenize = load_frozen_clip(
             hparams.get("cipt_clip_backbone", "ViT-B/16"),
@@ -112,13 +116,26 @@ class CIPT(Algorithm):
         weight_decay = float(hparams.get("cipt_weight_decay", 0.0))
         self.optimizer = torch.optim.Adam(trainable, lr=lr, weight_decay=weight_decay)
 
-        total_steps = max(1, int(hparams.get("cipt_total_steps", 1)))
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=total_steps, eta_min=0.0)
+        # The public CIPT recipe advances CosineAnnealingLR once per epoch.
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer, T_max=max(1, self.epochs), eta_min=0.0
+        )
 
         print(
-            "Official CIPT: backbone={}, beta={}, gamma={}, K={}, heads={}, lr={}, wd={}, schedule_steps={}".format(
-                hparams.get("cipt_clip_backbone", "ViT-B/16"), self.beta, self.gamma, self.k,
-                int(hparams.get("cipt_tda_heads", 8)), lr, weight_decay, total_steps
+            "Official CIPT: backbone={}, beta={}, gamma={}, K={}, heads={}, lr={}, wd={}, "
+            "shots={}, global_batch={}, epochs={}, steps_per_epoch={}, total_updates={}".format(
+                hparams.get("cipt_clip_backbone", "ViT-B/16"),
+                self.beta,
+                self.gamma,
+                self.k,
+                int(hparams.get("cipt_tda_heads", 8)),
+                lr,
+                weight_decay,
+                int(hparams.get("cipt_shots", 16)),
+                self.global_batch_size,
+                self.epochs,
+                self.steps_per_epoch,
+                int(hparams.get("cipt_total_steps", self.epochs * self.steps_per_epoch)),
             )
         )
 
@@ -179,9 +196,17 @@ class CIPT(Algorithm):
             return scale * torch.einsum("bkd,cd->bkc", features, text_features)
         raise ValueError("Expected [B,D] or [B,K,D], got {}".format(tuple(features.shape)))
 
+    def _trim_to_official_batch(self, images, labels):
+        """Trim DomainBed's merged balanced source batch to paper batch size 64."""
+        if images.shape[0] <= self.global_batch_size:
+            return images, labels
+        indices = torch.randperm(images.shape[0], device=images.device)[: self.global_batch_size]
+        return images.index_select(0, indices), labels.index_select(0, indices)
+
     def update(self, x, y, **kwargs):
         images = torch.cat(x)
         labels = torch.cat(y)
+        images, labels = self._trim_to_official_batch(images, labels)
 
         image_features = self._encode_image(images)
         text_features = self._class_features()
@@ -203,13 +228,21 @@ class CIPT(Algorithm):
         self.optimizer.zero_grad(set_to_none=True)
         total.backward()
         self.optimizer.step()
-        self.scheduler.step()
+
+        self._num_updates += 1
+        if self._num_updates % self.steps_per_epoch == 0:
+            self.scheduler.step()
 
         if self.debug_shapes:
             print(
-                "CIPT shapes: image={} e={} s={} p={} z={} logits={}".format(
-                    tuple(image_features.shape), tuple(causal_features.shape), tuple(spurious_features.shape),
-                    tuple(diverse_features.shape), tuple(augmented_features.shape), tuple(interventional_logits.shape)
+                "CIPT shapes: image={} e={} s={} p={} z={} logits={} effective_batch={}".format(
+                    tuple(image_features.shape),
+                    tuple(causal_features.shape),
+                    tuple(spurious_features.shape),
+                    tuple(diverse_features.shape),
+                    tuple(augmented_features.shape),
+                    tuple(interventional_logits.shape),
+                    int(images.shape[0]),
                 )
             )
 
@@ -220,6 +253,7 @@ class CIPT(Algorithm):
             "cipt_de_loss": loss_de.item(),
             "cipt_ind_loss": loss_ind.item(),
             "cipt_lr": self.optimizer.param_groups[0]["lr"],
+            "cipt_effective_batch": float(images.shape[0]),
             "mean_e_norm": causal_features.norm(dim=-1).mean().item(),
             "mean_s_norm": spurious_features.norm(dim=-1).mean().item(),
             "mean_es_cosine": F.cosine_similarity(causal_features, spurious_features, dim=-1).mean().item(),
