@@ -95,7 +95,7 @@ def setup_alg_hparams(hparams, args):
             hparams[name] = getattr(args, name)
 
     if args.algorithm == "CIPT":
-        # TPAMI/public-code CIPT defaults.
+        # TPAMI/public-code CIPT DG settings.
         class_names = _resolve_cipt_class_names(args)
         dataset_class = vars(datasets_registry)[args.dataset]
 
@@ -108,12 +108,15 @@ def setup_alg_hparams(hparams, args):
             else max(1, len(dataset_class.ENVIRONMENTS) - 1)
         )
 
-        # The legacy DomainBed trainer constructs one equal-sized minibatch per
-        # source domain. Use the smallest equal per-domain batch whose merged
-        # batch reaches 64, then trim the merged batch to exactly 64 in CIPT.update.
+        # DomainBed produces one equal-sized minibatch per source domain.
+        # Choose the smallest per-domain batch whose merged batch reaches 64;
+        # the thin CIPT adapter trims the merged batch to exactly 64.
         per_domain_batch = int(math.ceil(global_batch_size / float(num_sources)))
         examples_per_source_epoch = shots * len(class_names)
-        steps_per_epoch = max(1, int(round(examples_per_source_epoch / float(per_domain_batch))))
+        steps_per_epoch = max(
+            1,
+            int(round(examples_per_source_epoch / float(per_domain_batch))),
+        )
         paper_total_steps = epochs * steps_per_epoch
 
         hparams["cipt_official"] = True
@@ -132,7 +135,7 @@ def setup_alg_hparams(hparams, args):
         hparams["cipt_epochs"] = epochs
         hparams["cipt_global_batch_size"] = global_batch_size
         hparams["cipt_steps_per_epoch"] = steps_per_epoch
-        hparams["cipt_total_steps"] = int(args.steps or paper_total_steps)
+        hparams["cipt_total_steps"] = paper_total_steps
         hparams["cipt_class_names"] = class_names
 
         # Pure CIPT does not use any DCCL sampling/mixing branch.
@@ -141,11 +144,12 @@ def setup_alg_hparams(hparams, args):
         hparams["aug"] = 0
         hparams["batch_size"] = per_domain_batch
 
-        # Unless explicitly overridden for a smoke test, use the paper's
-        # 30-epoch horizon and evaluate once per approximate epoch.
-        if args.steps is None:
-            args.steps = paper_total_steps
-        if args.checkpoint_freq is None:
-            args.checkpoint_freq = steps_per_epoch
+        # IMPORTANT: generic DomainBed --steps / --checkpoint_freq belong to the
+        # old step-based trainer. For the official CIPT baseline, always enforce
+        # exactly 30 epochs and evaluate once per CIPT epoch. This prevents an
+        # old DCCL command such as --steps 5000 --checkpoint_freq 100 from
+        # silently turning 30 epochs into roughly 1000 epochs.
+        args.steps = paper_total_steps
+        args.checkpoint_freq = steps_per_epoch
 
     return hparams
