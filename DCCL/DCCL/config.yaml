@@ -10,7 +10,11 @@ test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
 
-# Minimal CIPT reproduction switch. It only disables the contrastive objectives
-# and switches training preprocessing from DBT.aug to DBT.basic. All other
-# model/trainer settings remain unchanged.
+# Pure CIPT reproduction switch:
+# - one original/basic image only
+# - no DCCL contrastive, pre-CL, or representation regularizer
+# All prompt/TDA/optimizer/SWAD logic stays unchanged.
 cipt_pure: false
+
+# Fusion-only causal consistency between original and augmented causal features.
+cipt_causal_consistency_weight: 1.0
