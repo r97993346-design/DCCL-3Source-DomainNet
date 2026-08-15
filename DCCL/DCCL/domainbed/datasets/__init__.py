@@ -15,14 +15,19 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
 
     additional_data = False
     if data_type == "train":
-        # Minimal CIPT reproduction: keep the existing dataset/trainer interface
-        # but replace the random training augmentation with the existing basic
-        # deterministic preprocessing. x and x_2 are therefore the same view.
-        if hparams.get("cipt_pure", False):
+        is_cipt_dccl = (
+            algorithm_class is not None
+            and algorithm_class.__name__ == "CIPTDCCL"
+        )
+        if is_cipt_dccl and hparams.get("cipt_pure", False):
+            # Pure CIPT: exactly one deterministic/original view.
             dset.transforms = {"x": DBT.basic}
+        elif is_cipt_dccl:
+            # Fusion CIPTDCCL: one original view plus one random augmentation.
+            dset.transforms = {"x": DBT.basic, "x_2": DBT.aug}
         else:
             dset.transforms = {"x": DBT.aug}
-        additional_data = True
+            additional_data = True
     elif data_type == "valid":
         if hparams["val_augment"] is False:
             dset.transforms = {"x": DBT.basic}
@@ -141,6 +146,7 @@ class _SplitDataset(torch.utils.data.Dataset):
         self.transforms = {}
         self.sample_d = hparams["sample_d"]
         self.mix = hparams["mix"]
+        self.cipt_pure = bool(hparams.get("cipt_pure", False))
         self.dataset_y_dicts = dataset_y_dicts
         self.data_all = data_all
         self.domains = list(range(len(dataset_y_dicts)))
@@ -158,8 +164,22 @@ class _SplitDataset(torch.utils.data.Dataset):
         x, y = self.underlying_dataset[self.keys[key]]
         ret = {"y": y}
         ret["d"] = self.env_id
+
+        # Explicit CIPTDCCL two-view path: x is the original/basic view and x_2
+        # is a single independently augmented view of the same image.
+        if "x" in self.transforms and "x_2" in self.transforms:
+            ret["x"] = self.transforms["x"](x)
+            ret["x_2"] = self.transforms["x_2"](x)
+            ret["d_2"] = self.env_id
+            return ret
+
         for key, transform in self.transforms.items():
             ret[key] = transform(x)
+
+            # Pure CIPT deliberately returns only the original x view.
+            if self.cipt_pure:
+                continue
+
             if self.sample_d and not self.test:
                 sample_d = np.random.choice(self.domains,1)[0]
                 # sample_d = self.env_id
