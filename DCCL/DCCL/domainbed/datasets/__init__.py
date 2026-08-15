@@ -15,7 +15,13 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
 
     additional_data = False
     if data_type == "train":
-        dset.transforms = {"x": DBT.aug}
+        # Minimal CIPT reproduction: keep the existing dataset/trainer interface
+        # but replace the random training augmentation with the existing basic
+        # deterministic preprocessing. x and x_2 are therefore the same view.
+        if hparams.get("cipt_pure", False):
+            dset.transforms = {"x": DBT.basic}
+        else:
+            dset.transforms = {"x": DBT.aug}
         additional_data = True
     elif data_type == "valid":
         if hparams["val_augment"] is False:

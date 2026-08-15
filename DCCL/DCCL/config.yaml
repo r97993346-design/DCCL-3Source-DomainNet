@@ -10,7 +10,7 @@ test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
 
-# Explicit paper-aligned CIPT reproduction path. Because train_all.py uses
-# parse_known_args() + hparams.argv_update(), this can be overridden from CLI
-# with: --cipt_pure true
+# Minimal CIPT reproduction switch. It only disables the contrastive objectives
+# and switches training preprocessing from DBT.aug to DBT.basic. All other
+# model/trainer settings remain unchanged.
 cipt_pure: false
