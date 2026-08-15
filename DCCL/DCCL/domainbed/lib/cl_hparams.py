@@ -1,3 +1,5 @@
+import math
+
 from domainbed.datasets import datasets as datasets_registry
 
 
@@ -13,29 +15,29 @@ def _resolve_cipt_class_names(args):
 
 
 def setup_alg_hparams(hparams, args):
-    if args.dataset=="PACS":
+    if args.dataset == "PACS":
         hparams["t"] = 0.1
         hparams["t_pre"] = 0.2
         hparams["l"] = 1
         hparams["l_d"] = 0.01
         hparams["l_layer"] = 1
         hparams["n_layer"] = 1
-    elif args.dataset=="TerraIncognita":
+    elif args.dataset == "TerraIncognita":
         hparams["t"] = 0.1
         hparams["t_pre"] = 0.1
         hparams["l"] = 1
         hparams["l_d"] = 0.05
         hparams["l_layer"] = 0.1
         hparams["n_layer"] = 2
-    elif args.dataset=="VLCS":
+    elif args.dataset == "VLCS":
         hparams["t"] = 0.1
         hparams["t_pre"] = 0.2
         hparams["l"] = 1
         hparams["l_d"] = 0.05
         hparams["l_layer"] = 1
         hparams["n_layer"] = 1
-    elif args.dataset=="OfficeHome":
-        if args.model=="clip_vit-b16":
+    elif args.dataset == "OfficeHome":
+        if args.model == "clip_vit-b16":
             hparams["t"] = 0.2
             hparams["t_pre"] = 0.2
             hparams["l"] = 1
@@ -49,13 +51,14 @@ def setup_alg_hparams(hparams, args):
             hparams["l_d"] = 0.05
             hparams["l_layer"] = 5
             hparams["n_layer"] = 1
-    elif args.dataset=="DomainNet":
+    elif args.dataset == "DomainNet":
         hparams["t"] = 0.1
         hparams["t_pre"] = 0.1
         hparams["l"] = 1
         hparams["l_d"] = 0.05
         hparams["l_layer"] = 0.1
         hparams["n_layer"] = 2
+
     hparams["sup"] = args.sup
     hparams["two_ce"] = args.two_ce
     hparams["sample_d"] = args.sample_d
@@ -77,15 +80,43 @@ def setup_alg_hparams(hparams, args):
 
     if args.algorithm == "CIPTDCCL":
         for name in (
-            "cipt_enabled", "cipt_clip_backbone", "cipt_clip_path", "cipt_beta",
-            "cipt_gamma", "cipt_k", "cipt_prompt_length", "cipt_prompt_init",
-            "cipt_tda_heads", "cipt_contrastive_weight", "cipt_debug_shapes",
+            "cipt_enabled",
+            "cipt_clip_backbone",
+            "cipt_clip_path",
+            "cipt_beta",
+            "cipt_gamma",
+            "cipt_k",
+            "cipt_prompt_length",
+            "cipt_prompt_init",
+            "cipt_tda_heads",
+            "cipt_contrastive_weight",
+            "cipt_debug_shapes",
         ):
             hparams[name] = getattr(args, name)
 
     if args.algorithm == "CIPT":
-        # TPAMI/public-code DG defaults. No DCCL loss/augmentation knobs are
-        # consumed by the standalone CIPT implementation.
+        # TPAMI/public-code CIPT defaults.
+        class_names = _resolve_cipt_class_names(args)
+        dataset_class = vars(datasets_registry)[args.dataset]
+
+        shots = 16
+        epochs = 30
+        global_batch_size = 64
+        num_sources = (
+            len(args.source_envs)
+            if args.dataset == "DomainNet" and args.source_envs is not None
+            else max(1, len(dataset_class.ENVIRONMENTS) - 1)
+        )
+
+        # The legacy DomainBed trainer constructs one equal-sized minibatch per
+        # source domain. Use the smallest equal per-domain batch whose merged
+        # batch reaches 64, then trim the merged batch to exactly 64 in CIPT.update.
+        per_domain_batch = int(math.ceil(global_batch_size / float(num_sources)))
+        examples_per_source_epoch = shots * len(class_names)
+        steps_per_epoch = max(1, int(round(examples_per_source_epoch / float(per_domain_batch))))
+        paper_total_steps = epochs * steps_per_epoch
+
+        hparams["cipt_official"] = True
         hparams["cipt_clip_backbone"] = args.cipt_clip_backbone
         hparams["cipt_clip_path"] = args.cipt_clip_path
         hparams["cipt_beta"] = args.cipt_beta
@@ -97,11 +128,24 @@ def setup_alg_hparams(hparams, args):
         hparams["cipt_debug_shapes"] = args.cipt_debug_shapes
         hparams["cipt_lr"] = 2.5e-3
         hparams["cipt_weight_decay"] = 0.0
-        dataset_class = vars(datasets_registry)[args.dataset]
-        hparams["cipt_total_steps"] = int(args.steps or dataset_class.N_STEPS)
-        hparams["cipt_class_names"] = _resolve_cipt_class_names(args)
+        hparams["cipt_shots"] = shots
+        hparams["cipt_epochs"] = epochs
+        hparams["cipt_global_batch_size"] = global_batch_size
+        hparams["cipt_steps_per_epoch"] = steps_per_epoch
+        hparams["cipt_total_steps"] = int(args.steps or paper_total_steps)
+        hparams["cipt_class_names"] = class_names
+
+        # Pure CIPT does not use any DCCL sampling/mixing branch.
         hparams["sample_d"] = False
         hparams["mix"] = 0
         hparams["aug"] = 0
+        hparams["batch_size"] = per_domain_batch
+
+        # Unless explicitly overridden for a smoke test, use the paper's
+        # 30-epoch horizon and evaluate once per approximate epoch.
+        if args.steps is None:
+            args.steps = paper_total_steps
+        if args.checkpoint_freq is None:
+            args.checkpoint_freq = steps_per_epoch
 
     return hparams
