@@ -21,14 +21,10 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
         if hparams["val_augment"] is False:
             dset.transforms = {"x": DBT.basic}
         else:
-            # Originally, DomainBed use same training augmentation policy to validation.
-            # We turn off the augmentation for validation as default,
-            # but left the option to reproducibility.
             dset.transforms = {"x": DBT.aug}
     elif data_type == "test":
         dset.transforms = {"x": DBT.basic}
     elif data_type == "mnist":
-        # No augmentation for mnist
         dset.transforms = {"x": lambda x: x}
     else:
         raise ValueError(data_type)
@@ -37,7 +33,10 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
         for key, transform in algorithm_class.transforms.items():
             dset.transforms[key] = transform
 
+
 import collections
+
+
 def get_dataset(test_envs, args, hparams, algorithm_class=None):
     """Get dataset and split."""
     is_mnist = "MNIST" in args.dataset
@@ -56,38 +55,50 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
         dataset.datasets = [dataset.datasets[env] for env in selected_envs]
         dataset.environments = [original_env_names[env] for env in selected_envs]
 
-        # Remap indices to the filtered dataset index space
         remap = {old: new for new, old in enumerate(selected_envs)}
         test_envs = [remap[env] for env in test_envs]
-    #  if not isinstance(dataset, MultipleEnvironmentImageFolder):
-    #      raise ValueError("SMALL image datasets are not implemented (corrupted), for transform.")
+
+    official_cipt = bool(
+        algorithm_class is not None and getattr(algorithm_class, "official_cipt", False)
+    )
+    cipt_shots = int(hparams.get("cipt_shots", 16))
+
     dataset_y_dicts = []
     data_keys = []
     label_ratio = hparams["label_ratio"]
     train_keys = []
+
     for env_i, underlying_dataset in enumerate(dataset):
         dataset_y_dict = collections.defaultdict(list)
         keys_cur = list(range(len(underlying_dataset)))
         np.random.RandomState(misc.seed_hash(args.trial_seed, env_i)).shuffle(keys_cur)
         data_keys.append(keys_cur)
-        keys_cur_train = keys_cur[int(len(underlying_dataset)*args.holdout_fraction):]
+
+        keys_cur_train = keys_cur[int(len(underlying_dataset) * args.holdout_fraction):]
         for key in keys_cur_train:
             _, y = underlying_dataset[key]
             dataset_y_dict[y].append(key)
         dataset_y_dicts.append(dataset_y_dict)
+
         train_key = []
         if env_i in test_envs:
-            train_key = keys_cur_train
+            # CIPT is never trained on the target domain. For paper-style OOD
+            # reporting, let test_in cover the complete held-out target domain.
+            train_key = keys_cur if official_cipt else keys_cur_train
         else:
-            for key, values in dataset_y_dict.items():
-                train_key.extend(values[:int(len(values)*label_ratio)])
+            for _, values in dataset_y_dict.items():
+                if official_cipt:
+                    # TPAMI CIPT is a few-shot method: at most 16 labeled
+                    # examples per class are used for training. We apply this
+                    # independently to every source domain in leave-one-out DG.
+                    train_key.extend(values[: min(cipt_shots, len(values))])
+                else:
+                    train_key.extend(values[: int(len(values) * label_ratio)])
         train_keys.append(train_key)
+
     in_splits = []
     out_splits = []
     for env_i, env in enumerate(dataset):
-        # The split only depends on seed_hash (= trial_seed).
-        # It means that the split is always identical only if use same trial_seed,
-        # independent to run the code where, when, or how many times.
         out, in_ = split_dataset(
             env,
             int(len(env) * args.holdout_fraction),
@@ -98,7 +109,7 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
             dataset_y_dicts,
             env_i,
             test_envs,
-            hparams
+            hparams,
         )
         if env_i in test_envs:
             in_type = "test"
@@ -128,19 +139,29 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
 class _SplitDataset(torch.utils.data.Dataset):
     """Used by split_dataset"""
 
-    def __init__(self, underlying_dataset, keys, data_all=None, dataset_y_dicts=None, env_id=None, test_envs=None, hparams=None):
+    def __init__(
+        self,
+        underlying_dataset,
+        keys,
+        data_all=None,
+        dataset_y_dicts=None,
+        env_id=None,
+        test_envs=None,
+        hparams=None,
+    ):
         super(_SplitDataset, self).__init__()
         self.underlying_dataset = underlying_dataset
         self.keys = keys
         self.transforms = {}
         self.sample_d = hparams["sample_d"]
         self.mix = hparams["mix"]
+        self.official_cipt = bool(hparams.get("cipt_official", False))
         self.dataset_y_dicts = dataset_y_dicts
         self.data_all = data_all
         self.domains = list(range(len(dataset_y_dicts)))
         self.env_id = env_id
         self.domains.remove(env_id)
-        self.test = test_envs[0]==env_id
+        self.test = test_envs[0] == env_id
         if not self.test:
             self.domains.remove(test_envs[0])
         self.direct_return = isinstance(underlying_dataset, _SplitDataset)
@@ -150,25 +171,25 @@ class _SplitDataset(torch.utils.data.Dataset):
             return self.underlying_dataset[self.keys[key]]
 
         x, y = self.underlying_dataset[self.keys[key]]
-        ret = {"y": y}
-        ret["d"] = self.env_id
+        ret = {"y": y, "d": self.env_id}
         for key, transform in self.transforms.items():
             ret[key] = transform(x)
+
+            # Pure CIPT has one image view only. Do not create DCCL x_2,
+            # x_2_d or d_2 entries, even as unused tensors.
+            if self.official_cipt:
+                continue
+
             if self.sample_d and not self.test:
-                sample_d = np.random.choice(self.domains,1)[0]
-                # sample_d = self.env_id
+                sample_d = np.random.choice(self.domains, 1)[0]
                 y_i_index_list = self.dataset_y_dicts[sample_d][y]
-                
-                sample_index = np.random.choice(y_i_index_list,1)[0]
-                x_2, y_2 = self.data_all[sample_d][sample_index]
+                sample_index = np.random.choice(y_i_index_list, 1)[0]
+                x_2, _ = self.data_all[sample_d][sample_index]
                 r = np.random.rand(1)
-                if self.mix and r<self.mix:
-                    # mixup
+                if self.mix and r < self.mix:
                     x_1_after = transform(x)
                     x_2_after = transform(x_2)
                     lam = np.random.beta(1, 1)
-                    # ret["x_2"] = lam*x_1_after+(1-lam)*x_2_after
-                    # cutmix
                     bbx1, bby1, bbx2, bby2 = rand_bbox(list(x_2_after.size()), lam)
                     x_2_after[:, bbx1:bbx2, bby1:bby2] = x_1_after[:, bbx1:bbx2, bby1:bby2]
                     ret["x_2_d"] = x_2_after
@@ -184,14 +205,14 @@ class _SplitDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.keys)
 
+
 def rand_bbox(size, lam):
     W = size[1]
     H = size[2]
-    cut_rat = np.sqrt(1. - lam)
+    cut_rat = np.sqrt(1.0 - lam)
     cut_w = np.int(W * cut_rat)
     cut_h = np.int(H * cut_rat)
 
-    # uniform
     cx = np.random.randint(W)
     cy = np.random.randint(H)
 
@@ -202,17 +223,25 @@ def rand_bbox(size, lam):
 
     return bbx1, bby1, bbx2, bby2
 
-def split_dataset(dataset, n, seed=0, data_keys=None, train_keys=None, data_all=None, dataset_y_dicts=None, env_id=None, test_envs=None, hparams=None):
-    """
-    Return a pair of datasets corresponding to a random split of the given
-    dataset, with n datapoints in the first dataset and the rest in the last,
-    using the given random seed
-    """
+
+def split_dataset(
+    dataset,
+    n,
+    seed=0,
+    data_keys=None,
+    train_keys=None,
+    data_all=None,
+    dataset_y_dicts=None,
+    env_id=None,
+    test_envs=None,
+    hparams=None,
+):
+    """Return out/in splits using the supplied deterministic keys."""
     assert n <= len(dataset)
-    keys = list(range(len(dataset)))
     keys = data_keys
-    # np.random.RandomState(seed).shuffle(keys)
     keys_1 = keys[:n]
-    # keys_2 = keys[n:]
     keys_2 = train_keys
-    return _SplitDataset(dataset, keys_1, data_all, dataset_y_dicts, env_id, test_envs, hparams), _SplitDataset(dataset, keys_2, data_all, dataset_y_dicts, env_id, test_envs, hparams)
+    return (
+        _SplitDataset(dataset, keys_1, data_all, dataset_y_dicts, env_id, test_envs, hparams),
+        _SplitDataset(dataset, keys_2, data_all, dataset_y_dicts, env_id, test_envs, hparams),
+    )
