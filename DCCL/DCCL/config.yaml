@@ -18,3 +18,11 @@ cipt_pure: false
 
 # Fusion-only causal consistency between original and augmented causal features.
 cipt_causal_consistency_weight: 1.0
+
+# CIPTDCCL training augmentation switch:
+# - current: existing RandomResizedCrop + flip + ColorJitter + grayscale
+# - fourier: keep CLIP Resize + CenterCrop for both views and replace the
+#            random-crop branch with CIRL-inspired cross-source Fourier mixing
+cipt_aug_mode: fourier
+cipt_fourier_alpha: 1.0
+cipt_fourier_ratio: 1.0
