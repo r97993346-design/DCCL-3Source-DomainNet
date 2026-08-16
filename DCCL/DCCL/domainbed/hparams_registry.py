@@ -35,6 +35,13 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_tda_heads"] = (1, 1)
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
         hparams["cipt_debug_shapes"] = (False, False)
+        # Augmentation ablation for the fusion branch:
+        # - current: RandomResizedCrop + flip + color jitter + grayscale
+        # - fourier: official CLIP spatial preprocessing + CIRL-inspired
+        #            cross-source Fourier amplitude mixing
+        hparams["cipt_aug_mode"] = ("current", "current")
+        hparams["cipt_fourier_alpha"] = (1.0, 1.0)
+        hparams["cipt_fourier_ratio"] = (1.0, 1.0)
 
     hparams["freeze_bn"] = (True, True)
     hparams["pretrained"] = (True, True)  # only for ResNet
@@ -62,7 +69,7 @@ def _hparams(algorithm, dataset, random_state):
             hparams["lr_d"] = (5e-5, 10 ** random_state.uniform(-5, -3.5))
         else:
             hparams["lr_g"] = (1e-3, 10 ** random_state.uniform(-4.5, -2.5))
-            hparams["lr_d"] = (1e-3, 10 ** random_state.uniform(-4.5, -2.5))
+            hparams["lr_d"] = (5e-5, 10 ** random_state.uniform(-5, -3.5))
 
         if dataset in SMALL_IMAGES:
             hparams["weight_decay_g"] = (0.0, 0.0)
