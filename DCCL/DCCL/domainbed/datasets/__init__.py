@@ -129,8 +129,7 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
             in_weights = misc.make_weights_for_balanced_classes(in_)
             out_weights = misc.make_weights_for_balanced_classes(out)
         else:
-            in_weights = None
-            out_weights = None
+            in_weights, out_weights = None, None
         in_splits.append((in_, in_weights))
         out_splits.append((out, out_weights))
 
