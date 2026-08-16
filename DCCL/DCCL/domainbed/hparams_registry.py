@@ -69,7 +69,7 @@ def _hparams(algorithm, dataset, random_state):
             hparams["lr_d"] = (5e-5, 10 ** random_state.uniform(-5, -3.5))
         else:
             hparams["lr_g"] = (1e-3, 10 ** random_state.uniform(-4.5, -2.5))
-            hparams["lr_d"] = (5e-5, 10 ** random_state.uniform(-5, -3.5))
+            hparams["lr_d"] = (1e-3, 10 ** random_state.uniform(-4.5, -2.5))
 
         if dataset in SMALL_IMAGES:
             hparams["weight_decay_g"] = (0.0, 0.0)
