@@ -18,15 +18,35 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
         and algorithm_class.__name__ == "CIPTDCCL"
     )
 
+    # Pair transforms consume both the current image and a donor image. They are
+    # enabled only for the Fourier training ablation below.
+    dset.pair_transform = None
+
     additional_data = False
     if data_type == "train":
         if is_cipt_dccl and hparams.get("cipt_pure", False):
             # Pure CIPT: one original view with official CLIP preprocessing.
             dset.transforms = {"x": DBT.clip_basic}
         elif is_cipt_dccl:
-            # Fusion CIPTDCCL: original CLIP-preprocessed view plus one random
-            # augmentation whose output is normalized for frozen CLIP.
-            dset.transforms = {"x": DBT.clip_basic, "x_2": DBT.clip_aug}
+            aug_mode = str(hparams.get("cipt_aug_mode", "current")).lower()
+            if aug_mode == "current":
+                # Existing baseline: original CLIP-preprocessed view plus the
+                # RandomResizedCrop/flip/color/grayscale augmented view.
+                dset.transforms = {"x": DBT.clip_basic, "x_2": DBT.clip_aug}
+            elif aug_mode == "fourier":
+                # Fourier ablation: keep the original CLIP CenterCrop pipeline
+                # for x and replace the random-crop branch with a donor-based
+                # Fourier amplitude intervention. The pair transform applies the
+                # same CLIP spatial preprocessing before mixing.
+                dset.transforms = {"x": DBT.clip_basic}
+                dset.pair_transform = DBT.ClipFourierAugment(
+                    alpha=float(hparams.get("cipt_fourier_alpha", 1.0)),
+                    ratio=float(hparams.get("cipt_fourier_ratio", 1.0)),
+                )
+            else:
+                raise ValueError(
+                    f"Unknown cipt_aug_mode={aug_mode!r}. Expected 'current' or 'fourier'."
+                )
         else:
             dset.transforms = {"x": DBT.aug}
             additional_data = True
@@ -34,9 +54,8 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
         if hparams["val_augment"] is False:
             dset.transforms = {"x": DBT.clip_basic if is_cipt_dccl else DBT.basic}
         else:
-            # Originally, DomainBed uses the same training augmentation policy
-            # for validation. Keep that option, but use CLIP-compatible
-            # augmentation when the algorithm backbone is frozen CLIP.
+            # Validation augmentation keeps the historical single-image policy;
+            # donor-based Fourier augmentation is intentionally train-only.
             dset.transforms = {"x": DBT.clip_aug if is_cipt_dccl else DBT.aug}
     elif data_type == "test":
         dset.transforms = {"x": DBT.clip_basic if is_cipt_dccl else DBT.basic}
@@ -50,7 +69,10 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
         for key, transform in algorithm_class.transforms.items():
             dset.transforms[key] = transform
 
+
 import collections
+
+
 def get_dataset(test_envs, args, hparams, algorithm_class=None):
     """Get dataset and split."""
     is_mnist = "MNIST" in args.dataset
@@ -83,7 +105,7 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
         keys_cur = list(range(len(underlying_dataset)))
         np.random.RandomState(misc.seed_hash(args.trial_seed, env_i)).shuffle(keys_cur)
         data_keys.append(keys_cur)
-        keys_cur_train = keys_cur[int(len(underlying_dataset)*args.holdout_fraction):]
+        keys_cur_train = keys_cur[int(len(underlying_dataset) * args.holdout_fraction):]
         for key in keys_cur_train:
             _, y = underlying_dataset[key]
             dataset_y_dict[y].append(key)
@@ -93,7 +115,7 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
             train_key = keys_cur_train
         else:
             for key, values in dataset_y_dict.items():
-                train_key.extend(values[:int(len(values)*label_ratio)])
+                train_key.extend(values[:int(len(values) * label_ratio)])
         train_keys.append(train_key)
     in_splits = []
     out_splits = []
@@ -111,7 +133,8 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
             dataset_y_dicts,
             env_i,
             test_envs,
-            hparams
+            hparams,
+            train_keys_by_domain=train_keys,
         )
         if env_i in test_envs:
             in_type = "test"
@@ -141,20 +164,32 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
 class _SplitDataset(torch.utils.data.Dataset):
     """Used by split_dataset"""
 
-    def __init__(self, underlying_dataset, keys, data_all=None, dataset_y_dicts=None, env_id=None, test_envs=None, hparams=None):
+    def __init__(
+        self,
+        underlying_dataset,
+        keys,
+        data_all=None,
+        dataset_y_dicts=None,
+        env_id=None,
+        test_envs=None,
+        hparams=None,
+        train_keys_by_domain=None,
+    ):
         super(_SplitDataset, self).__init__()
         self.underlying_dataset = underlying_dataset
         self.keys = keys
         self.transforms = {}
+        self.pair_transform = None
         self.sample_d = hparams["sample_d"]
         self.mix = hparams["mix"]
         self.cipt_pure = bool(hparams.get("cipt_pure", False))
         self.dataset_y_dicts = dataset_y_dicts
         self.data_all = data_all
+        self.train_keys_by_domain = train_keys_by_domain
         self.domains = list(range(len(dataset_y_dicts)))
         self.env_id = env_id
         self.domains.remove(env_id)
-        self.test = test_envs[0]==env_id
+        self.test = test_envs[0] == env_id
         if not self.test:
             self.domains.remove(test_envs[0])
         self.direct_return = isinstance(underlying_dataset, _SplitDataset)
@@ -167,8 +202,41 @@ class _SplitDataset(torch.utils.data.Dataset):
         ret = {"y": y}
         ret["d"] = self.env_id
 
-        # Explicit CIPTDCCL two-view path: x is the original/basic view and x_2
-        # is a single independently augmented view of the same image.
+        # CIPTDCCL Fourier path. The original view keeps official CLIP
+        # preprocessing, while x_2 mixes the current image with a randomly
+        # sampled image from another source domain. Donors are restricted to
+        # that source domain's actual training keys, so validation/target images
+        # are never used to construct training augmentations.
+        if self.pair_transform is not None:
+            if self.test:
+                raise RuntimeError("Fourier pair augmentation must not run on the test environment.")
+            if self.train_keys_by_domain is None:
+                raise RuntimeError("Fourier pair augmentation requires train_keys_by_domain.")
+
+            donor_domains = [
+                domain
+                for domain in self.domains
+                if len(self.train_keys_by_domain[domain]) > 0
+            ]
+            if not donor_domains:
+                raise RuntimeError(
+                    "No non-target source-domain training samples are available as Fourier donors."
+                )
+
+            donor_domain = int(np.random.choice(donor_domains))
+            donor_index = int(np.random.choice(self.train_keys_by_domain[donor_domain]))
+            donor_x, _ = self.data_all[donor_domain][donor_index]
+
+            ret["x"] = self.transforms["x"](x)
+            ret["x_2"] = self.pair_transform(x, donor_x)
+            # x_2 preserves the current image's phase/semantic label. d_2 keeps
+            # the semantic sample's environment identity; the donor is only a
+            # style/amplitude source.
+            ret["d_2"] = self.env_id
+            return ret
+
+        # Explicit CIPTDCCL two-view baseline path: x is the original/basic view
+        # and x_2 is a single independently augmented view of the same image.
         if "x" in self.transforms and "x_2" in self.transforms:
             ret["x"] = self.transforms["x"](x)
             ret["x_2"] = self.transforms["x_2"](x)
@@ -183,14 +251,14 @@ class _SplitDataset(torch.utils.data.Dataset):
                 continue
 
             if self.sample_d and not self.test:
-                sample_d = np.random.choice(self.domains,1)[0]
+                sample_d = np.random.choice(self.domains, 1)[0]
                 # sample_d = self.env_id
                 y_i_index_list = self.dataset_y_dicts[sample_d][y]
-                
-                sample_index = np.random.choice(y_i_index_list,1)[0]
+
+                sample_index = np.random.choice(y_i_index_list, 1)[0]
                 x_2, y_2 = self.data_all[sample_d][sample_index]
                 r = np.random.rand(1)
-                if self.mix and r<self.mix:
+                if self.mix and r < self.mix:
                     # mixup
                     x_1_after = transform(x)
                     x_2_after = transform(x_2)
@@ -212,6 +280,7 @@ class _SplitDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.keys)
 
+
 def rand_bbox(size, lam):
     W = size[1]
     H = size[2]
@@ -230,17 +299,48 @@ def rand_bbox(size, lam):
 
     return bbx1, bby1, bbx2, bby2
 
-def split_dataset(dataset, n, seed=0, data_keys=None, train_keys=None, data_all=None, dataset_y_dicts=None, env_id=None, test_envs=None, hparams=None):
+
+def split_dataset(
+    dataset,
+    n,
+    seed=0,
+    data_keys=None,
+    train_keys=None,
+    data_all=None,
+    dataset_y_dicts=None,
+    env_id=None,
+    test_envs=None,
+    hparams=None,
+    train_keys_by_domain=None,
+):
     """
     Return a pair of datasets corresponding to a random split of the given
     dataset, with n datapoints in the first dataset and the rest in the last,
     using the given random seed
     """
     assert n <= len(dataset)
-    keys = list(range(len(dataset)))
     keys = data_keys
-    # np.random.RandomState(seed).shuffle(keys)
     keys_1 = keys[:n]
-    # keys_2 = keys[n:]
     keys_2 = train_keys
-    return _SplitDataset(dataset, keys_1, data_all, dataset_y_dicts, env_id, test_envs, hparams), _SplitDataset(dataset, keys_2, data_all, dataset_y_dicts, env_id, test_envs, hparams)
+    return (
+        _SplitDataset(
+            dataset,
+            keys_1,
+            data_all,
+            dataset_y_dicts,
+            env_id,
+            test_envs,
+            hparams,
+            train_keys_by_domain,
+        ),
+        _SplitDataset(
+            dataset,
+            keys_2,
+            data_all,
+            dataset_y_dicts,
+            env_id,
+            test_envs,
+            hparams,
+            train_keys_by_domain,
+        ),
+    )
