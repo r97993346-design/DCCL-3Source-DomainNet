@@ -13,33 +13,31 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
     """
     assert hparams["data_augmentation"]
 
-    is_cipt_dccl = (
-        algorithm_class is not None
-        and algorithm_class.__name__ == "CIPTDCCL"
-    )
-
     additional_data = False
     if data_type == "train":
+        is_cipt_dccl = (
+            algorithm_class is not None
+            and algorithm_class.__name__ == "CIPTDCCL"
+        )
         if is_cipt_dccl and hparams.get("cipt_pure", False):
-            # Pure CIPT: one original view with official CLIP preprocessing.
-            dset.transforms = {"x": DBT.clip_basic}
+            # Pure CIPT: exactly one deterministic/original view.
+            dset.transforms = {"x": DBT.basic}
         elif is_cipt_dccl:
-            # Fusion CIPTDCCL: original CLIP-preprocessed view plus one random
-            # augmentation whose output is normalized for frozen CLIP.
-            dset.transforms = {"x": DBT.clip_basic, "x_2": DBT.clip_aug}
+            # Fusion CIPTDCCL: one original view plus one random augmentation.
+            dset.transforms = {"x": DBT.basic, "x_2": DBT.aug}
         else:
             dset.transforms = {"x": DBT.aug}
             additional_data = True
     elif data_type == "valid":
         if hparams["val_augment"] is False:
-            dset.transforms = {"x": DBT.clip_basic if is_cipt_dccl else DBT.basic}
+            dset.transforms = {"x": DBT.basic}
         else:
-            # Originally, DomainBed uses the same training augmentation policy
-            # for validation. Keep that option, but use CLIP-compatible
-            # augmentation when the algorithm backbone is frozen CLIP.
-            dset.transforms = {"x": DBT.clip_aug if is_cipt_dccl else DBT.aug}
+            # Originally, DomainBed use same training augmentation policy to validation.
+            # We turn off the augmentation for validation as default,
+            # but left the option to reproducibility.
+            dset.transforms = {"x": DBT.aug}
     elif data_type == "test":
-        dset.transforms = {"x": DBT.clip_basic if is_cipt_dccl else DBT.basic}
+        dset.transforms = {"x": DBT.basic}
     elif data_type == "mnist":
         # No augmentation for mnist
         dset.transforms = {"x": lambda x: x}
@@ -131,7 +129,8 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
             in_weights = misc.make_weights_for_balanced_classes(in_)
             out_weights = misc.make_weights_for_balanced_classes(out)
         else:
-            in_weights, out_weights = None, None
+            in_weights = None
+            out_weights = None
         in_splits.append((in_, in_weights))
         out_splits.append((out, out_weights))
 
