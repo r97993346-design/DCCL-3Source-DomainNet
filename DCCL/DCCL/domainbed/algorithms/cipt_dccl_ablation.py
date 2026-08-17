@@ -1,11 +1,15 @@
-"""Ablation wrapper for selectable CIPTDCCL intervention prompt banks.
+"""CIPTDCCL ablation wrapper with optional shallow visual prompt tuning.
 
-Two execution modes are supported without changing the existing prompt/TDA/SWAD
-logic:
-1) cipt_pure=True: single original image only; no augmentation, DCCL contrastive,
-   pre-CL, or representation regularizer.
-2) cipt_pure=False: one original image plus one augmented view. The augmented
-   view is used for SupCon, causal-feature consistency, and augmented L_de.
+The branch keeps CLIP weights frozen and does not add MetaPrompt episodic/meta
+learning or AC loss. When visual prompt tuning is enabled, the prompted CLIP
+visual feature feeds causal decomposition, while the original unprompted frozen
+CLIP feature remains the DCCL pretrained semantic anchor.
+
+Execution modes:
+1) cipt_pure=True: single original image; no DCCL contrastive, causal
+   consistency, pre-CL, or representation regularizer.
+2) cipt_pure=False: original + augmented view for SupCon, causal consistency,
+   augmented L_de, and DCCL pretrained anchoring.
 """
 
 import torch
@@ -17,10 +21,15 @@ from domainbed.algorithms.cipt_losses import (
     decomposition_loss as cipt_decomposition_loss,
     independence_loss as cipt_independence_loss,
 )
+from domainbed.algorithms.cipt_visual_prompt import (
+    VisualPromptLearner,
+    encode_image_with_visual_prompt,
+)
+from domainbed.optimizers import get_optimizer
 
 
 class CIPTDCCL(_BaseCIPTDCCL):
-    """CIPT+DCCL with minimal pure-CIPT and explicit two-view fusion paths."""
+    """CIPT+DCCL with selectable text bank and optional visual prompt tuning."""
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super().__init__(input_shape, num_classes, num_domains, hparams)
@@ -33,18 +42,44 @@ class CIPTDCCL(_BaseCIPTDCCL):
             hparams.get("cipt_causal_consistency_weight", 1.0)
         )
 
-        # Pure CIPT only removes the DCCL-side objectives requested for the
-        # reproduction. Prompt bank, TDA heads, adapters, optimizer and SWAD stay
-        # exactly as configured by the existing code.
+        self.visual_prompt_enabled = bool(
+            hparams.get("cipt_visual_prompt_enabled", True)
+        )
+        self.visual_prompt_length = int(
+            hparams.get("cipt_visual_prompt_length", 4)
+        )
+        self.visual_prompt = None
+        if self.visual_prompt_enabled:
+            self.visual_prompt = VisualPromptLearner(
+                self.clip_model, prompt_length=self.visual_prompt_length
+            )
+
+        # Pure CIPT removes DCCL-side objectives. The optional visual prompt is
+        # independent: disable cipt_visual_prompt_enabled for the exact old
+        # frozen-visual pure-CIPT reproduction.
         if self.cipt_pure:
             self.contrastive_weight = 0.0
             self.l_layer = 0.0
             self.l_d = 0.0
 
+        # _BaseCIPTDCCL built its optimizer before this subclass added the
+        # visual prompt. Rebuild it so prompt tokens are included exactly once.
+        trainable = [p for p in self.parameters() if p.requires_grad]
+        self.optimizer = get_optimizer(
+            hparams["optimizer"],
+            trainable,
+            lr=hparams["lr"],
+            weight_decay=hparams["weight_decay"],
+        )
+        self.trainable_parameter_count = sum(p.numel() for p in trainable)
+        self.frozen_parameter_count = sum(
+            p.numel() for p in self.parameters() if not p.requires_grad
+        )
+
         print(
             "CIPTDCCL ablation: pure_cipt={}, template_mode={}, K={}, "
             "tda_heads={}, lr={}, contrastive_weight={}, l_layer={}, l_d={}, "
-            "causal_consistency_weight={}".format(
+            "causal_consistency_weight={}, visual_prompt={}, visual_prompt_length={}".format(
                 self.cipt_pure,
                 self.cipt_template_mode,
                 hparams["cipt_k"],
@@ -54,6 +89,13 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.l_layer,
                 self.l_d,
                 0.0 if self.cipt_pure else self.causal_consistency_weight,
+                self.visual_prompt_enabled,
+                self.visual_prompt_length if self.visual_prompt_enabled else 0,
+            )
+        )
+        print(
+            "CIPTDCCL visual-prompt branch parameters: trainable={}, frozen={}".format(
+                self.trainable_parameter_count, self.frozen_parameter_count
             )
         )
 
@@ -61,6 +103,19 @@ class CIPTDCCL(_BaseCIPTDCCL):
         if self.cipt_template_mode == "b5b":
             return self.text_features.intervention_features(labels=labels)
         return self.text_features.irrelevant_text_features
+
+    def _visual_anchor(self, images):
+        """Original pretrained CLIP visual representation, always frozen."""
+        with torch.no_grad():
+            return self.clip_model.encode_image(images).float()
+
+    def _visual(self, images):
+        """Feature used by causal decomposition and prediction."""
+        if not self.visual_prompt_enabled:
+            return self._visual_anchor(images)
+        return encode_image_with_visual_prompt(
+            self.clip_model, images, self.visual_prompt
+        )
 
     def _update_pure(self, x, y):
         """Single-original-image CIPT path with no DCCL/augmentation losses."""
@@ -108,26 +163,35 @@ class CIPTDCCL(_BaseCIPTDCCL):
         }
 
     def _update_fusion(self, x, y, x_2):
-        """Original + augmented-view fusion following the requested roles."""
+        """Original + augmented-view fusion with a shared visual prompt."""
         all_x = torch.cat(x)
         all_x_aug = torch.cat(x_2)
         labels = torch.cat(y)
 
+        # Prompted features adapt the frozen visual encoder to the DG task.
+        # The same learnable prompt parameters are shared across both views.
         visual = self._visual(all_x)
         visual_aug = self._visual(all_x_aug)
+
+        # Keep the original unprompted CLIP representation as a fixed semantic
+        # anchor for DCCL's pre-CL and representation regularizer. Avoid an
+        # extra CLIP pass when visual prompting is disabled.
+        visual_anchor = (
+            self._visual_anchor(all_x)
+            if self.visual_prompt_enabled
+            else visual.detach()
+        )
+
         causal, spurious = self.causal_decomposition(visual)
         causal_aug, spurious_aug = self.causal_decomposition(visual_aug)
         class_features = self.text_features.class_features()
 
-        # Original CIPT decomposition loss.
         causal_logits = self._logits(causal[:, None, :], class_features)[:, 0]
         spurious_logits = self._logits(spurious[:, None, :], class_features)[:, 0]
         loss_de_orig = cipt_decomposition_loss(
             causal_logits, spurious_logits, labels
         )
 
-        # Augmented L_de: e_aug must remain class-discriminative while s_aug
-        # remains class-uninformative.
         causal_logits_aug = self._logits(
             causal_aug[:, None, :], class_features
         )[:, 0]
@@ -137,28 +201,22 @@ class CIPTDCCL(_BaseCIPTDCCL):
         loss_de_aug = cipt_decomposition_loss(
             causal_logits_aug, spurious_logits_aug, labels
         )
-        # Average the two views so beta keeps the same scale as before.
         loss_de = 0.5 * (loss_de_orig + loss_de_aug)
 
         # Keep CIPT independence on the original decomposition only. The
-        # augmented branch has exactly the three requested roles: SupCon,
-        # causal consistency, and augmented L_de.
+        # augmented branch roles stay unchanged from clip-preprocess-ablation.
         loss_ind = cipt_independence_loss(causal, spurious)
 
-        # Causal consistency: the same image under nuisance augmentation should
-        # preserve its causal representation direction.
         loss_causal_consistency = (
             1.0 - F.cosine_similarity(causal, causal_aug, dim=-1)
         ).mean()
 
-        # TDA/classification continues to use the original image branch only.
         interventions = self.tda(
             causal, self._intervention_features(labels=labels)
         )
         logits = self._logits(interventions, class_features)
         loss_cls = cipt_classification_loss(logits, labels)
 
-        # SupCon uses original/augmented causal representations as the two views.
         projected = self.proj_head(causal)
         projected_aug = self.proj_head(causal_aug)
         contrast_features = torch.stack(
@@ -170,11 +228,12 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
         loss_contrastive = self.supcon_loss(contrast_features, labels)
 
-        # Preserve the existing pre-CL and representation regularizer.
+        # DCCL anchoring intentionally targets the UNPROMPTED pretrained CLIP
+        # feature, so the target itself cannot drift with the visual prompt.
         pre_features = torch.stack(
             (
                 F.normalize(self.pre_proj_head(causal), dim=-1),
-                F.normalize(self.pre_proj_head(visual.detach()), dim=-1),
+                F.normalize(self.pre_proj_head(visual_anchor), dim=-1),
             ),
             dim=1,
         )
@@ -186,7 +245,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         variance = F.softplus(self.reg_log_variance) + 1e-5
         reg_loss = (
-            (((causal - visual.detach()).pow(2) / variance) + variance.log()).mean() / 2
+            (((causal - visual_anchor).pow(2) / variance) + variance.log()).mean() / 2
             if self.l_d
             else causal.new_zeros(())
         )
@@ -203,11 +262,12 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         if self.debug_shapes:
             print(
-                "CIPTDCCL shapes: mode={} v={} v_aug={} e={} e_aug={} s={} "
-                "s_aug={} z_k={} text_features={} logits={}".format(
+                "CIPTDCCL shapes: mode={} v={} v_aug={} v_anchor={} e={} e_aug={} "
+                "s={} s_aug={} z_k={} text_features={} logits={}".format(
                     self.cipt_template_mode,
                     tuple(visual.shape),
                     tuple(visual_aug.shape),
+                    tuple(visual_anchor.shape),
                     tuple(causal.shape),
                     tuple(causal_aug.shape),
                     tuple(spurious.shape),
