@@ -12,9 +12,18 @@ indomain_test: False  # use indomain test split or not
 
 # Pure CIPT reproduction switch:
 # - one original/basic image only
-# - no DCCL contrastive, pre-CL, or representation regularizer
-# All prompt/TDA/optimizer/SWAD logic stays unchanged.
+# - no DCCL contrastive, pre-CL, causal-consistency, or representation regularizer
+# Note: set cipt_visual_prompt_enabled=false too for the exact old frozen-visual
+# pure-CIPT reproduction.
 cipt_pure: false
 
 # Fusion-only causal consistency between original and augmented causal features.
 cipt_causal_consistency_weight: 1.0
+
+# Visual-prompt ablation (no AC loss and no meta-learning):
+# - CLIP ViT weights remain frozen
+# - a shared shallow prompt is inserted before the visual transformer
+# - causal decomposition uses prompted visual features
+# - DCCL pre-CL/reg stay anchored to unprompted frozen CLIP features
+cipt_visual_prompt_enabled: true
+cipt_visual_prompt_length: 4
