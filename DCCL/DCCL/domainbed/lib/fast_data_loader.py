@@ -69,7 +69,7 @@ class FastDataLoader:
         self._infinite_iterator = iter(
             torch.utils.data.DataLoader(
                 dataset,
-                num_workers=4,
+                num_workers=num_workers,
                 batch_sampler=_InfiniteSampler(batch_sampler),
             )
         )
