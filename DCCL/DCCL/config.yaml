@@ -10,16 +10,37 @@ test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
 
-# Pure CIPT reproduction switch:
-# - one original/basic image only
-# - no DCCL contrastive, pre-CL, or representation regularizer
-# All prompt/TDA/optimizer/SWAD logic stays unchanged.
-cipt_pure: false
+# First-stage dual-prompt experiment: keep DCCL-side objectives off by default.
+# Set false to re-enable the existing two-view DCCL fusion losses.
+cipt_pure: true
 
-# Fusion-only causal consistency between original and augmented causal features.
+# B5c is the intended textual intervention bank for P_d.
+cipt_template_mode: b5c
+
+# Existing fusion-only causal consistency (used only when cipt_pure=false).
 cipt_causal_consistency_weight: 1.0
 
-# CIPTDCCL training augmentation switch:
+# Visual prompt P_v: shallow shared tokens before the frozen CLIP ViT transformer.
+cipt_visual_prompt_enabled: true
+cipt_visual_prompt_length: 4
+
+# Existing class-semantic CoOp prompt P_t.
+cipt_text_prompt_trainable: true
+
+# Diversity prompt P_d: shared learnable tokens + fixed B5c semantic suffixes.
+cipt_diversity_prompt_enabled: true
+cipt_diversity_prompt_length: 4
+
+# Prompt mutual-learning regularizers.
+# L = L_CIPT + ac_w * L_AC + mutual_w * L_mut + div_w * L_div
+cipt_ac_weight: 0.1
+cipt_mutual_weight: 0.05
+cipt_diversity_weight: 0.05
+cipt_mutual_temperature: 1.0
+
+# No episodic/meta-learning is enabled in this first version.
+
+# CIPTDCCL training augmentation switch (only relevant when cipt_pure=false):
 # - current: existing RandomResizedCrop + flip + ColorJitter + grayscale
 # - fourier: keep CLIP Resize + CenterCrop for both views and replace the
 #            random-crop branch with CIRL-inspired cross-source Fourier mixing
