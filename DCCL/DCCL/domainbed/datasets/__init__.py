@@ -19,25 +19,27 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
     )
 
     # Pair transforms consume both the current image and a donor image. They are
-    # enabled only for the Fourier training ablation below.
+    # enabled only for the legacy Fourier training ablation below.
     dset.pair_transform = None
 
     additional_data = False
     if data_type == "train":
-        if is_cipt_dccl and hparams.get("cipt_pure", False):
-            # Pure CIPT: one original view with official CLIP preprocessing.
+        if is_cipt_dccl and (
+            hparams.get("cipt_pure", False)
+            or hparams.get("cipt_class_supcon", False)
+        ):
+            # Pure CIPT and the class-SupCon ablation both use exactly one real
+            # image view with official CLIP preprocessing. Class-SupCon positives
+            # are different samples with the same label, never augmented x_2.
             dset.transforms = {"x": DBT.clip_basic}
         elif is_cipt_dccl:
             aug_mode = str(hparams.get("cipt_aug_mode", "current")).lower()
             if aug_mode == "current":
-                # Existing baseline: original CLIP-preprocessed view plus the
-                # RandomResizedCrop/flip/color/grayscale augmented view.
+                # Legacy fusion baseline: original CLIP-preprocessed view plus
+                # one RandomResizedCrop/flip/color/grayscale augmented view.
                 dset.transforms = {"x": DBT.clip_basic, "x_2": DBT.clip_aug}
             elif aug_mode == "fourier":
-                # Fourier ablation: keep the original CLIP CenterCrop pipeline
-                # for x and replace the random-crop branch with a donor-based
-                # Fourier amplitude intervention. The pair transform applies the
-                # same CLIP spatial preprocessing before mixing.
+                # Legacy Fourier fusion ablation.
                 dset.transforms = {"x": DBT.clip_basic}
                 dset.pair_transform = DBT.ClipFourierAugment(
                     alpha=float(hparams.get("cipt_fourier_alpha", 1.0)),
@@ -183,6 +185,7 @@ class _SplitDataset(torch.utils.data.Dataset):
         self.sample_d = hparams["sample_d"]
         self.mix = hparams["mix"]
         self.cipt_pure = bool(hparams.get("cipt_pure", False))
+        self.cipt_class_supcon = bool(hparams.get("cipt_class_supcon", False))
         self.dataset_y_dicts = dataset_y_dicts
         self.data_all = data_all
         self.train_keys_by_domain = train_keys_by_domain
@@ -202,11 +205,8 @@ class _SplitDataset(torch.utils.data.Dataset):
         ret = {"y": y}
         ret["d"] = self.env_id
 
-        # CIPTDCCL Fourier path. The original view keeps official CLIP
-        # preprocessing, while x_2 mixes the current image with a randomly
-        # sampled image from another source domain. Donors are restricted to
-        # that source domain's actual training keys, so validation/target images
-        # are never used to construct training augmentations.
+        # Legacy CIPTDCCL Fourier path. It is bypassed completely by the
+        # class-SupCon ablation because that mode sets only the x transform.
         if self.pair_transform is not None:
             if self.test:
                 raise RuntimeError("Fourier pair augmentation must not run on the test environment.")
@@ -229,14 +229,10 @@ class _SplitDataset(torch.utils.data.Dataset):
 
             ret["x"] = self.transforms["x"](x)
             ret["x_2"] = self.pair_transform(x, donor_x)
-            # x_2 preserves the current image's phase/semantic label. d_2 keeps
-            # the semantic sample's environment identity; the donor is only a
-            # style/amplitude source.
             ret["d_2"] = self.env_id
             return ret
 
-        # Explicit CIPTDCCL two-view baseline path: x is the original/basic view
-        # and x_2 is a single independently augmented view of the same image.
+        # Legacy explicit two-view fusion path.
         if "x" in self.transforms and "x_2" in self.transforms:
             ret["x"] = self.transforms["x"](x)
             ret["x_2"] = self.transforms["x_2"](x)
@@ -246,8 +242,9 @@ class _SplitDataset(torch.utils.data.Dataset):
         for key, transform in self.transforms.items():
             ret[key] = transform(x)
 
-            # Pure CIPT deliberately returns only the original x view.
-            if self.cipt_pure:
+            # Pure CIPT and class-SupCon both deliberately return only the real
+            # original x view. No augmentation/sample_d view is constructed.
+            if self.cipt_pure or self.cipt_class_supcon:
                 continue
 
             if self.sample_d and not self.test:
