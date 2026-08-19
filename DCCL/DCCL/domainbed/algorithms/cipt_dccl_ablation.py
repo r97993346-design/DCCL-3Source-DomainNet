@@ -593,14 +593,16 @@ class CIPTDCCL(_BaseCIPTDCCL):
         return self._update_fusion(x, y, kwargs["x_2"])
 
     def predict(self, x):
-        if self.cipt_template_mode != "b5b":
-            return super().predict(x)
-
         visual = self._visual(x)
         causal, _ = self.causal_decomposition(visual)
         class_features = self.text_features.class_features()
-        diverse_features = self.text_features.intervention_features(labels=None)
 
+        if self.cipt_template_mode != "b5b":
+            diverse_features = self._intervention_features(labels=None)
+            interventions = self.tda(causal, diverse_features)
+            return self._logits(interventions, class_features).mean(dim=1)
+
+        diverse_features = self.text_features.intervention_features(labels=None)
         num_classes, num_templates, dim = diverse_features.shape
         batch = causal.shape[0]
         causal_flat = (
