@@ -10,19 +10,17 @@ test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
 
-# Pure CIPT reproduction switch:
-# - one original/basic image only
-# - no DCCL contrastive, pre-CL, or representation regularizer
-# All prompt/TDA/optimizer/SWAD logic stays unchanged.
+# CIPT class-SupCon ablation branch.
+# Pure CIPT baseline switch:
+# - true: original/basic image only, no contrastive objective
+# - false: allow the class-SupCon switch below
 cipt_pure: false
 
-# Fusion-only causal consistency between original and augmented causal features.
-cipt_causal_consistency_weight: 1.0
-
-# CIPTDCCL training augmentation switch:
-# - current: existing RandomResizedCrop + flip + ColorJitter + grayscale
-# - fourier: keep CLIP Resize + CenterCrop for both views and replace the
-#            random-crop branch with CIRL-inspired cross-source Fourier mixing
-cipt_aug_mode: fourier
-cipt_fourier_alpha: 1.0
-cipt_fourier_ratio: 1.0
+# Main experiment on this branch:
+# - one original CLIP-preprocessed image per sample
+# - positives are different samples with the same class label
+# - no x_2 / image-augmentation positives
+# - no pretrained-feature anchoring (pre-CL)
+# - no representation/Gaussian anchoring regularizer
+# - no causal-consistency or augmented L_de
+cipt_class_supcon: true
