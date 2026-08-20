@@ -1,67 +1,75 @@
-# CIPT + DCCL
+# CIPT + Direct Causal Contrastive Learning
 
-`CIPTDCCL` has two explicitly separated input/training paths while keeping
-the existing prompt bank, TDA, optimizer, SWAD, model selection and inference
-logic unchanged.
+This branch isolates a simpler causal-contrastive fusion on top of CIPT.
+The CLIP image encoder, causal/spurious decomposition, prompt bank, TDA,
+optimizer family, SWAD selection and inference path stay unchanged.
 
-## Pure CIPT reproduction
+## Pure CIPT
 
 Set `--cipt_pure true`.
 
-The training sample contains only one original/basic view `x`; no `x_2` is
-created or consumed. The effective DCCL-side weights are:
+The objective is exactly:
 
-- `cipt_contrastive_weight = 0`
-- `l_layer = 0`
-- `l_d = 0`
+`L_CIPT = L_cls + beta * L_de + gamma * L_ind`
 
-Therefore the pure objective is:
+Only the original CLIP-preprocessed image is consumed.
 
-`L_cls + cipt_beta * L_de + cipt_gamma * L_ind`
+## Direct causal contrastive fusion
 
-No prompt-bank, TDA-head, adapter-initialization, optimizer, SWAD, IID/oracle,
-or inference setting is changed by this switch.
+With `cipt_pure: false`, each training image produces two views:
 
-## CIPT + DCCL fusion
+- `x`: official CLIP Resize + CenterCrop + CLIP normalization;
+- `x_2`: RandomResizedCrop + horizontal flip + ColorJitter + random grayscale + CLIP normalization.
 
-With `cipt_pure: false`, every training sample has exactly two views of the same
-image:
+The original view follows the normal CIPT path:
 
-- `x`: `DBT.clip_basic`, the official CLIP Resize + CenterCrop + normalization pipeline;
-- `x_2`: `DBT.clip_aug`, using RandomResizedCrop + horizontal flip + ColorJitter + random grayscale + CLIP normalization.
+`x -> frozen CLIP -> (e, s) -> L_cls + beta*L_de + gamma*L_ind`
 
-The augmented view has exactly three roles:
+The augmented view is used only to create a contrastive positive:
 
-1. **SupCon**: `e` and `e_aug` form the two positive views used by the existing
-   supervised contrastive loss.
-2. **Causal consistency**: the causal features of the original and augmented
-   views are aligned with
-   `L_cons = mean(1 - cosine(e, e_aug))`. Its default weight is
-   `cipt_causal_consistency_weight: 1.0`.
-3. **Augmented decomposition loss**: `e_aug` must remain class-discriminative and
-   `s_aug` must remain class-uninformative. The code computes `L_de_orig` and
-   `L_de_aug`, then uses
-   `L_de = 0.5 * (L_de_orig + L_de_aug)` so the existing `cipt_beta` scale is
-   preserved.
+`x_2 -> frozen CLIP -> causal decomposition -> e_aug`
 
-The augmented view is not used for `L_ind`, TDA classification, pre-CL, or the
-representation regularizer. Those remain on the original-image branch.
+There is no contrastive projection head. The direct causal representations are
+normalized and sent to the existing supervised contrastive objective:
 
-The fusion objective is:
+`L_con = SupCon(normalize(e), normalize(e_aug), labels)`
 
-`L_cls + beta*L_de + gamma*L_ind +`
-`cipt_causal_consistency_weight*L_cons +`
-`cipt_contrastive_weight*L_DCCL + l_layer*pre_cl + l_d*reg_loss`
+The augmented view is deliberately not used for augmented decomposition,
+causal-consistency, classification, independence, pre-CL, or representation
+regularization. Both inherited projection heads are removed and the optimizer
+is rebuilt without their parameters.
 
-## Example pure CIPT run
+The fusion objective is therefore:
+
+`L_total = L_CIPT + lambda_eff * L_con`
+
+where the default maximum contrastive weight is `0.1`. To avoid an abrupt
+contrastive gradient directly on the causal decomposition, the coefficient is
+linearly warmed up for 500 steps:
+
+`lambda_eff = lambda_max * min(1, step / warmup_steps)`
+
+Recommended first sweep on PACS:
+
+- `lambda_max = 0.05`
+- `lambda_max = 0.10` (default)
+- `lambda_max = 0.25`
+- `lambda_max = 0.50`
+
+Keep all other CIPT parameters fixed while doing this sweep. The main comparison
+should be Pure CIPT versus direct causal contrastive with the same seed and
+prompt template.
+
+## Example PACS run
 
 ```bash
 cd DCCL/DCCL
-CUDA_VISIBLE_DEVICES=0 python train_all.py cipt_repro \
+CUDA_VISIBLE_DEVICES=0 python train_all.py pacs_direct_causal_cl \
   --dataset PACS --algorithm CIPTDCCL --data_dir /path/to/data \
-  --test_envs 0 --deterministic --trial_seed 0 --seed 0 \
+  --deterministic --trial_seed 0 --seed 0 \
   --cipt_clip_backbone ViT-B/16 --cipt_clip_path /path/to/ViT-B-16.pt \
   --cipt_beta 4 --cipt_gamma 5 --cipt_k 4 \
   --cipt_prompt_length 16 --cipt_prompt_init "a photo of a" \
-  --cipt_pure true
+  --cipt_contrastive_weight 0.1 \
+  --cipt_contrastive_warmup_steps 500
 ```
