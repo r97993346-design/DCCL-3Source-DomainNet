@@ -48,8 +48,13 @@ class CIPTDCCL(_BaseCIPTDCCL):
         # e(original) <-> e(augmented) contrastive learning.
         self.l_layer = 0.0
         self.l_d = 0.0
+        if hasattr(self, "reg_log_variance"):
+            self.reg_log_variance.requires_grad_(False)
         self.contrastive_weight = float(
-            hparams.get("cipt_contrastive_weight", 0.1)
+            hparams.get(
+                "cipt_causal_contrastive_weight",
+                hparams.get("cipt_contrastive_weight", 0.1),
+            )
         )
         self.contrastive_warmup_steps = max(
             0, int(hparams.get("cipt_contrastive_warmup_steps", 500))
