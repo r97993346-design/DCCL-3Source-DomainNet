@@ -10,14 +10,21 @@ test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
 
-# Pure CIPT reproduction switch:
-# - one original/basic image only
-# - no DCCL contrastive, pre-CL, or representation regularizer
-# All prompt/TDA/optimizer/SWAD logic stays unchanged.
+# Pure CIPT reproduction switch.
+# true  -> original CIPT objective only
+# false -> original CIPT + direct causal-space SupCon with one augmented view
 cipt_pure: false
 
-# Fusion-only causal consistency between original and augmented causal features.
-cipt_causal_consistency_weight: 1.0
+# Direct causal contrastive ablation.
+# There is no projection head and no augmented-view classification/decomposition
+# loss. x_2 is causally decomposed only to provide e_aug as the positive view.
+# Because the contrastive gradient now acts directly on the causal representation,
+# start substantially below the old projection-head weight of 1.0.
+cipt_contrastive_weight: 0.1
+
+# Linear warmup for the effective contrastive coefficient:
+# lambda_eff = lambda_max * min(1, step / warmup_steps)
+cipt_contrastive_warmup_steps: 500
 
 # CIPTDCCL fusion uses a fixed two-view pipeline:
 # x   = official CLIP Resize + CenterCrop + normalization
