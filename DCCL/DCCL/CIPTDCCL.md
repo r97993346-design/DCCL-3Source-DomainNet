@@ -37,15 +37,16 @@ normalized and sent to the existing supervised contrastive objective:
 The augmented view is deliberately not used for augmented decomposition,
 causal-consistency, classification, independence, pre-CL, or representation
 regularization. Both inherited projection heads are removed and the optimizer
-is rebuilt without their parameters.
+is rebuilt without their parameters. The unused Gaussian regularizer parameter
+is frozen as well.
 
 The fusion objective is therefore:
 
 `L_total = L_CIPT + lambda_eff * L_con`
 
-where the default maximum contrastive weight is `0.1`. To avoid an abrupt
-contrastive gradient directly on the causal decomposition, the coefficient is
-linearly warmed up for 500 steps:
+The new coefficient is `cipt_causal_contrastive_weight`, with default maximum
+value `0.1`. To avoid an abrupt contrastive gradient directly on the causal
+decomposition, it is linearly warmed up for 500 steps:
 
 `lambda_eff = lambda_max * min(1, step / warmup_steps)`
 
@@ -56,9 +57,9 @@ Recommended first sweep on PACS:
 - `lambda_max = 0.25`
 - `lambda_max = 0.50`
 
-Keep all other CIPT parameters fixed while doing this sweep. The main comparison
-should be Pure CIPT versus direct causal contrastive with the same seed and
-prompt template.
+Keep `beta`, `gamma`, temperature, prompts, augmentation, seed and SWAD fixed
+while doing this sweep. The main comparison should be Pure CIPT versus direct
+causal contrastive under identical settings.
 
 ## Example PACS run
 
@@ -70,6 +71,6 @@ CUDA_VISIBLE_DEVICES=0 python train_all.py pacs_direct_causal_cl \
   --cipt_clip_backbone ViT-B/16 --cipt_clip_path /path/to/ViT-B-16.pt \
   --cipt_beta 4 --cipt_gamma 5 --cipt_k 4 \
   --cipt_prompt_length 16 --cipt_prompt_init "a photo of a" \
-  --cipt_contrastive_weight 0.1 \
+  --cipt_causal_contrastive_weight 0.1 \
   --cipt_contrastive_warmup_steps 500
 ```
