@@ -1,7 +1,13 @@
 # Default update config
 # Config order: hparams_registry -> config.yaml -> CLI
 
-swad: LossValley
+# This ablation branch evaluates the full training trajectory with IID model
+# selection. SWAD is disabled by default so LossValley cannot terminate the
+# optimization early. After all requested steps finish, trainer.py reports:
+# - iid: checkpoint selected by the best source-domain validation accuracy
+#        (train_out), evaluated on the held-out target domain (test_in)
+# - last: the final checkpoint after the full training schedule
+swad: null
 swad_kwargs:
   n_converge: 3
   n_tolerance: 6
