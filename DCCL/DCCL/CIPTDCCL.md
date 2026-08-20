@@ -1,6 +1,6 @@
 # CIPT + DCCL
 
-`CIPTDCCL` now has two explicitly separated input/training paths while keeping
+`CIPTDCCL` has two explicitly separated input/training paths while keeping
 the existing prompt bank, TDA, optimizer, SWAD, model selection and inference
 logic unchanged.
 
@@ -27,8 +27,8 @@ or inference setting is changed by this switch.
 With `cipt_pure: false`, every training sample has exactly two views of the same
 image:
 
-- `x`: `DBT.basic`, treated as the original image;
-- `x_2`: `DBT.aug`, treated as the augmented observation.
+- `x`: `DBT.clip_basic`, the official CLIP Resize + CenterCrop + normalization pipeline;
+- `x_2`: `DBT.clip_aug`, using RandomResizedCrop + horizontal flip + ColorJitter + random grayscale + CLIP normalization.
 
 The augmented view has exactly three roles:
 
