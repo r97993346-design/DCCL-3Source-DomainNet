@@ -12,20 +12,23 @@ indomain_test: False  # use indomain test split or not
 
 # Pure CIPT reproduction switch.
 # true  -> original CIPT objective only
-# false -> original CIPT + direct causal-space SupCon with one augmented view
+# false -> original CIPT + direct single-view causal SupCon
 cipt_pure: false
 
-# Direct causal contrastive ablation.
-# There is no projection head and no augmented-view classification/decomposition
-# loss. x_2 is causally decomposed only to provide e_aug as the positive view.
-# This is a dedicated coefficient so command-line sweeps can override it through
-# sconf without being consumed by argparse's legacy cipt_contrastive_weight flag.
+# Single-view contrastive ablation (C experiment).
+# true -> training data returns only the official CLIP-preprocessed x view;
+#         there is no augmented x_2 view. Positives are other same-class
+#         samples in the minibatch. Anchors without a same-class peer are
+#         skipped by the contrastive loss.
+cipt_single_view_contrastive: true
+
+# Direct causal contrastive coefficient. No projection head is used.
 cipt_causal_contrastive_weight: 0.1
 
 # Linear warmup for the effective contrastive coefficient:
 # lambda_eff = lambda_max * min(1, step / warmup_steps)
 cipt_contrastive_warmup_steps: 500
 
-# CIPTDCCL fusion uses a fixed two-view pipeline:
-# x   = official CLIP Resize + CenterCrop + normalization
-# x_2 = RandomResizedCrop + flip + ColorJitter + grayscale + CLIP normalization
+# Training preprocessing in this branch:
+# x = official CLIP Resize + CenterCrop + RGB + normalization
+# No RandomResizedCrop/flip/ColorJitter/grayscale contrastive view is generated.
