@@ -1,76 +1,87 @@
-# CIPT + Direct Causal Contrastive Learning
+# CIPT + Single-View Direct Causal Contrastive Learning
 
-This branch isolates a simpler causal-contrastive fusion on top of CIPT.
-The CLIP image encoder, causal/spurious decomposition, prompt bank, TDA,
-optimizer family, SWAD selection and inference path stay unchanged.
+This branch is the C ablation for separating contrastive-learning gains from
+augmentation-view gains. It is based on `feature/cipt-causal-contrastive-no-proj`
+but removes the augmented contrastive view entirely.
 
 ## Pure CIPT
 
 Set `--cipt_pure true`.
 
-The objective is exactly:
+The objective is:
 
 `L_CIPT = L_cls + beta * L_de + gamma * L_ind`
 
 Only the original CLIP-preprocessed image is consumed.
 
-## Direct causal contrastive fusion
+## Single-view direct causal contrastive mode
 
-With `cipt_pure: false`, each training image produces two views:
+With the branch defaults:
 
-- `x`: official CLIP Resize + CenterCrop + CLIP normalization;
-- `x_2`: RandomResizedCrop + horizontal flip + ColorJitter + random grayscale + CLIP normalization.
+- `cipt_pure: false`
+- `cipt_single_view_contrastive: true`
+- `cipt_causal_contrastive_weight: 0.1`
+- `cipt_contrastive_warmup_steps: 500`
 
-The original view follows the normal CIPT path:
+training consumes only one deterministic original view:
+
+`x = CLIP Resize + CenterCrop + RGB + normalization`
+
+There is no `x_2`, RandomResizedCrop, horizontal flip, ColorJitter, grayscale,
+or augmented causal representation in the training path.
+
+The original view follows normal CIPT:
 
 `x -> frozen CLIP -> (e, s) -> L_cls + beta*L_de + gamma*L_ind`
 
-The augmented view is used only to create a contrastive positive:
+The same causal representation `e` is also used directly for supervised
+contrastive learning. There is no projection head.
 
-`x_2 -> frozen CLIP -> causal decomposition -> e_aug`
+For anchor `i`, the positive set is:
 
-There is no contrastive projection head. The direct causal representations are
-normalized and sent to the existing supervised contrastive objective:
+`P(i) = {j | j != i and y_j == y_i}`
 
-`L_con = SupCon(normalize(e), normalize(e_aug), labels)`
+All other non-self samples are contrastive negatives. A sample with no
+same-class peer in the current merged minibatch is skipped as an anchor. It is
+still retained in the contrast pool and can act as a negative for valid
+anchors. If the whole minibatch contains no same-class pair, `L_con = 0` and
+the update reduces to pure CIPT for that step.
 
-The augmented view is deliberately not used for augmented decomposition,
-causal-consistency, classification, independence, pre-CL, or representation
-regularization. Both inherited projection heads are removed and the optimizer
-is rebuilt without their parameters. The unused Gaussian regularizer parameter
-is frozen as well.
+The objective is:
 
-The fusion objective is therefore:
+`L_total = L_CIPT + lambda_eff * L_con_single_view`
 
-`L_total = L_CIPT + lambda_eff * L_con`
-
-The new coefficient is `cipt_causal_contrastive_weight`, with default maximum
-value `0.1`. To avoid an abrupt contrastive gradient directly on the causal
-decomposition, it is linearly warmed up for 500 steps:
+with linear warmup:
 
 `lambda_eff = lambda_max * min(1, step / warmup_steps)`
 
-Recommended first sweep on PACS:
+This branch therefore measures class-level direct causal supervised contrastive
+learning without using an augmentation-induced positive pair.
 
-- `lambda_max = 0.05`
-- `lambda_max = 0.10` (default)
-- `lambda_max = 0.25`
-- `lambda_max = 0.50`
+## Logged diagnostics
 
-Keep `beta`, `gamma`, temperature, prompts, augmentation, seed and SWAD fixed
-while doing this sweep. The main comparison should be Pure CIPT versus direct
-causal contrastive under identical settings.
+The training step additionally reports:
 
-## Example PACS run
+- `dccl_contrastive_loss`
+- `contrastive_weight_eff`
+- `contrastive_valid_anchors`
+- `contrastive_valid_anchor_ratio`
+- `contrastive_positive_links`
+
+These values make it possible to verify how much of each minibatch actually
+contributes anchors to the single-view contrastive objective.
+
+## PACS C-ablation example
 
 ```bash
 cd DCCL/DCCL
-CUDA_VISIBLE_DEVICES=0 python train_all.py pacs_direct_causal_cl \
+CUDA_VISIBLE_DEVICES=0 python train_all.py pacs_b5c_singleview_cl01 \
   --dataset PACS --algorithm CIPTDCCL --data_dir /path/to/data \
   --deterministic --trial_seed 0 --seed 0 \
   --cipt_clip_backbone ViT-B/16 --cipt_clip_path /path/to/ViT-B-16.pt \
   --cipt_beta 4 --cipt_gamma 5 --cipt_k 4 \
   --cipt_prompt_length 16 --cipt_prompt_init "a photo of a" \
+  --cipt_template_mode b5c \
   --cipt_causal_contrastive_weight 0.1 \
   --cipt_contrastive_warmup_steps 500
 ```
