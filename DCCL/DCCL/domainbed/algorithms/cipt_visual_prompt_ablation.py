@@ -9,6 +9,8 @@ If cipt_pure=False is explicitly enabled, the inherited direct causal-space
 SupCon term is also active and can additionally backpropagate through P_v.
 """
 
+import torch
+
 from domainbed.algorithms.cipt_dccl_ablation import (
     CIPTDCCL as _CausalContrastiveCIPTDCCL,
 )
@@ -85,7 +87,7 @@ class CIPTDCCL(_CausalContrastiveCIPTDCCL):
 
     def _visual_anchor(self, images):
         """Unprompted frozen CLIP visual feature for diagnostics/ablation."""
-        with __import__("torch").no_grad():
+        with torch.no_grad():
             return self.clip_model.encode_image(images).float()
 
     def _visual(self, images):
