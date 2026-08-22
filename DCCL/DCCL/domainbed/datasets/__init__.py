@@ -17,15 +17,23 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
         algorithm_class is not None
         and algorithm_class.__name__ == "CIPTDCCL"
     )
+    cipt_single_view = bool(
+        hparams.get("cipt_single_view_contrastive", False)
+    )
 
     additional_data = False
     if data_type == "train":
-        if is_cipt_dccl and hparams.get("cipt_pure", False):
-            # Pure CIPT: one original view with official CLIP preprocessing.
+        if is_cipt_dccl and (
+            hparams.get("cipt_pure", False) or cipt_single_view
+        ):
+            # Pure CIPT and the single-view contrastive ablation both consume
+            # only the official CLIP-preprocessed original image. The latter
+            # forms positives from other same-class samples in the minibatch,
+            # so no augmented x_2 view should be generated.
             dset.transforms = {"x": DBT.clip_basic}
         elif is_cipt_dccl:
-            # CIPT+DCCL fusion: one official CLIP-preprocessed original view
-            # plus one RandomResizedCrop/flip/color/grayscale augmented view.
+            # Two-view CIPT+DCCL fusion: original CLIP view plus an independently
+            # augmented RandomResizedCrop/flip/color/grayscale view.
             dset.transforms = {"x": DBT.clip_basic, "x_2": DBT.clip_aug}
         else:
             dset.transforms = {"x": DBT.aug}
@@ -158,6 +166,9 @@ class _SplitDataset(torch.utils.data.Dataset):
         self.sample_d = hparams["sample_d"]
         self.mix = hparams["mix"]
         self.cipt_pure = bool(hparams.get("cipt_pure", False))
+        self.cipt_single_view_contrastive = bool(
+            hparams.get("cipt_single_view_contrastive", False)
+        )
         self.dataset_y_dicts = dataset_y_dicts
         self.data_all = data_all
         self.domains = list(range(len(dataset_y_dicts)))
@@ -187,8 +198,9 @@ class _SplitDataset(torch.utils.data.Dataset):
         for key, transform in self.transforms.items():
             ret[key] = transform(x)
 
-            # Pure CIPT deliberately returns only the original x view.
-            if self.cipt_pure:
+            # Pure CIPT and the single-view contrastive ablation deliberately
+            # return only the original x view.
+            if self.cipt_pure or self.cipt_single_view_contrastive:
                 continue
 
             if self.sample_d and not self.test:
@@ -232,7 +244,6 @@ def rand_bbox(size, lam):
     # uniform
     cx = np.random.randint(W)
     cy = np.random.randint(H)
-
     bbx1 = np.clip(cx - cut_w // 2, 0, W)
     bby1 = np.clip(cy - cut_h // 2, 0, H)
     bbx2 = np.clip(cx + cut_w // 2, 0, W)
