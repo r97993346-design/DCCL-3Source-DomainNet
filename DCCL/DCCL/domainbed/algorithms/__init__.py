@@ -1,7 +1,8 @@
 from .algorithms import *
-# On the ablation branch, route CIPTDCCL through the lightweight wrapper that
-# keeps the known high-performance implementation and only switches B5 prompts.
-from .cipt_dccl_ablation import CIPTDCCL
+# Route CIPTDCCL through the minimal visual-prompt wrapper on this branch.
+# The wrapper preserves the existing causal-contrastive implementation and only
+# adds learnable visual prompt tokens on top of frozen CLIP-V.
+from .cipt_visual_prompt_ablation import CIPTDCCL
 
 
 def get_algorithm_class(algorithm_name):
