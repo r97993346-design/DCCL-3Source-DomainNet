@@ -10,22 +10,23 @@ test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
 
-# Pure CIPT reproduction switch.
-# true  -> original CIPT objective only
-# false -> original CIPT + direct causal-space SupCon with one augmented view
-cipt_pure: false
+# Minimal visual-prompt experiment.
+# true  -> only original CIPT objective: L_cls + beta*L_de + gamma*L_ind
+# false -> inherited direct causal-space SupCon is additionally enabled.
+# Keep true for the clean "visual tokens learned only by causal/task losses" run.
+cipt_pure: true
 
-# Direct causal contrastive ablation.
-# There is no projection head and no augmented-view classification/decomposition
-# loss. x_2 is causally decomposed only to provide e_aug as the positive view.
-# This is a dedicated coefficient so command-line sweeps can override it through
-# sconf without being consumed by argparse's legacy cipt_contrastive_weight flag.
+# Shallow visual prompt P_v. CLIP-V remains fully frozen; there is no dedicated
+# visual-prompt loss. Gradients from the existing downstream losses pass through
+# the frozen transformer and update only the prompt tokens and existing adapters.
+cipt_visual_prompt_enabled: true
+cipt_visual_prompt_length: 4
+
+# Inherited direct causal contrastive ablation. These settings matter only when
+# cipt_pure=false. There is no projection head, pre-CL, or representation reg.
 cipt_causal_contrastive_weight: 0.1
-
-# Linear warmup for the effective contrastive coefficient:
-# lambda_eff = lambda_max * min(1, step / warmup_steps)
 cipt_contrastive_warmup_steps: 500
 
-# CIPTDCCL fusion uses a fixed two-view pipeline:
+# cipt_pure=false uses the inherited fixed two-view pipeline:
 # x   = official CLIP Resize + CenterCrop + normalization
 # x_2 = RandomResizedCrop + flip + ColorJitter + grayscale + CLIP normalization
