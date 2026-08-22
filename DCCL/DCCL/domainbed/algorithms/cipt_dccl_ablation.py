@@ -1,16 +1,15 @@
-"""CIPT + direct causal contrastive ablation.
+"""CIPT + single-view direct causal supervised contrastive ablation.
 
 Execution modes:
-1) cipt_pure=True: standard single-view CIPT.
-2) cipt_pure=False: standard CIPT on the original image plus one augmented
-   image whose causal decomposition is used only as the positive contrastive
-   view.
+1) cipt_pure=True: standard single-view CIPT with no contrastive objective.
+2) cipt_pure=False: standard CIPT on the original image plus supervised
+   contrastive learning directly on the original causal representations.
 
-This branch deliberately removes projection heads from the contrastive path.
-The direct causal representations e(x) and e(T(x)) are normalized and sent to
-SupCon. The augmented view does not participate in classification,
-decomposition, independence, causal-consistency, pre-CL, or representation
-regularization losses.
+This branch deliberately uses no augmented contrastive view and no projection
+head. For each anchor, positives are only other samples in the same minibatch
+with the same class label. Anchors with no same-class peer are excluded from the
+contrastive average; if a whole minibatch has no valid positive pair, the
+contrastive loss is exactly zero and the update reduces to the CIPT objective.
 """
 
 import torch
@@ -26,30 +25,39 @@ from domainbed.optimizers import get_optimizer
 
 
 class CIPTDCCL(_BaseCIPTDCCL):
-    """CIPT with direct causal-space supervised contrastive regularization."""
+    """CIPT with direct single-view causal-space supervised contrastive loss."""
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super().__init__(input_shape, num_classes, num_domains, hparams)
         self.cipt_pure = bool(hparams.get("cipt_pure", False))
+        self.cipt_single_view_contrastive = bool(
+            hparams.get("cipt_single_view_contrastive", True)
+        )
         self.cipt_template_mode = str(
             hparams.get("cipt_template_mode", "b5a")
         ).lower()
         self.text_features.set_template_mode(self.cipt_template_mode)
 
+        if not self.cipt_pure and not self.cipt_single_view_contrastive:
+            raise ValueError(
+                "This branch is the single-view contrastive ablation. Set "
+                "cipt_single_view_contrastive=true or use cipt_pure=true."
+            )
+
         # Direct causal contrastive learning should not be hidden behind an MLP
-        # projection head. Remove both DCCL projection modules inherited from
-        # the compatibility base class and rebuild the optimizer so their
-        # parameters are not optimized at all.
+        # projection head. Remove both inherited DCCL projection modules and
+        # rebuild the optimizer without their parameters.
         for module_name in ("proj_head", "pre_proj_head"):
             if hasattr(self, module_name):
                 delattr(self, module_name)
 
-        # This ablation isolates exactly one DCCL-side mechanism:
-        # e(original) <-> e(augmented) contrastive learning.
+        # Isolate one DCCL-side mechanism: same-class supervised contrastive
+        # clustering directly in the causal representation space.
         self.l_layer = 0.0
         self.l_d = 0.0
         if hasattr(self, "reg_log_variance"):
             self.reg_log_variance.requires_grad_(False)
+
         self.contrastive_weight = float(
             hparams.get(
                 "cipt_causal_contrastive_weight",
@@ -58,6 +66,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
         self.contrastive_warmup_steps = max(
             0, int(hparams.get("cipt_contrastive_warmup_steps", 500))
+        )
+        self.single_view_temperature = float(
+            getattr(self.supcon_loss, "temperature", hparams["t"])
         )
         self.register_buffer(
             "_causal_contrastive_step",
@@ -87,21 +98,24 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
 
         print(
-            "CIPTDCCL direct-causal-contrastive: pure_cipt={}, "
-            "template_mode={}, K={}, tda_heads={}, lr={}, "
-            "contrastive_weight={}, contrastive_warmup_steps={}, "
-            "projection_head=False, pre_cl=False, reg=False".format(
+            "CIPTDCCL single-view-causal-contrastive: pure_cipt={}, "
+            "single_view={}, template_mode={}, K={}, tda_heads={}, lr={}, "
+            "contrastive_weight={}, contrastive_warmup_steps={}, t={}, "
+            "augmentation_view=False, projection_head=False, pre_cl=False, "
+            "reg=False".format(
                 self.cipt_pure,
+                self.cipt_single_view_contrastive,
                 self.cipt_template_mode,
                 hparams["cipt_k"],
                 hparams["cipt_tda_heads"],
                 hparams["lr"],
                 self.contrastive_weight,
                 self.contrastive_warmup_steps,
+                self.single_view_temperature,
             )
         )
         print(
-            "CIPTDCCL direct-causal-contrastive parameters: "
+            "CIPTDCCL single-view-causal-contrastive parameters: "
             "trainable={}, frozen={}".format(
                 self.trainable_parameter_count,
                 self.frozen_parameter_count,
@@ -124,8 +138,56 @@ class CIPTDCCL(_BaseCIPTDCCL):
         ramp = min(1.0, step / float(self.contrastive_warmup_steps))
         return self.contrastive_weight * ramp
 
-    def _update_pure(self, x, y):
-        """Single-original-image CIPT path with no contrastive objective."""
+    def _single_view_supcon(self, causal, labels):
+        """Supervised contrastive loss with one feature per sample.
+
+        Positives for anchor i are only j != i with y_j == y_i. Singleton
+        anchors are not included in the contrastive average, but remain in the
+        denominator as negatives for valid anchors. If no anchor has a positive
+        peer, return a differentiable zero loss.
+        """
+        features = F.normalize(causal, dim=-1)
+        labels = labels.view(-1)
+        batch_size = features.shape[0]
+
+        if batch_size <= 1:
+            zero = features.sum() * 0.0
+            return zero, 0, 0
+
+        logits = torch.matmul(features, features.T) / self.single_view_temperature
+        self_mask = torch.eye(
+            batch_size, dtype=torch.bool, device=features.device
+        )
+        contrast_mask = ~self_mask
+        positive_mask = labels[:, None].eq(labels[None, :]) & contrast_mask
+        positive_count = positive_mask.sum(dim=1)
+        valid_anchor = positive_count > 0
+        valid_anchor_count = int(valid_anchor.sum().item())
+        positive_link_count = int(positive_mask.sum().item())
+
+        if valid_anchor_count == 0:
+            zero = features.sum() * 0.0
+            return zero, 0, 0
+
+        # Stable log-softmax over every non-self sample. Singleton anchors are
+        # excluded only as anchors; they still contribute as negatives.
+        masked_logits = logits.masked_fill(~contrast_mask, float("-inf"))
+        logits_max = masked_logits.max(dim=1, keepdim=True).values
+        stable_logits = logits - logits_max.detach()
+        exp_logits = torch.exp(stable_logits) * contrast_mask.float()
+        log_prob = stable_logits - torch.log(
+            exp_logits.sum(dim=1, keepdim=True).clamp_min(1e-12)
+        )
+
+        mean_log_prob_pos = (
+            (positive_mask.float() * log_prob).sum(dim=1)[valid_anchor]
+            / positive_count[valid_anchor].float()
+        )
+        loss = -mean_log_prob_pos.mean()
+        return loss, valid_anchor_count, positive_link_count
+
+    def _cipt_terms(self, x, y):
+        """Compute the unchanged CIPT objective terms on one original view."""
         all_x = torch.cat(x)
         labels = torch.cat(y)
 
@@ -153,6 +215,35 @@ class CIPTDCCL(_BaseCIPTDCCL):
         cipt_base_loss = (
             loss_cls + self.beta * loss_de + self.gamma * loss_ind
         )
+        return (
+            labels,
+            visual,
+            causal,
+            spurious,
+            class_features,
+            interventions,
+            logits,
+            loss_cls,
+            loss_de,
+            loss_ind,
+            cipt_base_loss,
+        )
+
+    def _update_pure(self, x, y):
+        """Single-original-image CIPT path with no contrastive objective."""
+        (
+            labels,
+            visual,
+            causal,
+            spurious,
+            class_features,
+            interventions,
+            logits,
+            loss_cls,
+            loss_de,
+            loss_ind,
+            cipt_base_loss,
+        ) = self._cipt_terms(x, y)
         total = cipt_base_loss
 
         self.optimizer.zero_grad()
@@ -171,6 +262,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "causal_consistency_loss": zero.item(),
             "dccl_contrastive_loss": zero.item(),
             "contrastive_weight_eff": 0.0,
+            "contrastive_valid_anchors": 0.0,
+            "contrastive_valid_anchor_ratio": 0.0,
+            "contrastive_positive_links": 0.0,
             "pre_cl_loss": zero.item(),
             "reg_loss": zero.item(),
             "mean_e_norm": causal.norm(dim=-1).mean().item(),
@@ -180,58 +274,26 @@ class CIPTDCCL(_BaseCIPTDCCL):
             ).mean().item(),
         }
 
-    def _update_fusion(self, x, y, x_2):
-        """CIPT original branch + augmented causal positive for SupCon only."""
-        all_x = torch.cat(x)
-        all_x_aug = torch.cat(x_2)
-        labels = torch.cat(y)
+    def _update_single_view(self, x, y):
+        """CIPT + same-class contrastive clustering on original causal features."""
+        (
+            labels,
+            visual,
+            causal,
+            spurious,
+            class_features,
+            interventions,
+            logits,
+            loss_cls,
+            loss_de,
+            loss_ind,
+            cipt_base_loss,
+        ) = self._cipt_terms(x, y)
 
-        # Frozen CLIP encodes both views. CIPT causal/spurious supervision is
-        # applied only to the original image.
-        visual = self._visual(all_x)
-        visual_aug = self._visual(all_x_aug)
-        causal, spurious = self.causal_decomposition(visual)
-
-        # The augmented image is decomposed only to obtain e_aug, which serves
-        # as the positive contrastive view. Its spurious component is discarded.
-        causal_aug, _ = self.causal_decomposition(visual_aug)
-
-        class_features = self.text_features.class_features()
-        causal_logits = self._logits(
-            causal[:, None, :], class_features
-        )[:, 0]
-        spurious_logits = self._logits(
-            spurious[:, None, :], class_features
-        )[:, 0]
-        loss_de = cipt_decomposition_loss(
-            causal_logits, spurious_logits, labels
-        )
-        loss_ind = cipt_independence_loss(causal, spurious)
-
-        interventions = self.tda(
-            causal, self._intervention_features(labels=labels)
-        )
-        logits = self._logits(interventions, class_features)
-        loss_cls = cipt_classification_loss(logits, labels)
-
-        # No projection head: contrast directly in causal representation space.
-        contrast_features = torch.stack(
-            (
-                F.normalize(causal, dim=-1),
-                F.normalize(causal_aug, dim=-1),
-            ),
-            dim=1,
-        )
-        loss_contrastive = self.supcon_loss(
-            contrast_features, labels
+        loss_contrastive, valid_anchor_count, positive_link_count = (
+            self._single_view_supcon(causal, labels)
         )
 
-        # Preserve the original CIPT objective and add exactly one auxiliary
-        # term. A warmup is used because direct causal-space gradients are
-        # stronger than projection-head gradients.
-        cipt_base_loss = (
-            loss_cls + self.beta * loss_de + self.gamma * loss_ind
-        )
         self._causal_contrastive_step.add_(1)
         contrastive_weight_eff = self._contrastive_scale()
         total = (
@@ -241,17 +303,17 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         if self.debug_shapes:
             print(
-                "CIPTDCCL direct causal shapes: mode={} v={} v_aug={} "
-                "e={} e_aug={} s={} z_k={} text_features={} logits={}".format(
+                "CIPTDCCL single-view causal shapes: mode={} v={} e={} s={} "
+                "z_k={} text_features={} logits={} valid_anchors={}/{}".format(
                     self.cipt_template_mode,
                     tuple(visual.shape),
-                    tuple(visual_aug.shape),
                     tuple(causal.shape),
-                    tuple(causal_aug.shape),
                     tuple(spurious.shape),
                     tuple(interventions.shape),
                     tuple(class_features.shape),
                     tuple(logits.shape),
+                    valid_anchor_count,
+                    labels.numel(),
                 )
             )
 
@@ -260,6 +322,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.optimizer.step()
 
         zero = causal.new_zeros(())
+        batch_size = max(1, int(labels.numel()))
         return {
             "total_loss": total.item(),
             "cipt_base_loss": cipt_base_loss.item(),
@@ -271,13 +334,12 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "causal_consistency_loss": zero.item(),
             "dccl_contrastive_loss": loss_contrastive.item(),
             "contrastive_weight_eff": float(contrastive_weight_eff),
+            "contrastive_valid_anchors": float(valid_anchor_count),
+            "contrastive_valid_anchor_ratio": valid_anchor_count / batch_size,
+            "contrastive_positive_links": float(positive_link_count),
             "pre_cl_loss": zero.item(),
             "reg_loss": zero.item(),
             "mean_e_norm": causal.norm(dim=-1).mean().item(),
-            "mean_e_aug_norm": causal_aug.norm(dim=-1).mean().item(),
-            "mean_e_aug_cosine": F.cosine_similarity(
-                causal, causal_aug, dim=-1
-            ).mean().item(),
             "mean_s_norm": spurious.norm(dim=-1).mean().item(),
             "mean_es_cosine": F.cosine_similarity(
                 causal, spurious, dim=-1
@@ -287,13 +349,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
     def update(self, x, y, **kwargs):
         if self.cipt_pure:
             return self._update_pure(x, y)
-
-        if "x_2" not in kwargs:
-            raise KeyError(
-                "CIPTDCCL fusion mode requires x_2: one original image "
-                "and one augmented view per sample."
-            )
-        return self._update_fusion(x, y, kwargs["x_2"])
+        return self._update_single_view(x, y)
 
     def predict(self, x):
         if self.cipt_template_mode != "b5b":
