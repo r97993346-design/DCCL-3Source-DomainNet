@@ -34,6 +34,9 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_template_mode"] = ("b5a", "b5a")
         hparams["cipt_tda_heads"] = (1, 1)
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
+        # Weak auxiliary CIPT supervision on the augmented view. Setting this
+        # to 0 recovers the causal-contrastive-only parent branch behavior.
+        hparams["cipt_aug_causal_weight"] = (0.25, 0.25)
         hparams["cipt_debug_shapes"] = (False, False)
 
     hparams["freeze_bn"] = (True, True)
