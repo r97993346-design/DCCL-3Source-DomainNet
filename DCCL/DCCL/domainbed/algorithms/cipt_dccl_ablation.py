@@ -34,7 +34,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.cipt_template_mode = str(
             hparams.get("cipt_template_mode", "b5a")
         ).lower()
+        self.cipt_prompt_selection = str(
+            hparams.get("cipt_prompt_selection", "random")
+        ).lower()
         self.text_features.set_template_mode(self.cipt_template_mode)
+        self.text_features.set_prompt_selection_mode(self.cipt_prompt_selection)
 
         # Direct causal contrastive learning should not be hidden behind an MLP
         # projection head. Remove both DCCL projection modules inherited from
@@ -88,11 +92,12 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         print(
             "CIPTDCCL direct-causal-contrastive: pure_cipt={}, "
-            "template_mode={}, K={}, tda_heads={}, lr={}, "
+            "template_mode={}, prompt_selection={}, K={}, tda_heads={}, lr={}, "
             "contrastive_weight={}, contrastive_warmup_steps={}, "
             "projection_head=False, pre_cl=False, reg=False".format(
                 self.cipt_pure,
                 self.cipt_template_mode,
+                self.cipt_prompt_selection,
                 hparams["cipt_k"],
                 hparams["cipt_tda_heads"],
                 hparams["lr"],
@@ -100,6 +105,20 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.contrastive_warmup_steps,
             )
         )
+        if (
+            self.cipt_template_mode == "b5c"
+            and self.cipt_prompt_selection == "diversity"
+        ):
+            selected_indices = (
+                self.text_features.selected_b5c_indices().detach().cpu().tolist()
+            )
+            selected_templates = self.text_features.selected_b5c_templates()
+            print(
+                "B5c embedding-diversity selection: indices={} templates={}".format(
+                    selected_indices,
+                    selected_templates,
+                )
+            )
         print(
             "CIPTDCCL direct-causal-contrastive parameters: "
             "trainable={}, frozen={}".format(
@@ -241,9 +260,10 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         if self.debug_shapes:
             print(
-                "CIPTDCCL direct causal shapes: mode={} v={} v_aug={} "
+                "CIPTDCCL direct causal shapes: mode={} selection={} v={} v_aug={} "
                 "e={} e_aug={} s={} z_k={} text_features={} logits={}".format(
                     self.cipt_template_mode,
+                    self.cipt_prompt_selection,
                     tuple(visual.shape),
                     tuple(visual_aug.shape),
                     tuple(causal.shape),
