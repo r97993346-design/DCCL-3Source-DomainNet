@@ -15,6 +15,12 @@ indomain_test: False  # use indomain test split or not
 # false -> original CIPT + direct causal-space SupCon with one augmented view
 cipt_pure: false
 
+# This branch studies class-agnostic B5c nuisance prompts selected only from
+# their frozen CLIP text embeddings. No image/class/label information enters
+# the selection rule.
+cipt_template_mode: b5c
+cipt_prompt_selection: diversity
+
 # Direct causal contrastive ablation.
 # There is no projection head and no augmented-view classification/decomposition
 # loss. x_2 is causally decomposed only to provide e_aug as the positive view.
