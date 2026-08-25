@@ -159,6 +159,7 @@ B5C_GENERIC_EXPANDED_TEMPLATES = (
 )
 
 TEMPLATE_MODES = ("b5a", "b5b", "b5c")
+PROMPT_SELECTION_MODES = ("random", "diversity")
 
 
 def load_frozen_clip(backbone, local_path=""):
@@ -232,6 +233,7 @@ class CIPTTextFeatures(nn.Module):
         self.class_names = [name.replace("_", " ") for name in class_names]
         self.k = int(k)
         self.template_mode = "b5a"
+        self.prompt_selection_mode = "random"
 
         self.register_buffer(
             "b5a_text_bank",
@@ -276,6 +278,17 @@ class CIPTTextFeatures(nn.Module):
             )
         self.template_mode = mode
 
+    def set_prompt_selection_mode(self, mode):
+        """Configure B5c prompt selection without changing B5a/B5b behavior."""
+        mode = str(mode).lower()
+        if mode not in PROMPT_SELECTION_MODES:
+            raise ValueError(
+                "Unknown cipt_prompt_selection={!r}; expected one of {}".format(
+                    mode, PROMPT_SELECTION_MODES
+                )
+            )
+        self.prompt_selection_mode = mode
+
     def _select_indices(self, num_available, device, legacy_fixed=False):
         if num_available < 1:
             raise ValueError("Template bank must contain at least one prompt.")
@@ -294,11 +307,68 @@ class CIPTTextFeatures(nn.Module):
             return torch.cat(pieces, dim=0)
         return torch.arange(self.k, device=device) % num_available
 
+    def _select_diverse_indices(self, bank):
+        """Greedy farthest-point sampling in normalized CLIP text space.
+
+        B5c prompts are class-agnostic nuisance/style descriptions.  This
+        selector deliberately uses only their frozen CLIP embeddings; image
+        features, labels, class prompts, and prediction confidence never enter
+        the selection rule.
+
+        The first point is chosen deterministically as the prompt farthest from
+        the bank centroid. Each following point maximizes its minimum cosine
+        distance to the already-selected set. Therefore the returned K prompts
+        spread across the B5c embedding space instead of clustering around one
+        nuisance family.
+        """
+        num_available = int(bank.shape[0])
+        if num_available < 1:
+            raise ValueError("Template bank must contain at least one prompt.")
+        if self.k > num_available:
+            raise ValueError(
+                "Diversity selection requires cipt_k <= number of B5c prompts; "
+                "got K={} and bank size={}.".format(self.k, num_available)
+            )
+
+        features = F.normalize(bank.float(), dim=-1)
+        centroid = F.normalize(features.mean(dim=0, keepdim=True), dim=-1)
+        centroid_similarity = (features @ centroid.transpose(0, 1)).squeeze(1)
+        first = int(torch.argmin(centroid_similarity).item())
+        selected = [first]
+
+        # cosine distance = 1 - cosine similarity.  min_distance[i] stores
+        # each candidate's distance to its nearest selected prompt.
+        min_distance = 1.0 - features @ features[first]
+        min_distance[first] = -1.0
+
+        while len(selected) < self.k:
+            next_idx = int(torch.argmax(min_distance).item())
+            selected.append(next_idx)
+            distance_to_new = 1.0 - features @ features[next_idx]
+            min_distance = torch.minimum(min_distance, distance_to_new)
+            min_distance[selected] = -1.0
+
+        return torch.tensor(selected, dtype=torch.long, device=bank.device)
+
+    def selected_b5c_indices(self):
+        """Return the current B5c indices used by the configured selector."""
+        bank = self.b5c_text_bank
+        if self.prompt_selection_mode == "diversity":
+            return self._select_diverse_indices(bank)
+        return self._select_indices(bank.shape[0], bank.device)
+
+    def selected_b5c_templates(self):
+        """Human-readable B5c templates for diagnostics/logging."""
+        indices = self.selected_b5c_indices().detach().cpu().tolist()
+        return [B5C_GENERIC_EXPANDED_TEMPLATES[i] for i in indices]
+
     def intervention_features(self, labels=None):
         """Return selected intervention embeddings for the active B5 mode.
 
         B5a -> [K, D], exact legacy fixed/cycled prompts.
-        B5c -> [K, D], random K during training and deterministic K at eval.
+        B5c/random -> [K, D], original random-K training behavior.
+        B5c/diversity -> [K, D], deterministic farthest-point subset in CLIP
+            prompt-embedding space; selection never uses images or labels.
         B5b with labels -> [B, K, D], class-conditioned official prompts.
         B5b without labels -> [C, K, D], used for candidate-class inference.
         """
@@ -309,7 +379,10 @@ class CIPTTextFeatures(nn.Module):
 
         if self.template_mode == "b5c":
             bank = self.b5c_text_bank
-            idx = self._select_indices(bank.shape[0], bank.device)
+            if self.prompt_selection_mode == "diversity":
+                idx = self._select_diverse_indices(bank)
+            else:
+                idx = self._select_indices(bank.shape[0], bank.device)
             return bank.index_select(0, idx)
 
         bank = self.b5b_text_bank
