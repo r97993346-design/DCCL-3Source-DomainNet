@@ -3,14 +3,16 @@
 Execution modes:
 1) cipt_pure=True: standard single-view CIPT.
 2) cipt_pure=False: standard CIPT on the original image plus one augmented
-   image whose causal decomposition is used only as the positive contrastive
-   view.
+   image. The augmented image is causally decomposed, receives a lightweight
+   decomposition loss, and its causal feature is used as the positive
+   contrastive view.
 
 This branch deliberately removes projection heads from the contrastive path.
 The direct causal representations e(x) and e(T(x)) are normalized and sent to
-SupCon. The augmented view does not participate in classification,
-decomposition, independence, causal-consistency, pre-CL, or representation
-regularization losses.
+SupCon. The augmented view does not participate in TDA classification,
+independence, causal-consistency, pre-CL, or representation-regularization
+losses; it contributes only augmented-view causal decomposition and causal
+contrastive supervision.
 """
 
 import torch
@@ -44,12 +46,12 @@ class CIPTDCCL(_BaseCIPTDCCL):
             if hasattr(self, module_name):
                 delattr(self, module_name)
 
-        # This ablation isolates exactly one DCCL-side mechanism:
-        # e(original) <-> e(augmented) contrastive learning.
+        # Keep only the direct causal-space contrastive mechanism from DCCL.
         self.l_layer = 0.0
         self.l_d = 0.0
         if hasattr(self, "reg_log_variance"):
             self.reg_log_variance.requires_grad_(False)
+
         self.contrastive_weight = float(
             hparams.get(
                 "cipt_causal_contrastive_weight",
@@ -59,6 +61,17 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.contrastive_warmup_steps = max(
             0, int(hparams.get("cipt_contrastive_warmup_steps", 500))
         )
+
+        # Relative strength of the augmented-view decomposition objective.
+        # The effective coefficient is beta * cipt_aug_decomp_weight, so the
+        # default 0.5 gives the augmented view half the decomposition strength
+        # of the original view while keeping it an auxiliary branch.
+        self.aug_decomp_weight = float(
+            hparams.get("cipt_aug_decomp_weight", 0.5)
+        )
+        if self.aug_decomp_weight < 0.0:
+            raise ValueError("cipt_aug_decomp_weight must be non-negative")
+
         self.register_buffer(
             "_causal_contrastive_step",
             torch.zeros((), dtype=torch.long),
@@ -66,6 +79,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         if self.cipt_pure:
             self.contrastive_weight = 0.0
+            self.aug_decomp_weight = 0.0
 
         trainable = [
             parameter for parameter in self.parameters()
@@ -90,6 +104,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "CIPTDCCL direct-causal-contrastive: pure_cipt={}, "
             "template_mode={}, K={}, tda_heads={}, lr={}, "
             "contrastive_weight={}, contrastive_warmup_steps={}, "
+            "aug_decomp_weight={}, aug_decomp_beta_eff={}, "
             "projection_head=False, pre_cl=False, reg=False".format(
                 self.cipt_pure,
                 self.cipt_template_mode,
@@ -98,6 +113,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 hparams["lr"],
                 self.contrastive_weight,
                 self.contrastive_warmup_steps,
+                self.aug_decomp_weight,
+                self.beta * self.aug_decomp_weight,
             )
         )
         print(
@@ -167,6 +184,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "cipt_de_loss": loss_de.item(),
             "cipt_de_orig_loss": loss_de.item(),
             "cipt_de_aug_loss": zero.item(),
+            "aug_decomp_weight_eff": 0.0,
             "cipt_ind_loss": loss_ind.item(),
             "causal_consistency_loss": zero.item(),
             "dccl_contrastive_loss": zero.item(),
@@ -181,22 +199,21 @@ class CIPTDCCL(_BaseCIPTDCCL):
         }
 
     def _update_fusion(self, x, y, x_2):
-        """CIPT original branch + augmented causal positive for SupCon only."""
+        """CIPT main view + augmented decomposition + direct causal SupCon."""
         all_x = torch.cat(x)
         all_x_aug = torch.cat(x_2)
         labels = torch.cat(y)
 
-        # Frozen CLIP encodes both views. CIPT causal/spurious supervision is
-        # applied only to the original image.
+        # Frozen CLIP encodes both views. The same causal-decomposition module
+        # is shared by original and augmented images.
         visual = self._visual(all_x)
         visual_aug = self._visual(all_x_aug)
         causal, spurious = self.causal_decomposition(visual)
-
-        # The augmented image is decomposed only to obtain e_aug, which serves
-        # as the positive contrastive view. Its spurious component is discarded.
-        causal_aug, _ = self.causal_decomposition(visual_aug)
+        causal_aug, spurious_aug = self.causal_decomposition(visual_aug)
 
         class_features = self.text_features.class_features()
+
+        # Original-view CIPT decomposition objective.
         causal_logits = self._logits(
             causal[:, None, :], class_features
         )[:, 0]
@@ -208,6 +225,23 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
         loss_ind = cipt_independence_loss(causal, spurious)
 
+        # Augmented-view causal decomposition supervision. This uses the same
+        # CIPT decomposition objective: e_aug must remain class-discriminative,
+        # while s_aug is encouraged to be class-uninformative. The augmented
+        # branch deliberately does not receive TDA classification or an extra
+        # independence loss.
+        causal_aug_logits = self._logits(
+            causal_aug[:, None, :], class_features
+        )[:, 0]
+        spurious_aug_logits = self._logits(
+            spurious_aug[:, None, :], class_features
+        )[:, 0]
+        loss_de_aug = cipt_decomposition_loss(
+            causal_aug_logits, spurious_aug_logits, labels
+        )
+
+        # Only the original causal representation enters the CIPT TDA task
+        # branch, so the augmented image remains an auxiliary training view.
         interventions = self.tda(
             causal, self._intervention_features(labels=labels)
         )
@@ -226,29 +260,33 @@ class CIPTDCCL(_BaseCIPTDCCL):
             contrast_features, labels
         )
 
-        # Preserve the original CIPT objective and add exactly one auxiliary
-        # term. A warmup is used because direct causal-space gradients are
-        # stronger than projection-head gradients.
+        # Preserve the original CIPT objective, then add two auxiliary terms:
+        # 1) lightweight augmented-view decomposition;
+        # 2) direct causal-space supervised contrastive learning.
         cipt_base_loss = (
             loss_cls + self.beta * loss_de + self.gamma * loss_ind
         )
+        aug_decomp_weight_eff = self.beta * self.aug_decomp_weight
+
         self._causal_contrastive_step.add_(1)
         contrastive_weight_eff = self._contrastive_scale()
         total = (
             cipt_base_loss
+            + aug_decomp_weight_eff * loss_de_aug
             + contrastive_weight_eff * loss_contrastive
         )
 
         if self.debug_shapes:
             print(
                 "CIPTDCCL direct causal shapes: mode={} v={} v_aug={} "
-                "e={} e_aug={} s={} z_k={} text_features={} logits={}".format(
+                "e={} e_aug={} s={} s_aug={} z_k={} text_features={} logits={}".format(
                     self.cipt_template_mode,
                     tuple(visual.shape),
                     tuple(visual_aug.shape),
                     tuple(causal.shape),
                     tuple(causal_aug.shape),
                     tuple(spurious.shape),
+                    tuple(spurious_aug.shape),
                     tuple(interventions.shape),
                     tuple(class_features.shape),
                     tuple(logits.shape),
@@ -266,7 +304,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "cipt_cls_loss": loss_cls.item(),
             "cipt_de_loss": loss_de.item(),
             "cipt_de_orig_loss": loss_de.item(),
-            "cipt_de_aug_loss": zero.item(),
+            "cipt_de_aug_loss": loss_de_aug.item(),
+            "aug_decomp_weight_eff": float(aug_decomp_weight_eff),
             "cipt_ind_loss": loss_ind.item(),
             "causal_consistency_loss": zero.item(),
             "dccl_contrastive_loss": loss_contrastive.item(),
@@ -279,8 +318,12 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 causal, causal_aug, dim=-1
             ).mean().item(),
             "mean_s_norm": spurious.norm(dim=-1).mean().item(),
+            "mean_s_aug_norm": spurious_aug.norm(dim=-1).mean().item(),
             "mean_es_cosine": F.cosine_similarity(
                 causal, spurious, dim=-1
+            ).mean().item(),
+            "mean_e_aug_s_aug_cosine": F.cosine_similarity(
+                causal_aug, spurious_aug, dim=-1
             ).mean().item(),
         }
 
