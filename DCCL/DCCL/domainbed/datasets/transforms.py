@@ -42,28 +42,40 @@ aug = T.Compose([
 
 # OpenAI CLIP preprocessing constants. CIPTDCCL uses these transforms instead
 # of the ImageNet/ResNet transforms above so the frozen CLIP image encoder sees
-# the input distribution it was trained with.
+# CLIP-normalized inputs.
 CLIP_MEAN = (0.48145466, 0.4578275, 0.40821073)
 CLIP_STD = (0.26862954, 0.26130258, 0.27577711)
 
 
-# Original/non-augmented CIPTDCCL view. This mirrors OpenAI CLIP's official
-# preprocessing: aspect-ratio-preserving bicubic resize, center crop, RGB
-# conversion, tensor conversion, and CLIP normalization.
+# CIPTDCCL basic view: preserve the complete image content by resizing the
+# whole image to 224x224, then convert to RGB and apply CLIP normalization.
+# This intentionally removes the official CLIP CenterCrop so the stable/basic
+# view does not discard semantic content near image boundaries.
 clip_basic = T.Compose([
-    T.Resize(224, interpolation=T.InterpolationMode.BICUBIC),
-    T.CenterCrop(224),
+    T.Resize(
+        (224, 224),
+        interpolation=T.InterpolationMode.BICUBIC,
+    ),
     T.Lambda(_convert_image_to_rgb),
     T.ToTensor(),
     T.Normalize(mean=CLIP_MEAN, std=CLIP_STD),
 ])
 
 
-# Augmented CIPTDCCL view used by the fusion branch.
+# CIPTDCCL augmented view: first establish the same complete 224x224 base view,
+# then apply a controlled RandomResizedCrop and appearance perturbations.
+# The crop keeps 80%-100% of the resized image area and limits aspect-ratio
+# changes so the positive pair remains semantically consistent while still
+# receiving spatial and appearance augmentation.
 clip_aug = T.Compose([
+    T.Resize(
+        (224, 224),
+        interpolation=T.InterpolationMode.BICUBIC,
+    ),
     T.RandomResizedCrop(
         224,
-        scale=(0.7, 1.0),
+        scale=(0.8, 1.0),
+        ratio=(0.9, 1.1),
         interpolation=T.InterpolationMode.BICUBIC,
     ),
     T.RandomHorizontalFlip(),
