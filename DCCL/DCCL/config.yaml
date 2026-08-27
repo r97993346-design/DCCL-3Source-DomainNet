@@ -12,20 +12,29 @@ indomain_test: False  # use indomain test split or not
 
 # Pure CIPT reproduction switch.
 # true  -> original CIPT objective only
-# false -> original CIPT + direct causal-space SupCon with one augmented view
+# false -> original CIPT + augmented-view decomposition + direct causal SupCon
 cipt_pure: false
 
-# Direct causal contrastive ablation.
-# There is no projection head and no augmented-view classification/decomposition
-# loss. x_2 is causally decomposed only to provide e_aug as the positive view.
-# This is a dedicated coefficient so command-line sweeps can override it through
-# sconf without being consumed by argparse's legacy cipt_contrastive_weight flag.
+# Direct causal contrastive coefficient. There is no projection head: e(x) and
+# e(T(x)) are normalized and contrasted directly in causal representation space.
 cipt_causal_contrastive_weight: 0.1
 
 # Linear warmup for the effective contrastive coefficient:
 # lambda_eff = lambda_max * min(1, step / warmup_steps)
 cipt_contrastive_warmup_steps: 500
 
-# CIPTDCCL fusion uses a fixed two-view pipeline:
-# x   = official CLIP Resize + CenterCrop + normalization
-# x_2 = RandomResizedCrop + flip + ColorJitter + grayscale + CLIP normalization
+# Relative augmented-view decomposition strength. The effective coefficient is
+# beta * cipt_aug_decomp_weight. With beta=4 and the default 0.5, L_de_aug is
+# weighted by 2.0, i.e. half the original-view decomposition strength.
+cipt_aug_decomp_weight: 0.5
+
+# CIPTDCCL fixed two-view preprocessing:
+# x   = Resize((224,224), bicubic) + RGB + CLIP normalization
+# x_2 = Resize((224,224), bicubic)
+#       + RandomResizedCrop(224, scale=(0.8,1.0), ratio=(0.9,1.1))
+#       + flip + ColorJitter + grayscale + RGB + CLIP normalization
+#
+# Training objectives:
+# original x: CIPT classification + decomposition + independence
+# augmented x_2: decomposition only (no TDA classification / no extra independence)
+# e(x), e(x_2): direct supervised contrastive loss
