@@ -34,6 +34,7 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_template_mode"] = ("b5a", "b5a")
         hparams["cipt_tda_heads"] = (1, 1)
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
+        hparams["cipt_aug_decomp_weight"] = (0.5, 0.5)
         hparams["cipt_debug_shapes"] = (False, False)
 
     hparams["freeze_bn"] = (True, True)
@@ -95,7 +96,7 @@ def _hparams(algorithm, dataset, random_state):
     elif algorithm in ("MMD", "CORAL"):
         hparams["mmd_gamma"] = (1.0, 10 ** random_state.uniform(-1, 1))
     elif algorithm in ("MLDG", "SOMLDG"):
-        hparams["mldg_beta"] = (1.0, 10 ** random_state.uniform(-1, 1))
+        hparams["mldg_beta"] = (1.0, 10 ** random_state.uniform(-2, 2))
     elif algorithm == "MTL":
         hparams["mtl_ema"] = (0.99, random_state.choice([0.5, 0.9, 0.99, 1.0]))
     elif algorithm == "VREx":
