@@ -34,7 +34,6 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_template_mode"] = ("b5a", "b5a")
         hparams["cipt_tda_heads"] = (1, 1)
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
-        hparams["cipt_aug_decomp_weight"] = (0.5, 0.5)
         hparams["cipt_debug_shapes"] = (False, False)
 
     hparams["freeze_bn"] = (True, True)
@@ -63,7 +62,7 @@ def _hparams(algorithm, dataset, random_state):
             hparams["lr_d"] = (5e-5, 10 ** random_state.uniform(-5, -3.5))
         else:
             hparams["lr_g"] = (1e-3, 10 ** random_state.uniform(-4.5, -2.5))
-            hparams["lr_d"] = (5e-5, 10 ** random_state.uniform(-5, -3.5))
+            hparams["lr_d"] = (1e-3, 10 ** random_state.uniform(-4.5, -2.5))
 
         if dataset in SMALL_IMAGES:
             hparams["weight_decay_g"] = (0.0, 0.0)
@@ -71,6 +70,7 @@ def _hparams(algorithm, dataset, random_state):
             hparams["weight_decay_g"] = (0.0, 10 ** random_state.uniform(-6, -2))
 
         hparams["lambda"] = (1.0, 10 ** random_state.uniform(-2, 2))
+        hparams["weight_decay_g"] = (0.0, 10 ** random_state.uniform(-6, -2))
         hparams["weight_decay_d"] = (0.0, 10 ** random_state.uniform(-6, -2))
         hparams["d_steps_per_g_step"] = (1, int(2 ** random_state.uniform(0, 3)))
         hparams["grad_penalty"] = (0.0, 10 ** random_state.uniform(-2, 1))
