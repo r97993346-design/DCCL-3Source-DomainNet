@@ -1,7 +1,8 @@
 from .algorithms import *
-# On the ablation branch, route CIPTDCCL through the lightweight wrapper that
-# keeps the known high-performance implementation and only switches B5 prompts.
-from .cipt_dccl_ablation import CIPTDCCL
+# On the official-alignment branch, route CIPTDCCL through the aug-decomp
+# wrapper plus two implementation details from the released CIPT code:
+# normalized CLIP image features and identity-initialized causal/spurious adapters.
+from .cipt_dccl_official_align import CIPTDCCL
 
 
 def get_algorithm_class(algorithm_name):
