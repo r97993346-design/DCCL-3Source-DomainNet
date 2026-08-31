@@ -1,8 +1,8 @@
 from .algorithms import *
-# On the official-alignment branch, route CIPTDCCL through the aug-decomp
-# wrapper plus two implementation details from the released CIPT code:
-# normalized CLIP image features and identity-initialized causal/spurious adapters.
-from .cipt_dccl_official_align import CIPTDCCL
+# Route CIPTDCCL directly through the aug-decomp implementation. Official CIPT
+# visual L2 normalization and identity adapter initialization are enforced in
+# CausalDecomposition itself, avoiding an extra wrapper layer.
+from .cipt_dccl_ablation import CIPTDCCL
 
 
 def get_algorithm_class(algorithm_name):
