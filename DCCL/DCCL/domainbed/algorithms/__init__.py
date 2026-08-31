@@ -1,8 +1,8 @@
 from .algorithms import *
-# Route CIPTDCCL directly through the aug-decomp implementation. Official CIPT
-# visual L2 normalization and identity adapter initialization are enforced in
-# CausalDecomposition itself, avoiding an extra wrapper layer.
-from .cipt_dccl_ablation import CIPTDCCL
+# Route CIPTDCCL through the official-normalize-identity implementation plus
+# stochastic diversity-aware B5c intervention prompt sampling. Train and eval
+# intentionally use the same stochastic prompt-selection rule.
+from .cipt_stochastic_prompts import CIPTDCCL
 
 
 def get_algorithm_class(algorithm_name):
