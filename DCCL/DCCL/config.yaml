@@ -15,6 +15,12 @@ indomain_test: False  # use indomain test split or not
 # false -> original CIPT + augmented-view decomposition + direct causal SupCon
 cipt_pure: false
 
+# Use the expanded class-agnostic B5c nuisance prompt bank. Every forward pass,
+# in both training and evaluation, samples K distinct prompts with stochastic
+# diversity-aware sampling in frozen CLIP text-embedding space.
+cipt_template_mode: b5c
+cipt_prompt_temperature: 0.1
+
 # Direct causal contrastive coefficient. There is no projection head: e(x) and
 # e(T(x)) are normalized and contrasted directly in causal representation space.
 cipt_causal_contrastive_weight: 0.1
