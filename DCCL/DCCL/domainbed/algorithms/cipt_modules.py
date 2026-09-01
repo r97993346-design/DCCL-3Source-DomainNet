@@ -4,12 +4,21 @@ from torch import nn
 
 
 class CausalDecomposition(nn.Module):
-    """CIPT's two linear, embedding-preserving adapters."""
+    """CIPT adapters with identity initialization only.
+
+    Visual features deliberately retain their original scale so this branch
+    isolates adapter initialization from feature L2 normalization.
+    """
 
     def __init__(self, embedding_dim):
         super().__init__()
         self.causal_adapter = nn.Linear(embedding_dim, embedding_dim)
         self.spurious_adapter = nn.Linear(embedding_dim, embedding_dim)
+
+        nn.init.eye_(self.causal_adapter.weight)
+        nn.init.zeros_(self.causal_adapter.bias)
+        nn.init.eye_(self.spurious_adapter.weight)
+        nn.init.zeros_(self.spurious_adapter.bias)
 
     def forward(self, visual_features):
         return self.causal_adapter(visual_features), self.spurious_adapter(visual_features)
