@@ -1,6 +1,7 @@
 """Small causal decomposition and intervention modules used by CIPT-DCCL."""
 
 from torch import nn
+import torch.nn.functional as F
 
 
 class CausalDecomposition(nn.Module):
@@ -12,6 +13,7 @@ class CausalDecomposition(nn.Module):
         self.spurious_adapter = nn.Linear(embedding_dim, embedding_dim)
 
     def forward(self, visual_features):
+        visual_features = F.normalize(visual_features.float(), dim=-1)
         return self.causal_adapter(visual_features), self.spurious_adapter(visual_features)
 
 
