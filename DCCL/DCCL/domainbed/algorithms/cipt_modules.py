@@ -6,12 +6,26 @@ import torch.nn.functional as F
 
 
 class CausalDecomposition(nn.Module):
-    """CIPT's two linear, embedding-preserving adapters."""
+    """CIPT's two linear, embedding-preserving adapters.
+
+    Match the released CIPT visual path at the decomposition boundary: frozen
+    CLIP image embeddings are L2-normalized before decomposition, and both
+    adapters start as identity mappings. This preserves CLIP semantics at step
+    zero while allowing the causal/spurious objectives to separate the two
+    branches during training.
+    """
 
     def __init__(self, embedding_dim):
         super().__init__()
         self.causal_adapter = nn.Linear(embedding_dim, embedding_dim)
         self.spurious_adapter = nn.Linear(embedding_dim, embedding_dim)
+
+        # Keep the initial decomposition in CLIP's pretrained representation
+        # space instead of applying two unrelated random projections.
+        nn.init.eye_(self.causal_adapter.weight)
+        nn.init.zeros_(self.causal_adapter.bias)
+        nn.init.eye_(self.spurious_adapter.weight)
+        nn.init.zeros_(self.spurious_adapter.bias)
 
     def forward(self, visual_features):
         visual_features = F.normalize(visual_features.float(), dim=-1)
