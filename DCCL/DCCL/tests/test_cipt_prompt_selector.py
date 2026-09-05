@@ -4,9 +4,30 @@ import torch
 import torch.nn.functional as F
 
 from domainbed.algorithms.cipt_modules import (
+    CausalDecomposition,
     SafeDiversePromptSelector,
     TextDiversityAugmentation,
 )
+
+
+class CausalDecompositionTest(unittest.TestCase):
+    def test_identity_initialization_preserves_normalized_clip_features(self):
+        torch.manual_seed(0)
+        batch, dim = 4, 8
+        module = CausalDecomposition(dim).eval()
+        visual = torch.randn(batch, dim)
+        expected = F.normalize(visual.float(), dim=-1)
+
+        causal, spurious = module(visual)
+
+        identity = torch.eye(dim)
+        zeros = torch.zeros(dim)
+        self.assertTrue(torch.allclose(module.causal_adapter.weight, identity))
+        self.assertTrue(torch.allclose(module.spurious_adapter.weight, identity))
+        self.assertTrue(torch.allclose(module.causal_adapter.bias, zeros))
+        self.assertTrue(torch.allclose(module.spurious_adapter.bias, zeros))
+        self.assertTrue(torch.allclose(causal, expected, atol=1e-6, rtol=1e-5))
+        self.assertTrue(torch.allclose(spurious, expected, atol=1e-6, rtol=1e-5))
 
 
 class PromptEffectTest(unittest.TestCase):
