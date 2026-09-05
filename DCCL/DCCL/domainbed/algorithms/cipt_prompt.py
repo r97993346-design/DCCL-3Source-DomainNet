@@ -319,6 +319,22 @@ class CIPTTextFeatures(nn.Module):
             return selected
         return selected[labels.to(device=bank.device, dtype=torch.long)]
 
+    def full_intervention_features(self):
+        """Return the complete shared prompt bank for B5a/B5c ablations.
+
+        Adaptive and all-prompt selection must see the full class-agnostic bank
+        before choosing contexts. B5b is class-conditioned and therefore keeps
+        its existing label/candidate-class path.
+        """
+        if self.template_mode == "b5a":
+            return self.b5a_text_bank
+        if self.template_mode == "b5c":
+            return self.b5c_text_bank
+        raise ValueError(
+            "Full shared intervention features are only available for "
+            "B5a/B5c, not class-conditioned B5b."
+        )
+
     @property
     def irrelevant_text_features(self):
         # Backward-compatible path used by the original high-performance

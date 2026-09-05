@@ -72,7 +72,11 @@ def setup_alg_hparams(hparams, args):
         for name in (
             "cipt_enabled", "cipt_clip_backbone", "cipt_clip_path", "cipt_beta",
             "cipt_gamma", "cipt_k", "cipt_prompt_length", "cipt_prompt_init",
-            "cipt_tda_heads", "cipt_contrastive_weight", "cipt_debug_shapes",
+            "cipt_tda_heads", "cipt_selector_mode",
+            "cipt_selector_candidates", "cipt_selector_causal_penalty",
+            "cipt_selector_js_weight", "cipt_selector_diversity_weight",
+            "cipt_selector_warmup_steps", "cipt_contrastive_weight",
+            "cipt_debug_shapes",
         ):
             hparams[name] = getattr(args, name)
 

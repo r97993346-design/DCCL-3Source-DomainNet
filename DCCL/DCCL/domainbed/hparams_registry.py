@@ -33,6 +33,15 @@ def _hparams(algorithm, dataset, random_state):
         # B5c: expanded class-agnostic prompt bank derived from B5b concepts
         hparams["cipt_template_mode"] = ("b5a", "b5a")
         hparams["cipt_tda_heads"] = (1, 1)
+        # B5c prompt-selection ablations. ``random`` reproduces the legacy
+        # random-K behavior, ``all`` uses the complete bank, and ``adaptive``
+        # performs decomposition-guided safe/diverse per-sample selection.
+        hparams["cipt_selector_mode"] = ("adaptive", "adaptive")
+        hparams["cipt_selector_candidates"] = (8, 8)
+        hparams["cipt_selector_causal_penalty"] = (0.5, 0.5)
+        hparams["cipt_selector_js_weight"] = (1.0, 1.0)
+        hparams["cipt_selector_diversity_weight"] = (0.1, 0.1)
+        hparams["cipt_selector_warmup_steps"] = (500, 500)
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
         hparams["cipt_debug_shapes"] = (False, False)
 
