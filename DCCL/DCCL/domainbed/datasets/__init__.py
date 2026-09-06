@@ -134,7 +134,7 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
 
         if hparams["class_balanced"]:
             in_weights = misc.make_weights_for_balanced_classes(in_)
-            out_weights = misc.make_weights_for_balanced_classes(out_)
+            out_weights = misc.make_weights_for_balanced_classes(out)
         else:
             in_weights, out_weights = None, None
         in_splits.append((in_, in_weights))
