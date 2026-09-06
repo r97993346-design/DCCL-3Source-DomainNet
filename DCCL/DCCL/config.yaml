@@ -11,21 +11,25 @@ test_batchsize: 128
 indomain_test: False  # use indomain test split or not
 
 # Pure CIPT reproduction switch.
-# true  -> original CIPT objective only
-# false -> original CIPT + direct causal-space SupCon with one augmented view
+# true  -> public-CIPT-aligned objective only
+# false -> the same CIPT objective + single-view causal-space SupCon
 cipt_pure: false
 
-# Direct causal contrastive ablation.
-# There is no projection head and no augmented-view classification/decomposition
-# loss. x_2 is causally decomposed only to provide e_aug as the positive view.
-# This is a dedicated coefficient so command-line sweeps can override it through
-# sconf without being consumed by argparse's legacy cipt_contrastive_weight flag.
+# This branch intentionally removes the augmented image branch.
+# Training data returns only x with the official CLIP Resize + CenterCrop +
+# RGB + tensor + CLIP normalization pipeline. No x_2/e_aug is constructed.
+cipt_use_aug_view: false
+
+# Direct single-view causal contrastive coefficient.
+# Positives are other original causal features in the merged source-domain batch
+# with the same class label; self-pairs are excluded.
 cipt_causal_contrastive_weight: 0.1
 
 # Linear warmup for the effective contrastive coefficient:
 # lambda_eff = lambda_max * min(1, step / warmup_steps)
 cipt_contrastive_warmup_steps: 500
 
-# CIPTDCCL fusion uses a fixed two-view pipeline:
-# x   = official CLIP Resize + CenterCrop + normalization
-# x_2 = RandomResizedCrop + flip + ColorJitter + grayscale + CLIP normalization
+# Causal decomposition is aligned to the public CIPT implementation:
+# 1) frozen CLIP visual feature -> L2 normalization before decomposition
+# 2) causal/spurious linear adapters -> identity weight + zero bias init
+# Contrastive learning remains projection-free and uses only original e.
