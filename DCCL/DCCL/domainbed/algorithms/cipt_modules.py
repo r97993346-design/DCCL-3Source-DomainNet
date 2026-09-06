@@ -1,17 +1,29 @@
 """Small causal decomposition and intervention modules used by CIPT-DCCL."""
 
 from torch import nn
+import torch.nn.functional as F
 
 
 class CausalDecomposition(nn.Module):
-    """CIPT's two linear, embedding-preserving adapters."""
+    """CIPT's two linear, embedding-preserving adapters.
+
+    This branch follows the public CIPT implementation more closely:
+    1) L2-normalize frozen CLIP visual features before decomposition.
+    2) Identity-initialize both causal and spurious adapters.
+    """
 
     def __init__(self, embedding_dim):
         super().__init__()
         self.causal_adapter = nn.Linear(embedding_dim, embedding_dim)
         self.spurious_adapter = nn.Linear(embedding_dim, embedding_dim)
 
+        nn.init.eye_(self.causal_adapter.weight)
+        nn.init.zeros_(self.causal_adapter.bias)
+        nn.init.eye_(self.spurious_adapter.weight)
+        nn.init.zeros_(self.spurious_adapter.bias)
+
     def forward(self, visual_features):
+        visual_features = F.normalize(visual_features.float(), dim=-1)
         return self.causal_adapter(visual_features), self.spurious_adapter(visual_features)
 
 
