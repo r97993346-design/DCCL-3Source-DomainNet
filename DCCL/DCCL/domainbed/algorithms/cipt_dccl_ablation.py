@@ -1,7 +1,7 @@
 """CIPT + single-view direct causal contrastive ablation.
 
 Execution modes:
-1) cipt_pure=True: public-CIPT-aligned single-view CIPT only.
+1) cipt_pure=True: single-view CIPT only.
 2) cipt_pure=False: the same single-view CIPT plus supervised contrastive
    learning directly on original-image causal representations.
 
@@ -86,7 +86,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "CIPTDCCL single-view-causal-contrastive: pure_cipt={}, "
             "template_mode={}, K={}, tda_heads={}, lr={}, "
             "contrastive_weight={}, contrastive_warmup_steps={}, temp={}, "
-            "visual_l2_norm=True, adapter_init=identity, augmented_view=False, "
+            "visual_l2_norm=False, adapter_init=default, augmented_view=False, "
             "projection_head=False, pre_cl=False, reg=False".format(
                 self.cipt_pure,
                 self.cipt_template_mode,
@@ -169,9 +169,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
         all_x = torch.cat(x)
         labels = torch.cat(y)
 
-        # Frozen CLIP image encoder. CausalDecomposition performs the public
-        # CIPT-style pre-decomposition L2 normalization and identity-initialized
-        # causal/spurious linear adaptation.
+        # Frozen CLIP image encoder. CausalDecomposition directly applies two
+        # default-initialized linear adapters to the frozen visual features.
         visual = self._visual(all_x)
         causal, spurious = self.causal_decomposition(visual)
         class_features = self.text_features.class_features()
