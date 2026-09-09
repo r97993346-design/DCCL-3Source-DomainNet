@@ -124,18 +124,10 @@ def main():
         default="adaptive",
         help=(
             "B5c template selection: legacy random-K, complete bank, or "
-            "decomposition-guided safe/diverse per-sample selection"
+            "visual-relevant causal-safe diverse per-sample selection"
         ),
     )
     parser.add_argument("--cipt_selector_candidates", type=int, default=8)
-    parser.add_argument(
-        "--cipt_selector_causal_penalty", type=float, default=0.5
-    )
-    parser.add_argument("--cipt_selector_js_weight", type=float, default=1.0)
-    parser.add_argument(
-        "--cipt_selector_diversity_weight", type=float, default=0.1
-    )
-    parser.add_argument("--cipt_selector_warmup_steps", type=int, default=500)
     parser.add_argument("--cipt_contrastive_weight", type=float, default=1.0)
     parser.add_argument("--cipt_debug_shapes", action="store_true")
     parser.add_argument(

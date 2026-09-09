@@ -41,21 +41,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 "Unknown cipt_selector_mode={!r}; expected random, all, or "
                 "adaptive.".format(self.prompt_selector_mode)
             )
-        self.prompt_selector_warmup_steps = max(
-            0, int(hparams.get("cipt_selector_warmup_steps", 500))
-        )
         self.prompt_selector = SafeDiversePromptSelector(
             k=hparams["cipt_k"],
             candidate_count=hparams.get("cipt_selector_candidates", 8),
-            causal_penalty=hparams.get("cipt_selector_causal_penalty", 0.5),
-            js_weight=hparams.get("cipt_selector_js_weight", 1.0),
-            diversity_weight=hparams.get(
-                "cipt_selector_diversity_weight", 0.1
-            ),
-        )
-        self.register_buffer(
-            "_prompt_selector_step",
-            torch.zeros((), dtype=torch.long),
         )
 
         # Keep contrastive learning directly in the causal representation space.
@@ -112,7 +100,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "template_mode={}, K={}, tda_heads={}, lr={}, "
             "contrastive_weight={}, contrastive_warmup_steps={}, temp={}, "
             "selector_mode={}, selector_candidates={}, "
-            "selector_warmup_steps={}, "
+            "selector_relevance=clip_visual, selector_safety=top1, "
+            "selector_diversity=farthest_effect, selector_warmup=none, "
             "visual_l2_norm=False, adapter_init=default, augmented_view=False, "
             "projection_head=False, pre_cl=False, reg=False".format(
                 self.cipt_pure,
@@ -125,7 +114,6 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.contrastive_temperature,
                 self.prompt_selector_mode,
                 self.prompt_selector.candidate_count,
-                self.prompt_selector_warmup_steps,
             )
         )
         print(
@@ -154,17 +142,20 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "prompt_selector_relevance": zero,
             "prompt_selector_js": zero,
             "prompt_selector_pairwise_cosine": zero,
+            "prompt_selector_safe_fraction": zero,
+            "prompt_selector_safe_candidates": zero,
+            "prompt_selector_fallback_fraction": zero,
             "prompt_selector_unique": zero,
         }
 
     def _select_interventions(
-        self, causal, spurious, class_features, labels=None
+        self, visual, causal, class_features, labels=None
     ):
         """Apply the configured B5c prompt-selection ablation.
 
         B5a and class-conditioned B5b retain their legacy behavior. B5c can
         execute the exact legacy random-K baseline, all 42 prompts, or the
-        per-sample adaptive selector.
+        per-sample visual-relevant, causal-safe and effect-diverse selector.
         """
         if self.cipt_template_mode != "b5c":
             contexts = self._intervention_features(labels=labels)
@@ -173,13 +164,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 causal, interventions.shape[1]
             )
 
-        selector_warmup = (
-            self.prompt_selector_mode == "adaptive"
-            and self.training
-            and int(self._prompt_selector_step.item())
-            < self.prompt_selector_warmup_steps
-        )
-        if self.prompt_selector_mode == "random" or selector_warmup:
+        if self.prompt_selector_mode == "random":
             # Exact B5c baseline: random shared K while training and the first
             # deterministic K while evaluating.
             contexts = self.text_features.intervention_features(labels=None)
@@ -195,16 +180,14 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 causal, prompt_bank.shape[0]
             )
 
-        # Rank the actual TDA residual produced by each prompt rather than its
-        # raw text embedding.
-        prompt_effects = self.tda.prompt_effects(prompt_bank)
+        # Relevance is measured only in the aligned frozen CLIP image/text
+        # space.  Neither causal nor spurious adapter output is assumed to
+        # preserve that geometry.
         candidate_indices, candidate_relevance = (
-            self.prompt_selector.shortlist(causal, spurious, prompt_effects)
+            self.prompt_selector.shortlist(visual, prompt_bank)
         )
-        candidate_effects = prompt_effects[candidate_indices]
-        candidate_interventions = self.tda.apply_prompt_effects(
-            causal, candidate_effects
-        )
+        candidate_contexts = prompt_bank[candidate_indices]
+        candidate_interventions = self.tda(causal, candidate_contexts)
 
         # Selection is label-free and non-differentiable. Classification
         # gradients still flow through the finally gathered interventions.
@@ -215,10 +198,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
             candidate_logits = self._logits(
                 candidate_interventions.detach(), class_features.detach()
             )
-        local_indices, _, selector_metrics = self.prompt_selector.rerank(
+        local_indices, _, selector_metrics = self.prompt_selector.select(
             candidate_indices,
             candidate_relevance,
-            candidate_effects,
+            causal,
+            candidate_interventions,
             base_logits,
             candidate_logits,
         )
@@ -321,7 +305,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         loss_ind = cipt_independence_loss(causal, spurious)
 
         interventions, selector_metrics = self._select_interventions(
-            causal, spurious, class_features, labels=labels
+            visual, causal, class_features, labels=labels
         )
         logits = self._logits(interventions, class_features)
         loss_cls = cipt_classification_loss(logits, labels)
@@ -363,7 +347,6 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.optimizer.zero_grad()
         total.backward()
         self.optimizer.step()
-        self._prompt_selector_step.add_(1)
 
         zero = causal.new_zeros(())
         return {
@@ -393,13 +376,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
             return super().predict(x)
 
         if self.cipt_template_mode == "b5c":
-            # Keep s at inference: adaptive selection uses the same causal /
-            # spurious evidence in training and evaluation.
             visual = self._visual(x)
-            causal, spurious = self.causal_decomposition(visual)
+            causal, _ = self.causal_decomposition(visual)
             class_features = self.text_features.class_features()
             interventions, _ = self._select_interventions(
-                causal, spurious, class_features, labels=None
+                visual, causal, class_features, labels=None
             )
             return self._logits(
                 interventions, class_features
