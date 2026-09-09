@@ -1,7 +1,8 @@
 from .algorithms import *
-# On the ablation branch, route CIPTDCCL through the lightweight wrapper that
-# keeps the known high-performance implementation and only switches B5 prompts.
-from .cipt_dccl_ablation import CIPTDCCL
+# On this branch, route CIPTDCCL through the component-ablation wrapper.
+# It preserves the no-augmentation causal-contrastive implementation while
+# exposing independent L_de, L_ind, TDA, and Contrastive switches.
+from .cipt_dccl_component_ablation import CIPTDCCL
 
 
 def get_algorithm_class(algorithm_name):

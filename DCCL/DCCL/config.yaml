@@ -10,10 +10,19 @@ test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
 
-# Pure CIPT reproduction switch.
-# true  -> public-CIPT-aligned objective only
-# false -> the same CIPT objective + single-view causal-space SupCon
+# Legacy pure-CIPT compatibility switch.
+# true forces the added causal contrastive objective off.
+# For new ablations, prefer the four explicit switches below.
 cipt_pure: false
+
+# Independent component-ablation switches.
+# They can be overridden from the command line, e.g.
+#   --cipt_use_de false --cipt_use_ind true
+#   --cipt_use_tda false --cipt_use_contrastive false
+cipt_use_de: true
+cipt_use_ind: true
+cipt_use_tda: true
+cipt_use_contrastive: true
 
 # This branch intentionally removes the augmented image branch.
 # Training data returns only x with the official CLIP Resize + CenterCrop +
