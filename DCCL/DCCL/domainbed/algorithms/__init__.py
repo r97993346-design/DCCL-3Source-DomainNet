@@ -1,7 +1,8 @@
 from .algorithms import *
-# On the ablation branch, route CIPTDCCL through the lightweight wrapper that
-# keeps the known high-performance implementation and only switches B5 prompts.
-from .cipt_dccl_ablation import CIPTDCCL
+# Route CIPTDCCL through the progressive paper-level ablation wrapper.
+# The underlying Safe-Diverse prompt selector and TDA implementation remain
+# unchanged in cipt_dccl_ablation.py.
+from .cipt_dccl_progressive_ablation import CIPTDCCL
 
 
 def get_algorithm_class(algorithm_name):
