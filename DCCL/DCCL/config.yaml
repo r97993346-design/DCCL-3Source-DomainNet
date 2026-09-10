@@ -10,14 +10,26 @@ test_batchsize: 128
 
 indomain_test: False  # use indomain test split or not
 
-# Pure CIPT reproduction switch.
-# true  -> public-CIPT-aligned objective only
-# false -> the same CIPT objective + single-view causal-space SupCon
+# Legacy compatibility switch.
+# true forces the added causal contrastive objective off.
+# For the progressive ablation table below, keep this false and use the
+# explicit module switches.
 cipt_pure: false
 
+# Progressive paper-level module ablations.
+# Valid configurations are intentionally hierarchical:
+#   Base:                 false, false, false
+#   + Causal:             true,  false, false
+#   + Text Diversity:     true,  true,  false
+#   + Contrastive (Full): true,  true,  true
+# Text Diversity uses the existing Safe-Diverse selector + TDA implementation
+# unchanged. Contrastive is the existing single-view SupCon objective on e.
+cipt_use_causal_module: true
+cipt_use_text_diversity: true
+cipt_use_contrastive_module: true
+
 # This branch intentionally removes the augmented image branch.
-# Training data returns only x with the official CLIP Resize + CenterCrop +
-# RGB + tensor + CLIP normalization pipeline. No x_2/e_aug is constructed.
+# Training data returns only x; no x_2/e_aug contrastive path is constructed.
 cipt_use_aug_view: false
 
 # Direct single-view causal contrastive coefficient.
@@ -28,8 +40,3 @@ cipt_causal_contrastive_weight: 0.1
 # Linear warmup for the effective contrastive coefficient:
 # lambda_eff = lambda_max * min(1, step / warmup_steps)
 cipt_contrastive_warmup_steps: 500
-
-# Causal decomposition is aligned to the public CIPT implementation:
-# 1) frozen CLIP visual feature -> L2 normalization before decomposition
-# 2) causal/spurious linear adapters -> identity weight + zero bias init
-# Contrastive learning remains projection-free and uses only original e.
