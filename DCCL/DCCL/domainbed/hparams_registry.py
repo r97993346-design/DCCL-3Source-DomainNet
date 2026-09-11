@@ -38,7 +38,16 @@ def _hparams(algorithm, dataset, random_state):
         # performs visual-relevant, causal-safe and effect-diverse selection.
         hparams["cipt_selector_mode"] = ("adaptive", "adaptive")
         hparams["cipt_selector_candidates"] = (8, 8)
+        # Keep the legacy name for compatibility with existing experiment
+        # configs; the WBC branch prefers the explicit causal-space name.
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
+        hparams["cipt_causal_contrastive_weight"] = (0.1, 0.1)
+        hparams["cipt_contrastive_warmup_steps"] = (500, 500)
+        # Weakest-domain Bridge Causal Contrastive Loss (WBC-CL).  A single
+        # temperature controls smooth min/max mining and the ranking softness.
+        hparams["cipt_wbc_topk"] = (2, 2)
+        hparams["cipt_wbc_margin"] = (0.1, 0.1)
+        hparams["cipt_wbc_temperature"] = (0.1, 0.1)
         hparams["cipt_use_aug_view"] = (False, False)
         hparams["cipt_debug_shapes"] = (False, False)
 

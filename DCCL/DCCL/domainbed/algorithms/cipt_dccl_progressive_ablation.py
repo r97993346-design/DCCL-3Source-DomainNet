@@ -7,7 +7,7 @@ paper-level modules are active, matching the progressive ablation table:
 1) Base:                 v <-> class text
 2) + Causal:             v -> (e, s), e <-> class text
 3) + Text Diversity:     v -> (e, s), e -> Safe-Diverse/TDA -> z_k <-> class text
-4) + Contrastive:        the same prediction path + supervised contrastive loss on e
+4) + Contrastive:        the same prediction path + WBC-CL on e
 
 The switches are hierarchical by design.  Text Diversity requires Causal, and
 Contrastive requires Text Diversity, so each valid configuration differs from
@@ -79,6 +79,14 @@ class CIPTDCCL(_FullCIPTDCCL):
         """Train one of the four progressive ablation configurations."""
         all_x = torch.cat(x)
         labels = torch.cat(y)
+        domain_ids = torch.cat(
+            [
+                domain_labels.new_full(
+                    domain_labels.shape, domain_index
+                )
+                for domain_index, domain_labels in enumerate(y)
+            ]
+        )
 
         visual = self._visual(all_x)
         class_features = self.text_features.class_features()
@@ -142,16 +150,16 @@ class CIPTDCCL(_FullCIPTDCCL):
         )
 
         # ------------------------------------------------------------------
-        # 4) + Contrastive: prediction path is unchanged; only add the existing
-        # single-view supervised contrastive objective on causal feature e.
+        # 4) + Contrastive: prediction path is unchanged. WBC-CL groups only e
+        # by source domain and class; it never consumes s, z_k, text, or x_2.
         # ------------------------------------------------------------------
         if not self._contrastive_enabled():
             loss_contrastive = zero
-            valid_anchor_fraction = zero
+            wbc_metrics = self._empty_wbc_metrics(visual)
             contrastive_weight_eff = 0.0
         else:
-            loss_contrastive, valid_anchor_fraction = self._single_view_supcon(
-                causal, labels
+            loss_contrastive, wbc_metrics = self._wbc_contrastive(
+                causal, labels, domain_ids
             )
             self._causal_contrastive_step.add_(1)
             contrastive_weight_eff = self._contrastive_scale()
@@ -203,8 +211,23 @@ class CIPTDCCL(_FullCIPTDCCL):
             "cipt_ind_loss": loss_ind.item(),
             "causal_consistency_loss": zero.item(),
             "dccl_contrastive_loss": loss_contrastive.item(),
+            "wbc_contrastive_loss": loss_contrastive.item(),
             "contrastive_weight_eff": float(contrastive_weight_eff),
-            "contrastive_valid_anchor_fraction": valid_anchor_fraction.item(),
+            "contrastive_valid_anchor_fraction": wbc_metrics[
+                "valid_anchor_fraction"
+            ].item(),
+            "wbc_domain_coverage_fraction": wbc_metrics[
+                "domain_coverage_fraction"
+            ].item(),
+            "wbc_weakest_positive_similarity": wbc_metrics[
+                "weakest_positive_similarity"
+            ].item(),
+            "wbc_hard_negative_similarity": wbc_metrics[
+                "hard_negative_similarity"
+            ].item(),
+            "wbc_violation_fraction": wbc_metrics[
+                "violation_fraction"
+            ].item(),
             "pre_cl_loss": zero.item(),
             "reg_loss": zero.item(),
             "mean_v_norm": visual.norm(dim=-1).mean().item(),

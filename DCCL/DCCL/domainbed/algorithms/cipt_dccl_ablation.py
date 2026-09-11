@@ -1,13 +1,14 @@
-"""CIPT + single-view direct causal contrastive ablation.
+"""CIPT + weakest-domain bridge contrastive learning on causal features.
 
 Execution modes:
 1) cipt_pure=True: single-view CIPT only.
-2) cipt_pure=False: the same single-view CIPT plus supervised contrastive
-   learning directly on original-image causal representations.
+2) cipt_pure=False: the same single-view CIPT plus weakest-domain bridge
+   contrastive learning directly on original-image causal representations.
 
 This branch deliberately removes projection heads and removes the augmented
-image branch entirely. Positive pairs are same-class original causal features
-within the merged source-domain batch. No x_2/e_aug path is required.
+image branch entirely.  WBC groups same-class causal features by source domain,
+focuses on the weakest available cross-domain bridge and ranks it above smooth
+hard negatives.  No x_2/e_aug path is required.
 """
 
 import torch
@@ -15,6 +16,7 @@ import torch.nn.functional as F
 
 from domainbed.algorithms.algorithms import CIPTDCCL as _BaseCIPTDCCL
 from domainbed.algorithms.cipt_losses import (
+    WeakestDomainBridgeContrastiveLoss,
     classification_loss as cipt_classification_loss,
     decomposition_loss as cipt_decomposition_loss,
     independence_loss as cipt_independence_loss,
@@ -24,7 +26,7 @@ from domainbed.optimizers import get_optimizer
 
 
 class CIPTDCCL(_BaseCIPTDCCL):
-    """CIPT with single-view supervised contrastive learning in causal space."""
+    """CIPT with WBC-CL operating only in causal representation space."""
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super().__init__(input_shape, num_classes, num_domains, hparams)
@@ -46,8 +48,15 @@ class CIPTDCCL(_BaseCIPTDCCL):
             candidate_count=hparams.get("cipt_selector_candidates", 8),
         )
 
-        # Keep contrastive learning directly in the causal representation space.
-        for module_name in ("proj_head", "pre_proj_head"):
+        # Remove the inherited DCCL/SupCon machinery. WBC-CL works directly on
+        # e and owns its loss definition; no projection or SupCon object is
+        # retained by the routed CIPTDCCL implementation.
+        for module_name in (
+            "proj_head",
+            "pre_proj_head",
+            "supcon_loss",
+            "supcon_loss_pre",
+        ):
             if hasattr(self, module_name):
                 delattr(self, module_name)
 
@@ -66,7 +75,22 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.contrastive_warmup_steps = max(
             0, int(hparams.get("cipt_contrastive_warmup_steps", 500))
         )
-        self.contrastive_temperature = float(hparams.get("t", 0.1))
+        self.wbc_topk = int(hparams.get("cipt_wbc_topk", 2))
+        self.wbc_margin = float(hparams.get("cipt_wbc_margin", 0.1))
+        self.wbc_temperature = float(
+            hparams.get("cipt_wbc_temperature", hparams.get("t", 0.1))
+        )
+        if self.wbc_topk < 1:
+            raise ValueError("cipt_wbc_topk must be at least 1")
+        if self.wbc_margin < 0.0:
+            raise ValueError("cipt_wbc_margin must be non-negative")
+        if self.wbc_temperature <= 0.0:
+            raise ValueError("cipt_wbc_temperature must be positive")
+        self.wbc_loss = WeakestDomainBridgeContrastiveLoss(
+            topk=self.wbc_topk,
+            temperature=self.wbc_temperature,
+            margin=self.wbc_margin,
+        )
         self.register_buffer(
             "_causal_contrastive_step",
             torch.zeros((), dtype=torch.long),
@@ -96,9 +120,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
 
         print(
-            "CIPTDCCL single-view-causal-contrastive: pure_cipt={}, "
+            "CIPTDCCL wbc-causal-contrastive: pure_cipt={}, "
             "template_mode={}, K={}, tda_heads={}, lr={}, "
-            "contrastive_weight={}, contrastive_warmup_steps={}, temp={}, "
+            "contrastive=WBC-CL, contrastive_weight={}, "
+            "contrastive_warmup_steps={}, wbc_topk={}, wbc_margin={}, "
+            "wbc_temperature={}, "
             "selector_mode={}, selector_candidates={}, "
             "selector_relevance=clip_visual, selector_safety=top1, "
             "selector_diversity=farthest_effect, selector_warmup=none, "
@@ -111,13 +137,15 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 hparams["lr"],
                 self.contrastive_weight,
                 self.contrastive_warmup_steps,
-                self.contrastive_temperature,
+                self.wbc_topk,
+                self.wbc_margin,
+                self.wbc_temperature,
                 self.prompt_selector_mode,
                 self.prompt_selector.candidate_count,
             )
         )
         print(
-            "CIPTDCCL single-view-causal-contrastive parameters: "
+            "CIPTDCCL wbc-causal-contrastive parameters: "
             "trainable={}, frozen={}".format(
                 self.trainable_parameter_count,
                 self.frozen_parameter_count,
@@ -230,7 +258,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         }
 
     def _contrastive_scale(self):
-        """Linearly warm the direct causal contrastive coefficient."""
+        """Linearly warm the WBC-CL coefficient."""
         if self.cipt_pure or self.contrastive_weight <= 0.0:
             return 0.0
         if self.contrastive_warmup_steps <= 0:
@@ -240,52 +268,33 @@ class CIPTDCCL(_BaseCIPTDCCL):
         ramp = min(1.0, step / float(self.contrastive_warmup_steps))
         return self.contrastive_weight * ramp
 
-    def _single_view_supcon(self, causal, labels):
-        """Supervised contrastive loss over original causal features only.
+    @staticmethod
+    def _empty_wbc_metrics(reference):
+        zero = reference.new_zeros(())
+        return {
+            "valid_anchor_fraction": zero,
+            "domain_coverage_fraction": zero,
+            "weakest_positive_similarity": zero,
+            "hard_negative_similarity": zero,
+            "violation_fraction": zero,
+        }
 
-        Positives are other samples in the merged source-domain batch that share
-        the same class label. Self-pairs are excluded. Anchors with no positive
-        sample are safely ignored instead of producing NaNs.
-        """
-        features = F.normalize(causal.float(), dim=-1)
-        batch_size = features.shape[0]
-        if batch_size <= 1:
-            return features.sum() * 0.0, features.new_zeros(())
-
-        temperature = max(self.contrastive_temperature, 1e-8)
-        logits = features @ features.t() / temperature
-        logits = logits - logits.max(dim=1, keepdim=True).values.detach()
-
-        self_mask = torch.eye(
-            batch_size, device=features.device, dtype=torch.bool
-        )
-        logits_mask = ~self_mask
-
-        labels_col = labels.contiguous().view(-1, 1)
-        positive_mask = labels_col.eq(labels_col.t()) & logits_mask
-        positive_count = positive_mask.sum(dim=1)
-        valid_anchor = positive_count > 0
-
-        if not valid_anchor.any():
-            return features.sum() * 0.0, valid_anchor.float().mean()
-
-        exp_logits = torch.exp(logits) * logits_mask.float()
-        log_prob = logits - torch.log(
-            exp_logits.sum(dim=1, keepdim=True).clamp_min(1e-12)
-        )
-
-        mean_log_prob_pos = (
-            positive_mask.float() * log_prob
-        ).sum(dim=1) / positive_count.clamp_min(1).float()
-
-        loss = -mean_log_prob_pos[valid_anchor].mean()
-        valid_fraction = valid_anchor.float().mean()
-        return loss, valid_fraction
+    def _wbc_contrastive(self, causal, labels, domain_ids):
+        """Apply WBC-CL to e only; domain IDs define cross-domain groups."""
+        return self.wbc_loss(causal, labels, domain_ids)
 
     def update(self, x, y, **kwargs):
         """Single-view CIPT update; x_2 is intentionally not consumed."""
         all_x = torch.cat(x)
         labels = torch.cat(y)
+        domain_ids = torch.cat(
+            [
+                domain_labels.new_full(
+                    domain_labels.shape, domain_index
+                )
+                for domain_index, domain_labels in enumerate(y)
+            ]
+        )
 
         # Frozen CLIP image encoder. CausalDecomposition directly applies two
         # default-initialized linear adapters to the frozen visual features.
@@ -316,11 +325,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         if self.cipt_pure or self.contrastive_weight <= 0.0:
             loss_contrastive = causal.new_zeros(())
-            valid_anchor_fraction = causal.new_zeros(())
+            wbc_metrics = self._empty_wbc_metrics(causal)
             contrastive_weight_eff = 0.0
         else:
-            loss_contrastive, valid_anchor_fraction = self._single_view_supcon(
-                causal, labels
+            loss_contrastive, wbc_metrics = self._wbc_contrastive(
+                causal, labels, domain_ids
             )
             self._causal_contrastive_step.add_(1)
             contrastive_weight_eff = self._contrastive_scale()
@@ -359,8 +368,23 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "cipt_ind_loss": loss_ind.item(),
             "causal_consistency_loss": zero.item(),
             "dccl_contrastive_loss": loss_contrastive.item(),
+            "wbc_contrastive_loss": loss_contrastive.item(),
             "contrastive_weight_eff": float(contrastive_weight_eff),
-            "contrastive_valid_anchor_fraction": valid_anchor_fraction.item(),
+            "contrastive_valid_anchor_fraction": wbc_metrics[
+                "valid_anchor_fraction"
+            ].item(),
+            "wbc_domain_coverage_fraction": wbc_metrics[
+                "domain_coverage_fraction"
+            ].item(),
+            "wbc_weakest_positive_similarity": wbc_metrics[
+                "weakest_positive_similarity"
+            ].item(),
+            "wbc_hard_negative_similarity": wbc_metrics[
+                "hard_negative_similarity"
+            ].item(),
+            "wbc_violation_fraction": wbc_metrics[
+                "violation_fraction"
+            ].item(),
             "pre_cl_loss": zero.item(),
             "reg_loss": zero.item(),
             "mean_e_norm": causal.norm(dim=-1).mean().item(),

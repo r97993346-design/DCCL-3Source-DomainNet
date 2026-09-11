@@ -1,76 +1,128 @@
-# CIPT + Direct Causal Contrastive Learning
+# CIPT + WBC-CL（仅作用于因果表示 e）
 
-This branch isolates a simpler causal-contrastive fusion on top of CIPT.
-The CLIP image encoder, causal/spurious decomposition, prompt bank, TDA,
-optimizer family, SWAD selection and inference path stay unchanged.
+本分支在 `feature/cipt-ccl-safe-diverse-noaug` 的单视图实验基线上，
+将原来的普通监督对比损失替换为 **Weakest-domain Bridge Causal
+Contrastive Learning（WBC-CL）**。CLIP 图像编码器、因果/伪相关分解、
+Safe-Diverse 提示选择、TDA、分类路径、优化器和 SWAD 均保持不变。
 
-## Pure CIPT
+## 约束
 
-Set `--cipt_pure true`.
+WBC-CL 的相似度计算只接收原图对应的因果表示 `e`：
 
-The objective is exactly:
+```text
+x -> frozen CLIP -> v -> causal decomposition -> e -> WBC-CL
+```
 
-`L_CIPT = L_cls + beta * L_de + gamma * L_ind`
+它不使用 `s`、干预后表示 `z_k`、文本特征、第二视图 `x_2` 或增强表示
+`e_aug`，也不增加投影头。源域编号直接来自 DomainBed 传入的各源域
+minibatch。
 
-Only the original CLIP-preprocessed image is consumed.
+## 损失定义
 
-## Direct causal contrastive fusion
+设一个训练步合并后的源域 batch 为
+`{(e_i, y_i, d_i)}_{i=1}^B`，先对因果表示做 L2 归一化：
 
-With `cipt_pure: false`, each training image produces two views:
+$$
+\bar e_i = \frac{e_i}{\lVert e_i\rVert_2}, \qquad
+s_{ij}=\bar e_i^\top\bar e_j.
+$$
 
-- `x`: official CLIP Resize + CenterCrop + CLIP normalization;
-- `x_2`: RandomResizedCrop + horizontal flip + ColorJitter + random grayscale + CLIP normalization.
+对于锚点 $i$，在每个其他源域 $d\ne d_i$ 中寻找同类样本，取相似度
+最大的 Top-K 个并求均值，得到该域的桥接分数：
 
-The original view follows the normal CIPT path:
+$$
+b_{i,d}=\operatorname{MeanTopK}
+\left\{s_{ij}\mid y_j=y_i,\ d_j=d\right\}.
+$$
 
-`x -> frozen CLIP -> (e, s) -> L_cls + beta*L_de + gamma*L_ind`
+如果某个“类别×域”分组在当前 batch 中为空，则只跳过该分组，不伪造
+正样本。对所有可用桥接域做平滑最小值，使优化重点落在最弱的跨域同类
+连接上：
 
-The augmented view is used only to create a contrastive positive:
+$$
+p_i=-\tau\log\left(
+\frac{1}{|\mathcal D_i^+|}
+\sum_{d\in\mathcal D_i^+}\exp(-b_{i,d}/\tau)
+\right).
+$$
 
-`x_2 -> frozen CLIP -> causal decomposition -> e_aug`
+再对 batch 内所有异类因果表示做平滑最大值，得到难负样本分数：
 
-There is no contrastive projection head. The direct causal representations are
-normalized and sent to the existing supervised contrastive objective:
+$$
+n_i=\tau\log\left(
+\frac{1}{|\mathcal N_i|}
+\sum_{j\in\mathcal N_i}\exp(s_{ij}/\tau)
+\right),\qquad
+\mathcal N_i=\{j\mid y_j\ne y_i\}.
+$$
 
-`L_con = SupCon(normalize(e), normalize(e_aug), labels)`
+单锚点损失为带间隔的 Softplus 排序损失：
 
-The augmented view is deliberately not used for augmented decomposition,
-causal-consistency, classification, independence, pre-CL, or representation
-regularization. Both inherited projection heads are removed and the optimizer
-is rebuilt without their parameters. The unused Gaussian regularizer parameter
-is frozen as well.
+$$
+\ell_i=\operatorname{softplus}
+\left(\frac{n_i-p_i+m}{\tau}\right).
+$$
 
-The fusion objective is therefore:
+只有同时具有至少一个跨域同类桥接和至少一个异类负样本的锚点参与
+平均。最终目标为：
 
-`L_total = L_CIPT + lambda_eff * L_con`
+$$
+\mathcal L_{total}=\mathcal L_{CIPT}
++\lambda_{eff}\mathcal L_{WBC},
+$$
 
-The new coefficient is `cipt_causal_contrastive_weight`, with default maximum
-value `0.1`. To avoid an abrupt contrastive gradient directly on the causal
-decomposition, it is linearly warmed up for 500 steps:
+其中
 
-`lambda_eff = lambda_max * min(1, step / warmup_steps)`
+$$
+\mathcal L_{CIPT}=\mathcal L_{cls}
++\beta\mathcal L_{de}+\gamma\mathcal L_{ind},
+\qquad
+\lambda_{eff}=\lambda_{max}\min(1,t/t_{warmup}).
+$$
 
-Recommended first sweep on PACS:
+## 参数与监控项
 
-- `lambda_max = 0.05`
-- `lambda_max = 0.10` (default)
-- `lambda_max = 0.25`
-- `lambda_max = 0.50`
+默认参数：
 
-Keep `beta`, `gamma`, temperature, prompts, augmentation, seed and SWAD fixed
-while doing this sweep. The main comparison should be Pure CIPT versus direct
-causal contrastive under identical settings.
+- `cipt_causal_contrastive_weight: 0.1`：$\lambda_{max}$；
+- `cipt_contrastive_warmup_steps: 500`：线性 warmup 步数；
+- `cipt_wbc_topk: 2`：每个其他源域的同类 Top-K；
+- `cipt_wbc_margin: 0.1`：排序间隔 $m$；
+- `cipt_wbc_temperature: 0.1`：SoftMin、SoftMax 与 Softplus 温度 $\tau$。
 
-## Example PACS run
+训练日志新增：
+
+- `wbc_contrastive_loss`：WBC-CL 损失；
+- `contrastive_valid_anchor_fraction`：有效锚点比例；
+- `wbc_domain_coverage_fraction`：锚点可找到同类桥接的其他源域比例；
+- `wbc_weakest_positive_similarity`：平滑最弱正桥相似度；
+- `wbc_hard_negative_similarity`：平滑难负样本相似度；
+- `wbc_violation_fraction`：未满足间隔的有效锚点比例。
+
+## DomainNet 三源域示例
+
+以下示例用源域 `0 1 2`、目标域 `5`；可按实验表替换域编号：
 
 ```bash
 cd DCCL/DCCL
-CUDA_VISIBLE_DEVICES=0 python train_all.py pacs_direct_causal_cl \
-  --dataset PACS --algorithm CIPTDCCL --data_dir /path/to/data \
+CUDA_VISIBLE_DEVICES=0 python train_all.py domainnet_wbc \
+  --dataset DomainNet --algorithm CIPTDCCL \
+  --data_dir /path/to/data \
+  --source_envs 0 1 2 --target_env 5 \
   --deterministic --trial_seed 0 --seed 0 \
-  --cipt_clip_backbone ViT-B/16 --cipt_clip_path /path/to/ViT-B-16.pt \
-  --cipt_beta 4 --cipt_gamma 5 --cipt_k 4 \
-  --cipt_prompt_length 16 --cipt_prompt_init "a photo of a" \
+  --cipt_clip_backbone ViT-B/16 \
+  --cipt_clip_path /path/to/ViT-B-16.pt \
+  --cipt_template_mode b5c \
+  --cipt_selector_mode adaptive \
   --cipt_causal_contrastive_weight 0.1 \
-  --cipt_contrastive_warmup_steps 500
+  --cipt_contrastive_warmup_steps 500 \
+  --cipt_wbc_topk 2 \
+  --cipt_wbc_margin 0.1 \
+  --cipt_wbc_temperature 0.1
 ```
+
+建议先固定其他设置，仅扫描
+`cipt_causal_contrastive_weight`（`0.05/0.1/0.2`）和
+`cipt_wbc_margin`（`0.05/0.1/0.2`）。如果
+`wbc_domain_coverage_fraction` 长期偏低，应优先采用类别均衡采样或增大
+各源域 batch size，而不是把缺失域样本错误地当成正样本。

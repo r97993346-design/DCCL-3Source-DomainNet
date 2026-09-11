@@ -23,7 +23,7 @@ cipt_pure: false
 #   + Text Diversity:     true,  true,  false
 #   + Contrastive (Full): true,  true,  true
 # Text Diversity uses the existing Safe-Diverse selector + TDA implementation
-# unchanged. Contrastive is the existing single-view SupCon objective on e.
+# unchanged. Contrastive is WBC-CL and compares causal representations e only.
 cipt_use_causal_module: true
 cipt_use_text_diversity: true
 cipt_use_contrastive_module: true
@@ -32,10 +32,16 @@ cipt_use_contrastive_module: true
 # Training data returns only x; no x_2/e_aug contrastive path is constructed.
 cipt_use_aug_view: false
 
-# Direct single-view causal contrastive coefficient.
-# Positives are other original causal features in the merged source-domain batch
-# with the same class label; self-pairs are excluded.
+# Direct WBC-CL coefficient. The loss groups same-class causal features e by
+# source domain, emphasizes the weakest available domain bridge, and ranks it
+# above smooth hard negatives. It never consumes s, z_k, text, or x_2.
 cipt_causal_contrastive_weight: 0.1
+
+# WBC-CL defaults. Top-K is clipped to each available class/domain group size.
+# One temperature controls SoftMin, SoftMax, and the soft margin ranking loss.
+cipt_wbc_topk: 2
+cipt_wbc_margin: 0.1
+cipt_wbc_temperature: 0.1
 
 # Linear warmup for the effective contrastive coefficient:
 # lambda_eff = lambda_max * min(1, step / warmup_steps)
