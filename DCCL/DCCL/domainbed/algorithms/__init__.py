@@ -1,8 +1,9 @@
 from .algorithms import *
-# On this branch, route CIPTDCCL through the component-ablation wrapper.
-# It preserves the no-augmentation causal-contrastive implementation while
-# exposing independent L_de, L_ind, TDA, and Contrastive switches.
-from .cipt_dccl_component_ablation import CIPTDCCL
+# On this branch, route CIPTDCCL through the CRCC wrapper.  CRCC inherits the
+# official no-augmentation component-ablation implementation, so L_de, L_ind,
+# TDA and the contrastive on/off switch remain available while the contrastive
+# objective itself can be switched between CRCC and the previous SupCon.
+from .cipt_crcc import CIPTDCCL
 
 
 def get_algorithm_class(algorithm_name):
