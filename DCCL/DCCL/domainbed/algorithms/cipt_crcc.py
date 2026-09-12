@@ -9,18 +9,18 @@ L_de and decorrelates it from ``e`` through L_ind.
 CRCC differs from vanilla supervised contrastive learning in two ways:
 
 1. Positive connectivity aggregation.
-   Same-class samples form a positive bag.  The loss aggregates their evidence
-   instead of forcing every same-class pair to be individually compact.  This
+   Same-class samples form a positive bag. The loss aggregates their evidence
+   instead of forcing every same-class pair to be individually compact. This
    preserves legitimate cross-domain variation (e.g. PACS Photo vs. Sketch).
 
 2. Adaptive pair importance in causal space.
    Positive samples can be weighted by the true-class confidence of their own
    causal feature, while negatives can be weighted by how strongly the anchor
-   confuses their class.  Both weights are detached so the network cannot lower
+   confuses their class. Both weights are detached so the network cannot lower
    the loss by manipulating the weighting mechanism itself.
 
 The existing ``cipt_use_contrastive`` switch and contrastive warm-up/weight are
-reused.  ``cipt_contrastive_type=supcon`` restores the previous single-view
+reused. ``cipt_contrastive_type=supcon`` restores the previous single-view
 SupCon objective for direct ablation.
 """
 
@@ -54,15 +54,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             hparams.get("cipt_crcc_confusion_negative", True)
         )
         self.crcc_eps = float(hparams.get("cipt_crcc_eps", 1e-12))
-
-        # Cached diagnostics from the latest CRCC call.  They are plain tensors
-        # (not parameters/buffers) because they are logging-only state.
-        self._crcc_last = {
-            "positive_reliability": 0.0,
-            "positive_score": 0.0,
-            "negative_score": 0.0,
-            "valid_anchor_fraction": 0.0,
-        }
+        self._reset_crcc_diagnostics()
 
         print(
             "CIPTDCCL contrastive objective: type={}, reliability={}, "
@@ -73,12 +65,19 @@ class CIPTDCCL(_BaseCIPTDCCL):
             )
         )
 
+    def _reset_crcc_diagnostics(self):
+        self._crcc_last = {
+            "positive_reliability": 0.0,
+            "positive_score": 0.0,
+            "negative_score": 0.0,
+            "valid_anchor_fraction": 0.0,
+        }
+
     def _causal_class_probabilities(self, causal):
         """Return detached class probabilities predicted directly from ``e``.
 
-        These probabilities are used only as weighting signals.  The actual
-        causal classification/decomposition losses remain the original CIPT
-        objectives in the parent class.
+        These probabilities are weighting signals only. The original CIPT
+        causal classification and decomposition objectives remain unchanged.
         """
         with torch.no_grad():
             class_features = self.text_features.class_features()
@@ -89,12 +88,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
     @staticmethod
     def _weighted_logsumexp(logits, weights, mask, eps):
-        """Log of a normalized weighted exponential average.
-
-        Row-wise weight normalization removes dependence on the number of
-        positives/negatives in the minibatch.  Masked entries are exactly
-        excluded rather than merely assigned a tiny finite weight.
-        """
+        """Log of a row-normalized weighted exponential average."""
         weights = weights * mask.float()
         normalizer = weights.sum(dim=1, keepdim=True).clamp_min(eps)
         weights = weights / normalizer
@@ -110,16 +104,17 @@ class CIPTDCCL(_BaseCIPTDCCL):
     def _crcc_loss(self, causal, labels):
         """Causal Reliability-Guided Connectivity Contrastive loss.
 
-        Positive evidence is aggregated over the same-class bag, with optional
-        source-positive reliability weights derived from each sample's own
-        causal classification confidence.  Negative evidence is aggregated over
-        different-class samples, with optional anchor-specific confusion weights.
+        Positive evidence is aggregated over the same-class bag, optionally
+        weighted by each candidate's own causal true-class confidence.
+        Negative evidence is aggregated over different-class samples,
+        optionally weighted by how strongly the anchor confuses their class.
 
-        Importantly, the spurious feature ``s`` is never consumed here.
+        The spurious feature ``s`` is never consumed here.
         """
         features = F.normalize(causal.float(), dim=-1)
         batch_size = features.shape[0]
         if batch_size <= 1:
+            self._reset_crcc_diagnostics()
             zero = features.sum() * 0.0
             return zero, features.new_zeros(())
 
@@ -128,31 +123,31 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         eye = torch.eye(batch_size, device=features.device, dtype=torch.bool)
         labels_col = labels.contiguous().view(-1, 1)
-        same_class = labels_col.eq(labels_col.t()) & ~eye
-        different_class = ~labels_col.eq(labels_col.t())
+        same_label = labels_col.eq(labels_col.t())
+        same_class = same_label & ~eye
+        different_class = ~same_label
 
         valid_anchor = same_class.any(dim=1) & different_class.any(dim=1)
         if not valid_anchor.any():
+            self._reset_crcc_diagnostics()
+            self._crcc_last["valid_anchor_fraction"] = float(
+                valid_anchor.float().mean().item()
+            )
             zero = features.sum() * 0.0
-            self._crcc_last = {
-                "positive_reliability": 0.0,
-                "positive_score": 0.0,
-                "negative_score": 0.0,
-                "valid_anchor_fraction": float(valid_anchor.float().mean().item()),
-            }
             return zero, valid_anchor.float().mean()
 
         need_probabilities = (
             self.crcc_use_reliability
             or self.crcc_use_confusion_negative
         )
-        if need_probabilities:
-            causal_prob = self._causal_class_probabilities(causal)
-        else:
-            causal_prob = None
+        causal_prob = (
+            self._causal_class_probabilities(causal)
+            if need_probabilities
+            else None
+        )
 
-        # Positive reliability is a property of the candidate positive sample:
-        # P(y_j | e_j).  Detaching the weighting signal is intentional.
+        # Candidate-positive reliability: P(y_j | e_j).
+        # We detach the score so reliability weights cannot be gamed directly.
         if self.crcc_use_reliability:
             sample_index = torch.arange(batch_size, device=features.device)
             positive_reliability = causal_prob[
@@ -165,17 +160,14 @@ class CIPTDCCL(_BaseCIPTDCCL):
             batch_size, batch_size
         )
 
-        # Negative weight for candidate j under anchor i is P(y_j | e_i):
-        # classes that the anchor currently confuses with its own class receive
-        # more attention.  This is also detached from the optimization graph.
+        # Candidate-negative weight for anchor i and sample j: P(y_j | e_i).
+        # Therefore classes the anchor currently confuses receive more emphasis.
         if self.crcc_use_confusion_negative:
             negative_weights = causal_prob[:, labels].detach().clamp_min(
                 self.crcc_eps
             )
         else:
-            negative_weights = features.new_ones(
-                batch_size, batch_size
-            )
+            negative_weights = features.new_ones(batch_size, batch_size)
 
         positive_score = self._weighted_logsumexp(
             similarity,
@@ -190,23 +182,19 @@ class CIPTDCCL(_BaseCIPTDCCL):
             self.crcc_eps,
         )
 
-        # Evidence-ranking form: same-class connectivity evidence should exceed
-        # confusing different-class evidence.  Unlike pairwise SupCon, distant
-        # positives are not each assigned an independent large pull-together loss.
-        per_anchor_loss = F.softplus(negative_score - positive_score)
-        loss = per_anchor_loss[valid_anchor].mean()
+        # Only valid anchors enter the evidence-ranking loss. This avoids any
+        # undefined -inf arithmetic for anchors that lack a positive/negative.
+        positive_valid = positive_score[valid_anchor]
+        negative_valid = negative_score[valid_anchor]
+        loss = F.softplus(negative_valid - positive_valid).mean()
 
         with torch.no_grad():
             self._crcc_last = {
                 "positive_reliability": float(
                     positive_reliability.mean().item()
                 ),
-                "positive_score": float(
-                    positive_score[valid_anchor].mean().item()
-                ),
-                "negative_score": float(
-                    negative_score[valid_anchor].mean().item()
-                ),
+                "positive_score": float(positive_valid.mean().item()),
+                "negative_score": float(negative_valid.mean().item()),
                 "valid_anchor_fraction": float(
                     valid_anchor.float().mean().item()
                 ),
@@ -217,16 +205,15 @@ class CIPTDCCL(_BaseCIPTDCCL):
     def _single_view_supcon(self, causal, labels):
         """Dispatch to CRCC or the previous single-view SupCon baseline."""
         if self.contrastive_type == "supcon":
-            self._crcc_last = {
-                "positive_reliability": 0.0,
-                "positive_score": 0.0,
-                "negative_score": 0.0,
-                "valid_anchor_fraction": 0.0,
-            }
+            self._reset_crcc_diagnostics()
             return super()._single_view_supcon(causal, labels)
         return self._crcc_loss(causal, labels)
 
     def update(self, x, y, **kwargs):
+        # Prevent stale CRCC diagnostics when contrastive learning is disabled.
+        if not self.use_contrastive or self.contrastive_weight <= 0.0:
+            self._reset_crcc_diagnostics()
+
         metrics = super().update(x, y, **kwargs)
         metrics.update(
             {
