@@ -15,16 +15,6 @@ if str(_BUNDLED_CLIP) not in sys.path:
 import clip
 
 
-# B5a: original high-performance feature/multiprompt prompts. Keep this exactly
-# as the default so the ablation branch starts from the known strong baseline.
-B5A_GENERIC_TEMPLATES = (
-    "a low quality photo.",
-    "a high quality photo.",
-    "a photo in an unusual style.",
-    "a photo in an unusual context.",
-)
-
-
 # B5b: OpenAI ImageNet prompt bank used by the official CIPT implementation.
 # These prompts are class-conditioned via the {} placeholder.
 B5B_IMAGENET_TEMPLATES = (
@@ -109,6 +99,17 @@ B5B_IMAGENET_TEMPLATES = (
     "a photo of a small {}.",
     "a tattoo of the {}.",
 )
+
+
+# C / paired class-agnostic validation bank. Keep the historical "b5a" mode
+# name for CLI compatibility, but construct every prompt directly from B5b by
+# replacing the class placeholder with the same neutral word, "subject".
+# This guarantees an exact 1:1 paired bank: wording/order/style are unchanged,
+# and the only controlled variable is whether the text contains a class name.
+B5A_GENERIC_TEMPLATES = tuple(
+    template.format("subject") for template in B5B_IMAGENET_TEMPLATES
+)
+assert len(B5A_GENERIC_TEMPLATES) == len(B5B_IMAGENET_TEMPLATES) == 80
 
 
 # B5c: expanded class-agnostic bank inspired by B5b. It deliberately removes
@@ -222,7 +223,7 @@ class PromptLearner(nn.Module):
 
 
 class CIPTTextFeatures(nn.Module):
-    """Learnable class prompts plus three selectable intervention template banks."""
+    """Learnable class prompts plus three selectable CIPT intervention template banks."""
 
     def __init__(self, class_names, clip_model, tokenize, prompt_length, prompt_init, k):
         super().__init__()
@@ -297,14 +298,15 @@ class CIPTTextFeatures(nn.Module):
     def intervention_features(self, labels=None):
         """Return selected intervention embeddings for the active B5 mode.
 
-        B5a -> [K, D], exact legacy fixed/cycled prompts.
+        B5a/C -> [K, D], paired class-agnostic prompts; random K in training
+                  and deterministic first K at evaluation, matching B5b sampling.
         B5c -> [K, D], random K during training and deterministic K at eval.
         B5b with labels -> [B, K, D], class-conditioned official prompts.
         B5b without labels -> [C, K, D], used for candidate-class inference.
         """
         if self.template_mode == "b5a":
             bank = self.b5a_text_bank
-            idx = self._select_indices(bank.shape[0], bank.device, legacy_fixed=True)
+            idx = self._select_indices(bank.shape[0], bank.device)
             return bank.index_select(0, idx)
 
         if self.template_mode == "b5c":
