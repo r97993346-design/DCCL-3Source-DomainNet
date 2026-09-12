@@ -36,9 +36,9 @@ cipt_contrastive_type: crcc
 cipt_crcc_reliability: true
 cipt_crcc_confusion_negative: true
 
-# CRCC/SupCon coefficient. The same weight is reused so the loss replacement can
-# be compared without changing the rest of the CIPT objective.
-cipt_causal_contrastive_weight: 0.1
+# CRCC/SupCon coefficient. Keep this at 1.0 to match the current causal
+# contrastive experiment setting and ensure a fair SupCon -> CRCC replacement.
+cipt_causal_contrastive_weight: 1.0
 
 # Linear warmup for the effective contrastive coefficient:
 # lambda_eff = lambda_max * min(1, step / warmup_steps)
