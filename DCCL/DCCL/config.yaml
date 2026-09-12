@@ -29,9 +29,15 @@ cipt_use_contrastive: true
 # RGB + tensor + CLIP normalization pipeline. No x_2/e_aug is constructed.
 cipt_use_aug_view: false
 
-# Direct single-view causal contrastive coefficient.
-# Positives are other original causal features in the merged source-domain batch
-# with the same class label; self-pairs are excluded.
+# Contrastive objective applied only to the causal representation e.
+# crcc  : reliability-guided positive connectivity + confusion-aware negatives
+# supcon: previous single-view supervised contrastive baseline for ablation
+cipt_contrastive_type: crcc
+cipt_crcc_reliability: true
+cipt_crcc_confusion_negative: true
+
+# CRCC/SupCon coefficient. The same weight is reused so the loss replacement can
+# be compared without changing the rest of the CIPT objective.
 cipt_causal_contrastive_weight: 0.1
 
 # Linear warmup for the effective contrastive coefficient:
@@ -41,4 +47,6 @@ cipt_contrastive_warmup_steps: 500
 # Causal decomposition is aligned to the public CIPT implementation:
 # 1) frozen CLIP visual feature -> L2 normalization before decomposition
 # 2) causal/spurious linear adapters -> identity weight + zero bias init
-# Contrastive learning remains projection-free and uses only original e.
+# CRCC remains projection-free, augmentation-free and consumes e only.
+# The spurious feature s keeps only the original CIPT decomposition/uniformity
+# and independence objectives; it is never used to construct CRCC weights.
