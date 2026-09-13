@@ -28,15 +28,15 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_k"] = (4, 4)
         hparams["cipt_prompt_length"] = (16, 16)
         hparams["cipt_prompt_init"] = ("a photo of a", "a photo of a")
-        # TDA modes used by the class-agnostic validation protocol:
+        # TDA modes for the paired class-agnostic validation protocol:
         # b5b    = B0     : class-conditioned + diverse B5b contexts
-        # b5a    = S0     : paired class-agnostic contexts (default subject)
+        # b5a    = S0     : paired class-agnostic contexts
         # bconst = Bconst : 80x "a photo of a {class}."
         # sconst = Sconst : 80x "a photo of a <neutral subject>."
         # b5c             : legacy expanded class-agnostic prompt bank
         hparams["cipt_template_mode"] = ("b5a", "b5a")
-        # Lexical robustness factor for S0/Sconst. The implementation validates
-        # subject / thing / object / entity and leaves class prompts unchanged.
+        # Lexical robustness factor for S0/Sconst. Valid implementation choices:
+        # subject / thing / object / entity.
         hparams["cipt_neutral_subject"] = ("subject", "subject")
         hparams["cipt_tda_heads"] = (1, 1)
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
@@ -71,8 +71,9 @@ def _hparams(algorithm, dataset, random_state):
             hparams["lr_g"] = (1e-3, 10 ** random_state.uniform(-4.5, -2.5))
             hparams["lr_d"] = (1e-3, 10 ** random_state.uniform(-4.5, -2.5))
 
-        hparams["weight_decay_g"] = (0.0, 0.0)
-        if dataset not in SMALL_IMAGES:
+        if dataset in SMALL_IMAGES:
+            hparams["weight_decay_g"] = (0.0, 0.0)
+        else:
             hparams["weight_decay_g"] = (0.0, 10 ** random_state.uniform(-6, -2))
 
         hparams["lambda"] = (1.0, 10 ** random_state.uniform(-2, 2))
@@ -83,33 +84,39 @@ def _hparams(algorithm, dataset, random_state):
         )
         hparams["grad_penalty"] = (0.0, 10 ** random_state.uniform(-2, 1))
         hparams["beta1"] = (0.5, random_state.choice([0.0, 0.5]))
+    elif algorithm == "RSC":
+        hparams["rsc_f_drop_factor"] = (1 / 3, random_state.uniform(0, 0.5))
+        hparams["rsc_b_drop_factor"] = (1 / 3, random_state.uniform(0, 0.5))
+    elif algorithm == "SagNet":
+        hparams["sag_w_adv"] = (0.1, 10 ** random_state.uniform(-2, 1))
     elif algorithm == "IRM":
         hparams["irm_lambda"] = (1e2, 10 ** random_state.uniform(-1, 5))
         hparams["irm_penalty_anneal_iters"] = (
             500,
             int(10 ** random_state.uniform(0, 4)),
         )
-    elif algorithm == "Mixup":
-        hparams["mixup_alpha"] = (0.2, 10 ** random_state.uniform(-1, 1))
+    elif algorithm in ["Mixup", "OrgMixup"]:
+        hparams["mixup_alpha"] = (0.2, 10 ** random_state.uniform(-1, -1))
     elif algorithm == "GroupDRO":
         hparams["groupdro_eta"] = (1e-2, 10 ** random_state.uniform(-3, -1))
-    elif algorithm in ["MMD", "CORAL"]:
+    elif algorithm in ("MMD", "CORAL"):
         hparams["mmd_gamma"] = (1.0, 10 ** random_state.uniform(-1, 1))
-    elif algorithm == "MLDG":
+    elif algorithm in ("MLDG", "SOMLDG"):
         hparams["mldg_beta"] = (1.0, 10 ** random_state.uniform(-1, 1))
     elif algorithm == "MTL":
         hparams["mtl_ema"] = (0.99, random_state.choice([0.5, 0.9, 0.99, 1.0]))
-    elif algorithm == "SagNet":
-        hparams["sag_w_adv"] = (0.1, 10 ** random_state.uniform(-2, 1))
-    elif algorithm == "RSC":
-        hparams["rsc_f_drop_factor"] = (1 / 3, random_state.uniform(0, 0.5))
-        hparams["rsc_b_drop_factor"] = (1 / 3, random_state.uniform(0, 0.5))
     elif algorithm == "VREx":
         hparams["vrex_lambda"] = (1e1, 10 ** random_state.uniform(-1, 5))
         hparams["vrex_penalty_anneal_iters"] = (
             500,
             int(10 ** random_state.uniform(0, 4)),
         )
+    elif algorithm == "SAM":
+        hparams["rho"] = (0.05, random_state.choice([0.01, 0.02, 0.05, 0.1]))
+    elif algorithm == "CutMix":
+        hparams["beta"] = (1.0, 1.0)
+        # cutmix_prob is set to 1.0 for ImageNet and 0.5 for CIFAR100 in the original paper.
+        hparams["cutmix_prob"] = (1.0, 1.0)
 
     return hparams
 
