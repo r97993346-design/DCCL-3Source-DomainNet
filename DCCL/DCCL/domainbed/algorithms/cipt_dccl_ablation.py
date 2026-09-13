@@ -22,12 +22,24 @@ from domainbed.algorithms.cipt_losses import (
 from domainbed.optimizers import get_optimizer
 
 
+CLASS_CONDITIONED_TDA_MODES = {"b5b", "bconst"}
+
+
 class CIPTDCCL(_BaseCIPTDCCL):
     """CIPT with single-view supervised contrastive learning in causal space."""
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super().__init__(input_shape, num_classes, num_domains, hparams)
         self.cipt_pure = bool(hparams.get("cipt_pure", False))
+
+        # Neutral-subject robustness experiment. Only the TDA intervention bank
+        # changes; learned class prompts and the visual/classification paths stay
+        # untouched. Valid choices are subject/thing/object/entity.
+        self.cipt_neutral_subject = str(
+            hparams.get("cipt_neutral_subject", "subject")
+        ).lower()
+        self.text_features.set_neutral_subject(self.cipt_neutral_subject)
+
         self.cipt_template_mode = str(
             hparams.get("cipt_template_mode", "b5a")
         ).lower()
@@ -84,12 +96,13 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         print(
             "CIPTDCCL single-view-causal-contrastive: pure_cipt={}, "
-            "template_mode={}, K={}, tda_heads={}, lr={}, "
+            "template_mode={}, neutral_subject={}, K={}, tda_heads={}, lr={}, "
             "contrastive_weight={}, contrastive_warmup_steps={}, temp={}, "
             "visual_l2_norm=False, adapter_init=default, augmented_view=False, "
             "projection_head=False, pre_cl=False, reg=False".format(
                 self.cipt_pure,
                 self.cipt_template_mode,
+                self.cipt_neutral_subject,
                 hparams["cipt_k"],
                 hparams["cipt_tda_heads"],
                 hparams["lr"],
@@ -107,7 +120,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
 
     def _intervention_features(self, labels=None):
-        if self.cipt_template_mode == "b5b":
+        if self.cipt_template_mode in CLASS_CONDITIONED_TDA_MODES:
             return self.text_features.intervention_features(labels=labels)
         return self.text_features.irrelevant_text_features
 
@@ -253,11 +266,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
         }
 
     def predict(self, x):
-        if self.cipt_template_mode != "b5b":
+        if self.cipt_template_mode not in CLASS_CONDITIONED_TDA_MODES:
             return super().predict(x)
 
-        # At inference labels are unknown. Score every candidate class using its
-        # own class-conditioned B5b intervention contexts and average over K.
+        # At inference labels are unknown. For B0/Bconst, score every candidate
+        # class using that candidate's own intervention contexts and average K.
         visual = self._visual(x)
         causal, _ = self.causal_decomposition(visual)
         class_features = self.text_features.class_features()
