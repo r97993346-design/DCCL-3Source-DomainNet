@@ -15,7 +15,7 @@ if str(_BUNDLED_CLIP) not in sys.path:
 import clip
 
 
-# B5b: OpenAI ImageNet prompt bank used by the official CIPT implementation.
+# B5b / B0: OpenAI ImageNet prompt bank used by the official CIPT implementation.
 # These prompts are class-conditioned via the {} placeholder.
 B5B_IMAGENET_TEMPLATES = (
     "a bad photo of a {}.",
@@ -101,15 +101,44 @@ B5B_IMAGENET_TEMPLATES = (
 )
 
 
-# C / paired class-agnostic validation bank. Keep the historical "b5a" mode
-# name for CLI compatibility, but construct every prompt directly from B5b by
-# replacing the class placeholder with the same neutral word, "subject".
-# This guarantees an exact 1:1 paired bank: wording/order/style are unchanged,
-# and the only controlled variable is whether the text contains a class name.
-B5A_GENERIC_TEMPLATES = tuple(
-    template.format("subject") for template in B5B_IMAGENET_TEMPLATES
-)
-assert len(B5A_GENERIC_TEMPLATES) == len(B5B_IMAGENET_TEMPLATES) == 80
+# Neutral subject robustness protocol. These words intentionally share the same
+# generic-subject role and are only used inside the TDA intervention bank.
+NEUTRAL_SUBJECTS = ("subject", "thing", "object", "entity")
+
+
+def _validate_neutral_subject(subject):
+    subject = str(subject).strip().lower()
+    if subject not in NEUTRAL_SUBJECTS:
+        raise ValueError(
+            "Unknown cipt_neutral_subject={!r}; expected one of {}".format(
+                subject, NEUTRAL_SUBJECTS
+            )
+        )
+    return subject
+
+
+def build_paired_generic_templates(subject="subject"):
+    """Build the 80-way S0 bank paired 1:1 with B5b/B0 contexts."""
+    subject = _validate_neutral_subject(subject)
+    templates = tuple(
+        template.format(subject) for template in B5B_IMAGENET_TEMPLATES
+    )
+    assert len(templates) == len(B5B_IMAGENET_TEMPLATES) == 80
+    return templates
+
+
+def build_sconst_templates(subject="subject"):
+    """Build Sconst: 80 identical class-agnostic prompts."""
+    subject = _validate_neutral_subject(subject)
+    return tuple(
+        "a photo of a {}.".format(subject)
+        for _ in range(len(B5B_IMAGENET_TEMPLATES))
+    )
+
+
+# Backward-compatible default constant: historical b5a now means paired S0
+# with the default neutral word "subject".
+B5A_GENERIC_TEMPLATES = build_paired_generic_templates("subject")
 
 
 # B5c: expanded class-agnostic bank inspired by B5b. It deliberately removes
@@ -159,7 +188,14 @@ B5C_GENERIC_EXPANDED_TEMPLATES = (
     "an image with an unusual background.",
 )
 
-TEMPLATE_MODES = ("b5a", "b5b", "b5c")
+# Experiment mapping:
+#   b5b    = B0     : class-conditioned + diverse contexts (80)
+#   b5a    = S0     : neutral subject + paired diverse contexts (80)
+#   bconst = Bconst : class-conditioned + constant context (80 duplicates)
+#   sconst = Sconst : neutral subject + constant context (80 duplicates)
+#   b5c             : legacy expanded class-agnostic bank
+TEMPLATE_MODES = ("b5a", "b5b", "b5c", "bconst", "sconst")
+CLASS_CONDITIONED_TEMPLATE_MODES = ("b5b", "bconst")
 
 
 def load_frozen_clip(backbone, local_path=""):
@@ -223,7 +259,7 @@ class PromptLearner(nn.Module):
 
 
 class CIPTTextFeatures(nn.Module):
-    """Learnable class prompts plus three selectable CIPT intervention template banks."""
+    """Learnable class prompts plus selectable CIPT intervention template banks."""
 
     def __init__(self, class_names, clip_model, tokenize, prompt_length, prompt_init, k):
         super().__init__()
@@ -233,17 +269,29 @@ class CIPTTextFeatures(nn.Module):
         self.class_names = [name.replace("_", " ") for name in class_names]
         self.k = int(k)
         self.template_mode = "b5a"
+        self.neutral_subject = "subject"
+        self._tokenize = tokenize
 
         self.register_buffer(
             "b5a_text_bank",
-            self._encode_texts(list(B5A_GENERIC_TEMPLATES), tokenize),
+            self._encode_texts(
+                list(build_paired_generic_templates(self.neutral_subject)),
+                tokenize,
+            ),
+        )
+        self.register_buffer(
+            "sconst_text_bank",
+            self._encode_texts(
+                list(build_sconst_templates(self.neutral_subject)),
+                tokenize,
+            ),
         )
         self.register_buffer(
             "b5c_text_bank",
             self._encode_texts(list(B5C_GENERIC_EXPANDED_TEMPLATES), tokenize),
         )
 
-        # [num_classes, num_templates, dim]
+        # [num_classes, num_templates, dim] for B0 / official B5b.
         b5b_texts = [
             template.format(class_name)
             for class_name in self.class_names
@@ -257,6 +305,21 @@ class CIPTTextFeatures(nn.Module):
             ),
         )
 
+        # [num_classes, 80, dim] for Bconst. Keep 80 positions and the same
+        # K-selection machinery, but make every context identical.
+        bconst_texts = [
+            "a photo of a {}.".format(class_name)
+            for class_name in self.class_names
+            for _ in range(len(B5B_IMAGENET_TEMPLATES))
+        ]
+        bconst_encoded = self._encode_texts(bconst_texts, tokenize)
+        self.register_buffer(
+            "bconst_text_bank",
+            bconst_encoded.reshape(
+                len(self.class_names), len(B5B_IMAGENET_TEMPLATES), -1
+            ),
+        )
+
     def _encode_texts(self, texts, tokenize, batch_size=256):
         encoded_chunks = []
         device = next(self.clip_model.parameters()).device
@@ -266,6 +329,19 @@ class CIPTTextFeatures(nn.Module):
                 encoded = self.clip_model.encode_text(tokens).float()
                 encoded_chunks.append(F.normalize(encoded, dim=-1))
         return torch.cat(encoded_chunks, dim=0)
+
+    def set_neutral_subject(self, subject):
+        """Switch S0/Sconst among subject/thing/object/entity without other changes."""
+        subject = _validate_neutral_subject(subject)
+        if subject == self.neutral_subject:
+            return
+        self.neutral_subject = subject
+        self.b5a_text_bank = self._encode_texts(
+            list(build_paired_generic_templates(subject)), self._tokenize
+        )
+        self.sconst_text_bank = self._encode_texts(
+            list(build_sconst_templates(subject)), self._tokenize
+        )
 
     def set_template_mode(self, mode):
         mode = str(mode).lower()
@@ -296,16 +372,26 @@ class CIPTTextFeatures(nn.Module):
         return torch.arange(self.k, device=device) % num_available
 
     def intervention_features(self, labels=None):
-        """Return selected intervention embeddings for the active B5 mode.
+        """Return selected intervention embeddings for the active TDA mode.
 
-        B5a/C -> [K, D], paired class-agnostic prompts; random K in training
-                  and deterministic first K at evaluation, matching B5b sampling.
-        B5c -> [K, D], random K during training and deterministic K at eval.
-        B5b with labels -> [B, K, D], class-conditioned official prompts.
-        B5b without labels -> [C, K, D], used for candidate-class inference.
+        b5a / S0 -> [K, D], paired neutral-subject prompts.
+        sconst    -> [K, D], 80 identical neutral-subject prompts.
+        b5c       -> [K, D], legacy expanded class-agnostic prompts.
+        b5b / B0 with labels -> [B, K, D], class-conditioned diverse prompts.
+        bconst with labels   -> [B, K, D], class-conditioned constant prompts.
+        b5b/bconst without labels -> [C, K, D], candidate-class inference.
+
+        All modes use random K during training and deterministic first K at
+        evaluation. For const modes the 80 positions are deliberately retained,
+        although their content is identical.
         """
         if self.template_mode == "b5a":
             bank = self.b5a_text_bank
+            idx = self._select_indices(bank.shape[0], bank.device)
+            return bank.index_select(0, idx)
+
+        if self.template_mode == "sconst":
+            bank = self.sconst_text_bank
             idx = self._select_indices(bank.shape[0], bank.device)
             return bank.index_select(0, idx)
 
@@ -314,7 +400,13 @@ class CIPTTextFeatures(nn.Module):
             idx = self._select_indices(bank.shape[0], bank.device)
             return bank.index_select(0, idx)
 
-        bank = self.b5b_text_bank
+        if self.template_mode == "b5b":
+            bank = self.b5b_text_bank
+        elif self.template_mode == "bconst":
+            bank = self.bconst_text_bank
+        else:
+            raise RuntimeError("Unhandled template mode: {}".format(self.template_mode))
+
         idx = self._select_indices(bank.shape[1], bank.device)
         selected = bank.index_select(1, idx)
         if labels is None:
@@ -324,8 +416,8 @@ class CIPTTextFeatures(nn.Module):
     @property
     def irrelevant_text_features(self):
         # Backward-compatible path used by the original high-performance
-        # CIPTDCCL implementation. B5b is handled by the ablation wrapper,
-        # because class-conditioned prompts need labels/candidate classes.
+        # CIPTDCCL implementation. Class-conditioned modes (b5b/bconst) are
+        # handled by the ablation wrapper because they need labels/candidates.
         return self.intervention_features(labels=None)
 
     def class_features(self):
