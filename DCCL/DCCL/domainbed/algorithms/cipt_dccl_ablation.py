@@ -1,13 +1,16 @@
-"""CIPT + single-view direct causal contrastive ablation.
+"""CIPT + intervention-reliable contrastive learning on original causal e.
 
 Execution modes:
 1) cipt_pure=True: single-view CIPT only.
-2) cipt_pure=False: the same single-view CIPT plus supervised contrastive
-   learning directly on original-image causal representations.
+2) cipt_pure=False: the same single-view CIPT plus reference-weighted
+   supervised contrastive learning on original-image causal representations.
 
 This branch deliberately removes projection heads and removes the augmented
 image branch entirely. Positive pairs are same-class original causal features
-within the merged source-domain batch. No x_2/e_aug path is required.
+within the merged source-domain batch. Existing TDA predictions determine
+detached positive-reference weights; they never enter the similarity matrix.
+Uniform and pre-TDA confidence weights are available as matched controls.
+No x_2/e_aug path is required.
 """
 
 import torch
@@ -18,12 +21,15 @@ from domainbed.algorithms.cipt_losses import (
     classification_loss as cipt_classification_loss,
     decomposition_loss as cipt_decomposition_loss,
     independence_loss as cipt_independence_loss,
+    intervention_reference_reliability,
+    confidence_reference_reliability,
+    reference_weighted_causal_contrastive_loss,
 )
 from domainbed.optimizers import get_optimizer
 
 
 class CIPTDCCL(_BaseCIPTDCCL):
-    """CIPT with single-view supervised contrastive learning in causal space."""
+    """CIPT with reference-weighted contrastive learning only in e space."""
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super().__init__(input_shape, num_classes, num_domains, hparams)
@@ -54,6 +60,18 @@ class CIPTDCCL(_BaseCIPTDCCL):
             0, int(hparams.get("cipt_contrastive_warmup_steps", 500))
         )
         self.contrastive_temperature = float(hparams.get("t", 0.1))
+        self.contrastive_reference = str(
+            hparams.get("cipt_contrastive_reference", "intervention")
+        ).lower()
+        if self.contrastive_reference not in ("intervention", "confidence", "uniform"):
+            raise ValueError(
+                "cipt_contrastive_reference must be intervention, confidence or uniform"
+            )
+        self.contrastive_reference_floor = float(
+            hparams.get("cipt_contrastive_reference_floor", 0.1)
+        )
+        if not 0.0 < self.contrastive_reference_floor <= 1.0:
+            raise ValueError("cipt_contrastive_reference_floor must be in (0, 1]")
         self.register_buffer(
             "_causal_contrastive_step",
             torch.zeros((), dtype=torch.long),
@@ -83,9 +101,10 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
 
         print(
-            "CIPTDCCL single-view-causal-contrastive: pure_cipt={}, "
+            "CIPTDCCL reference-weighted-causal-contrastive: pure_cipt={}, "
             "template_mode={}, K={}, tda_heads={}, lr={}, "
             "contrastive_weight={}, contrastive_warmup_steps={}, temp={}, "
+            "reference={}, reference_floor={}, "
             "visual_l2_norm=False, adapter_init=default, augmented_view=False, "
             "projection_head=False, pre_cl=False, reg=False".format(
                 self.cipt_pure,
@@ -96,6 +115,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.contrastive_weight,
                 self.contrastive_warmup_steps,
                 self.contrastive_temperature,
+                self.contrastive_reference,
+                self.contrastive_reference_floor,
             )
         )
         print(
@@ -123,46 +144,68 @@ class CIPTDCCL(_BaseCIPTDCCL):
         return self.contrastive_weight * ramp
 
     def _single_view_supcon(self, causal, labels):
-        """Supervised contrastive loss over original causal features only.
-
-        Positives are other samples in the merged source-domain batch that share
-        the same class label. Self-pairs are excluded. Anchors with no positive
-        sample are safely ignored instead of producing NaNs.
-        """
-        features = F.normalize(causal.float(), dim=-1)
-        batch_size = features.shape[0]
-        if batch_size <= 1:
-            return features.sum() * 0.0, features.new_zeros(())
-
-        temperature = max(self.contrastive_temperature, 1e-8)
-        logits = features @ features.t() / temperature
-        logits = logits - logits.max(dim=1, keepdim=True).values.detach()
-
-        self_mask = torch.eye(
-            batch_size, device=features.device, dtype=torch.bool
+        """Keep the legacy helper available as the uniform-weight control."""
+        loss, metrics = reference_weighted_causal_contrastive_loss(
+            causal, labels, temperature=self.contrastive_temperature,
+            reference_floor=self.contrastive_reference_floor,
         )
-        logits_mask = ~self_mask
+        return loss, metrics["valid_anchor_fraction"]
 
-        labels_col = labels.contiguous().view(-1, 1)
-        positive_mask = labels_col.eq(labels_col.t()) & logits_mask
-        positive_count = positive_mask.sum(dim=1)
-        valid_anchor = positive_count > 0
+    @staticmethod
+    def _empty_contrastive_metrics(reference):
+        return {name: reference.new_zeros(()) for name in (
+            "valid_anchor_fraction", "irc_reliability_mean", "irc_reliability_std",
+            "irc_positive_ess_fraction", "irc_weighted_anchor_fraction",
+            "irc_intervention_active", "irc_intervention_count", "irc_tda_fallback",
+        )}
 
-        if not valid_anchor.any():
-            return features.sum() * 0.0, valid_anchor.float().mean()
+    @staticmethod
+    def _contrastive_metric_items(metrics):
+        # Transfer these small diagnostics together, rather than adding one
+        # GPU synchronization per new metric to every training step.
+        names = list(metrics)
+        values = torch.stack([metrics[name].detach() for name in names]).cpu().tolist()
+        return {
+            ("contrastive_valid_anchor_fraction" if name == "valid_anchor_fraction" else name): value
+            for name, value in zip(names, values)
+        }
 
-        exp_logits = torch.exp(logits) * logits_mask.float()
-        log_prob = logits - torch.log(
-            exp_logits.sum(dim=1, keepdim=True).clamp_min(1e-12)
+    def _causal_reference_contrastive(
+        self, causal, labels, intervention_logits=None, causal_logits=None,
+    ):
+        """Reuse existing predictions for scores; only e enters the loss graph."""
+        intervention_active = (
+            self.contrastive_reference == "intervention"
+            and intervention_logits is not None
         )
+        tda_fallback = (
+            self.contrastive_reference == "intervention"
+            and intervention_logits is None
+        )
+        if intervention_active:
+            reliability = intervention_reference_reliability(intervention_logits, labels)
+        elif self.contrastive_reference == "confidence":
+            if causal_logits is None:
+                raise ValueError("confidence reference mode requires pre-TDA causal logits")
+            reliability = confidence_reference_reliability(causal_logits, labels)
+        else:
+            # The independent TDA-off ablation uses ordinary uniform SupCon.
+            # No intervention score is inferred from a non-intervened prediction.
+            reliability = None
 
-        mean_log_prob_pos = (
-            positive_mask.float() * log_prob
-        ).sum(dim=1) / positive_count.clamp_min(1).float()
-
-        loss = -mean_log_prob_pos[valid_anchor].mean()
-        valid_fraction = valid_anchor.float().mean()
-        return loss, valid_fraction
+        loss, metrics = reference_weighted_causal_contrastive_loss(
+            causal, labels, reference_reliability=reliability,
+            temperature=self.contrastive_temperature,
+            reference_floor=self.contrastive_reference_floor,
+        )
+        metrics.update({
+            "irc_intervention_active": causal.new_tensor(float(intervention_active)),
+            "irc_intervention_count": causal.new_tensor(
+                float(intervention_logits.shape[1]) if intervention_active else 0.0
+            ),
+            "irc_tda_fallback": causal.new_tensor(float(tda_fallback)),
+        })
+        return loss, metrics
 
     def update(self, x, y, **kwargs):
         """Single-view CIPT update; x_2 is intentionally not consumed."""
@@ -198,11 +241,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         if self.cipt_pure or self.contrastive_weight <= 0.0:
             loss_contrastive = causal.new_zeros(())
-            valid_anchor_fraction = causal.new_zeros(())
+            contrastive_metrics = self._empty_contrastive_metrics(causal)
             contrastive_weight_eff = 0.0
         else:
-            loss_contrastive, valid_anchor_fraction = self._single_view_supcon(
-                causal, labels
+            loss_contrastive, contrastive_metrics = self._causal_reference_contrastive(
+                causal, labels, intervention_logits=logits, causal_logits=causal_logits,
             )
             self._causal_contrastive_step.add_(1)
             contrastive_weight_eff = self._contrastive_scale()
@@ -242,7 +285,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "causal_consistency_loss": zero.item(),
             "dccl_contrastive_loss": loss_contrastive.item(),
             "contrastive_weight_eff": float(contrastive_weight_eff),
-            "contrastive_valid_anchor_fraction": valid_anchor_fraction.item(),
+            **self._contrastive_metric_items(contrastive_metrics),
             "pre_cl_loss": zero.item(),
             "reg_loss": zero.item(),
             "mean_e_norm": causal.norm(dim=-1).mean().item(),

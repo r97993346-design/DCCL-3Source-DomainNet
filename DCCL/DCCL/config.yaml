@@ -34,6 +34,19 @@ cipt_use_aug_view: false
 # with the same class label; self-pairs are excluded.
 cipt_causal_contrastive_weight: 0.1
 
+# Reference-weighted contrastive learning on original e only.
+# intervention: fraction of the existing K TDA predictions that match the label
+# confidence: correct-class probability of the pre-TDA e prediction (control)
+# uniform: original single-view supervised contrastive objective (control)
+# These are hparams, overridable through sconf CLI, e.g.
+#   --cipt_contrastive_reference uniform
+cipt_contrastive_reference: intervention
+
+# Positive-reference weight = floor + (1-floor) * detached reliability.
+# Weights are normalized over each anchor's same-class, non-self references.
+# Anchors are NOT reliability-weighted. TDA off -> uniform references, logged.
+cipt_contrastive_reference_floor: 0.1
+
 # Linear warmup for the effective contrastive coefficient:
 # lambda_eff = lambda_max * min(1, step / warmup_steps)
 cipt_contrastive_warmup_steps: 500

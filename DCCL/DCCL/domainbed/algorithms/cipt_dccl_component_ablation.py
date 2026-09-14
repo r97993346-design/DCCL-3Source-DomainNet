@@ -7,12 +7,13 @@ training switches through hparams/config:
 - ``cipt_use_de``: decomposition loss L_de
 - ``cipt_use_ind``: independence loss L_ind
 - ``cipt_use_tda``: text diversity augmentation (TDA)
-- ``cipt_use_contrastive``: single-view causal supervised contrastive loss
+- ``cipt_use_contrastive``: reference-weighted contrastive loss only on e
 
 When TDA is disabled, classification falls back to direct causal-feature
 classification against the same learned class text features. This keeps a
 classification objective in every ablation setting and changes only the TDA
-intervention itself.
+intervention itself. Intervention-reference weighting then explicitly falls
+back to uniform SupCon, preserving the independent TDA-off ablation.
 """
 
 import torch
@@ -54,6 +55,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.cipt_pure,
             )
         )
+        if not self.use_tda and self.use_contrastive and self.contrastive_reference == "intervention":
+            print("CIPTDCCL reference weighting: TDA is off; using uniform references.")
 
     def _contrastive_scale(self):
         """Linearly warm the direct causal contrastive coefficient when enabled."""
@@ -75,6 +78,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         causal, spurious = self.causal_decomposition(visual)
         class_features = self.text_features.class_features()
         zero = causal.new_zeros(())
+        causal_logits = None
 
         if self.use_de:
             causal_logits = self._logits(
@@ -114,11 +118,19 @@ class CIPTDCCL(_BaseCIPTDCCL):
             or self.contrastive_weight <= 0.0
         ):
             loss_contrastive = zero
-            valid_anchor_fraction = zero
+            contrastive_metrics = self._empty_contrastive_metrics(causal)
             contrastive_weight_eff = 0.0
         else:
-            loss_contrastive, valid_anchor_fraction = self._single_view_supcon(
-                causal, labels
+            if self.contrastive_reference == "confidence" and causal_logits is None:
+                if not self.use_tda:
+                    causal_logits = logits[:, 0]
+                else:
+                    with torch.no_grad():
+                        causal_logits = self._logits(causal[:, None, :], class_features)[:, 0]
+            loss_contrastive, contrastive_metrics = self._causal_reference_contrastive(
+                causal, labels,
+                intervention_logits=logits if self.use_tda else None,
+                causal_logits=causal_logits,
             )
             self._causal_contrastive_step.add_(1)
             contrastive_weight_eff = self._contrastive_scale()
@@ -162,7 +174,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "causal_consistency_loss": zero.item(),
             "dccl_contrastive_loss": loss_contrastive.item(),
             "contrastive_weight_eff": float(contrastive_weight_eff),
-            "contrastive_valid_anchor_fraction": valid_anchor_fraction.item(),
+            **self._contrastive_metric_items(contrastive_metrics),
             "pre_cl_loss": zero.item(),
             "reg_loss": zero.item(),
             "mean_e_norm": causal.norm(dim=-1).mean().item(),
