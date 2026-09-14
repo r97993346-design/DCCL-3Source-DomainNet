@@ -48,6 +48,11 @@ class IIDMax(SWADBase):
 class LossValley(SWADBase):
     """IIDMax has a potential problem that bias to validation dataset.
     LossValley choose SWAD range by detecting loss valley.
+
+    This branch keeps the standard LossValley selection/averaging rule but
+    decouples the end of the SWAD valley from the end of main optimization:
+    once the valley is dead, SWAD freezes its averaged model while the main
+    model continues training to the fixed step budget.
     """
 
     def __init__(self, evaluator, n_converge, n_tolerance, tolerance_ratio, **kwargs):
@@ -69,7 +74,13 @@ class LossValley(SWADBase):
         self.final_model = None
 
         self.converge_step = None
+
+        # Keep `dead_valley` false so trainer.py does not break the main
+        # training loop. `swad_stopped` is the actual LossValley terminal flag:
+        # once true, SWAD no longer updates its averaged model.
         self.dead_valley = False
+        self.swad_stopped = False
+        self.swad_stop_step = None
         self.threshold = None
 
     def get_smooth_loss(self, idx):
@@ -81,7 +92,9 @@ class LossValley(SWADBase):
         return self.converge_step is not None
 
     def update_and_evaluate(self, segment_swa, val_acc, val_loss, prt_fn):
-        if self.dead_valley:
+        # LossValley has already ended: freeze SWAD, but do not signal the
+        # trainer to stop the main model.
+        if self.swad_stopped:
             return
 
         frozen = copy.deepcopy(segment_swa.cpu())
@@ -134,8 +147,12 @@ class LossValley(SWADBase):
         # converged -> loss valley
         min_vloss = self.get_smooth_loss(0)
         if min_vloss > self.threshold:
-            self.dead_valley = True
-            print(f"Valley is dead at step {self.final_model.end_step}")
+            self.swad_stopped = True
+            self.swad_stop_step = self.final_model.end_step
+            print(
+                f"Valley is dead at step {self.swad_stop_step}. "
+                "Freeze SWAD averaging; main training continues."
+            )
             return
 
         model = self.smooth_Q[0]
@@ -150,7 +167,10 @@ class LossValley(SWADBase):
             )
             return self.converge_Q[-1].cuda()
 
-        if not self.dead_valley:
+        # If SWAD has not closed its valley yet, flush the remaining valid
+        # segments exactly as the original LossValley implementation does.
+        # If it already stopped, keep the frozen final_model unchanged.
+        if not self.swad_stopped:
             self.smooth_Q.popleft()
             while self.smooth_Q:
                 smooth_loss = self.get_smooth_loss(0)
