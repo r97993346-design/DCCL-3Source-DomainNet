@@ -1,0 +1,15 @@
+# PACS beta/gamma search with fixed-budget training + standard LossValley SWAD.
+# The main model trains for the full --steps budget. LossValley may stop its
+# own averaging when the valley dies, but trainer.py does not stop optimization.
+
+swad: LossValley
+swad_kwargs:
+  n_converge: 5
+  n_tolerance: 10
+  tolerance_ratio: 0.3
+
+# Keep the causal objective fixed while calibrating beta/gamma.
+cipt_use_de: true
+cipt_use_ind: true
+cipt_use_tda: true
+cipt_use_contrastive: false
