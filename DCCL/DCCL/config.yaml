@@ -1,10 +1,14 @@
 # Default update config
 # Config order: hparams_registry -> config.yaml -> CLI
 
-swad: null
+# Standard LossValley SWAD, with a slightly wider observation window for the
+# current CIPT optimization dynamics. SWAD is allowed to stop averaging when
+# its loss valley is dead, while the main model keeps training to the fixed
+# training budget (implemented in domainbed/swad.py).
+swad: LossValley
 swad_kwargs:
-  n_converge: 3
-  n_tolerance: 6
+  n_converge: 5
+  n_tolerance: 10
   tolerance_ratio: 0.3
 test_batchsize: 128
 
