@@ -1,6 +1,8 @@
 import copy
 from collections import deque
+
 import numpy as np
+
 from domainbed.lib import swa_utils
 
 
@@ -25,7 +27,9 @@ class IIDMax(SWADBase):
     def update_and_evaluate(self, segment_swa, val_acc, val_loss, prt_fn):
         if self.iid_max_acc < val_acc:
             self.iid_max_acc = val_acc
-            self.avgmodel = swa_utils.AveragedModel(segment_swa.module, rm_optimizer=True)
+            self.avgmodel = swa_utils.AveragedModel(
+                segment_swa.module, rm_optimizer=True
+            )
             self.avgmodel.start_step = segment_swa.start_step
 
         self.avgmodel.update_parameters(segment_swa.module)
@@ -48,14 +52,16 @@ class IIDMax(SWADBase):
 class LossValley(SWADBase):
     """IIDMax has a potential problem that bias to validation dataset.
     LossValley choose SWAD range by detecting loss valley.
-
-    This branch keeps the standard LossValley selection/averaging rule but
-    decouples the end of the SWAD valley from the end of main optimization:
-    once the valley is dead, SWAD freezes its averaged model while the main
-    model continues training to the fixed step budget.
     """
 
-    def __init__(self, evaluator, n_converge, n_tolerance, tolerance_ratio, **kwargs):
+    def __init__(
+        self,
+        evaluator,
+        n_converge,
+        n_tolerance,
+        tolerance_ratio,
+        **kwargs,
+    ):
         """
         Args:
             evaluator
@@ -74,17 +80,13 @@ class LossValley(SWADBase):
         self.final_model = None
 
         self.converge_step = None
-
-        # Keep `dead_valley` false so trainer.py does not break the main
-        # training loop. `swad_stopped` is the actual LossValley terminal flag:
-        # once true, SWAD no longer updates its averaged model.
         self.dead_valley = False
-        self.swad_stopped = False
-        self.swad_stop_step = None
         self.threshold = None
 
     def get_smooth_loss(self, idx):
-        smooth_loss = min([model.end_loss for model in list(self.smooth_Q)[idx:]])
+        smooth_loss = min(
+            [model.end_loss for model in list(self.smooth_Q)[idx:]]
+        )
         return smooth_loss
 
     @property
@@ -92,9 +94,7 @@ class LossValley(SWADBase):
         return self.converge_step is not None
 
     def update_and_evaluate(self, segment_swa, val_acc, val_loss, prt_fn):
-        # LossValley has already ended: freeze SWAD, but do not signal the
-        # trainer to stop the main model.
-        if self.swad_stopped:
+        if self.dead_valley:
             return
 
         frozen = copy.deepcopy(segment_swa.cpu())
@@ -106,23 +106,37 @@ class LossValley(SWADBase):
             if len(self.converge_Q) < self.n_converge:
                 return
 
-            min_idx = np.argmin([model.end_loss for model in self.converge_Q])
-            untilmin_segment_swa = self.converge_Q[min_idx]  # until-min segment swa.
+            min_idx = np.argmin(
+                [model.end_loss for model in self.converge_Q]
+            )
+            untilmin_segment_swa = self.converge_Q[
+                min_idx
+            ]  # until-min segment swa.
             if min_idx == 0:
                 self.converge_step = self.converge_Q[0].end_step
-                self.final_model = swa_utils.AveragedModel(untilmin_segment_swa)
+                self.final_model = swa_utils.AveragedModel(
+                    untilmin_segment_swa
+                )
 
-                th_base = np.mean([model.end_loss for model in self.converge_Q])
+                th_base = np.mean(
+                    [model.end_loss for model in self.converge_Q]
+                )
                 self.threshold = th_base * (1.0 + self.tolerance_ratio)
 
                 if self.n_tolerance < self.n_converge:
-                    for i in range(self.n_converge - self.n_tolerance):
+                    for i in range(
+                        self.n_converge - self.n_tolerance
+                    ):
                         model = self.converge_Q[1 + i]
                         self.final_model.update_parameters(
-                            model, start_step=model.start_step, end_step=model.end_step
+                            model,
+                            start_step=model.start_step,
+                            end_step=model.end_step,
                         )
                 elif self.n_tolerance > self.n_converge:
-                    converge_idx = self.n_tolerance - self.n_converge
+                    converge_idx = (
+                        self.n_tolerance - self.n_converge
+                    )
                     Q = list(self.smooth_Q)[: converge_idx + 1]
                     start_idx = 0
                     for i in reversed(range(len(Q))):
@@ -132,7 +146,9 @@ class LossValley(SWADBase):
                             break
                     for model in Q[start_idx + 1 :]:
                         self.final_model.update_parameters(
-                            model, start_step=model.start_step, end_step=model.end_step
+                            model,
+                            start_step=model.start_step,
+                            end_step=model.end_step,
                         )
                 print(
                     f"Model converged at step {self.converge_step}, "
@@ -147,36 +163,34 @@ class LossValley(SWADBase):
         # converged -> loss valley
         min_vloss = self.get_smooth_loss(0)
         if min_vloss > self.threshold:
-            self.swad_stopped = True
-            self.swad_stop_step = self.final_model.end_step
-            print(
-                f"Valley is dead at step {self.swad_stop_step}. "
-                "Freeze SWAD averaging; main training continues."
-            )
+            self.dead_valley = True
+            print(f"Valley is dead at step {self.final_model.end_step}")
             return
 
         model = self.smooth_Q[0]
         self.final_model.update_parameters(
-            model, start_step=model.start_step, end_step=model.end_step
+            model,
+            start_step=model.start_step,
+            end_step=model.end_step,
         )
 
     def get_final_model(self):
         if not self.is_converged:
             self.evaluator.logger.error(
-                "Requested final model, but model is not yet converged; return last model instead"
+                "Requested final model, but model is not yet converged; "
+                "return last model instead"
             )
             return self.converge_Q[-1].cuda()
 
-        # If SWAD has not closed its valley yet, flush the remaining valid
-        # segments exactly as the original LossValley implementation does.
-        # If it already stopped, keep the frozen final_model unchanged.
-        if not self.swad_stopped:
+        if not self.dead_valley:
             self.smooth_Q.popleft()
             while self.smooth_Q:
                 smooth_loss = self.get_smooth_loss(0)
                 if smooth_loss > self.threshold:
                     break
                 segment_swa = self.smooth_Q.popleft()
-                self.final_model.update_parameters(segment_swa, step=segment_swa.end_step)
+                self.final_model.update_parameters(
+                    segment_swa, step=segment_swa.end_step
+                )
 
         return self.final_model.cuda()
