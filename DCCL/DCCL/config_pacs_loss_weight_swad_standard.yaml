@@ -1,0 +1,13 @@
+# PACS sanity-check config using the original standard LossValley window.
+# Use only to compare 3/6/0.3 against the wider 5/10/0.3 search config.
+
+swad: LossValley
+swad_kwargs:
+  n_converge: 3
+  n_tolerance: 6
+  tolerance_ratio: 0.3
+
+cipt_use_de: true
+cipt_use_ind: true
+cipt_use_tda: true
+cipt_use_contrastive: false
