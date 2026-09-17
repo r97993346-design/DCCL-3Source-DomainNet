@@ -29,16 +29,27 @@ cipt_use_contrastive: true
 # RGB + tensor + CLIP normalization pipeline. No x_2/e_aug is constructed.
 cipt_use_aug_view: false
 
-# Direct single-view causal contrastive coefficient.
+# Original SupCon, with an optional detached coefficient for each anchor.
+# neighbor_retention: w_i = 1 + alpha * max(r_i(V) - r_i(E), 0)
+# supcon: original single-view supervised contrastive objective
+cipt_contrastive_type: neighbor_retention
+cipt_neighbor_k: 5
+cipt_neighbor_alpha: 0.5
+# Enable V/E statistics also in SupCon / no-contrastive runs. This is detached
+# logging only; it does not add a loss. Disabled by default to avoid extra work.
+cipt_neighbor_diagnostics: false
+
+# Direct single-view causal contrastive coefficient, matching current runs.
 # Positives are other original causal features in the merged source-domain batch
 # with the same class label; self-pairs are excluded.
-cipt_causal_contrastive_weight: 0.1
+cipt_causal_contrastive_weight: 1.0
 
 # Linear warmup for the effective contrastive coefficient:
 # lambda_eff = lambda_max * min(1, step / warmup_steps)
 cipt_contrastive_warmup_steps: 500
 
-# Causal decomposition is aligned to the public CIPT implementation:
-# 1) frozen CLIP visual feature -> L2 normalization before decomposition
-# 2) causal/spurious linear adapters -> identity weight + zero bias init
+# Inherited baseline behavior (despite the historical branch name):
+# 1) frozen CLIP visual feature -> adapters WITHOUT pre-decomposition L2 norm
+# 2) causal/spurious linear adapters -> default PyTorch initialization
 # Contrastive learning remains projection-free and uses only original e.
+# V/E normalization for cosine neighborhoods does not change adapter inputs.

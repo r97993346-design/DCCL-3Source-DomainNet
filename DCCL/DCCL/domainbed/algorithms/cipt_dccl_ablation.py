@@ -19,6 +19,11 @@ from domainbed.algorithms.cipt_losses import (
     decomposition_loss as cipt_decomposition_loss,
     independence_loss as cipt_independence_loss,
 )
+from domainbed.algorithms.cipt_neighbor_contrastive import (
+    empty_neighbor_stats,
+    neighbor_retention_weights,
+    validate_neighbor_options,
+)
 from domainbed.optimizers import get_optimizer
 
 
@@ -54,6 +59,13 @@ class CIPTDCCL(_BaseCIPTDCCL):
             0, int(hparams.get("cipt_contrastive_warmup_steps", 500))
         )
         self.contrastive_temperature = float(hparams.get("t", 0.1))
+        self.contrastive_type = str(hparams.get("cipt_contrastive_type", "supcon")).lower()
+        if self.contrastive_type not in ("supcon", "neighbor_retention"):
+            raise ValueError("cipt_contrastive_type must be supcon or neighbor_retention")
+        self.neighbor_k = hparams.get("cipt_neighbor_k", 5)
+        self.neighbor_alpha = float(hparams.get("cipt_neighbor_alpha", 0.5))
+        validate_neighbor_options(self.neighbor_k, self.neighbor_alpha)
+        self.neighbor_diagnostics = bool(hparams.get("cipt_neighbor_diagnostics", False))
         self.register_buffer(
             "_causal_contrastive_step",
             torch.zeros((), dtype=torch.long),
@@ -105,6 +117,13 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.frozen_parameter_count,
             )
         )
+        print(
+            "CIPTDCCL contrastive_type={}, neighbor_k={}, neighbor_alpha={}, "
+            "neighbor_diagnostics={}, detached_weights=True".format(
+                self.contrastive_type, self.neighbor_k, self.neighbor_alpha,
+                self.neighbor_diagnostics,
+            )
+        )
 
     def _intervention_features(self, labels=None):
         if self.cipt_template_mode == "b5b":
@@ -122,7 +141,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         ramp = min(1.0, step / float(self.contrastive_warmup_steps))
         return self.contrastive_weight * ramp
 
-    def _single_view_supcon(self, causal, labels):
+    def _single_view_supcon(self, causal, labels, anchor_weights=None):
         """Supervised contrastive loss over original causal features only.
 
         Positives are other samples in the merged source-domain batch that share
@@ -160,9 +179,63 @@ class CIPTDCCL(_BaseCIPTDCCL):
             positive_mask.float() * log_prob
         ).sum(dim=1) / positive_count.clamp_min(1).float()
 
-        loss = -mean_log_prob_pos[valid_anchor].mean()
+        if anchor_weights is None:
+            loss = -mean_log_prob_pos[valid_anchor].mean()
+        else:
+            if anchor_weights.shape != (batch_size,):
+                raise ValueError("anchor_weights must have shape [B]")
+            # Preserve the original mean over valid anchors, not sum(weights).
+            loss = -(
+                mean_log_prob_pos[valid_anchor]
+                * anchor_weights.detach()[valid_anchor]
+            ).mean()
         valid_fraction = valid_anchor.float().mean()
         return loss, valid_fraction
+
+    def _causal_contrastive_loss(self, visual, causal, labels, label_batches):
+        """Shared route for standard, weighted and disabled contrastive modes."""
+        enabled = (
+            not self.cipt_pure
+            and getattr(self, "use_contrastive", True)
+            and self.contrastive_weight > 0.0
+        )
+        apply_weights = (
+            enabled and self.contrastive_type == "neighbor_retention"
+            and self.neighbor_alpha > 0.0
+        )
+        stats = empty_neighbor_stats(causal)
+        stats["nbr_wmean"] = causal.new_ones(())
+        stats["nbr_wmax"] = causal.new_ones(())
+        anchor_weights = None
+        if apply_weights or self.neighbor_diagnostics:
+            # The trainer supplies one label tensor per SOURCE domain, in the
+            # same order as torch.cat(x)/torch.cat(y). No target labels enter.
+            domains = torch.cat([
+                torch.full_like(batch_labels, domain, dtype=torch.long)
+                for domain, batch_labels in enumerate(label_batches)
+            ])
+            candidate_weights, measured = neighbor_retention_weights(
+                visual, causal, labels, domains,
+                k=self.neighbor_k, alpha=self.neighbor_alpha,
+            )
+            stats.update(measured)
+            if apply_weights:
+                anchor_weights = candidate_weights
+                valid = labels[:, None].eq(labels[None, :]).sum(dim=1) > 1
+                count = valid.float().sum().clamp_min(1)
+                stats["nbr_wmean"] = (
+                    1.0 + ((candidate_weights - 1.0) * valid).sum() / count
+                )
+                if candidate_weights.numel():
+                    stats["nbr_wmax"] = candidate_weights.max()
+
+        if not enabled:
+            zero = causal.new_zeros(())
+            return zero, zero, 0.0, stats
+
+        loss, valid_fraction = self._single_view_supcon(causal, labels, anchor_weights)
+        self._causal_contrastive_step.add_(1)
+        return loss, valid_fraction, self._contrastive_scale(), stats
 
     def update(self, x, y, **kwargs):
         """Single-view CIPT update; x_2 is intentionally not consumed."""
@@ -196,16 +269,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
             loss_cls + self.beta * loss_de + self.gamma * loss_ind
         )
 
-        if self.cipt_pure or self.contrastive_weight <= 0.0:
-            loss_contrastive = causal.new_zeros(())
-            valid_anchor_fraction = causal.new_zeros(())
-            contrastive_weight_eff = 0.0
-        else:
-            loss_contrastive, valid_anchor_fraction = self._single_view_supcon(
-                causal, labels
-            )
-            self._causal_contrastive_step.add_(1)
-            contrastive_weight_eff = self._contrastive_scale()
+        loss_contrastive, valid_anchor_fraction, contrastive_weight_eff, neighbor_stats = (
+            self._causal_contrastive_loss(visual, causal, labels, y)
+        )
 
         total = (
             cipt_base_loss
@@ -232,6 +298,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         zero = causal.new_zeros(())
         return {
+            **{name: value.item() for name, value in neighbor_stats.items()},
             "total_loss": total.item(),
             "cipt_base_loss": cipt_base_loss.item(),
             "cipt_cls_loss": loss_cls.item(),

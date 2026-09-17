@@ -34,6 +34,10 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_template_mode"] = ("b5a", "b5a")
         hparams["cipt_tda_heads"] = (1, 1)
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
+        hparams["cipt_contrastive_type"] = ("neighbor_retention", "neighbor_retention")
+        hparams["cipt_neighbor_k"] = (5, 5)
+        hparams["cipt_neighbor_alpha"] = (0.5, 0.5)
+        hparams["cipt_neighbor_diagnostics"] = (False, False)
         hparams["cipt_use_aug_view"] = (False, False)
         hparams["cipt_debug_shapes"] = (False, False)
 
