@@ -8,6 +8,7 @@ import ast
 import contextlib
 import importlib.util
 import io
+import math
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -44,6 +45,16 @@ class TinyText(nn.Module):
     def set_template_mode(self, mode):
         self.mode = mode
 
+    def set_neutral_subject(self, subject):
+        self.neutral_subject = subject
+
+    def intervention_features(self, labels=None):
+        if labels is None:
+            return self.irrelevant_text_features
+        return self.irrelevant_text_features[None, :, :].expand(
+            labels.shape[0], -1, -1
+        )
+
     def class_features(self):
         return F.normalize(self.classes, dim=-1)
 
@@ -75,7 +86,7 @@ class TinyBase(nn.Module):
 
 
 NAMESPACE = {
-    "torch": torch, "F": F, "_BaseCIPTDCCL": TinyBase,
+    "math": math, "torch": torch, "F": F, "_BaseCIPTDCCL": TinyBase,
     "get_optimizer": optimizer.get_optimizer,
     "cipt_classification_loss": losses.classification_loss,
     "cipt_decomposition_loss": losses.decomposition_loss,
@@ -83,6 +94,7 @@ NAMESPACE = {
     "empty_neighbor_stats": neighbor.empty_neighbor_stats,
     "neighbor_retention_weights": neighbor.neighbor_retention_weights,
     "validate_neighbor_options": neighbor.validate_neighbor_options,
+    "CLASS_CONDITIONED_TDA_MODES": {"b5b", "bconst"},
 }
 
 
@@ -240,12 +252,14 @@ class LossTests(unittest.TestCase):
 
 class UpdateTests(unittest.TestCase):
     def build(self, cls=Component, **overrides):
-        params = dict(cipt_pure=False, cipt_template_mode="b5c", cipt_k=2,
+        params = dict(cipt_pure=False, cipt_template_mode="b5a",
+                      cipt_neutral_subject="subject", cipt_k=2,
                       cipt_tda_heads=1, cipt_beta=4., cipt_gamma=5.,
                       cipt_contrastive_type="neighbor_retention", cipt_neighbor_k=1,
                       cipt_neighbor_alpha=.5, cipt_neighbor_diagnostics=False,
                       cipt_causal_contrastive_weight=1., cipt_contrastive_warmup_steps=500,
-                      t=.1, optimizer="adam", lr=1e-3, weight_decay=0.)
+                      cipt_contrastive_temperature=.1,
+                      t=.2, optimizer="adam", lr=1e-3, weight_decay=0.)
         params.update(overrides)
         with contextlib.redirect_stdout(io.StringIO()):
             return cls((4,), 2, 2, params)
@@ -286,6 +300,35 @@ class UpdateTests(unittest.TestCase):
             }):
                 metrics = model.update(*self.batches())
             self.assertEqual(metrics["nbr_check"], 0.)
+
+    def test_standard_supcon_switch_is_preserved(self):
+        torch.manual_seed(41)
+        standard = self.build(cipt_contrastive_type="supcon")
+        torch.manual_seed(41)
+        alpha_zero = self.build(
+            cipt_contrastive_type="neighbor_retention",
+            cipt_neighbor_alpha=0.0,
+        )
+        standard_metrics = standard.update(*self.batches())
+        alpha_zero_metrics = alpha_zero.update(*self.batches())
+        self.assertEqual(
+            standard_metrics["dccl_contrastive_loss"],
+            alpha_zero_metrics["dccl_contrastive_loss"],
+        )
+        for a, b in zip(standard.parameters(), alpha_zero.parameters()):
+            self.assertTrue(torch.equal(a, b))
+
+    def test_method_specific_temperature_overrides_generic_t(self):
+        model = self.build(cipt_contrastive_temperature=.07, t=.3)
+        self.assertEqual(model.contrastive_temperature, .07)
+
+    def test_invalid_contrastive_hparams_fail_early(self):
+        for value in (0.0, -0.1, float("inf"), float("nan")):
+            with self.assertRaises(ValueError):
+                self.build(cipt_contrastive_temperature=value)
+        for value in (-0.1, float("inf"), float("nan")):
+            with self.assertRaises(ValueError):
+                self.build(cipt_causal_contrastive_weight=value)
 
     def test_component_switches_and_inference(self):
         model = self.build(cipt_use_de=False, cipt_use_ind=False, cipt_use_tda=False)

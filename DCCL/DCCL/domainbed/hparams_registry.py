@@ -40,6 +40,9 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_neutral_subject"] = ("subject", "subject")
         hparams["cipt_tda_heads"] = (1, 1)
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
+        # Independent causal-contrastive search knobs.  They are intentionally
+        # not tied to the standard DCCL/SupCon hyperparameters.
+        hparams["cipt_contrastive_temperature"] = (0.1, 0.1)
         hparams["cipt_contrastive_type"] = ("neighbor_retention", "neighbor_retention")
         hparams["cipt_neighbor_k"] = (5, 5)
         hparams["cipt_neighbor_alpha"] = (0.5, 0.5)

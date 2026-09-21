@@ -1,4 +1,4 @@
-"""CIPT + single-view direct causal contrastive ablation.
+"""CIPT + switchable single-view contrastive learning in causal space E.
 
 Execution modes:
 1) cipt_pure=True: single-view CIPT only.
@@ -9,6 +9,8 @@ This branch deliberately removes projection heads and removes the augmented
 image branch entirely. Positive pairs are same-class original causal features
 within the merged source-domain batch. No x_2/e_aug path is required.
 """
+
+import math
 
 import torch
 import torch.nn.functional as F
@@ -67,10 +69,23 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 hparams.get("cipt_contrastive_weight", 0.1),
             )
         )
+        if not math.isfinite(self.contrastive_weight):
+            raise ValueError("cipt_causal_contrastive_weight must be finite")
+        if self.contrastive_weight < 0.0:
+            raise ValueError("cipt_causal_contrastive_weight must be non-negative")
         self.contrastive_warmup_steps = max(
             0, int(hparams.get("cipt_contrastive_warmup_steps", 500))
         )
-        self.contrastive_temperature = float(hparams.get("t", 0.1))
+        # Keep the causal contrastive temperature independently tunable.  The
+        # generic ``t`` option remains a backwards-compatible fallback, but a
+        # new method run no longer has to inherit the standard DCCL setting.
+        self.contrastive_temperature = float(
+            hparams.get("cipt_contrastive_temperature", hparams.get("t", 0.1))
+        )
+        if not math.isfinite(self.contrastive_temperature):
+            raise ValueError("cipt_contrastive_temperature must be finite")
+        if self.contrastive_temperature <= 0.0:
+            raise ValueError("cipt_contrastive_temperature must be positive")
         self.contrastive_type = str(hparams.get("cipt_contrastive_type", "supcon")).lower()
         if self.contrastive_type not in ("supcon", "neighbor_retention"):
             raise ValueError("cipt_contrastive_type must be supcon or neighbor_retention")

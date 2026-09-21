@@ -34,13 +34,17 @@ cipt_use_aug_view: false
 # neighbor_retention: w_i = 1 + alpha * max(r_i(V) - r_i(E), 0)
 # supcon: original single-view supervised contrastive objective
 cipt_contrastive_type: neighbor_retention
+# Method-specific temperature. Tune this independently for standard SupCon and
+# neighbor_retention runs; it does not need to match the generic DCCL `t`.
+cipt_contrastive_temperature: 0.1
 cipt_neighbor_k: 5
 cipt_neighbor_alpha: 0.5
 # Enable V/E statistics also in SupCon / no-contrastive runs. This is detached
 # logging only; it does not add a loss. Disabled by default to avoid extra work.
 cipt_neighbor_diagnostics: false
 
-# Direct single-view causal contrastive coefficient, matching current runs.
+# Direct single-view causal contrastive coefficient. This is an independent
+# performance-tuning parameter, not an alignment constraint with SupCon.
 # Positives are other original causal features in the merged source-domain batch
 # with the same class label; self-pairs are excluded.
 cipt_causal_contrastive_weight: 1.0

@@ -1,140 +1,149 @@
-# V/E 跨域近邻退化加权 SupCon
+# V/E 跨域邻域保持加权 SupCon
 
-分支：`feature/cipt-neighborhood-retention-contrastive`
+实现分支：`feature/cipt-paired-class-agnostic-subject-validation`。
 
-基准：`feature/cipt-official-norm-idinit-no-aug`，提交
-`e306f871598e936792eb96d493611fbb9a92a782`。
+该实现保持此分支已有的配对类别无关 subject 验证、四种 TDA 模式和 SWAD
+训练逻辑不变，只替换/关闭附加在因果特征 `E` 上的对比目标。冻结视觉特征
+`V` 仅用于估计 `V -> E` 后哪些锚点丢失了跨域同类邻域，不接收该损失的梯度，
+也不进入推理。
 
-## 实现的方案
+## 三种可控模式
 
-冻结 CLIP 提取 V，现有适配器产生 E/S。E 继续并行参与 SupCon 和 TDA。
-在现有源域批次内，分别用 V、E 的余弦相似度查找其他源域的同类近邻比例：
+| 模式 | 参数 | 实际目标 |
+|---|---|---|
+| 无对比学习 | `--cipt_use_contrastive false` | 仅原 CIPT 目标 |
+| 标准 SupCon | `--cipt_use_contrastive true --cipt_contrastive_type supcon` | 原始单视图 SupCon(`E`) |
+| 邻域保持加权 | `--cipt_use_contrastive true --cipt_contrastive_type neighbor_retention` | 锚点加权 SupCon(`E`) |
 
-1. 对每个锚点，在每个其他源域分别取最近的 `min(k, 该域批次大小)` 个样本。
-2. 计算其中标签与锚点相同的比例。候选域必须同时含有该类和其他类样本；
-   不满足条件的域不参与平均。锚点自己的域始终排除。
-3. 各有效域等权平均，得到 `r_v` 和 `r_e`。
-4. 先按域平均，再计算 `gap = max(r_v - r_e, 0)`。
-5. 权重为 `w = stop_gradient(1 + alpha * gap)`。没有有效参照时 `w=1`。
+`cipt_pure=true` 是兼容旧实验的总关闭开关；全局对比系数为 0 也会关闭对比
+目标。`cipt_use_de`、`cipt_use_ind`、`cipt_use_tda` 仍可独立控制其他组件。
 
-最终目标为：
+## 方法定义
+
+对批次中锚点 `i` 和每个其他源域 `d`，分别在冻结视觉空间 `V` 和因果空间
+`E` 中取该域的 top-k 余弦近邻，并计算同类比例。只有同时包含锚点同类和异类
+样本的候选域才参与计算，避免纯类别组成直接决定近邻纯度。各有效候选域等权
+平均：
 
 ```text
-loss = CIPT_base_loss + lambda_eff * mean_valid_anchors(w_i * supcon_i(E))
-lambda_eff = lambda_max * min(1, update_count / warmup_steps)
+r_i^V = mean_d purity(top-k_d(V_i))
+r_i^E = mean_d purity(top-k_d(E_i))
+delta_i = max(r_i^V - r_i^E, 0)
+w_i = stop_gradient(1 + alpha * delta_i)
 ```
 
-正负样本、SupCon 分母、每个锚点的正样本平均均沿用基准实现。近邻只决定
-锚点系数，不是新的正样本筛选。外层仍除以有效锚点数，不除以权重之和。
-因此总体对比强度可能增加；验证机制时应对照调整全局系数后的普通 SupCon。
+没有有效跨域参照时 `w_i=1`。最终目标为：
 
-这里只使用已有的 V/E、训练类别标签和源域批次归属。不增加编码器前向、
-投影头、增强视图或可学习参数。附加开销来自批内相似度矩阵和近邻统计。
-推理过程不需要近邻、域标签或类别标签。
+```text
+L = L_CIPT + lambda_eff * mean_{i in valid SupCon anchors}
+                         [w_i * L_SupCon_i(E)]
+lambda_eff = lambda_max * min(1, update_step / warmup_steps)
+```
 
-本方案检测的是局部类别邻域变化，不提供因果识别或图连通性保证。
-CLIP 的邻域本身也可能存在偏差，实际收益需要实验验证。
+邻域模块只生成锚点系数：标准 SupCon 的同类正样本、异类/其余负样本、分母、
+无正样本锚点过滤规则均不改变；外层仍除以有效锚点数，而不是权重和。因此：
 
-## 参数与三组消融
+- `cipt_contrastive_type=supcon` 保留标准实现；
+- `neighbor_retention + alpha=0` 与标准 SupCon 在损失和梯度上严格等价；
+- 邻域权重完全 detach，梯度只由 SupCon 回传到 `E`；
+- `V`、域编号和标签只在训练期计算权重，不增加推理成本。
 
-在 `DCCL/DCCL` 目录运行，参数由现有 sconf 配置/命令行机制读取。
+该分数描述的是“冻结 CLIP 的局部类别关系在 `E` 中是否退化”，不是因果识别
+分数，也不证明 CLIP 邻域必然正确。它解决的是原单视图 SupCon 对所有锚点一视
+同仁、无法重点修复分解后跨域同类连接被破坏的问题。
+
+## 参数
 
 | 参数 | 默认值 | 含义 |
+|---|---:|---|
+| `cipt_use_contrastive` | `true` | 对比目标总开关 |
+| `cipt_contrastive_type` | `neighbor_retention` | `supcon` 或新加权方法 |
+| `cipt_contrastive_temperature` | `0.1` | 仅此处 SupCon 的温度；优先于兼容项 `t` |
+| `cipt_causal_contrastive_weight` | `1.0` | `lambda_max`，附加对比目标的全局系数 |
+| `cipt_contrastive_warmup_steps` | `500` | 全局系数线性 warmup 步数 |
+| `cipt_neighbor_k` | `5` | 每个其他源域独立选取的近邻数 |
+| `cipt_neighbor_alpha` | `0.5` | 退化权重强度；权重范围为 `[1, 1+alpha]` |
+| `cipt_neighbor_diagnostics` | `false` | 其他模式下是否额外测量 V/E 邻域，仅用于日志 |
+
+温度和全局系数不要求与标准 SupCon 使用相同数值。为了追求各方法自身最佳性能，
+标准 SupCon 与新方法应分别通过源域验证选择
+`cipt_contrastive_temperature` 和 `cipt_causal_contrastive_weight`；新方法再独立选择
+`k/alpha/warmup`。保持数据划分、主干、训练预算、验证准则和随机种子协议一致，
+且不得用目标域测试集选参。默认值只是起点，不表示已是数据集最优值。
+
+建议先用以下小搜索空间，再围绕最优点细化：
+
+```text
+temperature: {0.05, 0.07, 0.10, 0.20}
+lambda_max:  {0.05, 0.10, 0.20, 0.50, 1.00}
+k:           {3, 5, 10}
+alpha:       {0.25, 0.50, 1.00, 2.00}
+warmup:      {0, 100, 500}
+```
+
+不必做全笛卡尔积：先固定 `k=5, alpha=0.5` 搜索温度和全局系数，再搜索
+`k/alpha`，最后确认 warmup。标准 SupCon 只搜索前两项。
+
+## 与配对类别无关验证对接
+
+对比学习开关与 TDA 文本因素正交，原四格实验不变：
+
+| 单元 | `cipt_template_mode` | `cipt_neutral_subject` |
 |---|---|---|
-| `cipt_contrastive_type` | `neighbor_retention` | 新方案；`supcon` 为原损失 |
-| `cipt_neighbor_k` | `5` | 每个其他源域的近邻数量 |
-| `cipt_neighbor_alpha` | `0.5` | 默认权重范围 `[1, 1.5]`；0 恢复 SupCon |
-| `cipt_causal_contrastive_weight` | `1.0` | 沿用当前实验的全局对比系数 |
-| `cipt_contrastive_warmup_steps` | `500` | 从第一步起线性增加，非第 500 步才启动 |
-| `cipt_neighbor_diagnostics` | `false` | 在普通 SupCon/关闭对比时也计算分离梯度的诊断 |
-| `cipt_use_contrastive` | `true` | 设为 false 关闭整个对比损失 |
+| Bconst | `bconst` | 忽略 |
+| B0 | `b5b` | 忽略 |
+| Sconst | `sconst` | `subject/thing/object/entity` |
+| S0 | `b5a` | `subject/thing/object/entity` |
 
-| 实验 | 追加参数 |
-|---|---|
-| 无对比 | `--cipt_use_contrastive false` |
-| 普通 SupCon | `--cipt_use_contrastive true --cipt_contrastive_type supcon` |
-| 新方案 | `--cipt_use_contrastive true --cipt_contrastive_type neighbor_retention` |
-| α=0 等价检查 | `--cipt_contrastive_type neighbor_retention --cipt_neighbor_alpha 0` |
-
-`cipt_pure=true` 和全局对比系数为 0 也会关闭对比损失。原有
-`cipt_use_de`、`cipt_use_ind`、`cipt_use_tda` 开关继续有效。
-
-基准 config 的全局系数原为 0.1，本分支按当前实验要求默认设为 1.0。
-公平比较三组时请显式使用相同系数；复现基准默认时三组均设为 0.1。
-基准的实际预处理/初始化是：适配器前不做视觉 L2 归一化，适配器使用默认
-初始化。历史分支名和旧 config 注释与此不一致；本分支仅更正注释。
-近邻计算内部的余弦归一化不会改动送入适配器或 TDA 的特征。
-
-## PACS / VLCS 运行示例
-
-以下用 B5C、全局对比系数 1、seed/trial_seed 0，输出按消融项目和数据集组织。
-需要实际收益时，用配对的多个随机种子重复三组实验，沿用源域验证选模型。
+例如在 S0-subject 上运行新方法：
 
 ```bash
 cd DCCL/DCCL
-CUDA_VISIBLE_DEVICES=1 python train_all.py pacs_neighbor_retention_s0 \
+CUDA_VISIBLE_DEVICES=1 python train_all.py pacs_s0_neighbor_retention_seed0 \
   --dataset PACS --algorithm CIPTDCCL \
   --data_dir /home/hooasia/lgg/data/repro_dccl_data \
   --deterministic --trial_seed 0 --seed 0 --checkpoint_freq 100 --aug 0 \
   --cipt_clip_path /home/hooasia/.cache/clip/ViT-B-16.pt \
   --cipt_beta 4 --cipt_gamma 5 --cipt_k 4 \
   --cipt_prompt_length 16 --cipt_prompt_init "a photo of a" \
-  --cipt_template_mode b5c --cipt_tda_heads 1 \
-  --cipt_pure false --cipt_use_contrastive true \
+  --cipt_template_mode b5a --cipt_neutral_subject subject \
+  --cipt_tda_heads 1 --cipt_pure false \
+  --cipt_use_contrastive true \
   --cipt_contrastive_type neighbor_retention \
+  --cipt_contrastive_temperature 0.1 \
+  --cipt_causal_contrastive_weight 1.0 \
   --cipt_neighbor_k 5 --cipt_neighbor_alpha 0.5 \
-  --cipt_causal_contrastive_weight 1 --cipt_contrastive_warmup_steps 500 \
+  --cipt_contrastive_warmup_steps 500 \
   --lr 0.001 --output_root train_output/neighbor_retention_ablation
 ```
 
-```bash
-CUDA_VISIBLE_DEVICES=1 python train_all.py vlcs_neighbor_retention_s0 \
-  --dataset VLCS --algorithm CIPTDCCL \
-  --data_dir /home/hooasia/lgg/data/repro_dccl_data \
-  --deterministic --trial_seed 0 --seed 0 --checkpoint_freq 100 --aug 0 \
-  --cipt_clip_path /home/hooasia/.cache/clip/ViT-B-16.pt \
-  --cipt_beta 4 --cipt_gamma 5 --cipt_k 4 \
-  --cipt_prompt_length 16 --cipt_prompt_init "a photo of a" \
-  --cipt_template_mode b5c --cipt_tda_heads 1 \
-  --cipt_pure false --cipt_use_contrastive true \
-  --cipt_contrastive_type neighbor_retention \
-  --cipt_neighbor_k 5 --cipt_neighbor_alpha 0.5 \
-  --cipt_causal_contrastive_weight 1 --cipt_contrastive_warmup_steps 500 \
-  --lr 5e-5 --output_root train_output/neighbor_retention_ablation
-```
+切换到标准 SupCon 时只需使用 `--cipt_contrastive_type supcon`，同时填写该基线
+自己经源域验证选出的温度和全局系数；关闭时使用
+`--cipt_use_contrastive false`。B0 配对实验把 `b5a` 改为 `b5b`。
 
-普通 SupCon 和无对比实验分别替换模式/开关，并修改运行名称。
-若要比较三组 V/E 邻域统计，请三组都追加 `--cipt_neighbor_diagnostics true`。
-这只开启测量，不改变普通 SupCon 或无对比实验的目标函数。
-
-## 日志含义与边界
+## 日志和复杂度
 
 | 字段 | 含义 |
 |---|---|
-| `nbr_check` | 1=本步计算了近邻；0=跳过，其他零统计不是实测结果 |
-| `nbr_pur_v` / `nbr_pur_e` | 有有效跨域参照的锚点，其 V/E 近邻同类比例均值 |
-| `nbr_gap` | 上述锚点的正向退化量均值 |
-| `nbr_cover` | 有有效跨域参照的锚点占整个批次的比例 |
-| `nbr_drop` | 有效参照锚点中发生退化的比例 |
-| `nbr_wmean` | 实际用于有效 SupCon 锚点的平均权重；关闭/普通模式为 1 |
-| `nbr_wmax` | 实际最大权重；关闭/普通模式为 1 |
+| `nbr_check` | 1 表示本步实际计算近邻；0 表示跳过 |
+| `nbr_pur_v` / `nbr_pur_e` | 有有效参照锚点的 V/E 跨域近邻同类比例 |
+| `nbr_gap` | 正向退化量均值 |
+| `nbr_cover` | 有有效跨域参照的锚点比例 |
+| `nbr_drop` | 有效锚点中发生退化的比例 |
+| `nbr_wmean` / `nbr_wmax` | 实际锚点权重均值/最大值 |
 
-当 `nbr_cover=0` 时，纯度等零值是无有效参照的占位值。若 k 覆盖整个候选域，
-纯度只取决于该域类别组成，V/E 差值为零；大类别数、小批次也可能使有效参照
-稀疏。上述指标有助于辨别方案是否实际生效。
-
-这些是训练批次诊断，不能代替固定、类别均衡的验证集近邻测量，也不能单凭
-训练统计宣称泛化改善。诊断不改变随机数状态，不额外采样训练图片。
+训练期开销主要是批内 V/E 相似度矩阵，时间和显存为 `O(B^2)`；不增加编码器
+前向、增强视图、投影头或可学习参数。普通 SupCon、`alpha=0` 或关闭对比学习
+时，若 diagnostics 也关闭，则完全跳过近邻计算。
 
 ## 验证
 
-在 `DCCL/DCCL` 执行：
+在 `DCCL/DCCL` 下执行：
 
 ```bash
 python tests/test_cipt_neighbor_contrastive.py -v
 ```
 
-测试涵盖已知退化案例、各域等权平均、无参照回退、α=0 的损失/梯度等价、
-原 SupCon 分母、分离梯度、冻结编码器、单次视觉前向、线性 warmup、
-原有消融开关，以及诊断不改变更新。更新测试使用小型冻结编码器替代 CLIP；
-不将其视为实际数据集训练或性能验证。
+测试覆盖已知邻域退化、跨域等权平均、退化回退、标准 SupCon 分母、detach、
+`alpha=0` 损失/梯度等价、三态开关、独立温度优先级、冻结编码器、单次视觉
+前向、warmup、原组件开关以及 diagnostics 不改变参数更新。
