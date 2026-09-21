@@ -109,19 +109,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
             loss_cls + self.beta * loss_de + self.gamma * loss_ind
         )
 
-        if (
-            not self.use_contrastive
-            or self.contrastive_weight <= 0.0
-        ):
-            loss_contrastive = zero
-            valid_anchor_fraction = zero
-            contrastive_weight_eff = 0.0
-        else:
-            loss_contrastive, valid_anchor_fraction = self._single_view_supcon(
-                causal, labels
-            )
-            self._causal_contrastive_step.add_(1)
-            contrastive_weight_eff = self._contrastive_scale()
+        loss_contrastive, valid_anchor_fraction, contrastive_weight_eff, neighbor_stats = (
+            self._causal_contrastive_loss(visual, causal, labels, y)
+        )
 
         total = (
             cipt_base_loss
@@ -152,6 +142,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.optimizer.step()
 
         return {
+            **{name: value.item() for name, value in neighbor_stats.items()},
             "total_loss": total.item(),
             "cipt_base_loss": cipt_base_loss.item(),
             "cipt_cls_loss": loss_cls.item(),
