@@ -2,6 +2,7 @@ import collections
 import json
 import time
 import copy
+import random
 from pathlib import Path
 
 import numpy as np
@@ -327,31 +328,57 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         "iid (inD)": iid_best_indomain,
     }
 
-    # Evaluate SWAD
+    # Evaluate SWAD.
+    #
+    # The final SWAD-only evaluation happens after the base training trajectory
+    # for this target domain is already complete.  Evaluation/data-loader code
+    # may still advance the process-wide Python/NumPy/PyTorch RNG states.  Since
+    # train_all.py runs target domains sequentially in the same process, that
+    # would make the *next* target domain start from a different RNG state when
+    # SWAD is enabled and can change its ordinary IID result.
+    #
+    # Snapshot and restore RNG states around this final SWAD-only stage so SWAD
+    # remains an additional model-selection/evaluation path and cannot perturb
+    # the following target-domain run.  We intentionally do NOT restore model,
+    # optimizer, AveragedModel, or LossValley state.
     if swad:
-        swad_algorithm = swad.get_final_model()
-
-        if hparams["freeze_bn"] is False:
-            bn_steps = 500 if not args.debug else 10
-            logger.warning(f"Update SWAD BN statistics for {bn_steps} steps ...")
-            swa_utils.update_bn(
-                train_minibatches_iterator, swad_algorithm, bn_steps
-            )
-
-        logger.warning("Evaluate SWAD ...")
-        accuracies, summaries = evaluator.evaluate(swad_algorithm)
-        results = {**summaries, **accuracies}
-        start = swad_algorithm.start_step
-        end = swad_algorithm.end_step
-        step_str = f" [{start}-{end}]  (N={swad_algorithm.n_averaged})"
-        row = (
-            misc.to_row([results[key] for key in results_keys if key in results])
-            + step_str
+        py_rng_state = random.getstate()
+        np_rng_state = np.random.get_state()
+        torch_rng_state = torch.get_rng_state()
+        cuda_rng_state = (
+            torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
         )
-        logger.info(row)
 
-        ret["SWAD"] = results["test_in"]
-        ret["SWAD (inD)"] = results[in_key]
+        try:
+            swad_algorithm = swad.get_final_model()
+
+            if hparams["freeze_bn"] is False:
+                bn_steps = 500 if not args.debug else 10
+                logger.warning(f"Update SWAD BN statistics for {bn_steps} steps ...")
+                swa_utils.update_bn(
+                    train_minibatches_iterator, swad_algorithm, bn_steps
+                )
+
+            logger.warning("Evaluate SWAD ...")
+            accuracies, summaries = evaluator.evaluate(swad_algorithm)
+            results = {**summaries, **accuracies}
+            start = swad_algorithm.start_step
+            end = swad_algorithm.end_step
+            step_str = f" [{start}-{end}]  (N={swad_algorithm.n_averaged})"
+            row = (
+                misc.to_row([results[key] for key in results_keys if key in results])
+                + step_str
+            )
+            logger.info(row)
+
+            ret["SWAD"] = results["test_in"]
+            ret["SWAD (inD)"] = results[in_key]
+        finally:
+            random.setstate(py_rng_state)
+            np.random.set_state(np_rng_state)
+            torch.set_rng_state(torch_rng_state)
+            if cuda_rng_state is not None:
+                torch.cuda.set_rng_state_all(cuda_rng_state)
 
     for k, acc in ret.items():
         logger.info(f"{k} = {acc:.3%}")
