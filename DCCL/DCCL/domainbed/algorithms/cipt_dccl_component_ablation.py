@@ -119,7 +119,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             mask_max = zero
         else:
             loss_mask = self.causal_decomposition.mask_sparsity_loss()
-            mask_float = mask.float()
+            mask_float = mask.detach().float()
             mask_mean = mask_float.mean()
             mask_std = mask_float.std(unbiased=False)
             mask_min = mask_float.min()
@@ -178,6 +178,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.optimizer.zero_grad()
         total.backward()
         self.optimizer.step()
+        # Avoid retaining the graph through the module-level mask cache.
+        self.causal_decomposition.clear_mask_cache()
 
         return {
             **{name: value.item() for name, value in neighbor_stats.items()},
