@@ -149,7 +149,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "template_mode={}, neutral_subject={}, K={}, tda_heads={}, lr={}, "
             "contrastive_weight={}, contrastive_warmup_steps={}, temp={}, "
             "selector_mode={}, selector_candidates={}, "
-            "visual_l2_norm=False, adapter_init=default, augmented_view=False, "
+            "visual_l2_norm=True, decomposition_mode={}, augmented_view=False, "
             "projection_head=False, pre_cl=False, reg=False".format(
                 self.cipt_pure,
                 self.cipt_template_mode,
@@ -162,6 +162,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.contrastive_temperature,
                 self.prompt_selector_mode,
                 self.prompt_selector.candidate_count,
+                self.decomposition_mode,
             )
         )
         print(
