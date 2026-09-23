@@ -72,6 +72,9 @@ def setup_alg_hparams(hparams, args):
         for name in (
             "cipt_enabled", "cipt_clip_backbone", "cipt_clip_path", "cipt_beta",
             "cipt_gamma", "cipt_k", "cipt_prompt_length", "cipt_prompt_init",
+            "cipt_decomposition_mode", "cipt_independence_mode",
+            "cipt_mask_hidden_dim", "cipt_mask_temperature", "cipt_mask_hard",
+            "cipt_mask_sparsity_weight",
             "cipt_tda_heads", "cipt_selector_mode", "cipt_selector_candidates",
             "cipt_contrastive_weight", "cipt_debug_shapes",
         ):
