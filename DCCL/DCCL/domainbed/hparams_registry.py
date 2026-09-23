@@ -39,6 +39,10 @@ def _hparams(algorithm, dataset, random_state):
         # subject / thing / object / entity.
         hparams["cipt_neutral_subject"] = ("subject", "subject")
         hparams["cipt_tda_heads"] = (1, 1)
+        # Keep paired B0/S0 validation unchanged unless explicitly enabled.
+        # Adaptive selection uses the full B5a/B5c bank in train and eval.
+        hparams["cipt_selector_mode"] = ("random", "random")
+        hparams["cipt_selector_candidates"] = (8, 8)
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
         # Independent causal-contrastive search knobs.  They are intentionally
         # not tied to the standard DCCL/SupCon hyperparameters.

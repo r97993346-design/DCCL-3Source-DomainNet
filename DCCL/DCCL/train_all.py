@@ -118,6 +118,12 @@ def main():
     parser.add_argument("--cipt_prompt_length", type=int, default=16)
     parser.add_argument("--cipt_prompt_init", default="a photo of a")
     parser.add_argument("--cipt_tda_heads", type=int, default=1)
+    parser.add_argument(
+        "--cipt_selector_mode", choices=["random", "all", "adaptive"],
+        default="random",
+        help="B5a/B5c selection: original random K, full bank, or per-image Safe-Diverse K",
+    )
+    parser.add_argument("--cipt_selector_candidates", type=int, default=8)
     parser.add_argument("--cipt_contrastive_weight", type=float, default=1.0)
     parser.add_argument("--cipt_debug_shapes", action="store_true")
     parser.add_argument(

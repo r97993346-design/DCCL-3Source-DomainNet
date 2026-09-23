@@ -371,6 +371,21 @@ class CIPTTextFeatures(nn.Module):
             return torch.cat(pieces, dim=0)
         return torch.arange(self.k, device=device) % num_available
 
+    def full_intervention_features(self):
+        """Complete shared bank for per-image class-agnostic prompt selection.
+
+        The paired B5a bank is rebuilt when ``neutral_subject`` changes, so
+        selection always uses the subject variant active in this experiment.
+        """
+        if self.template_mode == "b5a":
+            return self.b5a_text_bank
+        if self.template_mode == "b5c":
+            return self.b5c_text_bank
+        raise ValueError(
+            "Full prompt selection requires a diverse class-agnostic bank "
+            "(b5a or b5c)."
+        )
+
     def intervention_features(self, labels=None):
         """Return selected intervention embeddings for the active TDA mode.
 

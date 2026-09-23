@@ -55,6 +55,10 @@ class TinyText(nn.Module):
             labels.shape[0], -1, -1
         )
 
+    def full_intervention_features(self):
+        bank = self.irrelevant_text_features
+        return torch.cat((bank, bank.roll(1, dims=1), -bank), dim=0)
+
     def class_features(self):
         return F.normalize(self.classes, dim=-1)
 
@@ -95,6 +99,8 @@ NAMESPACE = {
     "neighbor_retention_weights": neighbor.neighbor_retention_weights,
     "validate_neighbor_options": neighbor.validate_neighbor_options,
     "CLASS_CONDITIONED_TDA_MODES": {"b5b", "bconst"},
+    "SELECTABLE_TDA_MODES": {"b5a", "b5c"},
+    "SafeDiversePromptSelector": modules.SafeDiversePromptSelector,
 }
 
 
@@ -341,6 +347,40 @@ class UpdateTests(unittest.TestCase):
         }):
             prediction = model.predict(self.batches()[0][0])
         self.assertEqual(prediction.shape, (2, 2))
+
+    def test_random_selector_preserves_existing_eval_predictions(self):
+        model = self.build(cipt_selector_mode="random", cipt_use_contrastive=False)
+        model.eval()
+        images = self.batches()[0][0]
+        torch.testing.assert_close(model.predict(images), TinyBase.predict(model, images))
+        self.assertEqual(model.update(*self.batches())["prompt_selector_active"], 0.)
+
+    def test_adaptive_paired_bank_runs_in_train_and_eval(self):
+        for cls in (SingleView, Component):
+            model = self.build(cls, cipt_selector_mode="adaptive",
+                               cipt_selector_candidates=4, cipt_use_contrastive=False)
+            metrics = model.update(*self.batches())
+            self.assertEqual(metrics["prompt_selector_active"], 1.)
+            self.assertEqual(metrics["prompt_count"], 2.)
+            self.assertEqual(metrics["prompt_selector_candidates"], 4.)
+            model.eval()
+            with mock.patch.object(model.prompt_selector, "select", wraps=model.prompt_selector.select) as select:
+                logits = model.predict(self.batches()[0][0])
+                select.assert_called_once()
+            self.assertEqual(logits.shape, (2, 2))
+            torch.testing.assert_close(logits, model.predict(self.batches()[0][0]))
+
+    def test_tda_off_skips_selector_even_if_configured(self):
+        model = self.build(cipt_selector_mode="adaptive", cipt_use_tda=False)
+        with mock.patch.object(model.prompt_selector, "shortlist",
+                               side_effect=AssertionError("selector ran with TDA disabled")):
+            self.assertEqual(model.update(*self.batches())["prompt_selector_active"], 0.)
+            self.assertEqual(model.predict(self.batches()[0][0]).shape, (2, 2))
+
+    def test_adaptive_selection_rejects_class_conditioned_modes(self):
+        for mode in ("b5b", "bconst", "sconst"):
+            with self.assertRaisesRegex(ValueError, "b5a or b5c"):
+                self.build(cipt_template_mode=mode, cipt_selector_mode="adaptive")
 
     def test_diagnostics_do_not_change_training(self):
         for contrastive in (False, True):

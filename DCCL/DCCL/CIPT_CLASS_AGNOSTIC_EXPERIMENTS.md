@@ -52,3 +52,26 @@ Recommended primary comparisons:
 ## Reproducibility rule
 
 For a paper table, keep all non-TDA settings identical across cells: dataset split, seed, K, prompt length/init, beta/gamma, optimizer, learning rate, contrastive settings, preprocessing, evaluation protocol, and checkpoint/model-selection rule. Change only the two factors described above.
+
+## Optional Safe-Diverse selection on paired class-agnostic prompts
+
+The paired validation above retains `--cipt_selector_mode random` (the default).
+For an additional selector ablation on the **same 80 S0 prompts**, use:
+
+```bash
+--cipt_template_mode b5a --cipt_neutral_subject subject \
+  --cipt_selector_mode adaptive --cipt_selector_candidates 8 --cipt_k 4
+```
+
+This picks the 8 most visually relevant contexts from the frozen CLIP image/text
+space, checks each candidate's prediction against the unmodified causal feature,
+and selects 4 prompts with different TDA intervention directions. Selection
+uses no labels or spurious features, and the same adaptive policy is applied
+at training and inference. The existing TDA and causal contrastive losses remain
+as configured; `cipt_use_tda: false` bypasses selection.
+
+`--cipt_selector_mode all` uses all 80 prompts for S0 (or all 42 for B5c).
+Adaptive/all are limited to the diverse class-agnostic `b5a` and `b5c` banks;
+the `b5b`, `bconst`, and `sconst` controls keep the random/fixed K protocol.
+Compare selector variants within a fixed template bank. Do not mix the selector
+effect into the B0/S0 class identity comparison above.

@@ -26,10 +26,12 @@ from domainbed.algorithms.cipt_neighbor_contrastive import (
     neighbor_retention_weights,
     validate_neighbor_options,
 )
+from domainbed.algorithms.cipt_modules import SafeDiversePromptSelector
 from domainbed.optimizers import get_optimizer
 
 
 CLASS_CONDITIONED_TDA_MODES = {"b5b", "bconst"}
+SELECTABLE_TDA_MODES = {"b5a", "b5c"}
 
 
 class CIPTDCCL(_BaseCIPTDCCL):
@@ -51,6 +53,27 @@ class CIPTDCCL(_BaseCIPTDCCL):
             hparams.get("cipt_template_mode", "b5a")
         ).lower()
         self.text_features.set_template_mode(self.cipt_template_mode)
+
+        self.prompt_selector_mode = str(
+            hparams.get("cipt_selector_mode", "random")
+        ).lower()
+        if self.prompt_selector_mode not in ("random", "all", "adaptive"):
+            raise ValueError(
+                "Unknown cipt_selector_mode={!r}; expected random, all, or "
+                "adaptive.".format(self.prompt_selector_mode)
+            )
+        if (self.prompt_selector_mode != "random"
+                and self.cipt_template_mode not in SELECTABLE_TDA_MODES):
+            raise ValueError(
+                "cipt_selector_mode={!r} requires the diverse class-agnostic "
+                "b5a or b5c bank, got {!r}.".format(
+                    self.prompt_selector_mode, self.cipt_template_mode
+                )
+            )
+        self.prompt_selector = SafeDiversePromptSelector(
+            k=hparams["cipt_k"],
+            candidate_count=hparams.get("cipt_selector_candidates", 8),
+        )
 
         # Keep contrastive learning directly in the causal representation space.
         for module_name in ("proj_head", "pre_proj_head"):
@@ -125,6 +148,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "CIPTDCCL single-view-causal-contrastive: pure_cipt={}, "
             "template_mode={}, neutral_subject={}, K={}, tda_heads={}, lr={}, "
             "contrastive_weight={}, contrastive_warmup_steps={}, temp={}, "
+            "selector_mode={}, selector_candidates={}, "
             "visual_l2_norm=False, adapter_init=default, augmented_view=False, "
             "projection_head=False, pre_cl=False, reg=False".format(
                 self.cipt_pure,
@@ -136,6 +160,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.contrastive_weight,
                 self.contrastive_warmup_steps,
                 self.contrastive_temperature,
+                self.prompt_selector_mode,
+                self.prompt_selector.candidate_count,
             )
         )
         print(
@@ -157,6 +183,84 @@ class CIPTDCCL(_BaseCIPTDCCL):
         if self.cipt_template_mode in CLASS_CONDITIONED_TDA_MODES:
             return self.text_features.intervention_features(labels=labels)
         return self.text_features.irrelevant_text_features
+
+    @staticmethod
+    def _empty_selector_metrics(reference, prompt_count, candidate_count=0):
+        zero = reference.new_zeros(())
+        return {
+            "prompt_selector_active": zero,
+            "prompt_count": reference.new_tensor(float(prompt_count)),
+            "prompt_selector_candidates": reference.new_tensor(float(candidate_count)),
+            "prompt_selector_relevance": zero,
+            "prompt_selector_js": zero,
+            "prompt_selector_pairwise_cosine": zero,
+            "prompt_selector_safe_fraction": zero,
+            "prompt_selector_safe_candidates": zero,
+            "prompt_selector_fallback_fraction": zero,
+            "prompt_selector_unique": zero,
+        }
+
+    @staticmethod
+    def _selector_metric_items(selector_metrics):
+        return {
+            name: float(value.detach().item())
+            for name, value in selector_metrics.items()
+        }
+
+    def _select_interventions(self, visual, causal, class_features, labels=None):
+        """Select B5a/B5c contexts with the same policy during train and eval.
+
+        Random mode preserves the paired protocol's random train K and fixed
+        eval K. Class-conditioned and constant banks retain their original path.
+        Safety uses predictions, never training labels or the spurious feature.
+        """
+        if (self.cipt_template_mode not in SELECTABLE_TDA_MODES
+                or self.prompt_selector_mode == "random"):
+            contexts = self._intervention_features(labels=labels)
+            interventions = self.tda(causal, contexts)
+            return interventions, self._empty_selector_metrics(
+                causal, interventions.shape[1]
+            )
+
+        prompt_bank = self.text_features.full_intervention_features()
+        if self.prompt_selector_mode == "all":
+            interventions = self.tda(causal, prompt_bank)
+            return interventions, self._empty_selector_metrics(
+                causal, interventions.shape[1], prompt_bank.shape[0]
+            )
+
+        # CLIP image/text similarity selects candidates in their shared frozen
+        # embedding space. E and S are not used as relevance queries.
+        candidate_indices, candidate_relevance = self.prompt_selector.shortlist(
+            visual, prompt_bank
+        )
+        candidate_contexts = prompt_bank[candidate_indices]
+        candidate_interventions = self.tda(causal, candidate_contexts)
+
+        # Index selection is label-free and detached. The gathered K features
+        # keep their gradient path through TDA and the causal adapter.
+        with torch.no_grad():
+            base_logits = self._logits(
+                causal.detach()[:, None, :], class_features.detach()
+            )[:, 0]
+            candidate_logits = self._logits(
+                candidate_interventions.detach(), class_features.detach()
+            )
+        local_indices, _, metrics = self.prompt_selector.select(
+            candidate_indices, candidate_relevance, causal,
+            candidate_interventions, base_logits, candidate_logits,
+        )
+        interventions = self.prompt_selector.batch_gather(
+            candidate_interventions, local_indices
+        )
+        metrics.update({
+            "prompt_selector_active": causal.new_ones(()),
+            "prompt_count": causal.new_tensor(float(interventions.shape[1])),
+            "prompt_selector_candidates": causal.new_tensor(
+                float(candidate_interventions.shape[1])
+            ),
+        })
+        return interventions, metrics
 
     def _contrastive_scale(self):
         """Linearly warm the direct causal contrastive coefficient."""
@@ -287,8 +391,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
         loss_ind = cipt_independence_loss(causal, spurious)
 
-        interventions = self.tda(
-            causal, self._intervention_features(labels=labels)
+        interventions, selector_metrics = self._select_interventions(
+            visual, causal, class_features, labels=labels
         )
         logits = self._logits(interventions, class_features)
         loss_cls = cipt_classification_loss(logits, labels)
@@ -327,6 +431,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         zero = causal.new_zeros(())
         return {
             **{name: value.item() for name, value in neighbor_stats.items()},
+            **self._selector_metric_items(selector_metrics),
             "total_loss": total.item(),
             "cipt_base_loss": cipt_base_loss.item(),
             "cipt_cls_loss": loss_cls.item(),
@@ -348,8 +453,17 @@ class CIPTDCCL(_BaseCIPTDCCL):
         }
 
     def predict(self, x):
-        if self.cipt_template_mode not in CLASS_CONDITIONED_TDA_MODES:
+        if self.cipt_template_mode not in CLASS_CONDITIONED_TDA_MODES | SELECTABLE_TDA_MODES:
             return super().predict(x)
+
+        if self.cipt_template_mode in SELECTABLE_TDA_MODES:
+            visual = self._visual(x)
+            causal, _ = self.causal_decomposition(visual)
+            class_features = self.text_features.class_features()
+            interventions, _ = self._select_interventions(
+                visual, causal, class_features
+            )
+            return self._logits(interventions, class_features).mean(dim=1)
 
         # At inference labels are unknown. For B0/Bconst, score every candidate
         # class using that candidate's own intervention contexts and average K.

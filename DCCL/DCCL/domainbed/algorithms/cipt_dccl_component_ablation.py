@@ -95,12 +95,13 @@ class CIPTDCCL(_BaseCIPTDCCL):
             loss_ind = zero
 
         if self.use_tda:
-            classification_features = self.tda(
-                causal, self._intervention_features(labels=labels)
+            classification_features, selector_metrics = self._select_interventions(
+                visual, causal, class_features, labels=labels
             )
         else:
             # TDA-off ablation: classify the causal representation directly.
             classification_features = causal[:, None, :]
+            selector_metrics = self._empty_selector_metrics(causal, prompt_count=0)
 
         logits = self._logits(classification_features, class_features)
         loss_cls = cipt_classification_loss(logits, labels)
@@ -143,6 +144,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         return {
             **{name: value.item() for name, value in neighbor_stats.items()},
+            **self._selector_metric_items(selector_metrics),
             "total_loss": total.item(),
             "cipt_base_loss": cipt_base_loss.item(),
             "cipt_cls_loss": loss_cls.item(),
