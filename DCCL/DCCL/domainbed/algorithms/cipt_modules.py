@@ -6,27 +6,119 @@ import torch.nn.functional as F
 
 
 class CausalDecomposition(nn.Module):
-    """Two linear adapters for causal/spurious decomposition.
+    """Switchable CIPT decomposition: dual linear adapters or causal mask.
 
-    The visual feature is L2-normalized before this module. Both adapters are
-    initialized as identity mappings (identity weight, zero bias), matching the
-    official CIPT initialization while remaining independently trainable.
+    dual_linear exactly preserves the official-CIPT-style decomposition:
+    two independently trainable identity-initialized linear adapters.
+
+    causal_mask uses a sample-specific complementary binary-concrete mask:
+        E = M(V) * V
+        S = (1 - M(V)) * V
+    so the two branches partition the same frozen CLIP representation instead
+    of learning two unconstrained feature transforms.
     """
 
-    def __init__(self, embedding_dim):
-        super().__init__()
-        self.causal_adapter = nn.Linear(embedding_dim, embedding_dim)
-        self.spurious_adapter = nn.Linear(embedding_dim, embedding_dim)
+    SUPPORTED_MODES = {"dual_linear", "causal_mask"}
 
-        # Official CIPT initialization: start both E/S branches from the
-        # normalized CLIP visual representation and let training separate them.
-        nn.init.eye_(self.causal_adapter.weight)
-        nn.init.zeros_(self.causal_adapter.bias)
-        nn.init.eye_(self.spurious_adapter.weight)
-        nn.init.zeros_(self.spurious_adapter.bias)
+    def __init__(
+        self,
+        embedding_dim,
+        mode="dual_linear",
+        mask_hidden_dim=128,
+        mask_temperature=1.0,
+        mask_hard=False,
+        eps=1e-6,
+    ):
+        super().__init__()
+        self.embedding_dim = int(embedding_dim)
+        self.mode = str(mode).lower()
+        self.mask_temperature = float(mask_temperature)
+        self.mask_hard = bool(mask_hard)
+        self.eps = float(eps)
+        self._last_mask = None
+
+        if self.mode not in self.SUPPORTED_MODES:
+            raise ValueError(
+                "Unknown decomposition mode {!r}; expected one of {}.".format(
+                    self.mode, sorted(self.SUPPORTED_MODES)
+                )
+            )
+        if self.mask_temperature <= 0.0:
+            raise ValueError("mask_temperature must be positive")
+
+        if self.mode == "dual_linear":
+            self.causal_adapter = nn.Linear(self.embedding_dim, self.embedding_dim)
+            self.spurious_adapter = nn.Linear(self.embedding_dim, self.embedding_dim)
+
+            # Official CIPT initialization: both E/S start from the normalized
+            # frozen CLIP visual feature and are then independently optimized.
+            nn.init.eye_(self.causal_adapter.weight)
+            nn.init.zeros_(self.causal_adapter.bias)
+            nn.init.eye_(self.spurious_adapter.weight)
+            nn.init.zeros_(self.spurious_adapter.bias)
+        else:
+            hidden = int(mask_hidden_dim)
+            if hidden <= 0:
+                raise ValueError("mask_hidden_dim must be positive")
+            self.mask_generator = nn.Sequential(
+                nn.Linear(self.embedding_dim, hidden),
+                nn.GELU(),
+                nn.Linear(hidden, self.embedding_dim),
+            )
+            # Start close to a balanced soft split while keeping non-zero
+            # gradients through both layers from the first update.
+            nn.init.xavier_uniform_(self.mask_generator[0].weight)
+            nn.init.zeros_(self.mask_generator[0].bias)
+            nn.init.normal_(self.mask_generator[2].weight, mean=0.0, std=1e-3)
+            nn.init.zeros_(self.mask_generator[2].bias)
+
+    def _gumbel_sigmoid(self, logits):
+        """Binary-Concrete/Gumbel-Sigmoid relaxation with deterministic eval."""
+        if self.training:
+            uniform = torch.rand_like(logits).clamp(
+                min=self.eps, max=1.0 - self.eps
+            )
+            logistic_noise = torch.log(uniform) - torch.log1p(-uniform)
+            soft = torch.sigmoid(
+                (logits + logistic_noise) / self.mask_temperature
+            )
+        else:
+            soft = torch.sigmoid(logits / self.mask_temperature)
+
+        if not self.mask_hard:
+            return soft
+
+        hard = (soft >= 0.5).to(dtype=soft.dtype)
+        if self.training:
+            # Straight-through estimator: hard forward, soft backward.
+            return hard.detach() - soft.detach() + soft
+        return hard
 
     def forward(self, visual_features):
-        return self.causal_adapter(visual_features), self.spurious_adapter(visual_features)
+        if self.mode == "dual_linear":
+            self._last_mask = None
+            return (
+                self.causal_adapter(visual_features),
+                self.spurious_adapter(visual_features),
+            )
+
+        mask_logits = self.mask_generator(visual_features)
+        mask = self._gumbel_sigmoid(mask_logits)
+        self._last_mask = mask
+        causal = mask * visual_features
+        spurious = (1.0 - mask) * visual_features
+        return causal, spurious
+
+    @property
+    def last_mask(self):
+        """Mask from the latest forward pass, or None in dual-linear mode."""
+        return self._last_mask
+
+    def mask_sparsity_loss(self):
+        """Mean mask activation used to prevent the trivial M -> 1 solution."""
+        if self.mode != "causal_mask" or self._last_mask is None:
+            return None
+        return self._last_mask.mean()
 
 
 class TextDiversityAugmentation(nn.Module):
