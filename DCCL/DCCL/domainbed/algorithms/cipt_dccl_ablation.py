@@ -374,8 +374,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
         all_x = torch.cat(x)
         labels = torch.cat(y)
 
-        # Frozen CLIP image encoder. CausalDecomposition directly applies two
-        # default-initialized linear adapters to the frozen visual features.
+        # Frozen CLIP image encoder. _visual() L2-normalizes the CLIP feature,
+        # then CausalDecomposition applies identity-initialized E/S adapters.
         visual = self._visual(all_x)
         causal, spurious = self.causal_decomposition(visual)
         class_features = self.text_features.class_features()
