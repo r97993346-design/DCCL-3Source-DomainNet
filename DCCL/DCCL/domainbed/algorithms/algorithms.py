@@ -497,7 +497,8 @@ class CIPTDCCL(Algorithm):
 
     def _visual(self, images):
         with torch.no_grad():
-            return self.clip_model.encode_image(images).float()
+            visual = self.clip_model.encode_image(images).float()
+            return F.normalize(visual, dim=-1)
 
     def _logits(self, embeddings, class_features):
         scale = self.clip_model.logit_scale.exp().detach().float()
