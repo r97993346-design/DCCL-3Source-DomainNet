@@ -25,6 +25,14 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_clip_path"] = ("", "")
         hparams["cipt_beta"] = (4.0, 4.0)
         hparams["cipt_gamma"] = (5.0, 5.0)
+        # Switchable causal decomposition / independence ablations.
+        # Defaults exactly preserve the parent branch behavior.
+        hparams["cipt_decomposition_mode"] = ("dual_linear", "dual_linear")
+        hparams["cipt_independence_mode"] = ("cosine", "cosine")
+        hparams["cipt_mask_hidden_dim"] = (128, 128)
+        hparams["cipt_mask_temperature"] = (1.0, 1.0)
+        hparams["cipt_mask_hard"] = (False, False)
+        hparams["cipt_mask_sparsity_weight"] = (0.0, 0.0)
         hparams["cipt_k"] = (4, 4)
         hparams["cipt_prompt_length"] = (16, 16)
         hparams["cipt_prompt_init"] = ("a photo of a", "a photo of a")
