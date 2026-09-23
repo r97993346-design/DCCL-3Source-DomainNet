@@ -456,7 +456,30 @@ class CIPTDCCL(Algorithm):
         )
         dim = int(self.clip_model.visual.output_dim)
         class_names = hparams.get("cipt_class_names") or ["class {}".format(i) for i in range(num_classes)]
-        self.causal_decomposition = CausalDecomposition(dim)
+        self.decomposition_mode = str(
+            hparams.get("cipt_decomposition_mode", "dual_linear")
+        ).lower()
+        self.independence_mode = str(
+            hparams.get("cipt_independence_mode", "cosine")
+        ).lower()
+        if self.independence_mode not in ("cosine", "xcorr"):
+            raise ValueError(
+                "cipt_independence_mode must be cosine or xcorr, got {!r}".format(
+                    self.independence_mode
+                )
+            )
+        self.mask_sparsity_weight = float(
+            hparams.get("cipt_mask_sparsity_weight", 0.0)
+        )
+        if self.mask_sparsity_weight < 0.0:
+            raise ValueError("cipt_mask_sparsity_weight must be non-negative")
+        self.causal_decomposition = CausalDecomposition(
+            dim,
+            mode=self.decomposition_mode,
+            mask_hidden_dim=hparams.get("cipt_mask_hidden_dim", max(1, dim // 4)),
+            mask_temperature=hparams.get("cipt_mask_temperature", 1.0),
+            mask_hard=hparams.get("cipt_mask_hard", False),
+        )
         self.text_features = CIPTTextFeatures(
             class_names, self.clip_model, tokenize, hparams["cipt_prompt_length"],
             hparams["cipt_prompt_init"], hparams["cipt_k"],
