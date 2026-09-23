@@ -114,6 +114,32 @@ def main():
     parser.add_argument("--cipt_clip_path", default="", help="Local OpenAI CLIP checkpoint (offline-safe)")
     parser.add_argument("--cipt_beta", type=float, default=4.0)
     parser.add_argument("--cipt_gamma", type=float, default=5.0)
+    parser.add_argument(
+        "--cipt_decomposition_mode",
+        choices=["dual_linear", "causal_mask"],
+        default="dual_linear",
+        help="E/S decomposition: original dual linear adapters or complementary causal mask",
+    )
+    parser.add_argument(
+        "--cipt_independence_mode",
+        choices=["cosine", "xcorr"],
+        default="cosine",
+        help="E/S separation penalty: original sample-wise cosine or batch cross-correlation",
+    )
+    parser.add_argument("--cipt_mask_hidden_dim", type=int, default=128)
+    parser.add_argument("--cipt_mask_temperature", type=float, default=1.0)
+    parser.add_argument(
+        "--cipt_mask_hard",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Use straight-through hard binary causal mask during training/eval",
+    )
+    parser.add_argument(
+        "--cipt_mask_sparsity_weight",
+        type=float,
+        default=0.0,
+        help="Weight of mean mask activation penalty; only active for causal_mask",
+    )
     parser.add_argument("--cipt_k", type=int, default=4)
     parser.add_argument("--cipt_prompt_length", type=int, default=16)
     parser.add_argument("--cipt_prompt_init", default="a photo of a")
