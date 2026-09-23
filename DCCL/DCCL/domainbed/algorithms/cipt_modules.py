@@ -120,6 +120,10 @@ class CausalDecomposition(nn.Module):
             return None
         return self._last_mask.mean()
 
+    def clear_mask_cache(self):
+        """Drop the graph-carrying cached mask after an optimization step."""
+        self._last_mask = None
+
 
 class TextDiversityAugmentation(nn.Module):
     """The single residual cross-attention layer used for CIPT intervention."""
