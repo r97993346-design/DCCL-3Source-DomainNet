@@ -23,6 +23,7 @@ from domainbed.algorithms.cipt_losses import (
     classification_loss as cipt_classification_loss,
     decomposition_loss as cipt_decomposition_loss,
     independence_loss as cipt_independence_loss,
+    cross_correlation_loss as cipt_cross_correlation_loss,
 )
 
 
@@ -52,6 +53,18 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.use_tda,
                 self.use_contrastive,
                 self.cipt_pure,
+            )
+        )
+        print(
+            "CIPTDCCL decomposition: mode={}, independence={}, "
+            "mask_sparsity_weight={}, mask_hidden_dim={}, "
+            "mask_temperature={}, mask_hard={}".format(
+                self.decomposition_mode,
+                self.independence_mode,
+                self.mask_sparsity_weight,
+                hparams.get("cipt_mask_hidden_dim", "n/a"),
+                hparams.get("cipt_mask_temperature", "n/a"),
+                hparams.get("cipt_mask_hard", False),
             )
         )
 
@@ -90,9 +103,27 @@ class CIPTDCCL(_BaseCIPTDCCL):
             loss_de = zero
 
         if self.use_ind:
-            loss_ind = cipt_independence_loss(causal, spurious)
+            if self.independence_mode == "xcorr":
+                loss_ind = cipt_cross_correlation_loss(causal, spurious)
+            else:
+                loss_ind = cipt_independence_loss(causal, spurious)
         else:
             loss_ind = zero
+
+        mask = self.causal_decomposition.last_mask
+        if mask is None:
+            loss_mask = zero
+            mask_mean = zero
+            mask_std = zero
+            mask_min = zero
+            mask_max = zero
+        else:
+            loss_mask = self.causal_decomposition.mask_sparsity_loss()
+            mask_float = mask.float()
+            mask_mean = mask_float.mean()
+            mask_std = mask_float.std(unbiased=False)
+            mask_min = mask_float.min()
+            mask_max = mask_float.max()
 
         if self.use_tda:
             classification_features, selector_metrics = self._select_interventions(
@@ -107,7 +138,10 @@ class CIPTDCCL(_BaseCIPTDCCL):
         loss_cls = cipt_classification_loss(logits, labels)
 
         cipt_base_loss = (
-            loss_cls + self.beta * loss_de + self.gamma * loss_ind
+            loss_cls
+            + self.beta * loss_de
+            + self.gamma * loss_ind
+            + self.mask_sparsity_weight * loss_mask
         )
 
         loss_contrastive, valid_anchor_fraction, contrastive_weight_eff, neighbor_stats = (
@@ -123,7 +157,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
             print(
                 "CIPTDCCL component-ablation shapes: mode={} v={} e={} s={} "
                 "cls_features={} text_features={} logits={} "
-                "switches(de={}, ind={}, tda={}, con={})".format(
+                "switches(de={}, ind={}, tda={}, con={}) "
+                "decomp_mode={} ind_mode={}".format(
                     self.cipt_template_mode,
                     tuple(visual.shape),
                     tuple(causal.shape),
@@ -135,6 +170,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
                     self.use_ind,
                     self.use_tda,
                     self.use_contrastive,
+                    self.decomposition_mode,
+                    self.independence_mode,
                 )
             )
 
@@ -152,6 +189,14 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "cipt_de_orig_loss": loss_de.item(),
             "cipt_de_aug_loss": zero.item(),
             "cipt_ind_loss": loss_ind.item(),
+            "cipt_mask_loss": loss_mask.item(),
+            "cipt_mask_weighted_loss": (
+                self.mask_sparsity_weight * loss_mask
+            ).item(),
+            "cipt_mask_mean": mask_mean.item(),
+            "cipt_mask_std": mask_std.item(),
+            "cipt_mask_min": mask_min.item(),
+            "cipt_mask_max": mask_max.item(),
             "causal_consistency_loss": zero.item(),
             "dccl_contrastive_loss": loss_contrastive.item(),
             "contrastive_weight_eff": float(contrastive_weight_eff),
