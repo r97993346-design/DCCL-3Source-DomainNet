@@ -1,12 +1,12 @@
-"""CIPT + switchable single-view contrastive learning in causal space E.
+"""CIPT + single-view contrastive learning before or after text intervention.
 
 Execution modes:
 1) cipt_pure=True: single-view CIPT only.
 2) cipt_pure=False: the same single-view CIPT plus supervised contrastive
-   learning directly on original-image causal representations.
+   learning on E or the normalized mean of the selected TDA outputs.
 
 This branch deliberately removes projection heads and removes the augmented
-image branch entirely. Positive pairs are same-class original causal features
+image branch entirely. Positive pairs are same-class original-image features
 within the merged source-domain batch. No x_2/e_aug path is required.
 """
 
@@ -35,7 +35,7 @@ SELECTABLE_TDA_MODES = {"b5a", "b5c"}
 
 
 class CIPTDCCL(_BaseCIPTDCCL):
-    """CIPT with single-view supervised contrastive learning in causal space."""
+    """CIPT with a switchable E / post-TDA contrastive representation."""
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super().__init__(input_shape, num_classes, num_domains, hparams)
@@ -75,7 +75,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             candidate_count=hparams.get("cipt_selector_candidates", 8),
         )
 
-        # Keep contrastive learning directly in the causal representation space.
+        # Both contrastive positions remain projection-free.
         for module_name in ("proj_head", "pre_proj_head"):
             if hasattr(self, module_name):
                 delattr(self, module_name)
@@ -112,6 +112,13 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.contrastive_type = str(hparams.get("cipt_contrastive_type", "supcon")).lower()
         if self.contrastive_type not in ("supcon", "neighbor_retention"):
             raise ValueError("cipt_contrastive_type must be supcon or neighbor_retention")
+        self.contrastive_position = str(
+            hparams.get("cipt_contrastive_position", "post_tda_mean")
+        ).lower()
+        if self.contrastive_position not in ("e", "post_tda_mean"):
+            raise ValueError(
+                "cipt_contrastive_position must be e or post_tda_mean"
+            )
         self.neighbor_k = hparams.get("cipt_neighbor_k", 5)
         self.neighbor_alpha = float(hparams.get("cipt_neighbor_alpha", 0.5))
         validate_neighbor_options(self.neighbor_k, self.neighbor_alpha)
@@ -149,7 +156,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "template_mode={}, neutral_subject={}, K={}, tda_heads={}, lr={}, "
             "contrastive_weight={}, contrastive_warmup_steps={}, temp={}, "
             "selector_mode={}, selector_candidates={}, "
-            "visual_l2_norm=False, adapter_init=default, augmented_view=False, "
+            "visual_l2_norm=True, adapter_init=identity, augmented_view=False, "
             "projection_head=False, pre_cl=False, reg=False".format(
                 self.cipt_pure,
                 self.cipt_template_mode,
@@ -172,9 +179,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
             )
         )
         print(
-            "CIPTDCCL contrastive_type={}, neighbor_k={}, neighbor_alpha={}, "
+            "CIPTDCCL contrastive_type={}, contrastive_position={}, "
+            "neighbor_k={}, neighbor_alpha={}, "
             "neighbor_diagnostics={}, detached_weights=True".format(
-                self.contrastive_type, self.neighbor_k, self.neighbor_alpha,
+                self.contrastive_type, self.contrastive_position,
+                self.neighbor_k, self.neighbor_alpha,
                 self.neighbor_diagnostics,
             )
         )
@@ -274,7 +283,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         return self.contrastive_weight * ramp
 
     def _single_view_supcon(self, causal, labels, anchor_weights=None):
-        """Supervised contrastive loss over original causal features only.
+        """SupCon over one selected representation per original image.
 
         Positives are other samples in the merged source-domain batch that share
         the same class label. Self-pairs are excluded. Anchors with no positive
@@ -324,8 +333,39 @@ class CIPTDCCL(_BaseCIPTDCCL):
         valid_fraction = valid_anchor.float().mean()
         return loss, valid_fraction
 
-    def _causal_contrastive_loss(self, visual, causal, labels, label_batches):
-        """Shared route for standard, weighted and disabled contrastive modes."""
+    @staticmethod
+    def _pool_post_tda(interventions):
+        """Return normalized mean direction and its pre-normalization norm.
+
+        Normalize each selected intervention before averaging, matching the
+        feature directions consumed by the classification logits. Do not
+        detach: the contrastive objective must train E and TDA through this
+        representation. The number of contrastive anchors stays B, not B*K.
+        """
+        if interventions.ndim != 3 or interventions.shape[1] < 1:
+            raise ValueError("TDA outputs must have shape [B,K,D] with K >= 1")
+        directions = F.normalize(interventions.float(), dim=-1)
+        mean_direction = directions.mean(dim=1)
+        return (
+            F.normalize(mean_direction, dim=-1),
+            mean_direction.norm(dim=-1),
+        )
+
+    @staticmethod
+    def _contrastive_metric_items(stats):
+        # Transfer the small detached diagnostic vector in one synchronization.
+        values = torch.stack(tuple(stats.values())).detach().cpu().tolist()
+        return dict(zip(stats, values))
+
+    def _causal_contrastive_loss(
+        self, visual, causal, labels, label_batches, interventions=None,
+    ):
+        """Use the same chosen space for SupCon and detached V/space kNN.
+
+        When TDA is ablated, post_tda_mean explicitly falls back to E. Pure
+        CIPT, zero coefficient and contrastive-off skip pooling and kNN unless
+        detached neighborhood diagnostics were explicitly requested.
+        """
         enabled = (
             not self.cipt_pure
             and getattr(self, "use_contrastive", True)
@@ -338,6 +378,44 @@ class CIPTDCCL(_BaseCIPTDCCL):
         stats = empty_neighbor_stats(causal)
         stats["nbr_wmean"] = causal.new_ones(())
         stats["nbr_wmax"] = causal.new_ones(())
+        for name in (
+            "con_post_active", "con_tda_fallback", "con_z_check",
+            "con_z_coherence", "con_z_cos_e",
+        ):
+            stats[name] = causal.new_zeros(())
+
+        contrast_features = causal
+        need_representation = enabled or self.neighbor_diagnostics
+        post_tda = self.contrastive_position == "post_tda_mean"
+        use_tda = getattr(self, "use_tda", True)
+        if need_representation and use_tda:
+            if interventions is None:
+                if post_tda:
+                    raise ValueError("post_tda_mean requires the selected TDA outputs")
+            else:
+                if (interventions.ndim != 3
+                        or interventions.shape[0] != causal.shape[0]
+                        or interventions.shape[-1] != causal.shape[-1]):
+                    raise ValueError("TDA outputs must match E batch and feature dimensions")
+                # E-position diagnostics do not build an unused TDA graph.
+                with torch.set_grad_enabled(
+                    torch.is_grad_enabled() and enabled and post_tda
+                ):
+                    pooled, coherence = self._pool_post_tda(interventions)
+                with torch.no_grad():
+                    stats["con_z_check"] = causal.new_ones(())
+                    if causal.shape[0]:
+                        stats["con_z_coherence"] = coherence.detach().mean()
+                        stats["con_z_cos_e"] = F.cosine_similarity(
+                            pooled.detach(), causal.detach().float(), dim=-1
+                        ).mean()
+                if post_tda:
+                    contrast_features = pooled
+                    stats["con_post_active"] = causal.new_tensor(float(enabled))
+        elif need_representation and post_tda:
+            # Preserve the exact original E objective in TDA-off ablations.
+            stats["con_tda_fallback"] = causal.new_ones(())
+
         anchor_weights = None
         if apply_weights or self.neighbor_diagnostics:
             # The trainer supplies one label tensor per SOURCE domain, in the
@@ -347,7 +425,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 for domain, batch_labels in enumerate(label_batches)
             ])
             candidate_weights, measured = neighbor_retention_weights(
-                visual, causal, labels, domains,
+                visual, contrast_features, labels, domains,
                 k=self.neighbor_k, alpha=self.neighbor_alpha,
             )
             stats.update(measured)
@@ -365,7 +443,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
             zero = causal.new_zeros(())
             return zero, zero, 0.0, stats
 
-        loss, valid_fraction = self._single_view_supcon(causal, labels, anchor_weights)
+        loss, valid_fraction = self._single_view_supcon(
+            contrast_features, labels, anchor_weights
+        )
         self._causal_contrastive_step.add_(1)
         return loss, valid_fraction, self._contrastive_scale(), stats
 
@@ -402,7 +482,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
 
         loss_contrastive, valid_anchor_fraction, contrastive_weight_eff, neighbor_stats = (
-            self._causal_contrastive_loss(visual, causal, labels, y)
+            self._causal_contrastive_loss(
+                visual, causal, labels, y, interventions=interventions
+            )
         )
 
         total = (
@@ -430,7 +512,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
 
         zero = causal.new_zeros(())
         return {
-            **{name: value.item() for name, value in neighbor_stats.items()},
+            **self._contrastive_metric_items(neighbor_stats),
             **self._selector_metric_items(selector_metrics),
             "total_loss": total.item(),
             "cipt_base_loss": cipt_base_loss.item(),

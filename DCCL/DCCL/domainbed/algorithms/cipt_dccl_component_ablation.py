@@ -7,7 +7,7 @@ training switches through hparams/config:
 - ``cipt_use_de``: decomposition loss L_de
 - ``cipt_use_ind``: independence loss L_ind
 - ``cipt_use_tda``: text diversity augmentation (TDA)
-- ``cipt_use_contrastive``: single-view causal supervised contrastive loss
+- ``cipt_use_contrastive``: E or post-TDA single-view contrastive loss
 
 When TDA is disabled, classification falls back to direct causal-feature
 classification against the same learned class text features. This keeps a
@@ -111,7 +111,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
 
         loss_contrastive, valid_anchor_fraction, contrastive_weight_eff, neighbor_stats = (
-            self._causal_contrastive_loss(visual, causal, labels, y)
+            self._causal_contrastive_loss(
+                visual, causal, labels, y, interventions=classification_features
+            )
         )
 
         total = (
@@ -143,7 +145,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.optimizer.step()
 
         return {
-            **{name: value.item() for name, value in neighbor_stats.items()},
+            **self._contrastive_metric_items(neighbor_stats),
             **self._selector_metric_items(selector_metrics),
             "total_loss": total.item(),
             "cipt_base_loss": cipt_base_loss.item(),

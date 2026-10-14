@@ -21,6 +21,7 @@ from domainbed.lib.writers import get_writer
 from domainbed.lib.logger import Logger
 from domainbed.trainer import train
 from domainbed.lib.cl_hparams import setup_alg_hparams
+from domainbed.lib.cli import parse_known_with_overrides
 
 
 def apply_weak_erm_hparams(hparams):
@@ -132,7 +133,7 @@ def main():
         default="train_output",
         help="Root directory for training outputs"
     )
-    args, left_argv = parser.parse_known_args()
+    args, left_argv = parse_known_with_overrides(parser)
 
     # setup hparams
     hparams = hparams_registry.default_hparams(args.algorithm, args.dataset)

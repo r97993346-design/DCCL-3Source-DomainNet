@@ -262,6 +262,7 @@ class UpdateTests(unittest.TestCase):
                       cipt_neutral_subject="subject", cipt_k=2,
                       cipt_tda_heads=1, cipt_beta=4., cipt_gamma=5.,
                       cipt_contrastive_type="neighbor_retention", cipt_neighbor_k=1,
+                      cipt_contrastive_position="e",
                       cipt_neighbor_alpha=.5, cipt_neighbor_diagnostics=False,
                       cipt_causal_contrastive_weight=1., cipt_contrastive_warmup_steps=500,
                       cipt_contrastive_temperature=.1,

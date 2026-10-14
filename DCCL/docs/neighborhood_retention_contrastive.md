@@ -1,5 +1,10 @@
 # V/E 跨域邻域保持加权 SupCon
 
+当前 `feature/cipt-post-tda-mean-contrastive` 分支默认在 TDA 聚合输出上做对比。
+本页描述原 E 位置，复现时必须传 `--cipt_contrastive_position e`；新位置及
+开关见 [post_tda_mean_contrastive.md](post_tda_mean_contrastive.md)。当前分支
+继承视觉 L2 归一化和 E/S identity init。
+
 实现分支：`feature/cipt-paired-class-agnostic-subject-validation`。
 
 该实现保持此分支已有的配对类别无关 subject 验证、四种 TDA 模式和 SWAD
@@ -110,6 +115,7 @@ CUDA_VISIBLE_DEVICES=1 python train_all.py pacs_s0_neighbor_retention_seed0 \
   --cipt_tda_heads 1 --cipt_pure false \
   --cipt_use_contrastive true \
   --cipt_contrastive_type neighbor_retention \
+  --cipt_contrastive_position e \
   --cipt_contrastive_temperature 0.1 \
   --cipt_causal_contrastive_weight 1.0 \
   --cipt_neighbor_k 5 --cipt_neighbor_alpha 0.5 \

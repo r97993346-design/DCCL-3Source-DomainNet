@@ -48,6 +48,7 @@ def _hparams(algorithm, dataset, random_state):
         # not tied to the standard DCCL/SupCon hyperparameters.
         hparams["cipt_contrastive_temperature"] = (0.1, 0.1)
         hparams["cipt_contrastive_type"] = ("neighbor_retention", "neighbor_retention")
+        hparams["cipt_contrastive_position"] = ("post_tda_mean", "post_tda_mean")
         hparams["cipt_neighbor_k"] = (5, 5)
         hparams["cipt_neighbor_alpha"] = (0.5, 0.5)
         hparams["cipt_neighbor_diagnostics"] = (False, False)

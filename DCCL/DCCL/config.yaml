@@ -31,21 +31,27 @@ cipt_use_contrastive: true
 cipt_use_aug_view: false
 
 # Original SupCon, with an optional detached coefficient for each anchor.
-# neighbor_retention: w_i = 1 + alpha * max(r_i(V) - r_i(E), 0)
+# neighbor_retention: w_i = 1 + alpha * max(r_i(V) - r_i(R), 0)
+# R is E or the selected post-TDA mean, according to the position below.
 # supcon: original single-view supervised contrastive objective
 cipt_contrastive_type: neighbor_retention
+# e: original pre-TDA E representation.
+# post_tda_mean: normalize each selected TDA output, average K, normalize again.
+# Both SupCon and neighborhood weights use this same representation.
+# TDA-off explicitly falls back to E and logs con_tda_fallback=1.
+cipt_contrastive_position: post_tda_mean
 # Method-specific temperature. Tune this independently for standard SupCon and
 # neighbor_retention runs; it does not need to match the generic DCCL `t`.
 cipt_contrastive_temperature: 0.1
 cipt_neighbor_k: 5
 cipt_neighbor_alpha: 0.5
-# Enable V/E statistics also in SupCon / no-contrastive runs. This is detached
+# Enable V/R statistics also in SupCon / no-contrastive runs. This is detached
 # logging only; it does not add a loss. Disabled by default to avoid extra work.
 cipt_neighbor_diagnostics: false
 
 # Direct single-view causal contrastive coefficient. This is an independent
 # performance-tuning parameter, not an alignment constraint with SupCon.
-# Positives are other original causal features in the merged source-domain batch
+# Positives are other original-image representations in the merged source batch
 # with the same class label; self-pairs are excluded.
 cipt_causal_contrastive_weight: 1.0
 
@@ -53,8 +59,6 @@ cipt_causal_contrastive_weight: 1.0
 # lambda_eff = lambda_max * min(1, step / warmup_steps)
 cipt_contrastive_warmup_steps: 500
 
-# Inherited baseline behavior (despite the historical branch name):
-# 1) frozen CLIP visual feature -> adapters WITHOUT pre-decomposition L2 norm
-# 2) causal/spurious linear adapters -> default PyTorch initialization
-# Contrastive learning remains projection-free and uses only original e.
-# V/E normalization for cosine neighborhoods does not change adapter inputs.
+# Inherited official alignment: frozen CLIP visual features are L2-normalized
+# before the identity-initialized E/S adapters. Contrastive learning remains
+# projection-free and uses no augmented image or extra encoder forward.
