@@ -305,6 +305,9 @@ def make_plots(out, features, summary, class_names, selected_ids, metadata,
         ax.boxplot([nc, na], **{label_key: ["B5B", "B5A"]})
         ax.set_title(title)
         ax.set_ylabel("L2 norm")
+        ax.ticklabel_format(axis="y", style="plain", useOffset=False)
+        if key_c == "pk_class":
+            ax.set_ylim(.95, 1.05)
     save(fig, "feature_norms")
     if not make_tsne:
         return

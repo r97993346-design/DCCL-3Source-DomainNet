@@ -79,7 +79,7 @@ def selected_class_ids(class_names, requested):
     return ids
 
 
-def select_samples(data_root, class_names, class_ids, domains, count, seed, manifest=None):
+def select_samples(data_root, class_names, class_ids, domains, count, seed, manifest=None, all_images=False):
     """One fixed manifest is reused for both text conditions."""
     if manifest:
         with Path(manifest).open(encoding="utf-8-sig", newline="") as f:
@@ -102,8 +102,9 @@ def select_samples(data_root, class_names, class_ids, domains, count, seed, mani
         return rows
     available = sorted(d.name for d in data_root.iterdir()
                        if d.is_dir() and not d.name.startswith("."))
-    domains = domains or (["photo", "sketch"] if {"photo", "sketch"}.issubset(available)
-                          else list(dict.fromkeys([available[0], available[-1]])))
+    domains = domains or (available if all_images else
+                          (["photo", "sketch"] if {"photo", "sketch"}.issubset(available)
+                           else list(dict.fromkeys([available[0], available[-1]]))))
     if len(set(domains)) != len(domains) or not set(domains).issubset(available):
         raise ValueError("Choose distinct existing domains; available: {}".format(available))
     rng = np.random.default_rng(seed)
@@ -116,9 +117,9 @@ def select_samples(data_root, class_names, class_ids, domains, count, seed, mani
         for c in class_ids:
             folder = folders[canonical_name(class_names[c])]
             paths = sorted(p for p in folder.rglob("*") if p.suffix.lower() in IMAGE_EXTENSIONS and p.is_file())
-            if len(paths) < count:
+            if not paths or (not all_images and len(paths) < count):
                 raise ValueError("Need {} images in {}, found {}.".format(count, folder, len(paths)))
-            chosen = np.sort(rng.choice(len(paths), count, replace=False))
+            chosen = np.arange(len(paths)) if all_images else np.sort(rng.choice(len(paths), count, replace=False))
             for j in chosen:
                 path = paths[int(j)].resolve()
                 rows.append({"image_id": len(rows), "class_id": c, "class": class_names[c],
@@ -138,6 +139,13 @@ def parse_args():
     parser.add_argument("--sample-manifest", help="Reuse a previous samples.csv to fix images across checkpoints.")
     parser.add_argument("--neutral-subject", choices=["subject", "thing", "object", "entity"], default="subject")
     parser.add_argument("--pk-only", action="store_true", help="Analyze frozen text features only; no random TDA is used.")
+    parser.add_argument("--all-images", action="store_true",
+                        help="Use every image, class and domain in the local dataset; full metrics, one image-mean point per image in t-SNE.")
+    parser.add_argument("--save-all-z", action="store_true",
+                        help="In full mode additionally save both complete [N,80,D] zk arrays as disk-backed .npy files.")
+    parser.add_argument("--tsne-pca-dim", type=int, default=50,
+                        help="Joint PCA dimension before full-image t-SNE; 0 retains original dimensions.")
+    parser.add_argument("--tsne-iterations", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--text-batch-size", type=int, default=64)
     parser.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
@@ -157,6 +165,12 @@ def parse_args():
         parser.error("zk requires --checkpoint; use --pk-only for checkpoint-free text diagnostics.")
     if args.sample_manifest and args.pk_only:
         parser.error("--sample-manifest applies to image-based zk diagnostics.")
+    if args.all_images and (args.classes or args.domains or args.sample_manifest):
+        parser.error("--all-images includes every class/domain/image; omit --classes, --domains and --sample-manifest.")
+    if args.save_all_z and (not args.all_images or args.pk_only):
+        parser.error("--save-all-z requires --all-images with image-based zk extraction.")
+    if args.tsne_pca_dim < 0 or args.tsne_pca_dim == 1 or args.tsne_iterations < 250:
+        parser.error("PCA dimension must be 0 or at least 2, and t-SNE iterations must be at least 250.")
     return args
 
 
@@ -200,7 +214,8 @@ def main():
     class_names = list(class_names or DEFAULT_CLASSES[args.dataset])
     if any(canonical_name(n).startswith("class ") for n in class_names):
         raise ValueError("Checkpoint uses anonymous class prompts; real class names are required for this experiment.")
-    requested = args.classes or (["dog", "horse", "guitar"] if args.dataset == "PACS" else ["bird", "car", "person"])
+    requested = (class_names if args.all_images else
+                 (args.classes or (["dog", "horse", "guitar"] if args.dataset == "PACS" else ["bird", "car", "person"])))
     class_ids = selected_class_ids(class_names, requested)
     clip_path = args.clip_path or hparams.get("cipt_clip_path", "")
     if not clip_path or not Path(clip_path).expanduser().is_file():
@@ -250,6 +265,7 @@ def main():
         "tsne_templates_per_image": args.tsne_templates_per_image,
         "pk_only": args.pk_only, "device": args.device,
         "numpy_version": np.__version__, "torch_version": str(torch.__version__),
+        "all_images": args.all_images,
     }
     # Ensure uncommon checkpoint hparam scalar types remain serializable.
     metadata = json.loads(json.dumps(metadata, default=str))
@@ -263,12 +279,63 @@ def main():
         tda.to(args.device).eval().requires_grad_(False)
         transforms = load_module("_cipt_diagnostic_transforms", ROOT / "domainbed/datasets/transforms.py")
         samples = select_samples(data_root, class_names, class_ids, args.domains,
-                                 args.samples_per_class_domain, args.seed, args.sample_manifest)
+                                 args.samples_per_class_domain, args.seed, args.sample_manifest, args.all_images)
         labels = np.asarray([row["class_id"] for row in samples], dtype=int)
         domains = np.asarray([row["domain"] for row in samples])
         metadata["image_count"] = len(samples)
         metadata["domains"] = sorted(set(domains.tolist()))
         metadata["preprocessing"] = "branch clip_basic: bicubic Resize(224), CenterCrop(224), RGB, CLIP normalize"
+        if args.all_images:
+            from cipt_full_feature_report import FullFeatureReport
+            if args.dataset == "PACS" and (len(class_names) != 7 or len(metadata["domains"]) != 4):
+                raise ValueError("Full PACS requires 7 classes and 4 domains; found {} classes and {} domains.".format(
+                    len(class_names), len(metadata["domains"])))
+            metadata.update({"tsne_pca_dim": args.tsne_pca_dim,
+                             "tsne_iterations": args.tsne_iterations,
+                             "tsne_unit": "one point per image: mean of all 80 unit zk, then normalized",
+                             "quantitative_feature_dimension": dim,
+                             "coverage": "all image files in every dataset class/domain; no image or template sampling"})
+            out = Path(args.output_dir).expanduser().resolve()
+            report = FullFeatureReport(out, samples, class_names, class_ids, features, metadata, args.save_all_z)
+            text_rows = [{"condition": "B5B", "class": class_names[c], "template_id": k,
+                          "text": class_texts[local * 80 + k]}
+                         for local, c in enumerate(class_ids) for k in range(80)]
+            text_rows += [{"condition": "B5A", "class": "shared", "template_id": k, "text": text}
+                         for k, text in enumerate(agnostic_texts)]
+            write_csv(out / "texts.csv", text_rows)
+            captured = []
+            hook = tda.layer_norm.register_forward_pre_hook(lambda module, inputs: captured.append(inputs[0].detach()))
+            try:
+                with torch.inference_mode():
+                    for start in range(0, len(samples), args.batch_size):
+                        current = samples[start:start + args.batch_size]
+                        tensors = []
+                        for row in current:
+                            with Image.open(row["path"]) as image:
+                                tensors.append(transforms.clip_basic(image))
+                        visual_raw = model.encode_image(torch.stack(tensors).to(args.device)).float()
+                        visual = F.normalize(visual_raw, dim=-1)
+                        e, _ = decomposition(visual)
+                        local_ids = torch.tensor([class_ids.index(row["class_id"]) for row in current], device=args.device)
+                        batch = {"visual_raw": visual_raw.cpu().numpy(), "visual": visual.cpu().numpy(), "e": e.cpu().numpy()}
+                        for condition, bank in [("class", pc[local_ids]), ("agnostic", pa)]:
+                            captured.clear()
+                            z = tda(e, bank)
+                            if len(captured) != 1:
+                                raise RuntimeError("Expected one LayerNorm invocation in TDA.")
+                            preln = captured[0].reshape(len(current), 80, dim)
+                            batch["zk_" + condition] = z.cpu().numpy()
+                            batch["zk_preln_" + condition] = preln.cpu().numpy()
+                            batch["tda_update_" + condition] = (preln - e[:, None, :]).cpu().numpy()
+                        report.add_batch(start, batch)
+                        print("Full dataset: {}/{} images, all 80 texts in both conditions".format(
+                            start + len(current), len(samples)), flush=True)
+            finally:
+                hook.remove()
+                report.close()
+            report.finish(make_tsne=not args.no_tsne)
+            print("Full analysis complete. Read report.md, summary.json and class_metrics.csv in {}".format(out))
+            return
         collected = {key: [] for key in ["visual_raw", "visual", "e", "zk_class", "zk_agnostic",
                                        "zk_preln_class", "zk_preln_agnostic",
                                        "tda_update_class", "tda_update_agnostic"]}
