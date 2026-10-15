@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Plot same-class E/S features from a trained CIPTDCCL checkpoint, BEFORE TDA.
+"""Plot E/S features by class or by domain from a CIPTDCCL checkpoint, BEFORE TDA.
 
 Run from the directory containing train_all.py. Uses the repository's frozen
 CLIP preprocessing and the checkpoint's two linear decomposition adapters.
 No training, class prompts, TDA, artificial views, or dataset splits are run.
-Each class gets one jointly fitted E/S embedding with three shared-axis panels.
+By default, each class gets one jointly fitted E/S embedding colored by domain.
+--plot-by domain groups all selected classes within a domain, colored by class.
+Both modes use three shared-axis panels from one joint E/S embedding per group.
 --samples-per-class-domain 0 uses every image of the selected class/domain.
 """
 
@@ -224,7 +226,7 @@ def extract_features(args):
     return features, metadata
 
 
-def plot_class(features, cls, args, output_dir):
+def plot_group(features, group, args, output_dir):
     from sklearn.decomposition import PCA
     from sklearn.manifold import TSNE
     import matplotlib
@@ -232,13 +234,15 @@ def plot_class(features, cls, args, output_dir):
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
 
-    indices = np.flatnonzero(features["classes"] == cls)
+    group_key = "classes" if args.plot_by == "class" else "domains"
+    color_key = "domains" if args.plot_by == "class" else "classes"
+    indices = np.flatnonzero(features[group_key] == group)
     e, s = features["E"][indices], features["S"][indices]
     if e.ndim != 2 or s.shape != e.shape or len(e) < 3:
-        raise ValueError("{} needs at least 3 paired E/S image vectors".format(cls))
+        raise ValueError("{} needs at least 3 paired E/S image vectors".format(group))
     x = np.concatenate([e, s]).astype(np.float32)
     if not np.isfinite(x).all():
-        raise ValueError("Nonfinite E/S features in {}".format(cls))
+        raise ValueError("Nonfinite E/S features in {}".format(group))
     norms = np.linalg.norm(x, axis=1, keepdims=True)
     if args.normalization == "l2":
         x = x / np.maximum(norms, 1e-12)
@@ -254,52 +258,58 @@ def plot_class(features, cls, args, output_dir):
     iteration_key = "max_iter" if "max_iter" in inspect.signature(TSNE).parameters else "n_iter"
     kwargs[iteration_key] = args.iterations
     print("t-SNE {}: {} E + {} S points, perplexity={:.2f}".
-          format(cls, len(e), len(s), perplexity), flush=True)
+          format(group, len(e), len(s), perplexity), flush=True)
     xy = TSNE(**kwargs).fit_transform(x)  # ONE fit, shared by ALL three panels.
     e_xy, s_xy = np.split(xy, 2)
     domains = features["domains"][indices]
-    domain_names = sorted(set(domains.tolist()))
+    classes = features["classes"][indices]
+    labels = features[color_key][indices]
+    label_names = sorted(set(labels.tolist()))
     palette = plt.get_cmap("tab10")
-    colors = {name: palette(i % 10) for i, name in enumerate(domain_names)}
+    colors = {name: palette(i % 10) for i, name in enumerate(label_names)}
     fig, axes = plt.subplots(1, 3, figsize=(16, 5), sharex=True, sharey=True)
     for ax, title, branches in zip(axes, ["E", "S", "E + S"],
                                    [(0,), (1,), (0, 1)]):
         for branch in branches:
             points = (e_xy, s_xy)[branch]
-            for domain in domain_names:
-                mask = domains == domain
+            for label in label_names:
+                mask = labels == label
                 ax.scatter(points[mask, 0], points[mask, 1], s=13, alpha=.65,
-                           marker=("o", "^")[branch], color=colors[domain],
+                           marker=("o", "^")[branch], color=colors[label],
                            linewidths=0, rasterized=True)
         ax.set_title("{}: {} images".format(title, len(e)))
         ax.set_xlabel("t-SNE 1")
         ax.set_aspect("equal", adjustable="box")
         ax.grid(alpha=.12)
     axes[0].set_ylabel("t-SNE 2")
-    handles = [Line2D([], [], marker="o", linestyle="", color=colors[d],
-                      label="{} (n={})".format(d, int((domains == d).sum())))
-               for d in domain_names]
+    handles = [Line2D([], [], marker="o", linestyle="", color=colors[label],
+                      label="{} (n={})".format(label, int((labels == label).sum())))
+               for label in label_names]
     handles.extend([Line2D([], [], marker="o", linestyle="", color="black", label="E"),
                     Line2D([], [], marker="^", linestyle="", color="black", label="S")])
     fig.legend(handles=handles, loc="lower center", ncol=min(len(handles), 6), frameon=False)
-    fig.suptitle("{} | decomposition BEFORE TDA | {} features\n"
-                 "One shared embedding for E, S and the overlay".format(cls, args.normalization))
-    fig.tight_layout(rect=(0, .09, 1, .90))
-    stem = "{}_es_tsne".format(cls)
+    fig.suptitle("{}: {} | decomposition BEFORE TDA | {} features\n"
+                 "Colors: {} | one shared embedding for E, S and the overlay".
+                 format(args.plot_by, group, args.normalization, color_key))
+    fig.tight_layout(rect=(0, .14 if len(handles) > 6 else .09, 1, .90))
+    stem = ("{}_es_tsne".format(group) if args.plot_by == "class"
+            else "{}_es_tsne_by_class".format(group))
     fig.savefig(output_dir / (stem + ".png"), dpi=220)
     fig.savefig(output_dir / (stem + ".pdf"))
     plt.close(fig)
     np.savez_compressed(output_dir / (stem + "_coordinates.npz"), E_xy=e_xy, S_xy=s_xy,
-                        paths=features["paths"][indices], domains=domains)
+                        paths=features["paths"][indices], domains=domains, classes=classes)
     with (output_dir / (stem + "_coordinates.csv")).open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["image_path", "domain", "E_x", "E_y", "S_x", "S_y", "E_norm", "S_norm"])
+        writer.writerow(["image_path", "class", "domain", "E_x", "E_y", "S_x", "S_y", "E_norm", "S_norm"])
         for j, original_index in enumerate(indices):
-            writer.writerow([features["paths"][original_index], domains[j], *e_xy[j], *s_xy[j],
+            writer.writerow([features["paths"][original_index], classes[j], domains[j], *e_xy[j], *s_xy[j],
                              float(norms[j, 0]), float(norms[len(e) + j, 0])])
-    return {"class": cls, "images": len(e), "perplexity": perplexity,
+    return {args.plot_by: group, "images": len(e), "perplexity": perplexity,
+            "color_by": color_key,
             "pca_retained_variance": pca_variance,
-            "domain_counts": {d: int((domains == d).sum()) for d in domain_names},
+            "domain_counts": {d: int((domains == d).sum()) for d in sorted(set(domains))},
+            "class_counts": {c: int((classes == c).sum()) for c in sorted(set(classes))},
             "E_norm_mean": float(norms[:len(e)].mean()),
             "S_norm_mean": float(norms[len(e):].mean()),
             "near_zero_vectors": int((norms < 1e-12).sum()),
@@ -317,6 +327,8 @@ def main():
     parser.add_argument("--clip-path", default=None)
     parser.add_argument("--classes", nargs="+", default=["dog"], help="class folder names, or all")
     parser.add_argument("--domains", nargs="+", default=["all"], help="domain folder names, or all")
+    parser.add_argument("--plot-by", choices=["class", "domain"], default="class",
+                        help="class: color by domain; domain: color by class")
     parser.add_argument("--samples-per-class-domain", type=int, default=0, help="0 = all images")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--workers", type=int, default=4)
@@ -348,14 +360,19 @@ def main():
     else:
         features, metadata = extract_features(args)
     classes = selected_names(args.classes, sorted(set(features["classes"])), args.dataset)
+    class_mask = np.isin(features["classes"], classes)
+    features = {k: v[class_mask] for k, v in features.items()}
+    groups = classes if args.plot_by == "class" else selected_names(
+        args.domains, sorted(set(features["domains"])), args.dataset, domain=True)
     output_dir.mkdir(parents=True, exist_ok=True)
     if not args.features:
         np.savez_compressed(output_dir / "features_es.npz", **features)
-    summaries = [plot_class(features, cls, args, output_dir) for cls in classes]
-    metadata.update(settings=vars(args), classes=summaries,
+    summaries = [plot_group(features, group, args, output_dir) for group in groups]
+    metadata["classes" if args.plot_by == "class" else "domains"] = summaries
+    metadata.update(settings=vars(args),
                     note="Descriptive visualization; 2D distances do not prove causal purity or uniform logits")
     (output_dir / "metadata_es.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
-    print("Saved {} class plot(s) to {}".format(len(summaries), output_dir), flush=True)
+    print("Saved {} {} plot(s) to {}".format(len(summaries), args.plot_by, output_dir), flush=True)
 
 
 if __name__ == "__main__":
