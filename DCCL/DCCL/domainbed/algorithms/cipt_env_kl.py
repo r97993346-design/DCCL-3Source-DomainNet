@@ -11,6 +11,8 @@ import torch
 import torch.nn.functional as F
 
 from domainbed.algorithms.cipt_dccl_component_ablation import CIPTDCCL as _BaseCIPTDCCL
+from domainbed.algorithms.cipt_sigm import SemanticInteractionGuidance
+from domainbed.optimizers import get_optimizer
 from domainbed.algorithms.cipt_losses import (
     decomposition_loss_terms,
     independence_loss,
@@ -29,6 +31,35 @@ class CIPTDCCL(_BaseCIPTDCCL):
         if self.objective_mode == "legacy":
             return
 
+        self.fusion_mode = str(hparams.get("cipt_fusion_mode", "tda")).lower()
+        self.inference_mode = str(hparams.get("cipt_env_inference", "e_only")).lower()
+        if self.fusion_mode not in ("tda", "sigm"):
+            raise ValueError("cipt_fusion_mode must be tda or sigm")
+        if self.inference_mode not in ("e_only", "mean_logits", "mean_probs"):
+            raise ValueError("cipt_env_inference must be e_only, mean_logits, or mean_probs")
+
+        if self.fusion_mode == "sigm":
+            # Preserve the existing _select_interventions selector exactly:
+            # it calls self.tda(E, text) for each candidate/prompt. Swap only
+            # the fusion operator; both training and optional fused inference
+            # use the same module without changing the selector or loss.
+            dim = self.causal_decomposition.causal_adapter.out_features
+            self.tda = SemanticInteractionGuidance(
+                dim,
+                scale=float(hparams.get("cipt_sigm_scale", 1.0)),
+                init_std=float(hparams.get("cipt_sigm_init_std", 0.02)),
+            )
+            # The parent constructs its optimizer before we replace TDA.
+            # Rebuild it so SIGM parameters are optimized, not the old TDA.
+            trainable = (p for p in self.parameters() if p.requires_grad)
+            self.optimizer = get_optimizer(
+                hparams["optimizer"], trainable,
+                lr=hparams["lr"], weight_decay=hparams["weight_decay"],
+            )
+            self.trainable_parameter_count = sum(
+                p.numel() for p in self.parameters() if p.requires_grad
+            )
+
         def coefficient(name, default):
             value = hparams.get(name)
             value = float(default if value is None else value)
@@ -45,7 +76,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.env_kl_weight = coefficient("cipt_env_kl_weight", 0.1)
         self.env_kl_active = self.use_tda and self.env_kl_weight > 0.0
 
-        if self.env_kl_active:
+        if self.env_kl_active or self.inference_mode != "e_only":
             if self.cipt_template_mode not in ("b5a", "b5c"):
                 raise ValueError("env_kl requires class-agnostic b5a or b5c prompts")
             bank_size = self.text_features.full_intervention_features().shape[0]
@@ -55,10 +86,13 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 raise ValueError("env_kl requires cipt_k >= 2")
 
         print(
-            "CIPTDCCL env_kl: E_CE_weight={}, S_uniform_weight={}, "
+            "CIPTDCCL env_kl: fusion_mode={}, inference_mode={}, "
+            "SIGM_trainable={}, E_CE_weight={}, S_uniform_weight={}, "
             "IND_weight={}, prompt_KL_weight={}, prompt_KL_active={}, "
             "KL=ordered_pair_mean, detach=False, augmented_CE=False, "
-            "KL_warmup=0, inference=E_only".format(
+            "KL_warmup=0".format(
+                self.fusion_mode, self.inference_mode,
+                int(self.fusion_mode == "sigm"),
                 self.e_cls_weight, self.s_uniform_weight,
                 self.gamma if self.use_ind else 0.0,
                 self.env_kl_weight, self.env_kl_active,
@@ -94,6 +128,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
         loss_env = zero
         env_shift = zero
         env_spread = zero
+        env_l2_shift = zero
+        env_spread_l2 = zero
+        env_pred_agreement = zero
         selector_metrics = self._empty_selector_metrics(causal, prompt_count=0)
         if self.env_kl_active:
             # Selection is label-free. Gathered features retain the E/TDA graph;
@@ -111,6 +148,16 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 env_spread = (
                     unit_z - unit_z.mean(dim=1, keepdim=True)
                 ).square().sum(dim=-1).mean()
+                # Raw-space diagnostics complement the normalized measurements.
+                raw_z = interventions.float()
+                env_l2_shift = (raw_z - causal.float()[:, None, :]).norm(dim=-1).mean()
+                env_spread_l2 = (
+                    raw_z - raw_z.mean(dim=1, keepdim=True)
+                ).square().sum(dim=-1).mean()
+                env_pred_agreement = (
+                    prompt_logits.argmax(dim=-1)
+                    == causal_logits.argmax(dim=-1)[:, None]
+                ).float().mean()
 
         loss_con, valid_fraction, con_weight, neighbor_stats = (
             self._causal_contrastive_loss(visual, causal, labels, y)
@@ -167,6 +214,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "env_kl_term": env_term.item(),
             "env_shift": env_shift.item(),
             "env_spread": env_spread.item(),
+            "env_l2_shift": env_l2_shift.item(),
+            "env_spread_l2": env_spread_l2.item(),
+            "env_pred_agreement": env_pred_agreement.item(),
+            "sigm_active": float(self.fusion_mode == "sigm"),
+            "inference_fused": float(self.inference_mode != "e_only"),
             "env_active": float(self.env_kl_active),
             "e_only_infer": 1.0,
         }
@@ -176,6 +228,21 @@ class CIPTDCCL(_BaseCIPTDCCL):
             return super().predict(x)
         visual = self._visual(x)
         causal, _ = self.causal_decomposition(visual)
-        return self._logits(
-            causal[:, None, :], self.text_features.class_features()
-        )[:, 0]
+        class_features = self.text_features.class_features()
+        if self.inference_mode == "e_only":
+            # Original env_kl deployment: no text selection/fusion at test time.
+            return self._logits(causal[:, None, :], class_features)[:, 0]
+
+        # Inference ablations are explicitly opt-in. Never use target labels.
+        interventions, _ = self._select_interventions(
+            visual, causal, class_features, labels=None
+        )
+        prompt_logits = self._logits(interventions, class_features)
+        if self.inference_mode == "mean_logits":
+            return prompt_logits.mean(dim=1)
+        # Log probabilities produce the same argmax as mean softmax probabilities.
+        # logsumexp avoids underflow with CLIP's high logit scale.
+        return (
+            torch.logsumexp(F.log_softmax(prompt_logits, dim=-1), dim=1)
+            - math.log(prompt_logits.shape[1])
+        )
