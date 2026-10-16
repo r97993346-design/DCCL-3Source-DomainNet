@@ -1,11 +1,20 @@
-# Minimal CLIP + learnable class-prompt baseline on the SIGM/MCC branch.
-# Run from DCCL/DCCL. No causal decomposition, IND, TDA, SIGM, MCC,
-# selector, augmented-view supervision or contrastive learning is constructed.
-# Only the learnable context tokens are updated by a single unit-weight CE.
+# Minimal CLIP visual + CoOp-style trainable class-text prompt baseline.
+# Does NOT construct E/S, DE, IND, TDA, SIGM, MCC, selector, or contrastive modules.
+# Only the prompt context is optimized by a single CE loss (weight 1.0).
 cipt_objective: clip_ce
 cipt_enabled: true
 cipt_clip_backbone: ViT-B/16
 cipt_prompt_length: 16
 cipt_prompt_init: "a photo of a"
+
+# Explicitly keep all former experimental branches and augmented views off.
+# clip_ce bypasses their construction, regardless of these flags.
+cipt_use_de: false
+cipt_use_ind: false
+cipt_use_tda: false
+cipt_use_contrastive: false
+cipt_use_aug_view: false
+cipt_pure: true
+
 lr: 5.0e-5
 swad: LossValley
