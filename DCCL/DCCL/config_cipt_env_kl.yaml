@@ -1,0 +1,27 @@
+# Run after config.yaml; all entries can be overridden with --key value.
+cipt_objective: env_kl
+cipt_template_mode: b5c
+cipt_selector_mode: adaptive
+cipt_selector_candidates: 8
+cipt_use_de: true
+cipt_use_ind: true
+cipt_use_tda: true
+cipt_use_contrastive: true
+cipt_pure: false
+cipt_use_aug_view: false
+
+# Auto weights preserve the source no-TDA objective: E=1+beta, S=beta.
+# With the default beta=4, gamma=5: 5*CE_E + 4*KL(U||p_S) + 5*IND.
+# To keep DE-only scaling instead, explicitly set --cipt_e_cls_weight 4.
+cipt_e_cls_weight: null
+cipt_s_uniform_weight: null
+cipt_env_kl_weight: 0.1
+
+cipt_contrastive_type: neighbor_retention
+cipt_neighbor_k: 10
+cipt_neighbor_alpha: 4.0
+cipt_contrastive_temperature: 0.07
+cipt_causal_contrastive_weight: 1.5
+cipt_contrastive_warmup_steps: 500
+lr: 5.0e-5
+swad: LossValley

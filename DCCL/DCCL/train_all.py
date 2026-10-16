@@ -34,6 +34,20 @@ def apply_weak_erm_hparams(hparams):
     hparams["swad"] = None
     return hparams
 
+
+def apply_explicit_hparam_cli(parser, args, hparams, argv):
+    """Keep explicit argparse hparams above YAML presets, as documented.
+
+    Unknown --key value options are already applied by Config.argv_update.
+    Only explicitly supplied known options are reapplied; parser defaults must
+    not overwrite settings such as an adaptive selector in an experiment YAML.
+    """
+    supplied = {token.split("=", 1)[0] for token in argv}
+    for action in parser._actions:
+        if action.dest in hparams and supplied.intersection(action.option_strings):
+            hparams[action.dest] = getattr(args, action.dest)
+    return hparams
+
 def main():
     parser = argparse.ArgumentParser(description="Domain generalization")
     parser.add_argument("name", type=str)
@@ -141,6 +155,7 @@ def main():
     keys = [open(key, encoding="utf8") for key in keys]
     hparams = Config(*keys, default=hparams)
     hparams.argv_update(left_argv)
+    apply_explicit_hparam_cli(parser, args, hparams, sys.argv[1:])
     if args.algorithm == "ERM" and args.weak_erm:
         hparams = apply_weak_erm_hparams(hparams)
 

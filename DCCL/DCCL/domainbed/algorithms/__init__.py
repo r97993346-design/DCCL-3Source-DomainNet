@@ -1,8 +1,7 @@
 from .algorithms import *
-# On this branch, route CIPTDCCL through the component-ablation wrapper.
-# It preserves the no-augmentation causal-contrastive implementation while
-# exposing independent L_de, L_ind, TDA, and Contrastive switches.
-from .cipt_dccl_component_ablation import CIPTDCCL
+# The wrapper delegates unchanged legacy runs, or enables training-only
+# class-agnostic prompt KL with explicit decomposition terms and E-only inference.
+from .cipt_env_kl import CIPTDCCL
 
 
 def get_algorithm_class(algorithm_name):

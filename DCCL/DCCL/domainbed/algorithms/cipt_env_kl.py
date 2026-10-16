@@ -1,0 +1,183 @@
+"""Class-agnostic text perturbations train E through prompt consistency only.
+
+``cipt_objective=legacy`` delegates to the original component-ablation wrapper.
+``env_kl`` uses explicit E CE, S uniformity, E/S independence, original-E
+contrastive learning, and symmetric prompt KL. Inference always uses E alone.
+"""
+
+import math
+
+import torch
+import torch.nn.functional as F
+
+from domainbed.algorithms.cipt_dccl_component_ablation import CIPTDCCL as _BaseCIPTDCCL
+from domainbed.algorithms.cipt_losses import (
+    decomposition_loss_terms,
+    independence_loss,
+    prompt_consistency_loss,
+)
+
+
+class CIPTDCCL(_BaseCIPTDCCL):
+    """Switchable legacy or E-only classifier with training-only text KL."""
+
+    def __init__(self, input_shape, num_classes, num_domains, hparams):
+        super().__init__(input_shape, num_classes, num_domains, hparams)
+        self.objective_mode = str(hparams.get("cipt_objective", "legacy")).lower()
+        if self.objective_mode not in ("legacy", "env_kl"):
+            raise ValueError("cipt_objective must be legacy or env_kl")
+        if self.objective_mode == "legacy":
+            return
+
+        def coefficient(name, default):
+            value = hparams.get(name)
+            value = float(default if value is None else value)
+            if not math.isfinite(value) or value < 0.0:
+                raise ValueError(name + " must be finite and non-negative")
+            return value
+
+        # The source branch's TDA-off objective was CE_E + beta*(CE_E+KL_U).
+        # Merge the identical CE terms instead of silently weakening the strong
+        # no-TDA baseline. Explicit weights can also reproduce DE-only scaling.
+        self.e_cls_weight = coefficient(
+            "cipt_e_cls_weight", 1.0 + (self.beta if self.use_de else 0.0)
+        )
+        configured_s_weight = coefficient("cipt_s_uniform_weight", self.beta)
+        self.s_uniform_weight = configured_s_weight if self.use_de else 0.0
+        self.env_kl_weight = coefficient("cipt_env_kl_weight", 0.1)
+        self.env_kl_active = self.use_tda and self.env_kl_weight > 0.0
+
+        if self.env_kl_active:
+            if self.cipt_template_mode not in ("b5a", "b5c"):
+                raise ValueError("env_kl requires class-agnostic b5a or b5c prompts")
+            bank_size = self.text_features.full_intervention_features().shape[0]
+            if bank_size < 2:
+                raise ValueError("env_kl requires at least two environment prompts")
+            if self.prompt_selector_mode != "all" and int(hparams["cipt_k"]) < 2:
+                raise ValueError("env_kl requires cipt_k >= 2")
+
+        print(
+            "CIPTDCCL env_kl: E_CE_weight={}, S_uniform_weight={}, "
+            "IND_weight={}, prompt_KL_weight={}, prompt_KL_active={}, "
+            "KL=ordered_pair_mean, detach=False, augmented_CE=False, "
+            "KL_warmup=0, inference=E_only".format(
+                self.e_cls_weight, self.s_uniform_weight,
+                self.gamma if self.use_ind else 0.0,
+                self.env_kl_weight, self.env_kl_active,
+            )
+        )
+
+    def update(self, x, y, **kwargs):
+        if self.objective_mode == "legacy":
+            return super().update(x, y, **kwargs)
+
+        visual = self._visual(torch.cat(x))
+        labels = torch.cat(y)
+        causal, spurious = self.causal_decomposition(visual)
+        class_features = self.text_features.class_features()
+        causal_logits = self._logits(causal[:, None, :], class_features)[:, 0]
+        zero = causal.new_zeros(())
+
+        if self.use_de and self.s_uniform_weight > 0.0:
+            spurious_logits = self._logits(spurious[:, None, :], class_features)[:, 0]
+            loss_e, loss_s = decomposition_loss_terms(
+                causal_logits, spurious_logits, labels
+            )
+        else:
+            loss_e = F.cross_entropy(causal_logits, labels)
+            loss_s = zero
+        loss_ind = independence_loss(causal, spurious) if self.use_ind else zero
+        base = (
+            self.e_cls_weight * loss_e
+            + self.s_uniform_weight * loss_s
+            + self.gamma * loss_ind
+        )
+
+        loss_env = zero
+        env_shift = zero
+        env_spread = zero
+        selector_metrics = self._empty_selector_metrics(causal, prompt_count=0)
+        if self.env_kl_active:
+            # Selection is label-free. Gathered features retain the E/TDA graph;
+            # never average prompts before computing the consistency objective.
+            interventions, selector_metrics = self._select_interventions(
+                visual, causal, class_features, labels=None
+            )
+            prompt_logits = self._logits(interventions, class_features)
+            loss_env = prompt_consistency_loss(prompt_logits)
+            with torch.no_grad():
+                unit_z = F.normalize(interventions.float(), dim=-1)
+                unit_e = F.normalize(causal.float(), dim=-1)[:, None, :]
+                env_shift = (1.0 - (unit_z * unit_e).sum(dim=-1)).mean()
+                # Zero when all prompts produce the same normalized feature.
+                env_spread = (
+                    unit_z - unit_z.mean(dim=1, keepdim=True)
+                ).square().sum(dim=-1).mean()
+
+        loss_con, valid_fraction, con_weight, neighbor_stats = (
+            self._causal_contrastive_loss(visual, causal, labels, y)
+        )
+        env_term = self.env_kl_weight * loss_env
+        total = base + con_weight * loss_con + env_term
+
+        if self.debug_shapes:
+            print(
+                "CIPTDCCL env_kl shapes: E={} S={} class_logits={} "
+                "prompt_logits={} (no augmented CE)".format(
+                    tuple(causal.shape), tuple(spurious.shape),
+                    tuple(causal_logits.shape),
+                    tuple(prompt_logits.shape) if self.env_kl_active else None,
+                )
+            )
+
+        self.optimizer.zero_grad()
+        total.backward()
+        self.optimizer.step()
+
+        return {
+            **{name: value.item() for name, value in neighbor_stats.items()},
+            **self._selector_metric_items(selector_metrics),
+            "total_loss": total.item(),
+            "cipt_base_loss": base.item(),
+            # Compatibility diagnostics only; DE is NOT added again to total.
+            "cipt_cls_loss": loss_e.item(),
+            "cipt_de_loss": (loss_e + loss_s).item() if self.use_de else 0.0,
+            "cipt_de_orig_loss": (loss_e + loss_s).item() if self.use_de else 0.0,
+            "cipt_de_aug_loss": 0.0,
+            "cipt_ind_loss": loss_ind.item(),
+            "causal_consistency_loss": loss_env.item(),
+            "dccl_contrastive_loss": loss_con.item(),
+            "contrastive_weight_eff": float(con_weight),
+            "contrastive_valid_anchor_fraction": valid_fraction.item(),
+            "pre_cl_loss": 0.0,
+            "reg_loss": 0.0,
+            "mean_e_norm": causal.norm(dim=-1).mean().item(),
+            "mean_s_norm": spurious.norm(dim=-1).mean().item(),
+            "mean_es_cosine": F.cosine_similarity(causal, spurious, dim=-1).mean().item(),
+            "ablation_de_enabled": float(self.use_de),
+            "ablation_ind_enabled": float(self.use_ind),
+            "ablation_tda_enabled": float(self.use_tda),
+            "ablation_contrastive_enabled": float(self.use_contrastive),
+            "e_cls_loss": loss_e.item(),
+            "s_uni_loss": loss_s.item(),
+            "env_kl_loss": loss_env.item(),
+            "e_cls_w": self.e_cls_weight,
+            "s_uni_w": self.s_uniform_weight,
+            "env_kl_w": self.env_kl_weight if self.env_kl_active else 0.0,
+            "e_cls_term": (self.e_cls_weight * loss_e).item(),
+            "s_uni_term": (self.s_uniform_weight * loss_s).item(),
+            "env_kl_term": env_term.item(),
+            "env_shift": env_shift.item(),
+            "env_spread": env_spread.item(),
+            "env_active": float(self.env_kl_active),
+            "e_only_infer": 1.0,
+        }
+
+    def predict(self, x):
+        if self.objective_mode == "legacy":
+            return super().predict(x)
+        visual = self._visual(x)
+        causal, _ = self.causal_decomposition(visual)
+        return self._logits(
+            causal[:, None, :], self.text_features.class_features()
+        )[:, 0]

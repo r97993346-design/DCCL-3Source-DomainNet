@@ -25,6 +25,14 @@ cipt_use_ind: true
 cipt_use_tda: true
 cipt_use_contrastive: true
 
+# Opt in with config_cipt_env_kl.yaml or --cipt_objective env_kl.
+# env_kl: direct-E CE + KL(U||p_S) + IND + E contrastive + prompt-pair KL.
+# Environment-fused features receive NO label CE; inference uses E only.
+cipt_objective: legacy
+cipt_env_kl_weight: 0.1
+cipt_e_cls_weight: null
+cipt_s_uniform_weight: null
+
 # This branch intentionally removes the augmented image branch.
 # Training data returns only x with the official CLIP Resize + CenterCrop +
 # RGB + tensor + CLIP normalization pipeline. No x_2/e_aug is constructed.
@@ -53,8 +61,8 @@ cipt_causal_contrastive_weight: 1.0
 # lambda_eff = lambda_max * min(1, step / warmup_steps)
 cipt_contrastive_warmup_steps: 500
 
-# Inherited baseline behavior (despite the historical branch name):
-# 1) frozen CLIP visual feature -> adapters WITHOUT pre-decomposition L2 norm
-# 2) causal/spurious linear adapters -> default PyTorch initialization
+# Inherited source-branch behavior:
+# 1) frozen CLIP visual feature -> L2 normalization -> E/S adapters
+# 2) causal/spurious linear adapters -> identity weights and zero biases
 # Contrastive learning remains projection-free and uses only original e.
 # V/E normalization for cosine neighborhoods does not change adapter inputs.
