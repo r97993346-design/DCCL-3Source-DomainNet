@@ -10,7 +10,9 @@ import math
 import torch
 import torch.nn.functional as F
 
+from domainbed.algorithms.algorithms import Algorithm
 from domainbed.algorithms.cipt_dccl_component_ablation import CIPTDCCL as _BaseCIPTDCCL
+from domainbed.algorithms.cipt_prompt import CLIPTextEncoder, PromptLearner, load_frozen_clip
 from domainbed.algorithms.cipt_sigm import SemanticInteractionGuidance
 from domainbed.optimizers import get_optimizer
 from domainbed.algorithms.cipt_losses import (
@@ -24,10 +26,49 @@ class CIPTDCCL(_BaseCIPTDCCL):
     """Legacy or env-KL classifier with switchable text fusion and inference."""
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
+        objective = str(hparams.get("cipt_objective", "legacy")).lower()
+        if objective not in ("legacy", "env_kl", "clip_ce"):
+            raise ValueError("cipt_objective must be legacy, env_kl, or clip_ce")
+
+        if objective == "clip_ce":
+            # Minimal CoOp-style baseline. Crucially, do NOT call the CIPTDCCL
+            # parent constructor: it would create E/S, TDA, SIGM, selectors,
+            # projection heads and contrastive objectives unnecessarily.
+            Algorithm.__init__(self, input_shape, num_classes, num_domains, hparams)
+            self.objective_mode = objective
+            if not hparams.get("cipt_enabled", True):
+                raise ValueError("clip_ce requires cipt_enabled=true")
+            self.clip_model, tokenize = load_frozen_clip(
+                hparams["cipt_clip_backbone"], hparams["cipt_clip_path"]
+            )
+            class_names = hparams.get("cipt_class_names") or [
+                "class {}".format(i) for i in range(num_classes)
+            ]
+            if len(class_names) != num_classes:
+                raise ValueError("cipt_class_names must match num_classes")
+            self.prompt_learner = PromptLearner(
+                class_names, self.clip_model, tokenize,
+                hparams["cipt_prompt_length"], hparams["cipt_prompt_init"],
+            )
+            self.text_encoder = CLIPTextEncoder(self.clip_model)
+            # Only the learnable text context enters the optimizer.
+            self.optimizer = get_optimizer(
+                hparams["optimizer"], self.prompt_learner.parameters(),
+                lr=hparams["lr"], weight_decay=hparams["weight_decay"],
+            )
+            self.trainable_parameter_count = sum(
+                p.numel() for p in self.parameters() if p.requires_grad
+            )
+            self.frozen_parameter_count = sum(
+                p.numel() for p in self.parameters() if not p.requires_grad
+            )
+            print("CIPTDCCL clip_ce: raw CLIP visual + learnable class prompts; "
+                  "only CE, weight=1, trainable={}, frozen={}".format(
+                      self.trainable_parameter_count, self.frozen_parameter_count))
+            return
+
         super().__init__(input_shape, num_classes, num_domains, hparams)
-        self.objective_mode = str(hparams.get("cipt_objective", "legacy")).lower()
-        if self.objective_mode not in ("legacy", "env_kl"):
-            raise ValueError("cipt_objective must be legacy or env_kl")
+        self.objective_mode = objective
         if self.objective_mode == "legacy":
             return
 
@@ -99,7 +140,33 @@ class CIPTDCCL(_BaseCIPTDCCL):
             )
         )
 
+    def _clip_ce_visual(self, images):
+        # CLIP is frozen; leave gradient flow through the text encoder only.
+        with torch.no_grad():
+            return F.normalize(self.clip_model.encode_image(images).float(), dim=-1)
+
+    def _clip_ce_logits(self, images):
+        visual = self._clip_ce_visual(images)
+        text = self.text_encoder(
+            self.prompt_learner(), self.prompt_learner.tokenized_prompts
+        )
+        text = F.normalize(text.float(), dim=-1)
+        scale = self.clip_model.logit_scale.exp().detach().float()
+        return scale * visual @ text.t()
+
     def update(self, x, y, **kwargs):
+        if self.objective_mode == "clip_ce":
+            logits = self._clip_ce_logits(torch.cat(x))
+            loss = F.cross_entropy(logits, torch.cat(y))
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+            return {
+                "total_loss": loss.item(),
+                "cipt_base_loss": loss.item(),
+                "cipt_cls_loss": loss.item(),
+                "clip_ce_loss": loss.item(),
+            }
         if self.objective_mode == "legacy":
             return super().update(x, y, **kwargs)
 
@@ -224,6 +291,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
         }
 
     def predict(self, x):
+        if self.objective_mode == "clip_ce":
+            return self._clip_ce_logits(x)
         if self.objective_mode == "legacy":
             return super().predict(x)
         visual = self._visual(x)
@@ -246,3 +315,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
             torch.logsumexp(F.log_softmax(prompt_logits, dim=-1), dim=1)
             - math.log(prompt_logits.shape[1])
         )
+
+    def predict_embed(self, x):
+        if self.objective_mode == "clip_ce":
+            return self._clip_ce_visual(x)
+        return super().predict_embed(x)
