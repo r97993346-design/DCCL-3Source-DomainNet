@@ -126,13 +126,13 @@ class EnvironmentUpdateTests(unittest.TestCase):
         self.assertIsNone(select.call_args.kwargs["labels"])
         self.assertEqual(ce.call_count, 1)  # Only E's [B,C] label CE, never [B*K,C].
         self.assertEqual(tuple(ce.call_args.args[0].shape), (4, 2))
-        expected_base = (5 * metrics["e_cls_loss"] + 4 * metrics["s_uni_loss"]
+        expected_base = (metrics["e_cls_loss"] + 4 * metrics["s_uni_loss"]
                          + 5 * metrics["cipt_ind_loss"])
         expected = (expected_base + metrics["contrastive_weight_eff"]
                     * metrics["dccl_contrastive_loss"] + .1 * metrics["env_kl_loss"])
         self.assertAlmostEqual(metrics["cipt_base_loss"], expected_base, places=5)
         self.assertAlmostEqual(metrics["total_loss"], expected, places=5)
-        self.assertEqual(metrics["e_cls_w"], 5.)
+        self.assertEqual(metrics["e_cls_w"], 1.)
         self.assertEqual(metrics["s_uni_w"], 4.)
         self.assertEqual(metrics["prompt_selector_active"], 1.)
         self.assertEqual(metrics["env_active"], 1.)
@@ -152,11 +152,11 @@ class EnvironmentUpdateTests(unittest.TestCase):
         self.assertGreater(model.text_features.classes.grad.abs().sum().item(), 0.)
         self.assertIsNone(model.causal_decomposition.spurious_adapter.weight.grad)
 
-    def test_kl_zero_preserves_source_no_tda_objective_and_update(self):
+    def test_explicit_old_weights_preserve_source_no_tda_objective_and_update(self):
         torch.manual_seed(33)
         source = self.build(Component, cipt_use_tda=False)
         torch.manual_seed(33)
-        changed = self.build(cipt_env_kl_weight=0.)
+        changed = self.build(cipt_env_kl_weight=0., cipt_e_cls_weight=5.)
         with mock.patch.object(changed, "_select_interventions", side_effect=AssertionError("disabled KL ran TDA")):
             a = source.update(*self.batches())
             b = changed.update(*self.batches())
@@ -191,6 +191,9 @@ class EnvironmentUpdateTests(unittest.TestCase):
         torch.testing.assert_close(actual, expected)
 
     def test_component_switches_explicit_weights_and_all_bank(self):
+        model = self.build(cipt_beta=7., cipt_e_cls_weight=None)
+        self.assertEqual(model.e_cls_weight, 1.)
+        self.assertEqual(model.s_uniform_weight, 7.)
         model = self.build(cipt_use_tda=False, cipt_use_de=False,
                            cipt_use_ind=False, cipt_use_contrastive=False)
         metrics = model.update(*self.batches())
@@ -228,6 +231,7 @@ class ConfigurationTests(unittest.TestCase):
         args, remaining = parser.parse_known_args(argv)
         with (ROOT / "config.yaml").open() as base, (ROOT / "config_cipt_env_kl.yaml").open() as experiment:
             config = Config(base, experiment)
+        self.assertEqual(config.cipt_e_cls_weight, 1.)
         config.argv_update(remaining)
         tree = ast.parse((ROOT / "train_all.py").read_text())
         definition = next(n for n in tree.body if isinstance(n, ast.FunctionDef)

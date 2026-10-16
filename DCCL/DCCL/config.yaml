@@ -30,7 +30,7 @@ cipt_use_contrastive: true
 # Environment-fused features receive NO label CE; inference uses E only.
 cipt_objective: legacy
 cipt_env_kl_weight: 0.1
-cipt_e_cls_weight: null
+cipt_e_cls_weight: 1.0
 cipt_s_uniform_weight: null
 
 # This branch intentionally removes the augmented image branch.

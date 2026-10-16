@@ -26,23 +26,28 @@ L_{env}=\frac{1}{BK(K-1)}\sum_i\sum_{k\ne l}KL(p_{ik}\|p_{il}).
 ## 完整目标及权重
 
 ```math
-L_E=CE(h(E),y),\quad L_U=KL(U\|p_S),\quad
+L_E=CE(h(E),y),\quad L_S=KL(U\|p_S),\quad
 L_{IND}=\frac{1}{2B}\sum_i\cos(E_i,S_i)^2.
 
-L=\lambda_E L_E+\lambda_U L_U+\gamma L_{IND}
-  +\lambda_{con}(t)L_{NR}(E)+\lambda_{env}L_{env}.
+L_{total}=L_E+\lambda_S L_S+\lambda_{ind}L_{IND}
+  +\lambda_{con}(t)L_{NRC}(E)+\lambda_{kl}L_{BiKL},\quad
+L_{BiKL}=L_{env}.
 ```
 
-**没有单独的 TDA 分类项，也不把 DE 重复加回总损失。** 原 DE 为 `L_E+L_U`。
-源分支关闭 TDA 时，额外分类项退化成同一 E logits 的 CE，因此其基础目标实际是
-`(1+beta)*L_E + beta*L_U + gamma*L_IND`。新模式把重复的 E CE 合并成一个明确权重。
+**E 的分类损失只计算一次，默认系数为 1。** 环境融合分支仅使用双向 KL，
+不增加标签 CE；原 DE 的 `L_E+L_S` 拆开后也不再作为单独一项加回总损失。
 
-默认 `cipt_e_cls_weight: null` 自动取 `1+beta`（DE 关闭时取 1），
-`cipt_s_uniform_weight: null` 取 `beta`。默认 beta=4、gamma=5 时为
-`5*L_E + 4*L_U + 5*L_IND`，与源分支无 TDA 基线保持相同监督强度。
-若希望只保留原 DE 的系数，可显式指定 `--cipt_e_cls_weight 4`；这是权重变化，
-应与 KL 效果分开做消融。`cipt_use_de=false` 关闭 S 均匀项，并使自动 E 权重回到 1；
-显式的 E 权重仍然有效。
+`cipt_e_cls_weight` 默认取 1，省略或设为 `null` 时同样取 1，与 beta 和 DE 开关无关。
+`cipt_s_uniform_weight: null` 取 `cipt_beta`，也可单独设置 S 权重；
+`lambda_ind` 对应 `cipt_gamma`，对比权重对应 `cipt_causal_contrastive_weight`
+及其 warmup，KL 权重对应 `cipt_env_kl_weight`。
+默认 beta=4、gamma=5 时，基础目标为 `L_E + 4*L_S + 5*L_IND`。
+`cipt_use_de=false` 关闭 S 均匀项，不改变 E 权重。
+
+源分支关闭 TDA 时的基础目标是 `(1+beta)*L_E + beta*L_S + gamma*L_IND`，
+其中 E CE 在额外分类项和 DE 中重复出现。新目标不沿用这一默认缩放。
+若专门复现旧基线，可在 beta=4 时显式设置 `--cipt_e_cls_weight 5`。
+这与新目标的默认相对权重不同，比较 KL 开关时应固定同一套权重。
 
 环境 KL 默认权重为 0.1，是尚未验证的实验起点，不是已知最优参数。
 保持现有邻域参数 k=10、alpha=4、temperature=0.07、最终权重=1.5、warmup=500。

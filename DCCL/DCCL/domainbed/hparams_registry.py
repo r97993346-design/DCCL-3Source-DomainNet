@@ -55,8 +55,8 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_debug_shapes"] = (False, False)
         hparams["cipt_objective"] = ("legacy", "legacy")
         hparams["cipt_env_kl_weight"] = (0.1, 0.1)
-        # None resolves to the source TDA-off baseline: E=1+beta, S=beta.
-        hparams["cipt_e_cls_weight"] = (None, None)
+        # env_kl uses a unit E CE anchor; None for S falls back to beta.
+        hparams["cipt_e_cls_weight"] = (1.0, 1.0)
         hparams["cipt_s_uniform_weight"] = (None, None)
 
     hparams["freeze_bn"] = (True, True)

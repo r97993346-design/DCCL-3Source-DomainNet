@@ -36,12 +36,10 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 raise ValueError(name + " must be finite and non-negative")
             return value
 
-        # The source branch's TDA-off objective was CE_E + beta*(CE_E+KL_U).
-        # Merge the identical CE terms instead of silently weakening the strong
-        # no-TDA baseline. Explicit weights can also reproduce DE-only scaling.
-        self.e_cls_weight = coefficient(
-            "cipt_e_cls_weight", 1.0 + (self.beta if self.use_de else 0.0)
-        )
+        # E classification is the unit-weight anchor of the new objective.
+        # S uniformity and the other regularizers have separate coefficients;
+        # do not inherit the source branch's duplicated E CE via 1+beta.
+        self.e_cls_weight = coefficient("cipt_e_cls_weight", 1.0)
         configured_s_weight = coefficient("cipt_s_uniform_weight", self.beta)
         self.s_uniform_weight = configured_s_weight if self.use_de else 0.0
         self.env_kl_weight = coefficient("cipt_env_kl_weight", 0.1)
