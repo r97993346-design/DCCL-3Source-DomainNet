@@ -2,7 +2,7 @@
 
 ``cipt_objective=legacy`` delegates to the original component-ablation wrapper.
 ``env_kl`` uses explicit E CE, S uniformity, E/S independence, original-E
-contrastive learning, and symmetric prompt KL. Inference always uses E alone.
+contrastive learning, and symmetric prompt KL. Inference mode is configurable.
 """
 
 import math
@@ -21,7 +21,7 @@ from domainbed.algorithms.cipt_losses import (
 
 
 class CIPTDCCL(_BaseCIPTDCCL):
-    """Switchable legacy or E-only classifier with training-only text KL."""
+    """Legacy or env-KL classifier with switchable text fusion and inference."""
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super().__init__(input_shape, num_classes, num_domains, hparams)
@@ -220,7 +220,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "sigm_active": float(self.fusion_mode == "sigm"),
             "inference_fused": float(self.inference_mode != "e_only"),
             "env_active": float(self.env_kl_active),
-            "e_only_infer": 1.0,
+            "e_only_infer": float(self.inference_mode == "e_only"),
         }
 
     def predict(self, x):
