@@ -1,0 +1,11 @@
+# Minimal CLIP + learnable class-prompt baseline on the SIGM/MCC branch.
+# Run from DCCL/DCCL. No causal decomposition, IND, TDA, SIGM, MCC,
+# selector, augmented-view supervision or contrastive learning is constructed.
+# Only the learnable context tokens are updated by a single unit-weight CE.
+cipt_objective: clip_ce
+cipt_enabled: true
+cipt_clip_backbone: ViT-B/16
+cipt_prompt_length: 16
+cipt_prompt_init: "a photo of a"
+lr: 5.0e-5
+swad: LossValley
