@@ -18,6 +18,7 @@ from test_cipt_neighbor_contrastive import (
 
 
 losses = load_file("env_losses", ALGORITHMS / "cipt_losses.py")
+sigm = load_file("text_sigm", ALGORITHMS / "cipt_sigm.py")
 tree = ast.parse((ALGORITHMS / "cipt_env_kl.py").read_text())
 definition = next(n for n in tree.body if isinstance(n, ast.ClassDef))
 namespace = dict(
@@ -25,6 +26,7 @@ namespace = dict(
     decomposition_loss_terms=losses.decomposition_loss_terms,
     independence_loss=losses.independence_loss,
     prompt_consistency_loss=losses.prompt_consistency_loss,
+    SemanticInteractionGuidance=sigm.SemanticInteractionGuidance,
 )
 exec(compile(ast.Module(body=[definition], type_ignores=[]), "cipt_env_kl.py", "exec"), namespace)
 Environment = namespace["CIPTDCCL"]
