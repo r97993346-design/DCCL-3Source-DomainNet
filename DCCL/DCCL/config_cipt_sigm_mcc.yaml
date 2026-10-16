@@ -1,0 +1,35 @@
+# Run after config.yaml; all entries can be overridden with --key value.
+cipt_objective: env_kl
+# Text-IF SIGM (no change to MCC, DE, IND or contrastive losses).
+cipt_fusion_mode: sigm
+cipt_sigm_scale: 1.0
+cipt_sigm_init_std: 0.02
+# Deployment ablations: e_only | mean_logits | mean_probs.
+cipt_env_inference: e_only
+cipt_template_mode: b5c
+cipt_selector_mode: adaptive
+cipt_selector_candidates: 8
+cipt_use_de: true
+cipt_use_ind: true
+cipt_use_tda: true
+cipt_use_contrastive: true
+cipt_pure: false
+cipt_use_aug_view: false
+
+# SIGM-versus-TDA ablation: --cipt_fusion_mode tda
+# New objective: CE_E + lambda_S*KL(U||p_S) + lambda_IND*IND
+#                + lambda_con(t)*NRC + lambda_kl*BiKL.
+# S defaults to beta=4; IND uses gamma=5. E CE is counted once with weight 1.
+# To reproduce the source no-TDA scaling, explicitly set --cipt_e_cls_weight 5.
+cipt_e_cls_weight: 1.0
+cipt_s_uniform_weight: null
+cipt_env_kl_weight: 0.1
+
+cipt_contrastive_type: neighbor_retention
+cipt_neighbor_k: 10
+cipt_neighbor_alpha: 4.0
+cipt_contrastive_temperature: 0.07
+cipt_causal_contrastive_weight: 1.5
+cipt_contrastive_warmup_steps: 500
+lr: 5.0e-5
+swad: LossValley
