@@ -269,6 +269,8 @@ class CIPTTextFeatures(nn.Module):
         self.class_names = [name.replace("_", " ") for name in class_names]
         self.k = int(k)
         self.template_mode = "b5a"
+        # Classification prototypes; independent of the TDA intervention bank.
+        self.class_text_mode = "learnable"
         self.neutral_subject = "subject"
         self._tokenize = tokenize
 
@@ -436,5 +438,16 @@ class CIPTTextFeatures(nn.Module):
         return self.intervention_features(labels=None)
 
     def class_features(self):
+        """Return class prototypes for E/S classification (not TDA prompts)."""
+        if self.class_text_mode == "ensemble80":
+            # The b5b bank is [num_classes, 80, dim] and contains
+            # individually L2-normalized, frozen CLIP text embeddings.
+            # CLIP's prompt ensemble: normalize(mean(normalized prompts)).
+            features = self.b5b_text_bank.float().mean(dim=1)
+            return F.normalize(features, dim=-1)
+
+        if self.class_text_mode != "learnable":
+            raise ValueError("Unknown cipt_class_text_mode={!r}".format(self.class_text_mode))
+
         features = self.text_encoder(self.prompt_learner(), self.prompt_learner.tokenized_prompts)
         return F.normalize(features.float(), dim=-1)
