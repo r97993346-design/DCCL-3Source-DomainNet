@@ -54,6 +54,8 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_use_aug_view"] = (False, False)
         hparams["cipt_debug_shapes"] = (False, False)
         hparams["cipt_objective"] = ("legacy", "legacy")
+        # learnable CoOp-style class prompts or frozen 80-template prototypes.
+        hparams["cipt_class_text_mode"] = ("learnable", "learnable")
         hparams["cipt_env_kl_weight"] = (0.1, 0.1)
         # env_kl uses a unit E CE anchor; None for S falls back to beta.
         hparams["cipt_e_cls_weight"] = (1.0, 1.0)
