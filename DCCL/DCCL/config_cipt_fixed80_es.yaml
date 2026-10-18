@@ -1,0 +1,20 @@
+# E/S decomposition against frozen OpenAI CLIP 80-template class prototypes.
+# Layer after config_cipt_sigm_mcc.yaml. All other source settings stay intact.
+# The E/S adapters remain trainable; no CoOp context updates are performed.
+cipt_objective: env_kl
+cipt_class_text_mode: ensemble80
+
+# Evaluate and train on E directly. No environment interventions.
+cipt_env_inference: e_only
+cipt_use_de: true
+cipt_e_cls_weight: 1.0
+cipt_s_uniform_weight: 1.0
+cipt_use_ind: false
+cipt_gamma: 0
+cipt_use_tda: false
+cipt_env_kl_weight: 0
+cipt_use_contrastive: false
+cipt_causal_contrastive_weight: 0
+cipt_selector_mode: random
+
+swad: LossValley
