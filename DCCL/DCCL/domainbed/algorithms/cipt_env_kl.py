@@ -29,6 +29,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
         objective = str(hparams.get("cipt_objective", "legacy")).lower()
         if objective not in ("legacy", "env_kl", "clip_ce"):
             raise ValueError("cipt_objective must be legacy, env_kl, or clip_ce")
+        class_text_mode = str(hparams.get("cipt_class_text_mode", "learnable")).lower()
+        if class_text_mode not in ("learnable", "ensemble80"):
+            raise ValueError("cipt_class_text_mode must be learnable or ensemble80")
+        if class_text_mode == "ensemble80" and objective != "env_kl":
+            raise ValueError("ensemble80 class prototypes require cipt_objective=env_kl")
 
         if objective == "clip_ce":
             # Minimal CoOp-style baseline. Crucially, do NOT call the CIPTDCCL
@@ -100,6 +105,26 @@ class CIPTDCCL(_BaseCIPTDCCL):
             self.trainable_parameter_count = sum(
                 p.numel() for p in self.parameters() if p.requires_grad
             )
+
+        # The fixed-template classifier replaces ONLY the class prototypes
+        # used for E CE / S uniformity and prediction, not the TDA text bank.
+        self.class_text_mode = class_text_mode
+        self.text_features.class_text_mode = class_text_mode
+        if class_text_mode == "ensemble80":
+            self.text_features.prompt_learner.requires_grad_(False)
+            # The parent (and optional SIGM override) already built an
+            # optimizer containing prompt parameters; rebuild after freezing.
+            trainable = [p for p in self.parameters() if p.requires_grad]
+            if not trainable:
+                raise RuntimeError("No trainable parameters left for fixed80 E/S")
+            self.optimizer = get_optimizer(
+                hparams["optimizer"], trainable,
+                lr=hparams["lr"], weight_decay=hparams["weight_decay"],
+            )
+            self.trainable_parameter_count = sum(p.numel() for p in trainable)
+        print("CIPTDCCL class_text_mode={} (class prototypes only)".format(
+            self.class_text_mode
+        ))
 
         def coefficient(name, default):
             value = hparams.get(name)
