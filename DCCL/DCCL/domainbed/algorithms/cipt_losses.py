@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 def classification_loss(logits, labels):
-    """Mean CE over the K intervention-specific predictions (the sole task CE)."""
+    """Mean label CE over the K intervention-specific predictions."""
     return torch.stack([F.cross_entropy(one_logits, labels) for one_logits in logits.unbind(1)]).mean()
 
 
@@ -61,3 +61,4 @@ def independence_loss(causal_features, spurious_features, eps=1e-6):
         causal_features, spurious_features, dim=-1, eps=eps
     )
     return 0.5 * cosine.square().mean()
+

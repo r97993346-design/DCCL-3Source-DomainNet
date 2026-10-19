@@ -3,8 +3,13 @@
 Base: `feature/cipt-class-agnostic-env-kl`.
 New branch: `feature/cipt-class-agnostic-sigm-mcc`.
 The old `config_cipt_env_kl.yaml` / `scripts/run_cipt_env_kl.sh` are
-**unchanged** and still select original TDA. New experiments use
+still available and select original TDA. New experiments use
 `config_cipt_sigm_mcc.yaml` / `scripts/run_cipt_sigm_mcc.sh`.
+
+Optional fused-feature label supervision is now independently available through
+`cipt_fused_cls_weight` (default 0). The historical objective and ablations below
+describe weight 0; see [fused classification](fused_classification.md) for CE-only
+or CE + MCC environment training and the new overlay configuration.
 
 ## Precisely what changed
 
@@ -88,7 +93,8 @@ for w in 0 0.01 0.05 0.1 0.2; do
 done
 ```
 At `lambda_kl=0`, `env_kl_active=False` deliberately bypasses prompt
-selection, SIGM/TDA and its training gradient (E classification, S uniformity,
+selection, SIGM/TDA and its training gradient when `cipt_fused_cls_weight=0`
+(E classification, S uniformity,
 IND and contrastive remain). Therefore this **KL-off** control is NOT a
 trained-but-unconstrained SIGM. Such a run is meaningful for testing the
 impact of adding MCC, not for evaluating a trained SIGM under fused inference.
@@ -150,3 +156,4 @@ python -m unittest discover -s tests -p 'test_cipt_sigm_mcc.py' -v
 These are lightweight CPU tests using toy CLIP substitutes. They validate
 formula/gradients/optimizer inclusion, switches, and inference aggregation.
 Actual PACS/VLCS training and speed/memory have NOT been verified here.
+

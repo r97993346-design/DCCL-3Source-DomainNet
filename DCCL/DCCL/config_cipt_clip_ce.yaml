@@ -15,6 +15,8 @@ cipt_use_tda: false
 cipt_use_contrastive: false
 cipt_use_aug_view: false
 cipt_pure: true
+cipt_fused_cls_weight: 0.0
 
 lr: 5.0e-5
 swad: LossValley
+

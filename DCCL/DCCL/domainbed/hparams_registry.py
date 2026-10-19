@@ -55,6 +55,7 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_debug_shapes"] = (False, False)
         hparams["cipt_objective"] = ("legacy", "legacy")
         hparams["cipt_env_kl_weight"] = (0.1, 0.1)
+        hparams["cipt_fused_cls_weight"] = (0.0, 0.0)
         # env_kl uses a unit E CE anchor; None for S falls back to beta.
         hparams["cipt_e_cls_weight"] = (1.0, 1.0)
         hparams["cipt_s_uniform_weight"] = (None, None)
@@ -145,3 +146,4 @@ def default_hparams(algorithm, dataset):
 def random_hparams(algorithm, dataset, seed):
     random_state = np.random.RandomState(seed)
     return {a: c for a, (b, c) in _hparams(algorithm, dataset, random_state).items()}
+

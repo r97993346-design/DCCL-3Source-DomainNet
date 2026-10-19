@@ -27,9 +27,10 @@ cipt_use_contrastive: true
 
 # Opt in with config_cipt_env_kl.yaml or --cipt_objective env_kl.
 # env_kl: direct-E CE + KL(U||p_S) + IND + E contrastive + prompt-pair KL.
-# Environment-fused features receive NO label CE; inference uses E only.
+# Fused-feature label CE is opt-in; original env_kl runs keep weight zero.
 cipt_objective: legacy
 cipt_env_kl_weight: 0.1
+cipt_fused_cls_weight: 0.0
 cipt_e_cls_weight: 1.0
 cipt_s_uniform_weight: null
 
@@ -66,3 +67,4 @@ cipt_contrastive_warmup_steps: 500
 # 2) causal/spurious linear adapters -> identity weights and zero biases
 # Contrastive learning remains projection-free and uses only original e.
 # V/E normalization for cosine neighborhoods does not change adapter inputs.
+

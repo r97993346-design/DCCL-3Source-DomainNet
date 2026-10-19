@@ -65,9 +65,9 @@ class SIGMModuleTests(unittest.TestCase):
 
 class SIGMTrainingTests(unittest.TestCase):
     def build(self, **overrides):
-        return fixture.EnvironmentUpdateTests().build(
-            cipt_fusion_mode="sigm", cipt_sigm_init_std=0.15, **overrides
-        )
+        params = dict(cipt_fusion_mode="sigm", cipt_sigm_init_std=0.15)
+        params.update(overrides)
+        return fixture.EnvironmentUpdateTests().build(**params)
 
     def test_sigm_params_in_optimizer_and_prompt_only_gradient(self):
         torch.manual_seed(71)
@@ -150,3 +150,4 @@ class SIGMTrainingTests(unittest.TestCase):
 if __name__ == "__main__":
     torch.set_num_threads(1)
     unittest.main()
+

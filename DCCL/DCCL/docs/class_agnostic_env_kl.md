@@ -9,7 +9,9 @@
 一张图像仅编码一次，分解得到 E、S。E 接受原有类别监督和可切换的
 SupCon / neighbor-retention 对比学习。b5c 类别无关环境库经过已有
 Safe-Diverse 选择和 TDA 融合后，保留 `[B,K,D]`，使用同一类别文本锚点
-得到 `[B,K,C]` 预测。环境分支仅接受 prompt 间 KL，不增加融合特征的标签 CE。
+得到 `[B,K,C]` 预测。默认环境分支仅接受 prompt 间 KL；新增的
+`cipt_fused_cls_weight` 可独立开启融合特征标签 CE，见
+[融合分类监督](fused_classification.md)。
 
 KL 的数学定义为：
 
@@ -35,7 +37,8 @@ L_{BiKL}=L_{env}.
 ```
 
 **E 的分类损失只计算一次，默认系数为 1。** 环境融合分支仅使用双向 KL，
-不增加标签 CE；原 DE 的 `L_E+L_S` 拆开后也不再作为单独一项加回总损失。
+默认不增加标签 CE；显式开启时增加 `lambda_fused*L_fused`。
+原 DE 的 `L_E+L_S` 拆开后也不再作为单独一项加回总损失。
 
 `cipt_e_cls_weight` 默认取 1，省略或设为 `null` 时同样取 1，与 beta 和 DE 开关无关。
 `cipt_s_uniform_weight: null` 取 `cipt_beta`，也可单独设置 S 权重；
@@ -81,7 +84,8 @@ CIPT_RUN_NAME=pacs_env_kl_on CUDA_VISIBLE_DEVICES=1 \
   bash scripts/run_cipt_env_kl.sh PACS --cipt_env_kl_weight 0.1
 ```
 
-权重为 0 或 `cipt_use_tda=false` 会跳过环境选择和融合，推理仍使用 E。
+KL 和融合 CE 权重均为 0，或 `cipt_use_tda=false`，会跳过训练中的环境选择
+和融合；默认推理仍使用 E。
 `--cipt_selector_mode random` 可关闭自适应选择；`--cipt_use_contrastive false`
 关闭对比；`--cipt_contrastive_type supcon` 切换标准对比。
 脚本支持 `CIPT_DATA_DIR`、`CIPT_CLIP_PATH`、`CIPT_RUN_NAME` 环境变量，以及追加训练参数。
@@ -99,5 +103,6 @@ CIPT_RUN_NAME=pacs_env_kl_on CUDA_VISIBLE_DEVICES=1 \
 归一化融合特征的方差，用于检查融合是否忽略文本。KL 降低本身不能证明域泛化提升。
 
 针对性 CPU 测试比较 KL 的逐对定义、数值和两侧梯度，检查 KL 经融合更新 E、
-环境无标签 CE、E-only 推理、开关行为、legacy 回归和配置覆盖。
+默认环境无标签 CE、可选融合 CE 梯度、E-only 推理、开关行为、legacy 回归和配置覆盖。
 这些验证不等同于完整 PACS/VLCS 训练，性能需要服务器上的实际实验确认。
+

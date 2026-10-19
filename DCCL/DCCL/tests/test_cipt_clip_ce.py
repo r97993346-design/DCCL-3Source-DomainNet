@@ -17,7 +17,8 @@ from test_cipt_env_kl import Environment
 
 class TinyAlgorithm(nn.Module):
     def __init__(self, input_shape, num_classes, num_domains, hparams):
-        super().__init__()
+        # Called as an unbound stand-in for Algorithm.__init__ on Environment.
+        nn.Module.__init__(self)
         self.hparams = hparams
         self.num_classes = num_classes
 
@@ -114,3 +115,4 @@ class ClipCEOnlyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

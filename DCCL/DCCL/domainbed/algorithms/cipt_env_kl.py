@@ -1,8 +1,9 @@
-"""Class-agnostic text perturbations train E through prompt consistency only.
+"""Class-agnostic text perturbations train E with optional fused CE and MCC.
 
 ``cipt_objective=legacy`` delegates to the original component-ablation wrapper.
 ``env_kl`` uses explicit E CE, S uniformity, E/S independence, original-E
-contrastive learning, and symmetric prompt KL. Inference mode is configurable.
+contrastive learning, optional fused-feature label CE, and symmetric prompt KL.
+Fused CE and prompt KL have independent weights; inference is configurable.
 """
 
 import math
@@ -16,6 +17,7 @@ from domainbed.algorithms.cipt_prompt import CLIPTextEncoder, PromptLearner, loa
 from domainbed.algorithms.cipt_sigm import SemanticInteractionGuidance
 from domainbed.optimizers import get_optimizer
 from domainbed.algorithms.cipt_losses import (
+    classification_loss as cipt_classification_loss,
     decomposition_loss_terms,
     independence_loss,
     prompt_consistency_loss,
@@ -115,28 +117,34 @@ class CIPTDCCL(_BaseCIPTDCCL):
         configured_s_weight = coefficient("cipt_s_uniform_weight", self.beta)
         self.s_uniform_weight = configured_s_weight if self.use_de else 0.0
         self.env_kl_weight = coefficient("cipt_env_kl_weight", 0.1)
+        self.fused_cls_weight = coefficient("cipt_fused_cls_weight", 0.0)
         self.env_kl_active = self.use_tda and self.env_kl_weight > 0.0
+        self.fused_cls_active = self.use_tda and self.fused_cls_weight > 0.0
+        self.env_active = self.env_kl_active or self.fused_cls_active
 
-        if self.env_kl_active or self.inference_mode != "e_only":
+        if self.env_active or self.inference_mode != "e_only":
             if self.cipt_template_mode not in ("b5a", "b5c"):
                 raise ValueError("env_kl requires class-agnostic b5a or b5c prompts")
             bank_size = self.text_features.full_intervention_features().shape[0]
-            if bank_size < 2:
+            if self.env_kl_active and bank_size < 2:
                 raise ValueError("env_kl requires at least two environment prompts")
-            if self.prompt_selector_mode != "all" and int(hparams["cipt_k"]) < 2:
+            if (self.env_kl_active and self.prompt_selector_mode != "all"
+                    and int(hparams["cipt_k"]) < 2):
                 raise ValueError("env_kl requires cipt_k >= 2")
 
         print(
             "CIPTDCCL env_kl: fusion_mode={}, inference_mode={}, "
             "SIGM_trainable={}, E_CE_weight={}, S_uniform_weight={}, "
             "IND_weight={}, prompt_KL_weight={}, prompt_KL_active={}, "
-            "KL=ordered_pair_mean, detach=False, augmented_CE=False, "
+            "fused_CE_weight={}, fused_CE_active={}, "
+            "KL=ordered_pair_mean, detach=False, "
             "KL_warmup=0".format(
                 self.fusion_mode, self.inference_mode,
                 int(self.fusion_mode == "sigm"),
                 self.e_cls_weight, self.s_uniform_weight,
                 self.gamma if self.use_ind else 0.0,
                 self.env_kl_weight, self.env_kl_active,
+                self.fused_cls_weight, self.fused_cls_active,
             )
         )
 
@@ -193,20 +201,26 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
 
         loss_env = zero
+        loss_fused_cls = zero
         env_shift = zero
         env_spread = zero
         env_l2_shift = zero
         env_spread_l2 = zero
         env_pred_agreement = zero
         selector_metrics = self._empty_selector_metrics(causal, prompt_count=0)
-        if self.env_kl_active:
+        if self.env_active:
             # Selection is label-free. Gathered features retain the E/TDA graph;
-            # never average prompts before computing the consistency objective.
+            # share one fusion pass for CE and MCC, keeping each prompt separate.
             interventions, selector_metrics = self._select_interventions(
                 visual, causal, class_features, labels=None
             )
             prompt_logits = self._logits(interventions, class_features)
-            loss_env = prompt_consistency_loss(prompt_logits)
+            if self.fused_cls_active:
+                # Each environment predicts the true class using the same
+                # learnable class-text anchors. Average CE, not fused features.
+                loss_fused_cls = cipt_classification_loss(prompt_logits, labels)
+            if self.env_kl_active:
+                loss_env = prompt_consistency_loss(prompt_logits)
             with torch.no_grad():
                 unit_z = F.normalize(interventions.float(), dim=-1)
                 unit_e = F.normalize(causal.float(), dim=-1)[:, None, :]
@@ -230,15 +244,18 @@ class CIPTDCCL(_BaseCIPTDCCL):
             self._causal_contrastive_loss(visual, causal, labels, y)
         )
         env_term = self.env_kl_weight * loss_env
+        fused_cls_term = self.fused_cls_weight * loss_fused_cls
+        base = base + fused_cls_term
         total = base + con_weight * loss_con + env_term
 
         if self.debug_shapes:
             print(
                 "CIPTDCCL env_kl shapes: E={} S={} class_logits={} "
-                "prompt_logits={} (no augmented CE)".format(
+                "prompt_logits={} fused_CE_active={}".format(
                     tuple(causal.shape), tuple(spurious.shape),
                     tuple(causal_logits.shape),
-                    tuple(prompt_logits.shape) if self.env_kl_active else None,
+                    tuple(prompt_logits.shape) if self.env_active else None,
+                    self.fused_cls_active,
                 )
             )
 
@@ -271,12 +288,15 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "ablation_tda_enabled": float(self.use_tda),
             "ablation_contrastive_enabled": float(self.use_contrastive),
             "e_cls_loss": loss_e.item(),
+            "fused_cls_loss": loss_fused_cls.item(),
             "s_uni_loss": loss_s.item(),
             "env_kl_loss": loss_env.item(),
             "e_cls_w": self.e_cls_weight,
+            "fused_cls_w": self.fused_cls_weight if self.fused_cls_active else 0.0,
             "s_uni_w": self.s_uniform_weight,
             "env_kl_w": self.env_kl_weight if self.env_kl_active else 0.0,
             "e_cls_term": (self.e_cls_weight * loss_e).item(),
+            "fused_cls_term": fused_cls_term.item(),
             "s_uni_term": (self.s_uniform_weight * loss_s).item(),
             "env_kl_term": env_term.item(),
             "env_shift": env_shift.item(),
@@ -286,7 +306,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "env_pred_agreement": env_pred_agreement.item(),
             "sigm_active": float(self.fusion_mode == "sigm"),
             "inference_fused": float(self.inference_mode != "e_only"),
-            "env_active": float(self.env_kl_active),
+            "env_active": float(self.env_active),
+            "env_kl_active": float(self.env_kl_active),
+            "fused_cls_active": float(self.fused_cls_active),
             "e_only_infer": float(self.inference_mode == "e_only"),
         }
 
@@ -320,3 +342,4 @@ class CIPTDCCL(_BaseCIPTDCCL):
         if self.objective_mode == "clip_ce":
             return self._clip_ce_visual(x)
         return super().predict_embed(x)
+
