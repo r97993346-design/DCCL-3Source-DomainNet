@@ -371,6 +371,14 @@ class CIPTTextFeatures(nn.Module):
             return torch.cat(pieces, dim=0)
         return torch.arange(self.k, device=device) % num_available
 
+    def full_b5b_text_features(self):
+        """Read-only full official class-conditioned bank [C,80,D].
+
+        No random K selection or label lookup occurs here. Callers must not
+        mutate the returned buffer; it is detached from every training graph.
+        """
+        return self.b5b_text_bank.detach()
+
     def full_intervention_features(self):
         """Complete shared bank for per-image class-agnostic prompt selection.
 

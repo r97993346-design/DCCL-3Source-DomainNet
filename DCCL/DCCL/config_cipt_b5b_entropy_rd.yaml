@@ -1,0 +1,30 @@
+# Apply after config.yaml. Explicit CLI --key value overrides this preset.
+cipt_objective: env_anchor
+cipt_env_constraint: relative_distance
+cipt_template_mode: b5b
+# Compatibility with the inherited constructor only; selection uses entropy.
+cipt_selector_mode: random
+cipt_env_topk: 40
+cipt_env_loss_weight: 1.0
+cipt_env_inference: e_only
+cipt_use_tda: false
+cipt_env_kl_weight: 0.0
+cipt_fused_cls_weight: 0.0
+
+cipt_use_de: true
+cipt_e_cls_weight: 1.0
+cipt_s_uniform_weight: 1.0
+cipt_use_ind: true
+cipt_gamma: 5.0
+cipt_use_contrastive: true
+cipt_pure: false
+cipt_use_aug_view: false
+# Preserve the source SIGM/MCC preset's contrastive settings and warmup.
+cipt_contrastive_type: neighbor_retention
+cipt_neighbor_k: 10
+cipt_neighbor_alpha: 4.0
+cipt_contrastive_temperature: 0.07
+cipt_causal_contrastive_weight: 1.5
+cipt_contrastive_warmup_steps: 500
+lr: 5.0e-5
+swad: LossValley

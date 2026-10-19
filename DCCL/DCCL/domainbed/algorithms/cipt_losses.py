@@ -55,6 +55,39 @@ def prompt_consistency_loss(logits):
     return (loss * (prompts / float(prompts - 1))).clamp_min(0.0)
 
 
+def relative_distance_loss(causal_features, class_anchors, text_bank, labels, indices):
+    """Mean squared error between student/teacher cosine relationships.
+
+    E: [B,D], frozen A: [C,D], frozen T: [C,80,D], y: [B], J: [B,n].
+    Only E is differentiable. J was selected without labels; labels are used
+    here solely to look up the correct class's anchor and selected templates.
+    This preserves all n relationships rather than minimizing MSE(E, A[y]).
+    """
+    if causal_features.ndim != 2 or causal_features.shape[0] < 1:
+        raise ValueError("causal_features must have nonempty shape [B,D]")
+    batch, dim = causal_features.shape
+    if (text_bank.ndim != 3 or text_bank.shape[0] < 1
+            or text_bank.shape[1:] != (80, dim)):
+        raise ValueError("text_bank must have shape [C,80,D]")
+    if class_anchors.shape != (text_bank.shape[0], dim):
+        raise ValueError("class_anchors must have shape [C,D]")
+    if labels.shape != (batch,) or labels.dtype != torch.long:
+        raise ValueError("labels must be a LongTensor with shape [B]")
+    if (indices.ndim != 2 or indices.shape[0] != batch
+            or not 2 <= indices.shape[1] <= 80 or indices.dtype != torch.long):
+        raise ValueError("indices must be a LongTensor with shape [B,n], 2 <= n <= 80")
+    if (labels < 0).any() or (labels >= text_bank.shape[0]).any():
+        raise ValueError("labels are outside the class bank")
+    if (indices < 0).any() or (indices >= 80).any():
+        raise ValueError("template indices must be between 0 and 79")
+    unit_e = F.normalize(causal_features.float(), dim=-1)
+    unit_a = F.normalize(class_anchors.detach().float()[labels], dim=-1)
+    unit_t = F.normalize(text_bank.detach().float()[labels[:, None], indices], dim=-1)
+    student_similarity = (unit_e[:, None, :] * unit_t).sum(dim=-1)
+    teacher_similarity = (unit_a[:, None, :] * unit_t).sum(dim=-1)
+    return (student_similarity - teacher_similarity).square().mean()
+
+
 def independence_loss(causal_features, spurious_features, eps=1e-6):
     """Official CIPT independence penalty: 0.5 * mean(cos(e, s)^2)."""
     cosine = F.cosine_similarity(

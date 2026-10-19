@@ -4,6 +4,8 @@
 ``env_kl`` uses explicit E CE, S uniformity, E/S independence, original-E
 contrastive learning, optional fused-feature label CE, and symmetric prompt KL.
 Fused CE and prompt KL have independent weights; inference is configurable.
+``env_anchor`` instead regularizes E directly with entropy-selected official
+B5b templates, using either prompt MCC or relative cosine-distance matching.
 """
 
 import math
@@ -15,22 +17,26 @@ from domainbed.algorithms.algorithms import Algorithm
 from domainbed.algorithms.cipt_dccl_component_ablation import CIPTDCCL as _BaseCIPTDCCL
 from domainbed.algorithms.cipt_prompt import CLIPTextEncoder, PromptLearner, load_frozen_clip
 from domainbed.algorithms.cipt_sigm import SemanticInteractionGuidance
+from domainbed.algorithms.cipt_entropy_selector import (
+    EntropyPromptSelector, class_prompt_logits,
+)
 from domainbed.optimizers import get_optimizer
 from domainbed.algorithms.cipt_losses import (
     classification_loss as cipt_classification_loss,
     decomposition_loss_terms,
     independence_loss,
     prompt_consistency_loss,
+    relative_distance_loss,
 )
 
 
 class CIPTDCCL(_BaseCIPTDCCL):
-    """Legacy or env-KL classifier with switchable text fusion and inference."""
+    """Legacy, CLIP CE, fused env-KL, or direct-E environment constraints."""
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         objective = str(hparams.get("cipt_objective", "legacy")).lower()
-        if objective not in ("legacy", "env_kl", "clip_ce"):
-            raise ValueError("cipt_objective must be legacy, env_kl, or clip_ce")
+        if objective not in ("legacy", "env_kl", "clip_ce", "env_anchor"):
+            raise ValueError("cipt_objective must be legacy, env_kl, clip_ce, or env_anchor")
 
         if objective == "clip_ce":
             # Minimal CoOp-style baseline. Crucially, do NOT call the CIPTDCCL
@@ -72,6 +78,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
         super().__init__(input_shape, num_classes, num_domains, hparams)
         self.objective_mode = objective
         if self.objective_mode == "legacy":
+            return
+        if self.objective_mode == "env_anchor":
+            self._init_env_anchor(num_classes, hparams)
             return
 
         self.fusion_mode = str(hparams.get("cipt_fusion_mode", "tda")).lower()
@@ -148,6 +157,87 @@ class CIPTDCCL(_BaseCIPTDCCL):
             )
         )
 
+    def _init_env_anchor(self, num_classes, hparams):
+        """Keep this branch independent of all legacy fusion configuration."""
+        def coefficient(name, default):
+            value = hparams.get(name)
+            value = float(default if value is None else value)
+            if not math.isfinite(value) or value < 0.0:
+                raise ValueError(name + " must be finite and non-negative")
+            return value
+
+        self.env_constraint = str(hparams.get("cipt_env_constraint", "mcc")).lower()
+        if self.env_constraint not in ("mcc", "relative_distance", "none"):
+            raise ValueError("cipt_env_constraint must be mcc, relative_distance, or none (ablation)")
+        if self.cipt_template_mode != "b5b" or self.prompt_selector_mode != "random":
+            raise ValueError("env_anchor requires cipt_template_mode=b5b and cipt_selector_mode=random")
+        self.inference_mode = str(hparams.get("cipt_env_inference", "e_only")).lower()
+        if self.inference_mode != "e_only":
+            raise ValueError("env_anchor requires cipt_env_inference=e_only")
+        if self.use_tda:
+            raise ValueError("env_anchor requires cipt_use_tda=false")
+        self.env_kl_weight = coefficient("cipt_env_kl_weight", 0.0)
+        self.fused_cls_weight = coefficient("cipt_fused_cls_weight", 0.0)
+        if self.env_kl_weight != 0.0 or self.fused_cls_weight != 0.0:
+            raise ValueError("env_anchor requires cipt_env_kl_weight=0 and cipt_fused_cls_weight=0")
+        self.e_cls_weight = coefficient("cipt_e_cls_weight", 1.0)
+        s_weight = coefficient("cipt_s_uniform_weight", self.beta)
+        self.s_uniform_weight = s_weight if self.use_de else 0.0
+        self.gamma = coefficient("cipt_gamma", self.gamma)
+        self.env_loss_weight = coefficient("cipt_env_loss_weight", 1.0)
+        self.entropy_selector = EntropyPromptSelector(hparams.get("cipt_env_topk", 40))
+        self.env_active = self.env_constraint != "none" and self.env_loss_weight > 0.0
+        self.fusion_mode = "none"
+        self.env_kl_active = self.fused_cls_active = False
+
+        bank = self.text_features.full_b5b_text_features()
+        dim = self.causal_decomposition.causal_adapter.out_features
+        if bank.shape != (num_classes, 80, dim) or bank.requires_grad:
+            raise ValueError("env_anchor requires a frozen official text bank [C,80,D]")
+        # All 80 original frozen vectors enter the arithmetic mean FIRST.
+        # The selected subset never defines the teacher's semantic center.
+        with torch.no_grad():
+            anchors = F.normalize(bank.detach().float().mean(dim=1), dim=-1)
+        self.register_buffer("env_class_anchors", anchors)
+
+        # The inherited constructor creates TDA. Keep it inactive and frozen;
+        # do not instantiate SIGM even if a previous YAML set fusion_mode=sigm.
+        self.tda.requires_grad_(False)
+        trainable = [p for p in self.parameters() if p.requires_grad]
+        self.optimizer = get_optimizer(
+            hparams["optimizer"], trainable,
+            lr=hparams["lr"], weight_decay=hparams["weight_decay"],
+        )
+        self.trainable_parameter_count = sum(p.numel() for p in trainable)
+        self.frozen_parameter_count = sum(
+            p.numel() for p in self.parameters() if not p.requires_grad
+        )
+        print("CIPTDCCL env_anchor: constraint={}, topk={}, env_weight={}, "
+              "E_CE_weight={}, S_uniform_weight={}, IND_weight={}, "
+              "fusion=none, inference=e_only, selector=frozen_CLIP_entropy".format(
+                  self.env_constraint, self.entropy_selector.topk, self.env_loss_weight,
+                  self.e_cls_weight, self.s_uniform_weight,
+                  self.gamma if self.use_ind else 0.0))
+
+    def _env_anchor_loss(self, visual, causal, labels):
+        """Select with frozen V only, then regularize differentiable E."""
+        bank = self.text_features.full_b5b_text_features()
+        scale = self.clip_model.logit_scale.exp().detach().float()
+        indices, metrics = self.entropy_selector(visual, bank, scale)
+        if self.env_constraint == "mcc":
+            # Compute [B,80,C], then gather [B,n,C]. No [B,n,n,C] tensor
+            # or [B,n,C,D] copy of the entire bank is needed.
+            logits = class_prompt_logits(causal, bank, scale)
+            logits = logits.gather(1, indices[:, :, None].expand(-1, -1, bank.shape[0]))
+            loss = prompt_consistency_loss(logits.float())
+        elif self.env_constraint == "relative_distance":
+            loss = relative_distance_loss(
+                causal, self.env_class_anchors, bank, labels, indices
+            )
+        else:
+            raise RuntimeError("Disabled environment constraint must bypass selection")
+        return loss, metrics
+
     def _clip_ce_visual(self, images):
         # CLIP is frozen; leave gradient flow through the text encoder only.
         with torch.no_grad():
@@ -208,7 +298,24 @@ class CIPTDCCL(_BaseCIPTDCCL):
         env_spread_l2 = zero
         env_pred_agreement = zero
         selector_metrics = self._empty_selector_metrics(causal, prompt_count=0)
-        if self.env_active:
+        anchor_mode = self.objective_mode == "env_anchor"
+        anchor_metrics = {}
+        if anchor_mode:
+            if self.env_active:
+                loss_env, entropy_metrics = self._env_anchor_loss(visual, causal, labels)
+                selector_metrics["prompt_count"] = causal.new_tensor(float(self.entropy_selector.topk))
+                anchor_metrics.update(self._selector_metric_items(entropy_metrics))
+            else:
+                anchor_metrics["entropy_selector_active"] = 0.0
+            anchor_metrics.update({
+                "env_loss": loss_env.item(),
+                "env_mcc_loss": loss_env.item() if self.env_constraint == "mcc" else 0.0,
+                "env_rd_loss": loss_env.item() if self.env_constraint == "relative_distance" else 0.0,
+                "env_loss_w": self.env_loss_weight if self.env_active else 0.0,
+                "env_topk": float(self.entropy_selector.topk),
+                "env_anchor_active": float(self.env_active),
+            })
+        elif self.env_active:
             # Selection is label-free. Gathered features retain the E/TDA graph;
             # share one fusion pass for CE and MCC, keeping each prompt separate.
             interventions, selector_metrics = self._select_interventions(
@@ -243,18 +350,21 @@ class CIPTDCCL(_BaseCIPTDCCL):
         loss_con, valid_fraction, con_weight, neighbor_stats = (
             self._causal_contrastive_loss(visual, causal, labels, y)
         )
-        env_term = self.env_kl_weight * loss_env
+        env_term = (self.env_loss_weight if anchor_mode else self.env_kl_weight) * loss_env
+        if anchor_mode:
+            anchor_metrics["env_loss_term"] = env_term.item()
         fused_cls_term = self.fused_cls_weight * loss_fused_cls
         base = base + fused_cls_term
         total = base + con_weight * loss_con + env_term
 
         if self.debug_shapes:
             print(
-                "CIPTDCCL env_kl shapes: E={} S={} class_logits={} "
+                "CIPTDCCL {} shapes: E={} S={} class_logits={} "
                 "prompt_logits={} fused_CE_active={}".format(
+                    self.objective_mode,
                     tuple(causal.shape), tuple(spurious.shape),
                     tuple(causal_logits.shape),
-                    tuple(prompt_logits.shape) if self.env_active else None,
+                    tuple(prompt_logits.shape) if self.env_active and not anchor_mode else None,
                     self.fused_cls_active,
                 )
             )
@@ -264,6 +374,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.optimizer.step()
 
         return {
+            **anchor_metrics,
             **{name: value.item() for name, value in neighbor_stats.items()},
             **self._selector_metric_items(selector_metrics),
             "total_loss": total.item(),
@@ -290,7 +401,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "e_cls_loss": loss_e.item(),
             "fused_cls_loss": loss_fused_cls.item(),
             "s_uni_loss": loss_s.item(),
-            "env_kl_loss": loss_env.item(),
+            "env_kl_loss": loss_env.item() if not anchor_mode else 0.0,
             "e_cls_w": self.e_cls_weight,
             "fused_cls_w": self.fused_cls_weight if self.fused_cls_active else 0.0,
             "s_uni_w": self.s_uniform_weight,
@@ -298,7 +409,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "e_cls_term": (self.e_cls_weight * loss_e).item(),
             "fused_cls_term": fused_cls_term.item(),
             "s_uni_term": (self.s_uniform_weight * loss_s).item(),
-            "env_kl_term": env_term.item(),
+            "env_kl_term": env_term.item() if not anchor_mode else 0.0,
             "env_shift": env_shift.item(),
             "env_spread": env_spread.item(),
             "env_l2_shift": env_l2_shift.item(),

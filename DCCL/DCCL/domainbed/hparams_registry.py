@@ -56,6 +56,10 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_objective"] = ("legacy", "legacy")
         hparams["cipt_env_kl_weight"] = (0.1, 0.1)
         hparams["cipt_fused_cls_weight"] = (0.0, 0.0)
+        # Direct-E official-B5b constraints; ignored by legacy/env_kl/clip_ce.
+        hparams["cipt_env_constraint"] = ("mcc", "mcc")
+        hparams["cipt_env_topk"] = (40, 40)
+        hparams["cipt_env_loss_weight"] = (1.0, 1.0)
         # env_kl uses a unit E CE anchor; None for S falls back to beta.
         hparams["cipt_e_cls_weight"] = (1.0, 1.0)
         hparams["cipt_s_uniform_weight"] = (None, None)
