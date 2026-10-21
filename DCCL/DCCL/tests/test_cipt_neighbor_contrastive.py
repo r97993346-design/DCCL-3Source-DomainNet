@@ -33,6 +33,7 @@ def load_file(name, path):
 neighbor = load_file("neighbor_loss", ALGORITHMS / "cipt_neighbor_contrastive.py")
 losses = load_file("base_losses", ALGORITHMS / "cipt_losses.py")
 modules = load_file("base_modules", ALGORITHMS / "cipt_modules.py")
+entropy = load_file("entropy_selector", ALGORITHMS / "cipt_entropy_selector.py")
 optimizer = load_file("base_optimizer", ROOT / "domainbed" / "optimizers.py")
 
 
@@ -101,6 +102,7 @@ NAMESPACE = {
     "CLASS_CONDITIONED_TDA_MODES": {"b5b", "bconst"},
     "SELECTABLE_TDA_MODES": {"b5a", "b5c"},
     "SafeDiversePromptSelector": modules.SafeDiversePromptSelector,
+    "EntropyPromptSelector": entropy.EntropyPromptSelector,
 }
 
 

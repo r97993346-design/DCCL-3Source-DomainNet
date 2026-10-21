@@ -123,14 +123,17 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.env_active = self.env_kl_active or self.fused_cls_active
 
         if self.env_active or self.inference_mode != "e_only":
-            if self.cipt_template_mode not in ("b5a", "b5c"):
-                raise ValueError("env_kl requires class-agnostic b5a or b5c prompts")
-            bank_size = self.text_features.full_intervention_features().shape[0]
+            b5b_entropy = (self.cipt_template_mode == "b5b"
+                           and self.prompt_selector_mode == "entropy")
+            if self.cipt_template_mode not in ("b5a", "b5c") and not b5b_entropy:
+                raise ValueError("env_kl requires b5a/b5c or b5b with entropy selection")
+            bank_size = (self.text_features.full_b5b_text_features().shape[1]
+                         if b5b_entropy else self.text_features.full_intervention_features().shape[0])
             if self.env_kl_active and bank_size < 2:
                 raise ValueError("env_kl requires at least two environment prompts")
-            if (self.env_kl_active and self.prompt_selector_mode != "all"
-                    and int(hparams["cipt_k"]) < 2):
-                raise ValueError("env_kl requires cipt_k >= 2")
+            prompt_count = (self.entropy_selector.topk if b5b_entropy else int(hparams["cipt_k"]))
+            if self.env_kl_active and self.prompt_selector_mode != "all" and prompt_count < 2:
+                raise ValueError("env_kl requires at least two selected prompts (cipt_k or cipt_entropy_topk)")
 
         print(
             "CIPTDCCL env_kl: fusion_mode={}, inference_mode={}, "
@@ -212,7 +215,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
             # Selection is label-free. Gathered features retain the E/TDA graph;
             # share one fusion pass for CE and MCC, keeping each prompt separate.
             interventions, selector_metrics = self._select_interventions(
-                visual, causal, class_features, labels=None
+                visual, causal, class_features,
+                labels=labels if self.prompt_selector_mode == "entropy" else None,
             )
             prompt_logits = self._logits(interventions, class_features)
             if self.fused_cls_active:
@@ -325,10 +329,13 @@ class CIPTDCCL(_BaseCIPTDCCL):
             return self._logits(causal[:, None, :], class_features)[:, 0]
 
         # Inference ablations are explicitly opt-in. Never use target labels.
-        interventions, _ = self._select_interventions(
-            visual, causal, class_features, labels=None
-        )
-        prompt_logits = self._logits(interventions, class_features)
+        if self.prompt_selector_mode == "entropy":
+            prompt_logits = self._b5b_entropy_prompt_logits(visual, causal, class_features)
+        else:
+            interventions, _ = self._select_interventions(
+                visual, causal, class_features, labels=None
+            )
+            prompt_logits = self._logits(interventions, class_features)
         if self.inference_mode == "mean_logits":
             return prompt_logits.mean(dim=1)
         # Log probabilities produce the same argmax as mean softmax probabilities.

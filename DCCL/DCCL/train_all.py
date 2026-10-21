@@ -133,11 +133,13 @@ def main():
     parser.add_argument("--cipt_prompt_init", default="a photo of a")
     parser.add_argument("--cipt_tda_heads", type=int, default=1)
     parser.add_argument(
-        "--cipt_selector_mode", choices=["random", "all", "adaptive"],
+        "--cipt_selector_mode", choices=["random", "all", "adaptive", "entropy"],
         default="random",
-        help="B5a/B5c selection: original random K, full bank, or per-image Safe-Diverse K",
+        help="B5a/B5c: random/all/adaptive; B5b: random or per-image low-entropy templates",
     )
     parser.add_argument("--cipt_selector_candidates", type=int, default=8)
+    parser.add_argument("--cipt_entropy_topk", type=int, default=40,
+                        help="Number of lowest-entropy B5b templates (1..80); entropy mode ignores cipt_k")
     parser.add_argument("--cipt_contrastive_weight", type=float, default=1.0)
     parser.add_argument("--cipt_debug_shapes", action="store_true")
     parser.add_argument(

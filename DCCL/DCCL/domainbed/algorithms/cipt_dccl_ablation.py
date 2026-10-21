@@ -27,6 +27,7 @@ from domainbed.algorithms.cipt_neighbor_contrastive import (
     validate_neighbor_options,
 )
 from domainbed.algorithms.cipt_modules import SafeDiversePromptSelector
+from domainbed.algorithms.cipt_entropy_selector import EntropyPromptSelector
 from domainbed.optimizers import get_optimizer
 
 
@@ -57,12 +58,12 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.prompt_selector_mode = str(
             hparams.get("cipt_selector_mode", "random")
         ).lower()
-        if self.prompt_selector_mode not in ("random", "all", "adaptive"):
+        if self.prompt_selector_mode not in ("random", "all", "adaptive", "entropy"):
             raise ValueError(
-                "Unknown cipt_selector_mode={!r}; expected random, all, or "
-                "adaptive.".format(self.prompt_selector_mode)
+                "Unknown cipt_selector_mode={!r}; expected random, all, "
+                "adaptive, or entropy.".format(self.prompt_selector_mode)
             )
-        if (self.prompt_selector_mode != "random"
+        if (self.prompt_selector_mode in ("all", "adaptive")
                 and self.cipt_template_mode not in SELECTABLE_TDA_MODES):
             raise ValueError(
                 "cipt_selector_mode={!r} requires the diverse class-agnostic "
@@ -70,6 +71,12 @@ class CIPTDCCL(_BaseCIPTDCCL):
                     self.prompt_selector_mode, self.cipt_template_mode
                 )
             )
+        if self.prompt_selector_mode == "entropy" and self.cipt_template_mode != "b5b":
+            raise ValueError("cipt_selector_mode=entropy requires cipt_template_mode=b5b")
+        self.entropy_selector = (
+            EntropyPromptSelector(hparams.get("cipt_entropy_topk", 40))
+            if self.prompt_selector_mode == "entropy" else None
+        )
         self.prompt_selector = SafeDiversePromptSelector(
             k=hparams["cipt_k"],
             candidate_count=hparams.get("cipt_selector_candidates", 8),
@@ -178,6 +185,37 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.neighbor_diagnostics,
             )
         )
+        if self.entropy_selector is not None:
+            print("CIPTDCCL B5b entropy: N={}, bank=80, selector=frozen_CLIP, "
+                  "labels_in_selection=False, cipt_k_ignored=True".format(
+                      self.entropy_selector.topk))
+
+    def _entropy_b5b_indices(self, visual):
+        bank = self.text_features.full_b5b_text_features()
+        scale = self.clip_model.logit_scale.exp().detach().float()
+        indices, entropy_metrics = self.entropy_selector(visual, bank, scale)
+        metrics = self._empty_selector_metrics(
+            visual, prompt_count=indices.shape[1], candidate_count=bank.shape[1]
+        )
+        metrics.update(entropy_metrics)
+        metrics["prompt_selector_active"] = visual.new_ones(())
+        return bank, indices, metrics
+
+    def _b5b_entropy_prompt_logits(self, visual, causal, class_features):
+        """Label-free candidate-class inference, returning [B,N,C].
+
+        Select templates once from V, then reuse exactly those indices for each
+        candidate class. Stream classes to avoid a large [B,C,N,D] TDA batch.
+        """
+        bank, indices, _ = self._entropy_b5b_indices(visual)
+        scale = self.clip_model.logit_scale.exp().detach().float()
+        text = F.normalize(class_features.float(), dim=-1)
+        scores = []
+        for candidate in range(bank.shape[0]):
+            contexts = bank[candidate][indices]
+            z = F.normalize(self.tda(causal, contexts).float(), dim=-1)
+            scores.append(scale * (z * text[candidate]).sum(dim=-1))
+        return torch.stack(scores, dim=-1)
 
     def _intervention_features(self, labels=None):
         if self.cipt_template_mode in CLASS_CONDITIONED_TDA_MODES:
@@ -208,12 +246,25 @@ class CIPTDCCL(_BaseCIPTDCCL):
         }
 
     def _select_interventions(self, visual, causal, class_features, labels=None):
-        """Select B5a/B5c contexts with the same policy during train and eval.
+        """Select contexts, with a separate candidate-class B5b inference path.
 
         Random mode preserves the paired protocol's random train K and fixed
         eval K. Class-conditioned and constant banks retain their original path.
-        Safety uses predictions, never training labels or the spurious feature.
+        Adaptive safety uses predictions, never training labels or S. Entropy
+        ranks the full B5b bank from V before training class conditioning.
         """
+        if self.prompt_selector_mode == "entropy":
+            # Selection itself has no labels. After selection, training keeps
+            # B5b's original true-class conditioning; inference scores every
+            # candidate via _b5b_entropy_prompt_logits, never target labels.
+            if labels is None:
+                raise ValueError("B5b entropy fusion without labels must use candidate-class inference")
+            if labels.shape != (causal.shape[0],):
+                raise ValueError("B5b training labels must have shape [B]")
+            bank, indices, metrics = self._entropy_b5b_indices(visual)
+            contexts = bank[labels.to(device=bank.device, dtype=torch.long)[:, None], indices]
+            return self.tda(causal, contexts), metrics
+
         if (self.cipt_template_mode not in SELECTABLE_TDA_MODES
                 or self.prompt_selector_mode == "random"):
             contexts = self._intervention_features(labels=labels)
@@ -453,6 +504,13 @@ class CIPTDCCL(_BaseCIPTDCCL):
         }
 
     def predict(self, x):
+        if self.prompt_selector_mode == "entropy":
+            visual = self._visual(x)
+            causal, _ = self.causal_decomposition(visual)
+            return self._b5b_entropy_prompt_logits(
+                visual, causal, self.text_features.class_features()
+            ).mean(dim=1)
+
         if self.cipt_template_mode not in CLASS_CONDITIONED_TDA_MODES | SELECTABLE_TDA_MODES:
             return super().predict(x)
 

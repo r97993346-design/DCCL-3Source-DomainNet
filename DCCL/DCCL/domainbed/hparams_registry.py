@@ -43,6 +43,8 @@ def _hparams(algorithm, dataset, random_state):
         # Adaptive selection uses the full B5a/B5c bank in train and eval.
         hparams["cipt_selector_mode"] = ("random", "random")
         hparams["cipt_selector_candidates"] = (8, 8)
+        # Entropy mode uses the complete official B5b bank; N is independent of K.
+        hparams["cipt_entropy_topk"] = (40, 40)
         hparams["cipt_contrastive_weight"] = (1.0, 1.0)
         # Independent causal-contrastive search knobs.  They are intentionally
         # not tied to the standard DCCL/SupCon hyperparameters.

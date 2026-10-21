@@ -386,6 +386,10 @@ class CIPTTextFeatures(nn.Module):
             "(b5a or b5c)."
         )
 
+    def full_b5b_text_features(self):
+        """Complete frozen official bank [C,80,D], before any K selection."""
+        return self.b5b_text_bank.detach()
+
     def intervention_features(self, labels=None):
         """Return selected intervention embeddings for the active TDA mode.
 

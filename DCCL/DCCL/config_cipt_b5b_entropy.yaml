@@ -1,0 +1,7 @@
+# Selector-only overlay. Load AFTER the desired objective/fusion config.
+# Does not change losses, their weights, contrastive learning, or SWAD.
+cipt_template_mode: b5b
+cipt_selector_mode: entropy
+cipt_entropy_topk: 40
+# cipt_k and cipt_selector_candidates do not control entropy selection.
+# MCC needs N >= 2; CE-only fusion allows N=1. e_only skips fusion at inference.
