@@ -1,0 +1,27 @@
+# Frozen official B5b ensemble for both training classification and prediction.
+cipt_objective: env_anchor
+cipt_class_text_mode: b5b_ensemble
+cipt_template_mode: b5b
+# Required by the inherited constructor; no random selection is executed.
+cipt_selector_mode: random
+cipt_env_constraint: relative_distance
+cipt_env_selection: all
+cipt_env_topk: 80
+cipt_env_loss_weight: 1.0
+cipt_env_inference: e_only
+
+cipt_use_de: true
+cipt_e_cls_weight: 1.0
+cipt_s_uniform_weight: 1.0
+cipt_use_ind: false
+cipt_gamma: 0.0
+cipt_use_tda: false
+cipt_env_kl_weight: 0.0
+cipt_fused_cls_weight: 0.0
+cipt_use_contrastive: false
+cipt_causal_contrastive_weight: 0.0
+cipt_pure: false
+cipt_use_aug_view: false
+lr: 5.0e-5
+batch_size: 32
+swad: LossValley

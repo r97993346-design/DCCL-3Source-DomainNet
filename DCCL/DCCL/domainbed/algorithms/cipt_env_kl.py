@@ -4,8 +4,9 @@
 ``env_kl`` uses explicit E CE, S uniformity, E/S independence, original-E
 contrastive learning, optional fused-feature label CE, and symmetric prompt KL.
 Fused CE and prompt KL have independent weights; inference is configurable.
-``env_anchor`` instead regularizes E directly with entropy-selected official
-B5b templates, using either prompt MCC or relative cosine-distance matching.
+``env_anchor`` instead regularizes E directly with official B5b templates,
+using entropy selection or all 80 templates. Class prediction can use the
+original learnable prompts or a frozen B5b template ensemble.
 """
 
 import math
@@ -185,7 +186,22 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.s_uniform_weight = s_weight if self.use_de else 0.0
         self.gamma = coefficient("cipt_gamma", self.gamma)
         self.env_loss_weight = coefficient("cipt_env_loss_weight", 1.0)
-        self.entropy_selector = EntropyPromptSelector(hparams.get("cipt_env_topk", 40))
+        self.env_selection = str(hparams.get("cipt_env_selection", "entropy")).lower()
+        if self.env_selection not in ("entropy", "all"):
+            raise ValueError("cipt_env_selection must be entropy or all")
+        self.class_text_mode = str(hparams.get("cipt_class_text_mode", "learnable")).lower()
+        if self.class_text_mode not in ("learnable", "b5b_ensemble"):
+            raise ValueError("cipt_class_text_mode must be learnable or b5b_ensemble")
+        topk = hparams.get("cipt_env_topk", 40)
+        if self.env_selection == "all":
+            if type(topk) is not int or topk != 80:
+                raise ValueError("cipt_env_selection=all requires cipt_env_topk=80")
+            self.env_topk = 80
+            # No entropy selector is created or called for the full-bank ablation.
+            self.entropy_selector = None
+        else:
+            self.entropy_selector = EntropyPromptSelector(topk)
+            self.env_topk = self.entropy_selector.topk
         self.env_active = self.env_constraint != "none" and self.env_loss_weight > 0.0
         self.fusion_mode = "none"
         self.env_kl_active = self.fused_cls_active = False
@@ -199,6 +215,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
         with torch.no_grad():
             anchors = F.normalize(bank.detach().float().mean(dim=1), dim=-1)
         self.register_buffer("env_class_anchors", anchors)
+
+        if self.class_text_mode == "b5b_ensemble":
+            # CE, S uniformity and prediction share the same frozen class centers.
+            # Preserve the original PromptLearner implementation for other runs.
+            self.text_features.prompt_learner.requires_grad_(False)
 
         # The inherited constructor creates TDA. Keep it inactive and frozen;
         # do not instantiate SIGM even if a previous YAML set fusion_mode=sigm.
@@ -214,16 +235,27 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
         print("CIPTDCCL env_anchor: constraint={}, topk={}, env_weight={}, "
               "E_CE_weight={}, S_uniform_weight={}, IND_weight={}, "
-              "fusion=none, inference=e_only, selector=frozen_CLIP_entropy".format(
-                  self.env_constraint, self.entropy_selector.topk, self.env_loss_weight,
+              "fusion=none, inference=e_only, env_selection={}, class_text={}".format(
+                  self.env_constraint, self.env_topk, self.env_loss_weight,
                   self.e_cls_weight, self.s_uniform_weight,
-                  self.gamma if self.use_ind else 0.0))
+                  self.gamma if self.use_ind else 0.0,
+                  self.env_selection, self.class_text_mode))
+
+    def _classification_text_features(self):
+        if (self.objective_mode == "env_anchor"
+                and self.class_text_mode == "b5b_ensemble"):
+            return self.env_class_anchors
+        return self.text_features.class_features()
 
     def _env_anchor_loss(self, visual, causal, labels):
-        """Select with frozen V only, then regularize differentiable E."""
+        """Use all templates or select with frozen V, then regularize E."""
         bank = self.text_features.full_b5b_text_features()
         scale = self.clip_model.logit_scale.exp().detach().float()
-        indices, metrics = self.entropy_selector(visual, bank, scale)
+        if self.env_selection == "all":
+            indices = torch.arange(80, device=causal.device)[None].expand(causal.shape[0], -1)
+            metrics = {"entropy_selector_active": causal.new_zeros(())}
+        else:
+            indices, metrics = self.entropy_selector(visual, bank, scale)
         if self.env_constraint == "mcc":
             # Compute [B,80,C], then gather [B,n,C]. No [B,n,n,C] tensor
             # or [B,n,C,D] copy of the entire bank is needed.
@@ -271,7 +303,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         visual = self._visual(torch.cat(x))
         labels = torch.cat(y)
         causal, spurious = self.causal_decomposition(visual)
-        class_features = self.text_features.class_features()
+        class_features = self._classification_text_features()
         causal_logits = self._logits(causal[:, None, :], class_features)[:, 0]
         zero = causal.new_zeros(())
 
@@ -303,7 +335,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         if anchor_mode:
             if self.env_active:
                 loss_env, entropy_metrics = self._env_anchor_loss(visual, causal, labels)
-                selector_metrics["prompt_count"] = causal.new_tensor(float(self.entropy_selector.topk))
+                selector_metrics["prompt_count"] = causal.new_tensor(float(self.env_topk))
                 anchor_metrics.update(self._selector_metric_items(entropy_metrics))
             else:
                 anchor_metrics["entropy_selector_active"] = 0.0
@@ -312,8 +344,10 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 "env_mcc_loss": loss_env.item() if self.env_constraint == "mcc" else 0.0,
                 "env_rd_loss": loss_env.item() if self.env_constraint == "relative_distance" else 0.0,
                 "env_loss_w": self.env_loss_weight if self.env_active else 0.0,
-                "env_topk": float(self.entropy_selector.topk),
+                "env_topk": float(self.env_topk),
                 "env_anchor_active": float(self.env_active),
+                "env_all_templates_active": float(self.env_active and self.env_selection == "all"),
+                "class_text_ensemble_active": float(self.class_text_mode == "b5b_ensemble"),
             })
         elif self.env_active:
             # Selection is label-free. Gathered features retain the E/TDA graph;
@@ -430,7 +464,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             return super().predict(x)
         visual = self._visual(x)
         causal, _ = self.causal_decomposition(visual)
-        class_features = self.text_features.class_features()
+        class_features = self._classification_text_features()
         if self.inference_mode == "e_only":
             # Original env_kl deployment: no text selection/fusion at test time.
             return self._logits(causal[:, None, :], class_features)[:, 0]
