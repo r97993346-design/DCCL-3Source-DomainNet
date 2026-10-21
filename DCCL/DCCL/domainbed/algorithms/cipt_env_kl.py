@@ -4,8 +4,8 @@
 ``env_kl`` uses explicit E CE, S uniformity, E/S independence, original-E
 contrastive learning, optional fused-feature label CE, and symmetric prompt KL.
 Fused CE and prompt KL have independent weights; inference is configurable.
-``env_anchor`` instead regularizes E directly with entropy-selected official
-B5b templates, using either prompt MCC or relative cosine-distance matching.
+``env_anchor`` instead regularizes E directly with entropy-selected or randomly
+sampled official B5b templates, using MCC or relative cosine-distance matching.
 """
 
 import math
@@ -20,6 +20,7 @@ from domainbed.algorithms.cipt_sigm import SemanticInteractionGuidance
 from domainbed.algorithms.cipt_entropy_selector import (
     EntropyPromptSelector, class_prompt_logits,
 )
+from domainbed.algorithms.cipt_random_selector import RandomPromptSelector
 from domainbed.optimizers import get_optimizer
 from domainbed.algorithms.cipt_losses import (
     classification_loss as cipt_classification_loss,
@@ -185,7 +186,18 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.s_uniform_weight = s_weight if self.use_de else 0.0
         self.gamma = coefficient("cipt_gamma", self.gamma)
         self.env_loss_weight = coefficient("cipt_env_loss_weight", 1.0)
-        self.entropy_selector = EntropyPromptSelector(hparams.get("cipt_env_topk", 40))
+        self.env_selection = str(hparams.get("cipt_env_selection", "entropy")).lower()
+        if self.env_selection not in ("entropy", "random"):
+            raise ValueError("cipt_env_selection must be entropy or random")
+        topk = hparams.get("cipt_env_topk", 40)
+        if self.env_selection == "entropy":
+            self.entropy_selector = EntropyPromptSelector(topk)
+            self.random_selector = None
+            self.env_topk = self.entropy_selector.topk
+        else:
+            self.entropy_selector = None
+            self.random_selector = RandomPromptSelector(topk)
+            self.env_topk = self.random_selector.topk
         self.env_active = self.env_constraint != "none" and self.env_loss_weight > 0.0
         self.fusion_mode = "none"
         self.env_kl_active = self.fused_cls_active = False
@@ -214,16 +226,21 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
         print("CIPTDCCL env_anchor: constraint={}, topk={}, env_weight={}, "
               "E_CE_weight={}, S_uniform_weight={}, IND_weight={}, "
-              "fusion=none, inference=e_only, selector=frozen_CLIP_entropy".format(
-                  self.env_constraint, self.entropy_selector.topk, self.env_loss_weight,
+              "fusion=none, inference=e_only, env_selection={}, selector={}".format(
+                  self.env_constraint, self.env_topk, self.env_loss_weight,
                   self.e_cls_weight, self.s_uniform_weight,
-                  self.gamma if self.use_ind else 0.0))
+                  self.gamma if self.use_ind else 0.0, self.env_selection,
+                  "frozen_CLIP_entropy" if self.env_selection == "entropy"
+                  else "per_image_random_without_replacement"))
 
     def _env_anchor_loss(self, visual, causal, labels):
-        """Select with frozen V only, then regularize differentiable E."""
+        """Select without labels/E/S, then regularize differentiable E."""
         bank = self.text_features.full_b5b_text_features()
         scale = self.clip_model.logit_scale.exp().detach().float()
-        indices, metrics = self.entropy_selector(visual, bank, scale)
+        if self.env_selection == "random":
+            indices, metrics = self.random_selector(visual, bank)
+        else:
+            indices, metrics = self.entropy_selector(visual, bank, scale)
         if self.env_constraint == "mcc":
             # Compute [B,80,C], then gather [B,n,C]. No [B,n,n,C] tensor
             # or [B,n,C,D] copy of the entire bank is needed.
@@ -302,9 +319,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
         anchor_metrics = {}
         if anchor_mode:
             if self.env_active:
-                loss_env, entropy_metrics = self._env_anchor_loss(visual, causal, labels)
-                selector_metrics["prompt_count"] = causal.new_tensor(float(self.entropy_selector.topk))
-                anchor_metrics.update(self._selector_metric_items(entropy_metrics))
+                loss_env, selection_metrics = self._env_anchor_loss(visual, causal, labels)
+                selector_metrics["prompt_count"] = causal.new_tensor(float(self.env_topk))
+                anchor_metrics.update(self._selector_metric_items(selection_metrics))
             else:
                 anchor_metrics["entropy_selector_active"] = 0.0
             anchor_metrics.update({
@@ -312,8 +329,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 "env_mcc_loss": loss_env.item() if self.env_constraint == "mcc" else 0.0,
                 "env_rd_loss": loss_env.item() if self.env_constraint == "relative_distance" else 0.0,
                 "env_loss_w": self.env_loss_weight if self.env_active else 0.0,
-                "env_topk": float(self.entropy_selector.topk),
+                "env_topk": float(self.env_topk),
                 "env_anchor_active": float(self.env_active),
+                "random_selector_active": float(self.env_active and self.env_selection == "random"),
             })
         elif self.env_active:
             # Selection is label-free. Gathered features retain the E/TDA graph;

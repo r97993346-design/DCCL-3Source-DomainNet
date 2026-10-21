@@ -1,4 +1,4 @@
-# Official B5b entropy selection with direct-E MCC / RD
+# Official B5b entropy / random selection with direct-E MCC / RD
 
 Source: `feature/cipt-class-agnostic-sigm-mcc`, commit
 `49b50c6941e76f4a8f98c8e9856dd7a07e7cfee4`.
@@ -10,13 +10,15 @@ Run every command below from `DCCL/DCCL`.
 | File | Change |
 | --- | --- |
 | `domainbed/algorithms/cipt_entropy_selector.py` | New label-free per-image `EntropyPromptSelector` and cosine logits for the complete bank. |
+| `domainbed/algorithms/cipt_random_selector.py` | Independent, label-free, per-image uniform sampling without replacement; no entropy calculation. |
 | `domainbed/algorithms/cipt_prompt.py` | Add `full_b5b_text_features()`: detached full `[C,80,D]` official bank; no random K lookup. |
 | `domainbed/algorithms/cipt_losses.py` | Add `relative_distance_loss()`; reuse unchanged efficient `prompt_consistency_loss()`. |
 | `domainbed/algorithms/cipt_env_kl.py` | Add independent `env_anchor` initialization/validation, direct-E losses and diagnostics; reuse existing single-E-CE update and `e_only` prediction. |
-| `domainbed/hparams_registry.py` | Register the three new environment options for YAML / existing `Config.argv_update()` CLI support. |
+| `domainbed/hparams_registry.py` | Register environment options for YAML / existing `Config.argv_update()` CLI support. |
 | `config_cipt_b5b_entropy_mcc.yaml` | Complete MCC experiment preset. |
 | `config_cipt_b5b_entropy_rd.yaml` | Identical preset except `cipt_env_constraint=relative_distance`. |
 | `tests/test_cipt_env_anchor.py` | Numerical, gradient, real-constructor/update, CLI, compatibility and deterministic tests; executable training smoke test. |
+| `tests/test_cipt_random_selector.py` | Random-selection alignment, gradients, compatibility, RNG determinism/resume and training smoke tests. |
 | `docs/b5b_entropy_mcc_rd.md` | Formulas, settings, validation scope and PACS commands. |
 
 The source SIGM preset, contrastive implementation/defaults/warmup, SWAD code,
@@ -32,6 +34,7 @@ selection methods are bypassed.
 | --- | --- |
 | `cipt_objective` | `env_anchor` (explicit opt-in; global default remains `legacy`) |
 | `cipt_env_constraint` | `mcc` by default; alternative `relative_distance`; `none` disables the environment term for ablation |
+| `cipt_env_selection` | `entropy` by default; alternative `random` changes only the environment template indices |
 | `cipt_env_topk` | `40`, integer in `[2,80]` |
 | `cipt_env_loss_weight` | `1.0`, finite and nonnegative; `0` bypasses selection/loss |
 | `cipt_template_mode` / `cipt_selector_mode` | `b5b` / `random`; the latter only satisfies inherited initialization |
@@ -59,7 +62,7 @@ Let `T[c,j]` be the frozen official class-conditioned bank, `j=1,...,80`.
 The read-only getter never samples templates. Every template contains its
 class name. Learnable class text features are a separate, unchanged path.
 
-Frozen CLIP encodes each original image once to V. Normalize V and each
+Frozen CLIP encodes each original image once to V. For default entropy selection, normalize V and each
 official text vector, compute logits `[B,80,C]` with the frozen CLIP scale
 `s = exp(clip.logit_scale)`, and apply class-axis softmax in float32:
 
@@ -72,6 +75,15 @@ H_{ij}=-\sum_c q_{ijc}\log q_{ijc}.
 `J_i` for every image. The indices use all classes and no training labels,
 E or S; selection runs under `no_grad`. One index selects the same template
 position across all classes.
+
+With `cipt_env_selection=random`, `RandomPromptSelector` instead draws a fresh
+independent `torch.randperm(80)[:n]` for each image on each training update.
+The draw is uniform and without replacement within each image. It uses only
+the input shapes/device and the seeded PyTorch RNG, never image feature values,
+labels, E/S, logits or entropy. The `[B,n]` indices stay aligned across all C
+classes. No entropy selector is constructed or called in random mode.
+`cipt_selector_mode=random` remains an unrelated inherited-constructor setting.
+Choosing n=80 in random mode returns every template in random order.
 
 The original causal adapter maps V to E/S. E and learnable class text yield
 the supervised CE; S uses the existing uniformity loss; IND and the original
@@ -108,7 +120,7 @@ L_{\rm RD}=\frac1{Bn}\sum_i\sum_{j\in J_i}
 
 The full-80 arithmetic mean precedes normalization. E, anchors and selected
 texts are normalized for their cosine similarities. Anchors and texts are
-detached and fixed. RD alone uses training labels after entropy selection.
+detached and fixed. RD alone uses training labels after template selection.
 The student retains its gradient; the objective preserves template-relative
 relations rather than replacing them with `MSE(E,A[y])`.
 
@@ -127,20 +139,25 @@ labels and performs no environment selection. SWAD uses the existing trainer.
 
 New logs include `env_loss`, `env_mcc_loss`, `env_rd_loss`, `env_loss_term`,
 `env_loss_w`, `env_topk`, `env_anchor_active`, `entropy_selector_active`,
-and mean/selected entropy statistics. `prompt_count` records n when active;
+and mean/selected entropy statistics in entropy mode. Random mode records
+`random_selector_active=1` and `entropy_selector_active=0`; it does not compute
+entropy diagnostics. Both flags are zero when the environment term is disabled.
+`prompt_count` records n when active;
 the old `prompt_selector_active` stays zero. Old fusion/KL loss fields stay
 zero in the new mode, preventing confusion with direct-E regularization.
 
 ## Validation
 
-Observed result: **84 tests passed** (68 existing + 16 new). Both methods
-passed the five-step smoke test and five averaging updates with finite losses
-and identical predictions after strict state reload. Validation used CPU
-PyTorch `2.14.1+cpu`; syntax compilation and `git diff --check` also passed.
+Observed result: **95 tests passed** (84 regression tests + 11 random-selection
+tests). MCC and RD passed five-step smoke tests in both entropy and random
+modes, including five averaging updates with finite losses and identical
+predictions after strict state reload. Validation used CPU PyTorch `2.5.1+cpu`;
+`git diff --check` also passed.
 
 ```bash
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 python -m unittest discover -s tests -p 'test_cipt_*.py'
 python tests/test_cipt_env_anchor.py --smoke
+python tests/test_cipt_random_selector.py --smoke
 ```
 
 The new tests cover the official `[C,80,D]` bank and class alignment,
@@ -198,3 +215,38 @@ To enable the retained IND term, replace `--cipt_use_ind false` with
 `--cipt_use_ind true --cipt_gamma 5`. To explicitly remove contrastive warmup
 for a separate ablation, pass `--cipt_contrastive_warmup_steps 0`; neither the
 presets nor the implementation changes the source's default behavior.
+
+## Random-40 controlled comparison
+
+Keep the same entropy preset and override only `--cipt_env_selection random`
+to change template selection. All original loss and inference switches remain
+independent. The following local-server command explicitly disables both IND
+and contrastive learning, preserving E=1, S=1, RD=1 and SWAD:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python train_all.py pacs_b5b_random40_rd_nocon_swad \
+  config_cipt_b5b_entropy_rd.yaml \
+  --dataset PACS --algorithm CIPTDCCL \
+  --data_dir /home/hooasia/lgg/data/repro_dccl_data \
+  --output_root train_output/ablation/b5b_entropy_mcc_rd \
+  --cipt_clip_path /home/hooasia/.cache/clip/ViT-B-16.pt \
+  --deterministic --trial_seed 0 --seed 0 --checkpoint_freq 100 \
+  --aug 0 --lr 5e-5 --batch_size 32 \
+  --cipt_prompt_length 16 --cipt_prompt_init "a photo of a" \
+  --cipt_env_selection random --cipt_env_topk 40 \
+  --cipt_env_loss_weight 1.0 \
+  --cipt_e_cls_weight 1.0 --cipt_s_uniform_weight 1.0 \
+  --cipt_use_ind false --cipt_use_tda false \
+  --cipt_use_contrastive false --cipt_causal_contrastive_weight 0.0 \
+  --swad LossValley
+```
+
+For MCC, use `config_cipt_b5b_entropy_mcc.yaml` and run name
+`pacs_b5b_random40_mcc_nocon_swad`; keep the remaining flags identical.
+For the entropy-40 counterpart, change selection to `entropy` and the run name
+accordingly. Both use learnable class prompts for CE and final prediction.
+
+Sampling uses the global PyTorch RNG, so replay uses the same seed, device,
+software and call order. Exact continuation requires restoring the optimizer
+and RNG as well as model weights; the tests exercise this CPU resume contract.
+CUDA/CPU results are not claimed to be bitwise identical.

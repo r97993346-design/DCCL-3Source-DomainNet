@@ -32,6 +32,7 @@ from test_cipt_neighbor_contrastive import ROOT, ALGORITHMS, load_file
 
 losses = load_file("anchor_losses", ALGORITHMS / "cipt_losses.py")
 selector = load_file("entropy_selector", ALGORITHMS / "cipt_entropy_selector.py")
+random_selector = load_file("random_selector", ALGORITHMS / "cipt_random_selector.py")
 modules = load_file("anchor_modules", ALGORITHMS / "cipt_modules.py")
 neighbor = load_file("anchor_neighbor", ALGORITHMS / "cipt_neighbor_contrastive.py")
 optimizers = load_file("anchor_optimizer", ROOT / "domainbed" / "optimizers.py")
@@ -119,6 +120,7 @@ execute_classes("cipt_dccl_component_ablation.py", ("CIPTDCCL",), namespace)
 namespace = dict(
     namespace, _BaseCIPTDCCL=namespace["CIPTDCCL"],
     EntropyPromptSelector=selector.EntropyPromptSelector,
+    RandomPromptSelector=random_selector.RandomPromptSelector,
     class_prompt_logits=selector.class_prompt_logits,
     decomposition_loss_terms=losses.decomposition_loss_terms,
     independence_loss=losses.independence_loss,
