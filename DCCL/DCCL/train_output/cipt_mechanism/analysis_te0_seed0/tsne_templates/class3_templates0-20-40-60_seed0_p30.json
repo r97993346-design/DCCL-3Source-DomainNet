@@ -1,0 +1,39 @@
+{
+  "seed": 0,
+  "perplexity": 30.0,
+  "iterations": 1000,
+  "pca_dim_requested": 50,
+  "pca_dim_effective": 50,
+  "sklearn_version": "1.7.2",
+  "representations": [
+    "Z_constant",
+    "Z_template_00",
+    "Z_template_20",
+    "Z_template_40",
+    "Z_template_60"
+  ],
+  "joint_points": 500,
+  "unique_images": 100,
+  "checkpoint_sha256": "fa03ca305faf18feba0347058713910a3c8664bf750b5e6c9cc2e3f58b860a42",
+  "samples_sha256": "67a131502ee268b6fd3288ea49002636587a39a20a601cac5da7883fbcfb6496",
+  "coordinate_scope": "Only panels in this file share a joint fit. Distances are illustrative.",
+  "class_id": 3,
+  "template_ids": [
+    0,
+    20,
+    40,
+    60
+  ],
+  "paired_sample_indices": [
+    75,
+    99,
+    250,
+    274,
+    425,
+    449,
+    600,
+    624
+  ],
+  "pairing_rule": "Up to two images per domain, evenly spaced in manifest order; no shift-based selection.",
+  "intervention": "Image and ground-truth class word fixed; only text description varies."
+}

@@ -1,0 +1,253 @@
+{
+  "protocol": {
+    "schema_version": 1,
+    "dataset": "PACS",
+    "class_names": [
+      "dog",
+      "elephant",
+      "giraffe",
+      "guitar",
+      "horse",
+      "house",
+      "person"
+    ],
+    "selected_class_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "domains": [
+      "art_painting",
+      "cartoon",
+      "photo",
+      "sketch"
+    ],
+    "image_count": 700,
+    "sample_seed": 0,
+    "checkpoint": "/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/train_output/cipt_mechanism/PACS/261023_14-43-14_cipt_original_te0_seed0/checkpoints/TE0_5000.pth",
+    "checkpoint_sha256": "fa03ca305faf18feba0347058713910a3c8664bf750b5e6c9cc2e3f58b860a42",
+    "checkpoint_hparams": {
+      "data_augmentation": true,
+      "val_augment": false,
+      "resnet18": false,
+      "resnet_dropout": 0.0,
+      "class_balanced": false,
+      "optimizer": "adam",
+      "cipt_enabled": true,
+      "cipt_clip_backbone": "ViT-B/16",
+      "cipt_clip_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+      "cipt_beta": 4.0,
+      "cipt_gamma": 5.0,
+      "cipt_k": 4,
+      "cipt_prompt_length": 16,
+      "cipt_prompt_init": "a photo of a",
+      "cipt_template_mode": "b5b",
+      "cipt_neutral_subject": "subject",
+      "cipt_tda_heads": 1,
+      "cipt_selector_mode": "random",
+      "cipt_selector_candidates": 8,
+      "cipt_contrastive_weight": 1.0,
+      "cipt_contrastive_temperature": 0.1,
+      "cipt_contrastive_type": "neighbor_retention",
+      "cipt_neighbor_k": 5,
+      "cipt_neighbor_alpha": 0.5,
+      "cipt_neighbor_diagnostics": false,
+      "cipt_use_aug_view": false,
+      "cipt_debug_shapes": false,
+      "cipt_objective": "legacy",
+      "cipt_env_kl_weight": 0.0,
+      "cipt_fused_cls_weight": 0.0,
+      "cipt_env_constraint": "mcc",
+      "cipt_env_topk": 40,
+      "cipt_env_loss_weight": 1.0,
+      "cipt_env_selection": "entropy",
+      "cipt_rd_anchor_mode": "full",
+      "cipt_e_cls_weight": 1.0,
+      "cipt_s_uniform_weight": null,
+      "freeze_bn": true,
+      "pretrained": true,
+      "lr": 5e-05,
+      "batch_size": 32,
+      "weight_decay": 0.0,
+      "t": 0.1,
+      "t_pre": 0.2,
+      "l": 1,
+      "l_d": 0.01,
+      "l_layer": 1,
+      "n_layer": 1,
+      "sup": true,
+      "two_ce": false,
+      "sample_d": false,
+      "re_w": false,
+      "pos_mask": false,
+      "mix": 0,
+      "aug": 0,
+      "model": "resnet50",
+      "label_ratio": 1.0,
+      "TN": false,
+      "lamda": 5,
+      "start_epoch": 1000,
+      "log": false,
+      "swad": null,
+      "swad_kwargs": {
+        "n_converge": 3,
+        "n_tolerance": 6,
+        "tolerance_ratio": 0.3
+      },
+      "test_batchsize": 128,
+      "indomain_test": false,
+      "cipt_pure": true,
+      "cipt_use_de": true,
+      "cipt_use_ind": true,
+      "cipt_use_tda": true,
+      "cipt_use_contrastive": false,
+      "cipt_causal_contrastive_weight": 0.0,
+      "cipt_contrastive_warmup_steps": 500,
+      "total_num_domains": 4,
+      "cipt_class_names": [
+        "dog",
+        "elephant",
+        "giraffe",
+        "guitar",
+        "horse",
+        "house",
+        "person"
+      ]
+    },
+    "checkpoint_test_envs": [
+      0
+    ],
+    "target_domains": [
+      "art_painting"
+    ],
+    "clip_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+    "clip_sha256": "5806e77cd80f8b59890b7e101eabd078d9fb84e6937f9e85e4ecb61988df416f",
+    "clip_weights_loaded_from_checkpoint": true,
+    "device": "cuda",
+    "b5b_bank_loaded_from_checkpoint": true,
+    "input_manifest": null,
+    "samples_sha256": "67a131502ee268b6fd3288ea49002636587a39a20a601cac5da7883fbcfb6496",
+    "torch_version": "2.5.1+cu121",
+    "numpy_version": "2.2.6",
+    "source_sha256": {
+      "analyze_cipt_mechanism.py": "22952af01c41e0bdd925c91d3cf482a62cbdf0ca5f31141f111b50b4e970ee39",
+      "tools/cipt_mechanism_report.py": "116cfaa3f79106481e91a86c2ddc9e9d2974db2a269bdee48d2421559b4addeb",
+      "domainbed/algorithms/cipt_modules.py": "fb4b33c103d3abd96c7b71ecf47e2b2ddac9c346f9d2f0dde10f2fc2197dda6b",
+      "domainbed/algorithms/cipt_prompt.py": "08da896c098b9fa8b1765f49e13405ab05a3ab24798740334750d66fe93910ca",
+      "domainbed/datasets/transforms.py": "c5904cd1adcf04b6087d41980e29e2b9da59b4ddb8d9d698315802eaefe772f6"
+    },
+    "template_count": 80,
+    "class_swap_count": 6,
+    "preprocessing": "branch clip_basic; CLIP image feature L2-normalized before causal adapter",
+    "coverage": "balanced sample of dataset files; source files can include training images; descriptive analysis only",
+    "z_definition": "L2(TDA(E, text bank indexed by ground-truth class)), all 80 templates",
+    "ln_e_definition": "L2(trained TDA.layer_norm(E)); zero text-residual control",
+    "constant_definition": "L2(TDA(E, 'a photo of a {true_class}.'))"
+  },
+  "neighbors": 5,
+  "per_image": {
+    "e_to_z_cosine_shift": {
+      "mean": 0.10444215773551187,
+      "median": 0.1011678224397896,
+      "p05": 0.0589359401116358,
+      "p95": 0.18656891175402426,
+      "images": 700,
+      "macro_class_domain_mean": 0.10444215773551183,
+      "image_bootstrap_95ci": [
+        0.10381399224955642,
+        0.10502255717426366
+      ],
+      "bootstrap_repetitions": 1000
+    },
+    "ln_e_to_z_cosine_shift": {
+      "mean": 0.10348421447499066,
+      "median": 0.10049677606729823,
+      "p05": 0.05761804721836547,
+      "p95": 0.18598487008303677,
+      "images": 700,
+      "macro_class_domain_mean": 0.10348421447499066,
+      "image_bootstrap_95ci": [
+        0.1028353710444333,
+        0.10406413795486695
+      ],
+      "bootstrap_repetitions": 1000
+    },
+    "constant_to_z_cosine_shift": {
+      "mean": 0.018499271539540937,
+      "median": 0.017352200423756223,
+      "p05": 0.012594564309369038,
+      "p95": 0.029234774883632363,
+      "images": 700,
+      "macro_class_domain_mean": 0.01849927153954094,
+      "image_bootstrap_95ci": [
+        0.01837307237513847,
+        0.018613083834593258
+      ],
+      "bootstrap_repetitions": 1000
+    },
+    "template_pairwise_cosine_shift": {
+      "mean": 0.028792974784444657,
+      "median": 0.026651773424850006,
+      "p05": 0.01988963882076808,
+      "p95": 0.04553389297666541,
+      "images": 700,
+      "macro_class_domain_mean": 0.028792974784444654,
+      "image_bootstrap_95ci": [
+        0.028600963433434632,
+        0.02897041215768858
+      ],
+      "bootstrap_repetitions": 1000
+    },
+    "class_swap_cosine_shift": {
+      "mean": 0.1154421161627397,
+      "median": 0.11072363425046206,
+      "p05": 0.06342346749734133,
+      "p95": 0.20682219816371794,
+      "images": 700,
+      "macro_class_domain_mean": 0.11544211616273971,
+      "image_bootstrap_95ci": [
+        0.11469498759825776,
+        0.11612690311628728
+      ],
+      "bootstrap_repetitions": 1000
+    },
+    "neutral_swap_cosine_shift": {
+      "mean": 0.07917176339509231,
+      "median": 0.07033947482705116,
+      "p05": 0.00873986748047173,
+      "p95": 0.17153474241495126,
+      "images": 700,
+      "macro_class_domain_mean": 0.07917176339509233,
+      "image_bootstrap_95ci": [
+        0.07849588749248401,
+        0.0797421262736898
+      ],
+      "bootstrap_repetitions": 1000
+    },
+    "class_minus_template_shift": {
+      "mean": 0.08664914137829503,
+      "median": 0.08436785068560645,
+      "p05": 0.04246422806224937,
+      "p95": 0.1630448414076616,
+      "images": 700,
+      "macro_class_domain_mean": 0.08664914137829503,
+      "image_bootstrap_95ci": [
+        0.08607698721824726,
+        0.08716926120486919
+      ],
+      "bootstrap_repetitions": 1000
+    }
+  },
+  "interpretation": [
+    "Positive within-class domain silhouette, cosine gap and neighbor excess support residual domain structure.",
+    "Small template spread does not imply that E and Z are identical; check both paired shifts and topology.",
+    "A positive class-minus-template contrast indicates larger class-word sensitivity under these swaps.",
+    "Ground-truth-conditioned Z is a mechanism diagnostic, not a label-free test representation.",
+    "Bootstrap intervals condition on one checkpoint and sampled domains; no training-seed uncertainty.",
+    "Performance benefit or equivalence requires separately trained B5B, Bconst and TDA-off controls."
+  ]
+}

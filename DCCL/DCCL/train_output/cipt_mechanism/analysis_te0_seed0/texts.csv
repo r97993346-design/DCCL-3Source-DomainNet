@@ -1,0 +1,648 @@
+﻿condition,class,template_id,text
+class,dog,0,a bad photo of a dog.
+class,dog,1,a photo of many dog.
+class,dog,2,a sculpture of a dog.
+class,dog,3,a photo of the hard to see dog.
+class,dog,4,a low resolution photo of the dog.
+class,dog,5,a rendering of a dog.
+class,dog,6,graffiti of a dog.
+class,dog,7,a bad photo of the dog.
+class,dog,8,a cropped photo of the dog.
+class,dog,9,a tattoo of a dog.
+class,dog,10,the embroidered dog.
+class,dog,11,a photo of a hard to see dog.
+class,dog,12,a bright photo of a dog.
+class,dog,13,a photo of a clean dog.
+class,dog,14,a photo of a dirty dog.
+class,dog,15,a dark photo of the dog.
+class,dog,16,a drawing of a dog.
+class,dog,17,a photo of my dog.
+class,dog,18,the plastic dog.
+class,dog,19,a photo of the cool dog.
+class,dog,20,a close-up photo of a dog.
+class,dog,21,a black and white photo of the dog.
+class,dog,22,a painting of the dog.
+class,dog,23,a painting of a dog.
+class,dog,24,a pixelated photo of the dog.
+class,dog,25,a sculpture of the dog.
+class,dog,26,a bright photo of the dog.
+class,dog,27,a cropped photo of a dog.
+class,dog,28,a plastic dog.
+class,dog,29,a photo of the dirty dog.
+class,dog,30,a jpeg corrupted photo of a dog.
+class,dog,31,a blurry photo of the dog.
+class,dog,32,a photo of the dog.
+class,dog,33,a good photo of the dog.
+class,dog,34,a rendering of the dog.
+class,dog,35,a dog in a video game.
+class,dog,36,a photo of one dog.
+class,dog,37,a doodle of a dog.
+class,dog,38,a close-up photo of the dog.
+class,dog,39,a photo of a dog.
+class,dog,40,the origami dog.
+class,dog,41,the dog in a video game.
+class,dog,42,a sketch of a dog.
+class,dog,43,a doodle of the dog.
+class,dog,44,a origami dog.
+class,dog,45,a low resolution photo of a dog.
+class,dog,46,the toy dog.
+class,dog,47,a rendition of the dog.
+class,dog,48,a photo of the clean dog.
+class,dog,49,a photo of a large dog.
+class,dog,50,a rendition of a dog.
+class,dog,51,a photo of a nice dog.
+class,dog,52,a photo of a weird dog.
+class,dog,53,a blurry photo of a dog.
+class,dog,54,a cartoon dog.
+class,dog,55,art of a dog.
+class,dog,56,a sketch of the dog.
+class,dog,57,a embroidered dog.
+class,dog,58,a pixelated photo of a dog.
+class,dog,59,itap of the dog.
+class,dog,60,a jpeg corrupted photo of the dog.
+class,dog,61,a good photo of a dog.
+class,dog,62,a plushie dog.
+class,dog,63,a photo of the nice dog.
+class,dog,64,a photo of the small dog.
+class,dog,65,a photo of the weird dog.
+class,dog,66,the cartoon dog.
+class,dog,67,art of the dog.
+class,dog,68,a drawing of the dog.
+class,dog,69,a photo of the large dog.
+class,dog,70,a black and white photo of a dog.
+class,dog,71,the plushie dog.
+class,dog,72,a dark photo of a dog.
+class,dog,73,itap of a dog.
+class,dog,74,graffiti of the dog.
+class,dog,75,a toy dog.
+class,dog,76,itap of my dog.
+class,dog,77,a photo of a cool dog.
+class,dog,78,a photo of a small dog.
+class,dog,79,a tattoo of the dog.
+class,elephant,0,a bad photo of a elephant.
+class,elephant,1,a photo of many elephant.
+class,elephant,2,a sculpture of a elephant.
+class,elephant,3,a photo of the hard to see elephant.
+class,elephant,4,a low resolution photo of the elephant.
+class,elephant,5,a rendering of a elephant.
+class,elephant,6,graffiti of a elephant.
+class,elephant,7,a bad photo of the elephant.
+class,elephant,8,a cropped photo of the elephant.
+class,elephant,9,a tattoo of a elephant.
+class,elephant,10,the embroidered elephant.
+class,elephant,11,a photo of a hard to see elephant.
+class,elephant,12,a bright photo of a elephant.
+class,elephant,13,a photo of a clean elephant.
+class,elephant,14,a photo of a dirty elephant.
+class,elephant,15,a dark photo of the elephant.
+class,elephant,16,a drawing of a elephant.
+class,elephant,17,a photo of my elephant.
+class,elephant,18,the plastic elephant.
+class,elephant,19,a photo of the cool elephant.
+class,elephant,20,a close-up photo of a elephant.
+class,elephant,21,a black and white photo of the elephant.
+class,elephant,22,a painting of the elephant.
+class,elephant,23,a painting of a elephant.
+class,elephant,24,a pixelated photo of the elephant.
+class,elephant,25,a sculpture of the elephant.
+class,elephant,26,a bright photo of the elephant.
+class,elephant,27,a cropped photo of a elephant.
+class,elephant,28,a plastic elephant.
+class,elephant,29,a photo of the dirty elephant.
+class,elephant,30,a jpeg corrupted photo of a elephant.
+class,elephant,31,a blurry photo of the elephant.
+class,elephant,32,a photo of the elephant.
+class,elephant,33,a good photo of the elephant.
+class,elephant,34,a rendering of the elephant.
+class,elephant,35,a elephant in a video game.
+class,elephant,36,a photo of one elephant.
+class,elephant,37,a doodle of a elephant.
+class,elephant,38,a close-up photo of the elephant.
+class,elephant,39,a photo of a elephant.
+class,elephant,40,the origami elephant.
+class,elephant,41,the elephant in a video game.
+class,elephant,42,a sketch of a elephant.
+class,elephant,43,a doodle of the elephant.
+class,elephant,44,a origami elephant.
+class,elephant,45,a low resolution photo of a elephant.
+class,elephant,46,the toy elephant.
+class,elephant,47,a rendition of the elephant.
+class,elephant,48,a photo of the clean elephant.
+class,elephant,49,a photo of a large elephant.
+class,elephant,50,a rendition of a elephant.
+class,elephant,51,a photo of a nice elephant.
+class,elephant,52,a photo of a weird elephant.
+class,elephant,53,a blurry photo of a elephant.
+class,elephant,54,a cartoon elephant.
+class,elephant,55,art of a elephant.
+class,elephant,56,a sketch of the elephant.
+class,elephant,57,a embroidered elephant.
+class,elephant,58,a pixelated photo of a elephant.
+class,elephant,59,itap of the elephant.
+class,elephant,60,a jpeg corrupted photo of the elephant.
+class,elephant,61,a good photo of a elephant.
+class,elephant,62,a plushie elephant.
+class,elephant,63,a photo of the nice elephant.
+class,elephant,64,a photo of the small elephant.
+class,elephant,65,a photo of the weird elephant.
+class,elephant,66,the cartoon elephant.
+class,elephant,67,art of the elephant.
+class,elephant,68,a drawing of the elephant.
+class,elephant,69,a photo of the large elephant.
+class,elephant,70,a black and white photo of a elephant.
+class,elephant,71,the plushie elephant.
+class,elephant,72,a dark photo of a elephant.
+class,elephant,73,itap of a elephant.
+class,elephant,74,graffiti of the elephant.
+class,elephant,75,a toy elephant.
+class,elephant,76,itap of my elephant.
+class,elephant,77,a photo of a cool elephant.
+class,elephant,78,a photo of a small elephant.
+class,elephant,79,a tattoo of the elephant.
+class,giraffe,0,a bad photo of a giraffe.
+class,giraffe,1,a photo of many giraffe.
+class,giraffe,2,a sculpture of a giraffe.
+class,giraffe,3,a photo of the hard to see giraffe.
+class,giraffe,4,a low resolution photo of the giraffe.
+class,giraffe,5,a rendering of a giraffe.
+class,giraffe,6,graffiti of a giraffe.
+class,giraffe,7,a bad photo of the giraffe.
+class,giraffe,8,a cropped photo of the giraffe.
+class,giraffe,9,a tattoo of a giraffe.
+class,giraffe,10,the embroidered giraffe.
+class,giraffe,11,a photo of a hard to see giraffe.
+class,giraffe,12,a bright photo of a giraffe.
+class,giraffe,13,a photo of a clean giraffe.
+class,giraffe,14,a photo of a dirty giraffe.
+class,giraffe,15,a dark photo of the giraffe.
+class,giraffe,16,a drawing of a giraffe.
+class,giraffe,17,a photo of my giraffe.
+class,giraffe,18,the plastic giraffe.
+class,giraffe,19,a photo of the cool giraffe.
+class,giraffe,20,a close-up photo of a giraffe.
+class,giraffe,21,a black and white photo of the giraffe.
+class,giraffe,22,a painting of the giraffe.
+class,giraffe,23,a painting of a giraffe.
+class,giraffe,24,a pixelated photo of the giraffe.
+class,giraffe,25,a sculpture of the giraffe.
+class,giraffe,26,a bright photo of the giraffe.
+class,giraffe,27,a cropped photo of a giraffe.
+class,giraffe,28,a plastic giraffe.
+class,giraffe,29,a photo of the dirty giraffe.
+class,giraffe,30,a jpeg corrupted photo of a giraffe.
+class,giraffe,31,a blurry photo of the giraffe.
+class,giraffe,32,a photo of the giraffe.
+class,giraffe,33,a good photo of the giraffe.
+class,giraffe,34,a rendering of the giraffe.
+class,giraffe,35,a giraffe in a video game.
+class,giraffe,36,a photo of one giraffe.
+class,giraffe,37,a doodle of a giraffe.
+class,giraffe,38,a close-up photo of the giraffe.
+class,giraffe,39,a photo of a giraffe.
+class,giraffe,40,the origami giraffe.
+class,giraffe,41,the giraffe in a video game.
+class,giraffe,42,a sketch of a giraffe.
+class,giraffe,43,a doodle of the giraffe.
+class,giraffe,44,a origami giraffe.
+class,giraffe,45,a low resolution photo of a giraffe.
+class,giraffe,46,the toy giraffe.
+class,giraffe,47,a rendition of the giraffe.
+class,giraffe,48,a photo of the clean giraffe.
+class,giraffe,49,a photo of a large giraffe.
+class,giraffe,50,a rendition of a giraffe.
+class,giraffe,51,a photo of a nice giraffe.
+class,giraffe,52,a photo of a weird giraffe.
+class,giraffe,53,a blurry photo of a giraffe.
+class,giraffe,54,a cartoon giraffe.
+class,giraffe,55,art of a giraffe.
+class,giraffe,56,a sketch of the giraffe.
+class,giraffe,57,a embroidered giraffe.
+class,giraffe,58,a pixelated photo of a giraffe.
+class,giraffe,59,itap of the giraffe.
+class,giraffe,60,a jpeg corrupted photo of the giraffe.
+class,giraffe,61,a good photo of a giraffe.
+class,giraffe,62,a plushie giraffe.
+class,giraffe,63,a photo of the nice giraffe.
+class,giraffe,64,a photo of the small giraffe.
+class,giraffe,65,a photo of the weird giraffe.
+class,giraffe,66,the cartoon giraffe.
+class,giraffe,67,art of the giraffe.
+class,giraffe,68,a drawing of the giraffe.
+class,giraffe,69,a photo of the large giraffe.
+class,giraffe,70,a black and white photo of a giraffe.
+class,giraffe,71,the plushie giraffe.
+class,giraffe,72,a dark photo of a giraffe.
+class,giraffe,73,itap of a giraffe.
+class,giraffe,74,graffiti of the giraffe.
+class,giraffe,75,a toy giraffe.
+class,giraffe,76,itap of my giraffe.
+class,giraffe,77,a photo of a cool giraffe.
+class,giraffe,78,a photo of a small giraffe.
+class,giraffe,79,a tattoo of the giraffe.
+class,guitar,0,a bad photo of a guitar.
+class,guitar,1,a photo of many guitar.
+class,guitar,2,a sculpture of a guitar.
+class,guitar,3,a photo of the hard to see guitar.
+class,guitar,4,a low resolution photo of the guitar.
+class,guitar,5,a rendering of a guitar.
+class,guitar,6,graffiti of a guitar.
+class,guitar,7,a bad photo of the guitar.
+class,guitar,8,a cropped photo of the guitar.
+class,guitar,9,a tattoo of a guitar.
+class,guitar,10,the embroidered guitar.
+class,guitar,11,a photo of a hard to see guitar.
+class,guitar,12,a bright photo of a guitar.
+class,guitar,13,a photo of a clean guitar.
+class,guitar,14,a photo of a dirty guitar.
+class,guitar,15,a dark photo of the guitar.
+class,guitar,16,a drawing of a guitar.
+class,guitar,17,a photo of my guitar.
+class,guitar,18,the plastic guitar.
+class,guitar,19,a photo of the cool guitar.
+class,guitar,20,a close-up photo of a guitar.
+class,guitar,21,a black and white photo of the guitar.
+class,guitar,22,a painting of the guitar.
+class,guitar,23,a painting of a guitar.
+class,guitar,24,a pixelated photo of the guitar.
+class,guitar,25,a sculpture of the guitar.
+class,guitar,26,a bright photo of the guitar.
+class,guitar,27,a cropped photo of a guitar.
+class,guitar,28,a plastic guitar.
+class,guitar,29,a photo of the dirty guitar.
+class,guitar,30,a jpeg corrupted photo of a guitar.
+class,guitar,31,a blurry photo of the guitar.
+class,guitar,32,a photo of the guitar.
+class,guitar,33,a good photo of the guitar.
+class,guitar,34,a rendering of the guitar.
+class,guitar,35,a guitar in a video game.
+class,guitar,36,a photo of one guitar.
+class,guitar,37,a doodle of a guitar.
+class,guitar,38,a close-up photo of the guitar.
+class,guitar,39,a photo of a guitar.
+class,guitar,40,the origami guitar.
+class,guitar,41,the guitar in a video game.
+class,guitar,42,a sketch of a guitar.
+class,guitar,43,a doodle of the guitar.
+class,guitar,44,a origami guitar.
+class,guitar,45,a low resolution photo of a guitar.
+class,guitar,46,the toy guitar.
+class,guitar,47,a rendition of the guitar.
+class,guitar,48,a photo of the clean guitar.
+class,guitar,49,a photo of a large guitar.
+class,guitar,50,a rendition of a guitar.
+class,guitar,51,a photo of a nice guitar.
+class,guitar,52,a photo of a weird guitar.
+class,guitar,53,a blurry photo of a guitar.
+class,guitar,54,a cartoon guitar.
+class,guitar,55,art of a guitar.
+class,guitar,56,a sketch of the guitar.
+class,guitar,57,a embroidered guitar.
+class,guitar,58,a pixelated photo of a guitar.
+class,guitar,59,itap of the guitar.
+class,guitar,60,a jpeg corrupted photo of the guitar.
+class,guitar,61,a good photo of a guitar.
+class,guitar,62,a plushie guitar.
+class,guitar,63,a photo of the nice guitar.
+class,guitar,64,a photo of the small guitar.
+class,guitar,65,a photo of the weird guitar.
+class,guitar,66,the cartoon guitar.
+class,guitar,67,art of the guitar.
+class,guitar,68,a drawing of the guitar.
+class,guitar,69,a photo of the large guitar.
+class,guitar,70,a black and white photo of a guitar.
+class,guitar,71,the plushie guitar.
+class,guitar,72,a dark photo of a guitar.
+class,guitar,73,itap of a guitar.
+class,guitar,74,graffiti of the guitar.
+class,guitar,75,a toy guitar.
+class,guitar,76,itap of my guitar.
+class,guitar,77,a photo of a cool guitar.
+class,guitar,78,a photo of a small guitar.
+class,guitar,79,a tattoo of the guitar.
+class,horse,0,a bad photo of a horse.
+class,horse,1,a photo of many horse.
+class,horse,2,a sculpture of a horse.
+class,horse,3,a photo of the hard to see horse.
+class,horse,4,a low resolution photo of the horse.
+class,horse,5,a rendering of a horse.
+class,horse,6,graffiti of a horse.
+class,horse,7,a bad photo of the horse.
+class,horse,8,a cropped photo of the horse.
+class,horse,9,a tattoo of a horse.
+class,horse,10,the embroidered horse.
+class,horse,11,a photo of a hard to see horse.
+class,horse,12,a bright photo of a horse.
+class,horse,13,a photo of a clean horse.
+class,horse,14,a photo of a dirty horse.
+class,horse,15,a dark photo of the horse.
+class,horse,16,a drawing of a horse.
+class,horse,17,a photo of my horse.
+class,horse,18,the plastic horse.
+class,horse,19,a photo of the cool horse.
+class,horse,20,a close-up photo of a horse.
+class,horse,21,a black and white photo of the horse.
+class,horse,22,a painting of the horse.
+class,horse,23,a painting of a horse.
+class,horse,24,a pixelated photo of the horse.
+class,horse,25,a sculpture of the horse.
+class,horse,26,a bright photo of the horse.
+class,horse,27,a cropped photo of a horse.
+class,horse,28,a plastic horse.
+class,horse,29,a photo of the dirty horse.
+class,horse,30,a jpeg corrupted photo of a horse.
+class,horse,31,a blurry photo of the horse.
+class,horse,32,a photo of the horse.
+class,horse,33,a good photo of the horse.
+class,horse,34,a rendering of the horse.
+class,horse,35,a horse in a video game.
+class,horse,36,a photo of one horse.
+class,horse,37,a doodle of a horse.
+class,horse,38,a close-up photo of the horse.
+class,horse,39,a photo of a horse.
+class,horse,40,the origami horse.
+class,horse,41,the horse in a video game.
+class,horse,42,a sketch of a horse.
+class,horse,43,a doodle of the horse.
+class,horse,44,a origami horse.
+class,horse,45,a low resolution photo of a horse.
+class,horse,46,the toy horse.
+class,horse,47,a rendition of the horse.
+class,horse,48,a photo of the clean horse.
+class,horse,49,a photo of a large horse.
+class,horse,50,a rendition of a horse.
+class,horse,51,a photo of a nice horse.
+class,horse,52,a photo of a weird horse.
+class,horse,53,a blurry photo of a horse.
+class,horse,54,a cartoon horse.
+class,horse,55,art of a horse.
+class,horse,56,a sketch of the horse.
+class,horse,57,a embroidered horse.
+class,horse,58,a pixelated photo of a horse.
+class,horse,59,itap of the horse.
+class,horse,60,a jpeg corrupted photo of the horse.
+class,horse,61,a good photo of a horse.
+class,horse,62,a plushie horse.
+class,horse,63,a photo of the nice horse.
+class,horse,64,a photo of the small horse.
+class,horse,65,a photo of the weird horse.
+class,horse,66,the cartoon horse.
+class,horse,67,art of the horse.
+class,horse,68,a drawing of the horse.
+class,horse,69,a photo of the large horse.
+class,horse,70,a black and white photo of a horse.
+class,horse,71,the plushie horse.
+class,horse,72,a dark photo of a horse.
+class,horse,73,itap of a horse.
+class,horse,74,graffiti of the horse.
+class,horse,75,a toy horse.
+class,horse,76,itap of my horse.
+class,horse,77,a photo of a cool horse.
+class,horse,78,a photo of a small horse.
+class,horse,79,a tattoo of the horse.
+class,house,0,a bad photo of a house.
+class,house,1,a photo of many house.
+class,house,2,a sculpture of a house.
+class,house,3,a photo of the hard to see house.
+class,house,4,a low resolution photo of the house.
+class,house,5,a rendering of a house.
+class,house,6,graffiti of a house.
+class,house,7,a bad photo of the house.
+class,house,8,a cropped photo of the house.
+class,house,9,a tattoo of a house.
+class,house,10,the embroidered house.
+class,house,11,a photo of a hard to see house.
+class,house,12,a bright photo of a house.
+class,house,13,a photo of a clean house.
+class,house,14,a photo of a dirty house.
+class,house,15,a dark photo of the house.
+class,house,16,a drawing of a house.
+class,house,17,a photo of my house.
+class,house,18,the plastic house.
+class,house,19,a photo of the cool house.
+class,house,20,a close-up photo of a house.
+class,house,21,a black and white photo of the house.
+class,house,22,a painting of the house.
+class,house,23,a painting of a house.
+class,house,24,a pixelated photo of the house.
+class,house,25,a sculpture of the house.
+class,house,26,a bright photo of the house.
+class,house,27,a cropped photo of a house.
+class,house,28,a plastic house.
+class,house,29,a photo of the dirty house.
+class,house,30,a jpeg corrupted photo of a house.
+class,house,31,a blurry photo of the house.
+class,house,32,a photo of the house.
+class,house,33,a good photo of the house.
+class,house,34,a rendering of the house.
+class,house,35,a house in a video game.
+class,house,36,a photo of one house.
+class,house,37,a doodle of a house.
+class,house,38,a close-up photo of the house.
+class,house,39,a photo of a house.
+class,house,40,the origami house.
+class,house,41,the house in a video game.
+class,house,42,a sketch of a house.
+class,house,43,a doodle of the house.
+class,house,44,a origami house.
+class,house,45,a low resolution photo of a house.
+class,house,46,the toy house.
+class,house,47,a rendition of the house.
+class,house,48,a photo of the clean house.
+class,house,49,a photo of a large house.
+class,house,50,a rendition of a house.
+class,house,51,a photo of a nice house.
+class,house,52,a photo of a weird house.
+class,house,53,a blurry photo of a house.
+class,house,54,a cartoon house.
+class,house,55,art of a house.
+class,house,56,a sketch of the house.
+class,house,57,a embroidered house.
+class,house,58,a pixelated photo of a house.
+class,house,59,itap of the house.
+class,house,60,a jpeg corrupted photo of the house.
+class,house,61,a good photo of a house.
+class,house,62,a plushie house.
+class,house,63,a photo of the nice house.
+class,house,64,a photo of the small house.
+class,house,65,a photo of the weird house.
+class,house,66,the cartoon house.
+class,house,67,art of the house.
+class,house,68,a drawing of the house.
+class,house,69,a photo of the large house.
+class,house,70,a black and white photo of a house.
+class,house,71,the plushie house.
+class,house,72,a dark photo of a house.
+class,house,73,itap of a house.
+class,house,74,graffiti of the house.
+class,house,75,a toy house.
+class,house,76,itap of my house.
+class,house,77,a photo of a cool house.
+class,house,78,a photo of a small house.
+class,house,79,a tattoo of the house.
+class,person,0,a bad photo of a person.
+class,person,1,a photo of many person.
+class,person,2,a sculpture of a person.
+class,person,3,a photo of the hard to see person.
+class,person,4,a low resolution photo of the person.
+class,person,5,a rendering of a person.
+class,person,6,graffiti of a person.
+class,person,7,a bad photo of the person.
+class,person,8,a cropped photo of the person.
+class,person,9,a tattoo of a person.
+class,person,10,the embroidered person.
+class,person,11,a photo of a hard to see person.
+class,person,12,a bright photo of a person.
+class,person,13,a photo of a clean person.
+class,person,14,a photo of a dirty person.
+class,person,15,a dark photo of the person.
+class,person,16,a drawing of a person.
+class,person,17,a photo of my person.
+class,person,18,the plastic person.
+class,person,19,a photo of the cool person.
+class,person,20,a close-up photo of a person.
+class,person,21,a black and white photo of the person.
+class,person,22,a painting of the person.
+class,person,23,a painting of a person.
+class,person,24,a pixelated photo of the person.
+class,person,25,a sculpture of the person.
+class,person,26,a bright photo of the person.
+class,person,27,a cropped photo of a person.
+class,person,28,a plastic person.
+class,person,29,a photo of the dirty person.
+class,person,30,a jpeg corrupted photo of a person.
+class,person,31,a blurry photo of the person.
+class,person,32,a photo of the person.
+class,person,33,a good photo of the person.
+class,person,34,a rendering of the person.
+class,person,35,a person in a video game.
+class,person,36,a photo of one person.
+class,person,37,a doodle of a person.
+class,person,38,a close-up photo of the person.
+class,person,39,a photo of a person.
+class,person,40,the origami person.
+class,person,41,the person in a video game.
+class,person,42,a sketch of a person.
+class,person,43,a doodle of the person.
+class,person,44,a origami person.
+class,person,45,a low resolution photo of a person.
+class,person,46,the toy person.
+class,person,47,a rendition of the person.
+class,person,48,a photo of the clean person.
+class,person,49,a photo of a large person.
+class,person,50,a rendition of a person.
+class,person,51,a photo of a nice person.
+class,person,52,a photo of a weird person.
+class,person,53,a blurry photo of a person.
+class,person,54,a cartoon person.
+class,person,55,art of a person.
+class,person,56,a sketch of the person.
+class,person,57,a embroidered person.
+class,person,58,a pixelated photo of a person.
+class,person,59,itap of the person.
+class,person,60,a jpeg corrupted photo of the person.
+class,person,61,a good photo of a person.
+class,person,62,a plushie person.
+class,person,63,a photo of the nice person.
+class,person,64,a photo of the small person.
+class,person,65,a photo of the weird person.
+class,person,66,the cartoon person.
+class,person,67,art of the person.
+class,person,68,a drawing of the person.
+class,person,69,a photo of the large person.
+class,person,70,a black and white photo of a person.
+class,person,71,the plushie person.
+class,person,72,a dark photo of a person.
+class,person,73,itap of a person.
+class,person,74,graffiti of the person.
+class,person,75,a toy person.
+class,person,76,itap of my person.
+class,person,77,a photo of a cool person.
+class,person,78,a photo of a small person.
+class,person,79,a tattoo of the person.
+neutral,subject,0,a bad photo of a subject.
+neutral,subject,1,a photo of many subject.
+neutral,subject,2,a sculpture of a subject.
+neutral,subject,3,a photo of the hard to see subject.
+neutral,subject,4,a low resolution photo of the subject.
+neutral,subject,5,a rendering of a subject.
+neutral,subject,6,graffiti of a subject.
+neutral,subject,7,a bad photo of the subject.
+neutral,subject,8,a cropped photo of the subject.
+neutral,subject,9,a tattoo of a subject.
+neutral,subject,10,the embroidered subject.
+neutral,subject,11,a photo of a hard to see subject.
+neutral,subject,12,a bright photo of a subject.
+neutral,subject,13,a photo of a clean subject.
+neutral,subject,14,a photo of a dirty subject.
+neutral,subject,15,a dark photo of the subject.
+neutral,subject,16,a drawing of a subject.
+neutral,subject,17,a photo of my subject.
+neutral,subject,18,the plastic subject.
+neutral,subject,19,a photo of the cool subject.
+neutral,subject,20,a close-up photo of a subject.
+neutral,subject,21,a black and white photo of the subject.
+neutral,subject,22,a painting of the subject.
+neutral,subject,23,a painting of a subject.
+neutral,subject,24,a pixelated photo of the subject.
+neutral,subject,25,a sculpture of the subject.
+neutral,subject,26,a bright photo of the subject.
+neutral,subject,27,a cropped photo of a subject.
+neutral,subject,28,a plastic subject.
+neutral,subject,29,a photo of the dirty subject.
+neutral,subject,30,a jpeg corrupted photo of a subject.
+neutral,subject,31,a blurry photo of the subject.
+neutral,subject,32,a photo of the subject.
+neutral,subject,33,a good photo of the subject.
+neutral,subject,34,a rendering of the subject.
+neutral,subject,35,a subject in a video game.
+neutral,subject,36,a photo of one subject.
+neutral,subject,37,a doodle of a subject.
+neutral,subject,38,a close-up photo of the subject.
+neutral,subject,39,a photo of a subject.
+neutral,subject,40,the origami subject.
+neutral,subject,41,the subject in a video game.
+neutral,subject,42,a sketch of a subject.
+neutral,subject,43,a doodle of the subject.
+neutral,subject,44,a origami subject.
+neutral,subject,45,a low resolution photo of a subject.
+neutral,subject,46,the toy subject.
+neutral,subject,47,a rendition of the subject.
+neutral,subject,48,a photo of the clean subject.
+neutral,subject,49,a photo of a large subject.
+neutral,subject,50,a rendition of a subject.
+neutral,subject,51,a photo of a nice subject.
+neutral,subject,52,a photo of a weird subject.
+neutral,subject,53,a blurry photo of a subject.
+neutral,subject,54,a cartoon subject.
+neutral,subject,55,art of a subject.
+neutral,subject,56,a sketch of the subject.
+neutral,subject,57,a embroidered subject.
+neutral,subject,58,a pixelated photo of a subject.
+neutral,subject,59,itap of the subject.
+neutral,subject,60,a jpeg corrupted photo of the subject.
+neutral,subject,61,a good photo of a subject.
+neutral,subject,62,a plushie subject.
+neutral,subject,63,a photo of the nice subject.
+neutral,subject,64,a photo of the small subject.
+neutral,subject,65,a photo of the weird subject.
+neutral,subject,66,the cartoon subject.
+neutral,subject,67,art of the subject.
+neutral,subject,68,a drawing of the subject.
+neutral,subject,69,a photo of the large subject.
+neutral,subject,70,a black and white photo of a subject.
+neutral,subject,71,the plushie subject.
+neutral,subject,72,a dark photo of a subject.
+neutral,subject,73,itap of a subject.
+neutral,subject,74,graffiti of the subject.
+neutral,subject,75,a toy subject.
+neutral,subject,76,itap of my subject.
+neutral,subject,77,a photo of a cool subject.
+neutral,subject,78,a photo of a small subject.
+neutral,subject,79,a tattoo of the subject.
+constant,dog,-1,a photo of a dog.
+constant,elephant,-1,a photo of a elephant.
+constant,giraffe,-1,a photo of a giraffe.
+constant,guitar,-1,a photo of a guitar.
+constant,horse,-1,a photo of a horse.
+constant,house,-1,a photo of a house.
+constant,person,-1,a photo of a person.

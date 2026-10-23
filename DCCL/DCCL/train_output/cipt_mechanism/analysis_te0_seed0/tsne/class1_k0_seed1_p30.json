@@ -1,0 +1,20 @@
+{
+  "class_id": 1,
+  "template_id": 0,
+  "seed": 1,
+  "perplexity": 30.0,
+  "iterations": 1000,
+  "pca_dim_requested": 50,
+  "pca_dim_effective": 50,
+  "sklearn_version": "1.7.2",
+  "representations": [
+    "E",
+    "LN(E)",
+    "Z_constant",
+    "Z_mean80",
+    "Z_template_00"
+  ],
+  "joint_points": 500,
+  "checkpoint_sha256": "fa03ca305faf18feba0347058713910a3c8664bf750b5e6c9cc2e3f58b860a42",
+  "samples_sha256": "67a131502ee268b6fd3288ea49002636587a39a20a601cac5da7883fbcfb6496"
+}

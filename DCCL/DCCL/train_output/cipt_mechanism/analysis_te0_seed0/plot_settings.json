@@ -1,0 +1,25 @@
+{
+  "tsne_seeds": [
+    0,
+    1,
+    2
+  ],
+  "perplexities": [
+    10.0,
+    30.0
+  ],
+  "template_id": 0,
+  "iterations": 1000,
+  "pca_dim": 50,
+  "template_ids": [
+    0,
+    20,
+    40,
+    60
+  ],
+  "template_tsne_generated": true,
+  "overview_generated": true,
+  "neighbors": 5,
+  "sklearn_version": "1.7.2",
+  "tsne_generated": true
+}
