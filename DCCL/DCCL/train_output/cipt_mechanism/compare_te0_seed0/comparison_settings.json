@@ -1,0 +1,26 @@
+{
+  "project_dir": "/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL",
+  "baseline_dir": "train_output/cipt_mechanism/analysis_te0_seed0",
+  "cipt_checkpoint": "train_output/cipt_mechanism/PACS/261023_14-43-14_cipt_original_te0_seed0/checkpoints/TE0_5000.pth",
+  "ours_checkpoint": "train_output/cipt_mechanism/ours_rd2_nr15/PACS/261023_21-32-20_ours_rd2_nr15_te0_seed0/checkpoints/TE0_5000.pth",
+  "data_dir": "/home/hooasia/lgg/data/repro_dccl_data",
+  "clip_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+  "dataset": "PACS",
+  "output_dir": "/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/train_output/cipt_mechanism/compare_te0_seed0",
+  "template_id": 0,
+  "sample_seed": 0,
+  "samples_per_class_domain": 25,
+  "batch_size": 16,
+  "device": "cuda",
+  "neighbors": 5,
+  "tsne_seeds": [
+    0
+  ],
+  "perplexities": [
+    30.0
+  ],
+  "tsne_iterations": 1000,
+  "pca_dim": 50,
+  "no_tsne": false,
+  "cache_only": false
+}
