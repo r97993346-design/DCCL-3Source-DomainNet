@@ -200,6 +200,8 @@ def summarize(folder, neighbors=5):
               "- per_image_metrics.csv: paired shifts, template spread, neutral-text and wrong-class swaps.",
               "- domain_metrics.png/pdf and intervention_sensitivity.png/pdf: quantitative summaries.",
               "- tsne/: one joint fit per class/seed/perplexity; arrows show correspondence only.",
+              "- tsne_templates/ (unless skipped): fixed images and class words, varying templates; one joint fit per class.",
+              "- tsne_overview/ (with --overview): all selected classes; colors = classes, markers = domains.",
               "", "Z_mean80 averages unit Z_k and normalizes again. It is a descriptive feature, not the legacy inference rule.",
               "Displayed domains include source/target designations from checkpoint metadata; dataset files may include training images."]
     (folder / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -330,3 +332,164 @@ def plot_tsne(folder, meta, samples, representations, z, seeds, perplexities,
                 _save(fig, folder / basename)
                 plt.close(fig)
                 print("Rendered {}".format(basename), flush=True)
+
+
+def _archive_tsne(folder, basename, keys, coords, meta, samples, indices,
+                  seed, perplexity, iterations, pca_dim, input_dim, **settings):
+    """Persist exact sample pairing, coordinates and each joint fit's settings."""
+    import sklearn
+    selected = [samples[i] for i in indices]
+    point_count = sum(len(xy) for xy in coords)
+    np.savez_compressed(folder / (basename + ".npz"), **dict(zip(keys, coords)),
+                        sample_indices=indices,
+                        image_ids=np.array([str(row["image_id"]) for row in selected]),
+                        domains=np.array([row["domain"] for row in selected]),
+                        class_ids=np.array([int(row["class_id"]) for row in selected]))
+    dump_json(folder / (basename + ".json"), {
+        "seed": seed, "perplexity": perplexity, "iterations": iterations,
+        "pca_dim_requested": pca_dim,
+        "pca_dim_effective": pca_dim if pca_dim and min(point_count, input_dim) > pca_dim else 0,
+        "sklearn_version": sklearn.__version__, "representations": keys,
+        "joint_points": point_count, "unique_images": len(selected),
+        "checkpoint_sha256": meta.get("checkpoint_sha256"),
+        "samples_sha256": meta.get("samples_sha256"),
+        "coordinate_scope": "Only panels in this file share a joint fit. Distances are illustrative.",
+        **settings,
+    })
+
+
+def _domain_label(domain, meta):
+    targets = meta.get("target_domains")
+    role = "role unknown" if targets is None else "target" if domain in targets else "source"
+    return "{} [{}]".format(domain, role)
+
+
+def plot_template_tsne(folder, meta, samples, representations, z, seeds, perplexities,
+                       template_ids=(0, 20, 40, 60), iterations=1000, pca_dim=50):
+    """Experiment 3: same image/class word, different text descriptions.
+
+    All images enter every panel. The last panel connects a deterministic,
+    domain-balanced subset for legibility; it never selects by measured shift.
+    """
+    template_ids = list(template_ids)
+    if (len(template_ids) < 2 or len(set(template_ids)) != len(template_ids)
+            or any(not 0 <= k < z.shape[1] for k in template_ids)):
+        raise ValueError("Need >=2 distinct, in-range template IDs.")
+    plt = _plot_setup()
+    from matplotlib.lines import Line2D
+    folder = Path(folder) / "tsne_templates"
+    folder.mkdir(exist_ok=True)
+    labels = np.array([int(row["class_id"]) for row in samples])
+    domains = np.array([row["domain"] for row in samples])
+    domain_names = sorted(set(domains.tolist()))
+    colors = plt.get_cmap("tab10")
+    keys = ["Z_constant"] + ["Z_template_{:02d}".format(k) for k in template_ids]
+    arrays = [representations["Z_constant"]] + [z[:, k] for k in template_ids]
+    tag = "-".join(str(k) for k in template_ids)
+    for seed in seeds:
+        for perplexity in perplexities:
+            for c in sorted(set(labels.tolist())):
+                indices = np.flatnonzero(labels == c)
+                local_domains = domains[indices]
+                paired = []
+                for domain in domain_names:
+                    group = np.flatnonzero(local_domains == domain)
+                    paired.extend(group[np.linspace(0, len(group) - 1, min(2, len(group)), dtype=int)])
+                coords = joint_tsne([a[indices] for a in arrays], seed, perplexity, iterations, pca_dim)
+                basename = "class{}_templates{}_seed{}_p{:g}".format(c, tag, seed, perplexity)
+                _archive_tsne(folder, basename, keys, coords, meta, samples, indices,
+                              seed, perplexity, iterations, pca_dim, z.shape[-1],
+                              class_id=c, template_ids=template_ids,
+                              paired_sample_indices=[int(indices[i]) for i in paired],
+                              pairing_rule="Up to two images per domain, evenly spaced in manifest order; no shift-based selection.",
+                              intervention="Image and ground-truth class word fixed; only text description varies.")
+                panel_count = len(keys) + 1
+                ncols = min(3, panel_count)
+                nrows = (panel_count + ncols - 1) // ncols
+                fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3.4 * nrows),
+                                         sharex=True, sharey=True, squeeze=False)
+                for ax, key, xy in zip(axes.flat, keys, coords):
+                    for j, domain in enumerate(domain_names):
+                        ax.scatter(*xy[local_domains == domain].T, s=12, alpha=.65, color=colors(j))
+                    ax.set_title(key, fontsize=10)
+                ax = axes.flat[len(keys)]
+                # No temporal ordering is implied: lines connect conditions.
+                for i in paired:
+                    xy = np.array([points[i] for points in coords[1:]])
+                    color = colors(domain_names.index(local_domains[i]))
+                    ax.plot(*xy.T, color=color, alpha=.55, lw=.8)
+                    ax.scatter(*xy.T, color=color, s=18)
+                    ax.annotate(str(samples[indices[i]]["image_id"]), xy[0], fontsize=6,
+                                xytext=(3, 3), textcoords="offset points")
+                ax.set_title("Same image across templates (subset)", fontsize=10)
+                # Pairing panel uses the same limits as every full-sample panel.
+                for ax in list(axes.flat)[:panel_count]:
+                    ax.set_xticks([])
+                    ax.set_yticks([])
+                for ax in list(axes.flat)[panel_count:]:
+                    ax.set_visible(False)
+                legend = [Line2D([0], [0], color=colors(j), marker="o", linestyle="",
+                                 label=_domain_label(domain, meta)) for j, domain in enumerate(domain_names)]
+                fig.legend(handles=legend, loc="lower center", ncol=len(domain_names), fontsize=8)
+                fig.suptitle("{}: fixed images/class words, varying descriptions\n"
+                             "joint t-SNE; lines indicate correspondence, not feature-distance magnitude".format(
+                                 meta["class_names"][c]), fontsize=11)
+                fig.tight_layout(rect=[0, .05, 1, .92])
+                _save(fig, folder / basename)
+                plt.close(fig)
+                print("Rendered {}".format(basename), flush=True)
+
+
+def plot_overview_tsne(folder, meta, samples, representations, z, seeds, perplexities,
+                       template_id=0, iterations=1000, pca_dim=50):
+    """Optional class overview; domain-cluster evidence remains class-conditional."""
+    plt = _plot_setup()
+    from matplotlib.lines import Line2D
+    labels = np.array([int(row["class_id"]) for row in samples])
+    domains = np.array([row["domain"] for row in samples])
+    classes = sorted(set(labels.tolist()))
+    domain_names = sorted(set(domains.tolist()))
+    if len(classes) > 20 or len(domain_names) > 8:
+        raise ValueError("Overview supports <=20 selected classes and <=8 domains; choose a documented subset.")
+    colors = plt.get_cmap("tab10" if len(classes) <= 10 else "tab20")
+    markers = ["o", "^", "s", "X", "D", "v", "P", "*"]
+    folder = Path(folder) / "tsne_overview"
+    folder.mkdir(exist_ok=True)
+    keys = ["E", "Z_constant", "Z_template_{:02d}".format(template_id)]
+    arrays = [representations["E"], representations["Z_constant"], z[:, template_id]]
+    indices = np.arange(len(samples))
+    for seed in seeds:
+        for perplexity in perplexities:
+            coords = joint_tsne(arrays, seed, perplexity, iterations, pca_dim)
+            basename = "all_classes_k{}_seed{}_p{:g}".format(template_id, seed, perplexity)
+            _archive_tsne(folder, basename, keys, coords, meta, samples, indices,
+                          seed, perplexity, iterations, pca_dim, z.shape[-1],
+                          template_id=template_id, colors="classes", markers="domains",
+                          class_color_order=classes, domain_marker_order=domain_names,
+                          z_uses_ground_truth_class_word=True)
+            fig, axes = plt.subplots(1, 3, figsize=(15, 5.4), sharex=True, sharey=True)
+            for ax, key, xy in zip(axes, keys, coords):
+                for j, c in enumerate(classes):
+                    for k, domain in enumerate(domain_names):
+                        mask = (labels == c) & (domains == domain)
+                        ax.scatter(*xy[mask].T, s=15, alpha=.6, color=colors(j),
+                                   marker=markers[k], linewidths=.3)
+                ax.set_title(key)
+                ax.set_xticks([])
+                ax.set_yticks([])
+            class_legend = [Line2D([0], [0], color=colors(j), marker="o", linestyle="",
+                                   label=meta["class_names"][c]) for j, c in enumerate(classes)]
+            domain_legend = [Line2D([0], [0], color="gray", marker=markers[j], linestyle="",
+                                    label=_domain_label(domain, meta)) for j, domain in enumerate(domain_names)]
+            class_rows = (len(classes) + 6) // 7
+            legend_space = .09 + .04 * class_rows
+            fig.legend(handles=class_legend, loc="lower center", ncol=min(7, len(classes)),
+                       bbox_to_anchor=(.5, .05), fontsize=8)
+            fig.legend(handles=domain_legend, loc="lower center", ncol=len(domain_names),
+                       bbox_to_anchor=(.5, .005), fontsize=8)
+            fig.suptitle("Joint t-SNE: class colors, domain markers; seed={}, perplexity={:g}\n"
+                         "Z uses ground-truth class words for mechanism analysis".format(seed, perplexity), fontsize=11)
+            fig.tight_layout(rect=[0, legend_space, 1, .90])
+            _save(fig, folder / basename)
+            plt.close(fig)
+            print("Rendered {}".format(basename), flush=True)

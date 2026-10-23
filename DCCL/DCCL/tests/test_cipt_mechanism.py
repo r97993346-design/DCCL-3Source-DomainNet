@@ -11,6 +11,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -19,7 +20,8 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 from analyze_cipt_mechanism import validate_original_checkpoint, validate_samples
 from cipt_mechanism_report import (cosine_shift, domain_metrics, dump_json, neighbor_weights,
-                                    plot_metrics, plot_tsne, stratified_bootstrap, summarize,
+                                    plot_metrics, plot_overview_tsne, plot_template_tsne, plot_tsne,
+                                    stratified_bootstrap, summarize,
                                     template_spread, topology_metrics, unit, write_csv)
 
 
@@ -132,6 +134,36 @@ class MechanismTests(unittest.TestCase):
             with (Path(folder) / "within_class_topology.csv").open(encoding="utf-8-sig") as stream:
                 self.assertEqual(len(list(csv.DictReader(stream))), 2 * 2 * 80)
 
+    def test_template_plot_preserves_image_pairing_and_requested_template_order(self):
+        with tempfile.TemporaryDirectory() as folder:
+            synthetic_run(folder)
+            meta, samples, representations, z, _, _ = summarize(folder)
+            # Image identifiers need not equal row indices or be contiguous.
+            for i, row in enumerate(samples):
+                row["image_id"] = "image-{}".format(100 + 3 * i)
+            templates = [60, 0, 20, 40]
+            with patch("cipt_mechanism_report.joint_tsne",
+                       side_effect=lambda arrays, *args: [a[:, :2] for a in arrays]) as fit:
+                with patch("cipt_mechanism_report._save"):
+                    plot_template_tsne(folder, meta, samples, representations, z,
+                                       [0], [5], templates)
+            self.assertEqual(fit.call_count, 2)  # One shared fit per class.
+            for c in [0, 1]:
+                stem = Path(folder) / "tsne_templates" / "class{}_templates60-0-20-40_seed0_p5".format(c)
+                archive = np.load(str(stem) + ".npz")
+                indices = np.arange(c * 8, c * 8 + 8)
+                np.testing.assert_array_equal(archive["sample_indices"], indices)
+                np.testing.assert_array_equal(archive["image_ids"], [samples[i]["image_id"] for i in indices])
+                for k in templates:
+                    np.testing.assert_allclose(archive["Z_template_{:02d}".format(k)], z[indices, k, :2])
+                settings = json.loads(Path(str(stem) + ".json").read_text())
+                self.assertEqual(settings["template_ids"], templates)
+                self.assertEqual(settings["unique_images"], 8)
+                self.assertEqual(settings["joint_points"], 40)
+                paired_domains = [samples[i]["domain"] for i in settings["paired_sample_indices"]]
+                self.assertEqual(paired_domains.count("photo"), 2)
+                self.assertEqual(paired_domains.count("sketch"), 2)
+
 
 if __name__ == "__main__":
     if "--smoke-output" in sys.argv:
@@ -140,6 +172,8 @@ if __name__ == "__main__":
         meta, samples, representations, z, rows, per_image = summarize(out)
         plot_metrics(out, rows, per_image)
         plot_tsne(out, meta, samples, representations, z, [0], [5], iterations=300)
+        plot_template_tsne(out, meta, samples, representations, z, [0], [5], iterations=300)
+        plot_overview_tsne(out, meta, samples, representations, z, [0], [5], iterations=300)
         print("SYNTHETIC plotting validation only; not a CIPT experiment.")
     else:
         unittest.main()

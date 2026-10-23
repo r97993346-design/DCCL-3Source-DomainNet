@@ -21,7 +21,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 from analyze_cipt_text_features import (DEFAULT_CLASSES, canonical_name, checkpoint_state,
                                        load_module, resolve_data_root, select_samples,
                                        selected_class_ids, substate)
-from cipt_mechanism_report import (dump_json, plot_metrics, plot_tsne, summarize, write_csv)
+from cipt_mechanism_report import (dump_json, plot_metrics, plot_overview_tsne,
+                                   plot_template_tsne, plot_tsne, summarize, write_csv)
 
 
 def as_bool(value):
@@ -94,6 +95,12 @@ def parse_args(argv=None):
     parser.add_argument("--tsne-seeds", nargs="+", type=int, default=[0, 1, 2])
     parser.add_argument("--perplexities", nargs="+", type=float, default=[10, 30])
     parser.add_argument("--template-id", type=int, default=0, help="Fixed 0-based template for plots; metrics always use all 80.")
+    parser.add_argument("--template-ids", nargs="+", type=int, default=[0, 20, 40, 60],
+                        help="Preselected templates for the paired diversity plot; metrics still use all 80.")
+    parser.add_argument("--skip-template-tsne", action="store_true",
+                        help="Skip template comparison plots when only replotting domain structure.")
+    parser.add_argument("--overview", action="store_true",
+                        help="Also plot all selected classes: class colors and domain markers.")
     parser.add_argument("--tsne-iterations", type=int, default=1000)
     parser.add_argument("--pca-dim", type=int, default=50)
     parser.add_argument("--neighbors", type=int, default=5)
@@ -104,6 +111,9 @@ def parse_args(argv=None):
         parser.error("Need >=2 images per class/domain and positive batch sizes/neighbors.")
     if not 0 <= args.template_id < 80 or args.tsne_iterations < 250:
         parser.error("Use template ID 0..79 and >=250 t-SNE iterations.")
+    if (len(args.template_ids) < 2 or len(set(args.template_ids)) != len(args.template_ids)
+            or any(not 0 <= k < 80 for k in args.template_ids)):
+        parser.error("Use at least two distinct --template-ids in 0..79.")
     if args.pca_dim < 0 or args.pca_dim == 1 or any(not np.isfinite(p) or p <= 0 for p in args.perplexities):
         parser.error("PCA dimension must be 0 or >=2; perplexities must be finite and positive.")
     return args
@@ -282,9 +292,18 @@ def main():
     if not args.no_tsne:
         plot_tsne(folder, meta, samples, representations, z, args.tsne_seeds, args.perplexities,
                   args.template_id, args.tsne_iterations, args.pca_dim)
+        if not args.skip_template_tsne:
+            plot_template_tsne(folder, meta, samples, representations, z, args.tsne_seeds,
+                               args.perplexities, args.template_ids, args.tsne_iterations, args.pca_dim)
+        if args.overview:
+            plot_overview_tsne(folder, meta, samples, representations, z, args.tsne_seeds,
+                               args.perplexities, args.template_id, args.tsne_iterations, args.pca_dim)
     import sklearn
     dump_json(folder / "plot_settings.json", {"tsne_seeds": args.tsne_seeds, "perplexities": args.perplexities,
               "template_id": args.template_id, "iterations": args.tsne_iterations, "pca_dim": args.pca_dim,
+              "template_ids": args.template_ids,
+              "template_tsne_generated": not args.no_tsne and not args.skip_template_tsne,
+              "overview_generated": not args.no_tsne and args.overview,
               "neighbors": args.neighbors, "sklearn_version": sklearn.__version__, "tsne_generated": not args.no_tsne})
     print("Complete: {}".format(folder / "report.md"))
 

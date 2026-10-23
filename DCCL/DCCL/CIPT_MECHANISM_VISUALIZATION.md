@@ -4,13 +4,16 @@
 `CausalDecomposition` 和 `TextDiversityAugmentation`，关闭新增的对比、RD、MCC、熵选择目标。
 它固定了本仓库的原 CIPT 复现路径；不等于已经复现论文的全部实验协议或报告精度。
 
-## 1. 三个问题分别检验什么
+## 1. 三组机制实验：同一个 checkpoint、同一批图像
 
-| 问题 | 图 | 原始特征空间的证据 | 能支持的表述 |
+这三组是训练后的配对分析，**不需要分别训练三个模型**。
+使用训练好的原 CIPT checkpoint，一次导出 E 和全部 80 个 Z_k，再完成三组分析。
+
+| 实验 | 图 | 原始特征空间的证据 | 能支持的表述 |
 |---|---|---|---|
-| E 内同类样本仍形成域相关子簇 | 每个类别单独作图，颜色表示域，查看 E 面板 | 类内域 silhouette、同域近邻比例超过随机基线的量、同域/跨域余弦差 | 因果分解输出仍保留域相关结构 |
-| 文本类别信息占主导，描述多样性贡献有限 | intervention_sensitivity.png；E→Z 配对面板 | 固定图像及模板只改类别词的位移，与固定类别词只改模板的位移；E/Z、LN(E)/Z 位移及类内邻域保持率 | 类别词敏感性较强、不同描述产生的额外变化较小；具体以结果为准 |
-| Z 中同类域子簇仍存在 | 同一图的固定模板 Z_k 与 Z_mean80 面板 | 全部 80 个模板分别计算类内域指标，与 E、LN(E) 对照 | 文本融合后同类域结构仍存在，或其改善有限 |
+| 1. E 是否仍存在同类域子簇 | `tsne/`：每个类别单独作图，颜色表示域，查看 E 面板 | 类内域 silhouette、同域近邻比例超过随机基线的量、同域/跨域余弦差 | 因果分解输出仍保留域相关结构 |
+| 2. E→Z 是否改善类内跨域结构 | `tsne/`：E、LN(E)、固定文本 Z、固定模板 Z_k 及 E→Z 配对；`domain_metrics.png` | 全部 80 个模板逐类的域指标；E/Z、LN(E)/Z 位移及类内邻域保持率 | 文本融合后同类域结构仍存在，或其改善有限 |
+| 3. 固定图像/类别词后，描述多样性带来多大变化 | `tsne_templates/`：固定模板 0、20、40、60 的并排面板及逐图像对应关系；`intervention_sensitivity.png` | 全部 80 个模板的两两余弦变化；与固定模板只改类别词的位移作辅助比较 | 不同描述变化较小或较大；是否小于类别词变化以结果为准 |
 
 **“类别词影响很大”“不同描述高度冗余”“E 与 Z 几乎相同”是不同命题。**
 例如，文本可以显著平移/旋转特征并提高类别可分性，同时保留原来的类内域子簇。
@@ -79,7 +82,7 @@ python analyze_cipt_mechanism.py \
   --checkpoint "$CIPT_CHECKPOINT" --clip-path "$CIPT_CLIP_PATH" \
   --samples-per-class-domain 25 --sample-seed 0 \
   --tsne-seeds 0 1 2 --perplexities 10 30 \
-  --template-id 0 --batch-size 8 \
+  --template-id 0 --template-ids 0 20 40 60 --overview --batch-size 8 \
   --output-dir train_output/cipt_mechanism/analysis_te0_seed0
 ```
 
@@ -88,18 +91,39 @@ t-SNE 默认每个类别分别联合拟合 E、LN(E)、固定文本 Z、Z_mean80
 配对箭头只表达同一图片的对应关系，不能用其长度推断特征变化大小。
 同一类别的两种特征不能分别拟合 t-SNE 后用坐标位移作比较。
 
+第三组的 `tsne_templates/` 在每个类别内，将固定文本 Z 和预先指定的多个 Z_k
+共同拟合一次 PCA/t-SNE。各模板面板都包含相同的全部图片，类别词保持不变。
+最后一个面板只展示每域最多两张图片的模板间对应关系，按清单顺序均匀选取，
+不根据位移大小挑样本。数字是 `samples.csv` 的 image_id，连线不表示时间轨迹，
+也不能按二维线长判断变化大小；变化大小以高维指标为准。
+模板编号从 0 开始，具体文本可以在 `texts.csv` 查到。
+
+`--overview` 另外输出全类别概览：颜色表示类别、点形表示域，
+并排展示 E、固定文本 Z、固定模板 Z_k。其联合坐标与逐类图不共用；
+它辅助观察类别结构，类内域子簇的主要证据仍来自前两组。
+Z 中使用了真实类别词，所以全类别分离更好也不能直接视为无标签推理性能提升。
+
 输出目录必须为空，以防覆盖原始提取结果。需要只导出可加 `--extract-only`；
 需要跳过 t-SNE 可加 `--no-tsne`。后续重复画图无需再次运行 CLIP：
 
 ```bash
 python analyze_cipt_mechanism.py --report-only \
   --output-dir train_output/cipt_mechanism/analysis_te0_seed0 \
-  --template-id 20 --tsne-seeds 0 1 2 --perplexities 10 30
+  --template-id 20 --skip-template-tsne --tsne-seeds 0 1 2 --perplexities 10 30
 ```
 
 建议预先固定展示模板 0、20、40、60，分别运行 `--report-only`。
 定量报告每次均覆盖全部 80 个模板；不要只展示“最能证明结论”的模板或 t-SNE seed。
 同一张图重复 80 个文本产生的 80 个点不能当作 80 张独立图片。
+
+如果之前已经导出特征，用以下命令就能补全三组图，不再调用 CLIP，也不需要 GPU：
+
+```bash
+python analyze_cipt_mechanism.py --report-only \
+  --output-dir train_output/cipt_mechanism/analysis_te0_seed0 \
+  --template-id 0 --template-ids 0 20 40 60 --overview \
+  --tsne-seeds 0 1 2 --perplexities 10 30
+```
 
 换训练 seed、检查点时用 `--sample-manifest .../samples.csv` 重用同一批图像。
 若只选部分域，抽取和重放都显式传入相同 `--domains`。该抽样来自数据文件目录，
@@ -111,6 +135,8 @@ python analyze_cipt_mechanism.py --report-only \
 | 输出 | 用途 |
 |---|---|
 | `tsne/class*_k*_seed*_p*.png/.pdf` | 每类六面板图：E、LN(E)、固定文本、80 模板均值、固定 Z_k、E→Z 配对 |
+| `tsne_templates/class*_templates*_seed*_p*.png/.pdf` | 第三组：相同图像与类别词下，不同描述模板的结构及逐图像对应关系 |
+| `tsne_overview/all_classes_k*_seed*_p*.png/.pdf` | 可选全类别概览：类别配色、域点形；含真实类别词条件化 Z |
 | `domain_metrics.png/.pdf` | 各类别的域 silhouette、同域近邻超额比例、同域/跨域余弦差 |
 | `intervention_sensitivity.png/.pdf` | E→Z、LN(E)→Z、固定文本→Z、改模板、改类别词、中性词替换的位移分布 |
 | `class_domain_metrics.csv` | E、对照及全部 80 个固定模板逐类的域结构指标 |
@@ -137,7 +163,7 @@ bootstrap 在固定类×域内重采样**图像**，不重采样 80 个文本当
 区间只表示这个检查点、这些域中的图像采样不确定性，不涵盖训练随机性或新域不确定性。
 域指标是描述性指标，没有自动的显著性判定或预设“无效”阈值。
 
-## 6. 要进一步声称“文本多样性没有带来收益”
+## 6. 可选的后续训练消融：与上面的三组机制实验不同
 
 仅凭特征图不能证明训练增强无收益；还需同预算的训练对照：
 
@@ -168,6 +194,7 @@ python tests/test_cipt_mechanism.py --smoke-output /tmp/cipt_mechanism_synthetic
 ```
 
 验证涵盖：域子簇/域混合两种方向、重复模板、LayerNorm 对照、并列近邻、旋转不变结构指标、
-错误检查点拒绝、平衡清单、图像级区间、全部模板覆盖。smoke 图完全来自合成数据，不能作为实验结果。
+错误检查点拒绝、平衡清单、图像级区间、全部模板覆盖、跨模板图像配对及模板顺序。
+smoke 图完全来自合成数据，不能作为实验结果。
 真实训练与特征提取仍需训练服务器上的 PyTorch、OpenAI CLIP、本地数据和检查点；
 离线报告只需 NumPy、SciPy、scikit-learn、Matplotlib。
