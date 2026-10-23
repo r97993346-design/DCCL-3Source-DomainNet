@@ -189,6 +189,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.env_selection = str(hparams.get("cipt_env_selection", "entropy")).lower()
         if self.env_selection not in ("entropy", "random"):
             raise ValueError("cipt_env_selection must be entropy or random")
+        self.rd_anchor_mode = str(hparams.get("cipt_rd_anchor_mode", "full")).lower()
+        if self.rd_anchor_mode not in ("full", "selected"):
+            raise ValueError("cipt_rd_anchor_mode must be full or selected")
         topk = hparams.get("cipt_env_topk", 40)
         if self.env_selection == "entropy":
             self.entropy_selector = EntropyPromptSelector(topk)
@@ -206,8 +209,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
         dim = self.causal_decomposition.causal_adapter.out_features
         if bank.shape != (num_classes, 80, dim) or bank.requires_grad:
             raise ValueError("env_anchor requires a frozen official text bank [C,80,D]")
-        # All 80 original frozen vectors enter the arithmetic mean FIRST.
-        # The selected subset never defines the teacher's semantic center.
+        # Keep the original full-bank buffer for backward-compatible state
+        # dictionaries. Selected-mode RD builds its per-image teacher only
+        # after choosing J, using exactly the vectors in those relationships.
         with torch.no_grad():
             anchors = F.normalize(bank.detach().float().mean(dim=1), dim=-1)
         self.register_buffer("env_class_anchors", anchors)
@@ -226,12 +230,14 @@ class CIPTDCCL(_BaseCIPTDCCL):
         )
         print("CIPTDCCL env_anchor: constraint={}, topk={}, env_weight={}, "
               "E_CE_weight={}, S_uniform_weight={}, IND_weight={}, "
-              "fusion=none, inference=e_only, env_selection={}, selector={}".format(
+              "fusion=none, inference=e_only, env_selection={}, selector={}, "
+              "rd_anchor_mode={}".format(
                   self.env_constraint, self.env_topk, self.env_loss_weight,
                   self.e_cls_weight, self.s_uniform_weight,
                   self.gamma if self.use_ind else 0.0, self.env_selection,
                   "frozen_CLIP_entropy" if self.env_selection == "entropy"
-                  else "per_image_random_without_replacement"))
+                  else "per_image_random_without_replacement",
+                  self.rd_anchor_mode))
 
     def _env_anchor_loss(self, visual, causal, labels):
         """Select without labels/E/S, then regularize differentiable E."""
@@ -249,7 +255,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
             loss = prompt_consistency_loss(logits.float())
         elif self.env_constraint == "relative_distance":
             loss = relative_distance_loss(
-                causal, self.env_class_anchors, bank, labels, indices
+                causal, self.env_class_anchors, bank, labels, indices,
+                anchor_mode=self.rd_anchor_mode,
             )
         else:
             raise RuntimeError("Disabled environment constraint must bypass selection")
@@ -332,6 +339,10 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 "env_topk": float(self.env_topk),
                 "env_anchor_active": float(self.env_active),
                 "random_selector_active": float(self.env_active and self.env_selection == "random"),
+                "env_rd_selected_anchor": float(
+                    self.env_active and self.env_constraint == "relative_distance"
+                    and self.rd_anchor_mode == "selected"
+                ),
             })
         elif self.env_active:
             # Selection is label-free. Gathered features retain the E/TDA graph;
@@ -471,4 +482,5 @@ class CIPTDCCL(_BaseCIPTDCCL):
         if self.objective_mode == "clip_ce":
             return self._clip_ce_visual(x)
         return super().predict_embed(x)
+
 

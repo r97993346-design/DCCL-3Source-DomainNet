@@ -37,6 +37,7 @@ selection methods are bypassed.
 | `cipt_env_selection` | `entropy` by default; alternative `random` changes only the environment template indices |
 | `cipt_env_topk` | `40`, integer in `[2,80]` |
 | `cipt_env_loss_weight` | `1.0`, finite and nonnegative; `0` bypasses selection/loss |
+| `cipt_rd_anchor_mode` | `full` (original all-80 center); `selected` recomputes a per-image center from the same selected n templates; applies only to RD |
 | `cipt_template_mode` / `cipt_selector_mode` | `b5b` / `random`; the latter only satisfies inherited initialization |
 | `cipt_use_tda` / `cipt_env_inference` | `false` / `e_only` |
 | `cipt_env_kl_weight` / `cipt_fused_cls_weight` | `0.0` / `0.0` |
@@ -118,9 +119,24 @@ L_{\rm RD}=\frac1{Bn}\sum_i\sum_{j\in J_i}
 \left[\cos(E_i,T_{y_i j})-\cos(A_{y_i},T_{y_i j})\right]^2.
 \]
 
-The full-80 arithmetic mean precedes normalization. E, anchors and selected
-texts are normalized for their cosine similarities. Anchors and texts are
-detached and fixed. RD alone uses training labels after template selection.
+By default (`cipt_rd_anchor_mode=full`), the full-80 arithmetic mean precedes
+normalization. With `cipt_rd_anchor_mode=selected`, replace the teacher by
+
+\[
+A_{i,c}=\operatorname{normalize}\left(\frac1n\sum_{j\in J_i}T_{cj}\right).
+\]
+
+Only the teacher center changes: selection still uses frozen V and all classes,
+and the same per-image `J_i` supplies both the selected center and the RD
+relationships. Each center uses only the corresponding class's text vectors,
+never other images, other classes, E, or learnable class prompts. The frozen
+selected vectors are averaged before the center is normalized. These centers
+can vary across images; they are not trainable parameters. The original
+full-center buffer remains in the state dictionary for compatibility. Choosing
+n=80 recovers the full-center teacher, up to floating-point reduction order.
+
+E, anchors and selected texts are normalized for their cosine similarities.
+All teacher vectors are detached. RD alone uses training labels after selection.
 The student retains its gradient; the objective preserves template-relative
 relations rather than replacing them with `MSE(E,A[y])`.
 
@@ -250,3 +266,38 @@ Sampling uses the global PyTorch RNG, so replay uses the same seed, device,
 software and call order. Exact continuation requires restoring the optimizer
 and RNG as well as model weights; the tests exercise this CPU resume contract.
 CUDA/CPU results are not claimed to be bitwise identical.
+
+## Entropy-40 RD with a selected-template center
+
+This opt-in experiment keeps E=1, S=1, IND=0, RD=2, neighbor-retention
+contrastive weight=1.5, k=10, alpha=4, temperature=0.07, warmup=500,
+lr=5e-5, batch size=32, aug=0, seeds=0, and LossValley SWAD. It sweeps
+all four PACS held-out domains using physical GPU 1. Dataset-dependent
+training length and SWAD settings are inherited unchanged.
+
+From `DCCL/DCCL`, after activating the existing training environment:
+
+```bash
+bash scripts/run_pacs_rd2_entropy40_selected_anchor_gpu1.sh
+```
+
+The script defaults to the established local-server data and CLIP paths.
+Override `CIPT_DATA_DIR`, `CIPT_CLIP_PATH`, `CIPT_OUTPUT_ROOT`, or `CIPT_PYTHON`
+if those locations differ. To reproduce the full-center control manually,
+use the identical training command with `--cipt_rd_anchor_mode full` and a
+different run name. The new mode prints `rd_anchor_mode=selected` at startup
+and logs `env_rd_selected_anchor=1` while selected-center RD is active.
+
+Focused validation, including the selected-center formula/gradient, unchanged
+entropy indices, frozen teacher, all-80 equivalence, CLI overrides, and
+multi-step averaging/reload/inference:
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 python -m unittest discover -s tests -p 'test_cipt_rd_selected_anchor.py'
+```
+
+The selected-center addition passed 91 core CPU tests (83 existing + 8 new)
+using PyTorch `2.14.1+cpu`. The GPU1 script also passed shell syntax and
+production-parser/configuration checks with a capture executable in place of
+training. No actual GPU/PACS training was started by these checks.
+

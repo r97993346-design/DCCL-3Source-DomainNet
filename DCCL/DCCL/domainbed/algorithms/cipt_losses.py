@@ -55,14 +55,20 @@ def prompt_consistency_loss(logits):
     return (loss * (prompts / float(prompts - 1))).clamp_min(0.0)
 
 
-def relative_distance_loss(causal_features, class_anchors, text_bank, labels, indices):
+def relative_distance_loss(causal_features, class_anchors, text_bank, labels, indices,
+                           anchor_mode="full"):
     """Mean squared error between student/teacher cosine relationships.
 
     E: [B,D], frozen A: [C,D], frozen T: [C,80,D], y: [B], J: [B,n].
     Only E is differentiable. J was selected without labels; labels are used
     here solely to look up the correct class's anchor and selected templates.
+    ``full`` keeps the original all-80 class center. ``selected`` instead
+    averages the same n frozen vectors used by this image's RD relationships,
+    then normalizes that per-image center. Neither teacher receives gradients.
     This preserves all n relationships rather than minimizing MSE(E, A[y]).
     """
+    if anchor_mode not in ("full", "selected"):
+        raise ValueError("anchor_mode must be full or selected")
     if causal_features.ndim != 2 or causal_features.shape[0] < 1:
         raise ValueError("causal_features must have nonempty shape [B,D]")
     batch, dim = causal_features.shape
@@ -81,8 +87,12 @@ def relative_distance_loss(causal_features, class_anchors, text_bank, labels, in
     if (indices < 0).any() or (indices >= 80).any():
         raise ValueError("template indices must be between 0 and 79")
     unit_e = F.normalize(causal_features.float(), dim=-1)
-    unit_a = F.normalize(class_anchors.detach().float()[labels], dim=-1)
-    unit_t = F.normalize(text_bank.detach().float()[labels[:, None], indices], dim=-1)
+    selected_text = text_bank.detach().float()[labels[:, None], indices]
+    unit_t = F.normalize(selected_text, dim=-1)
+    if anchor_mode == "selected":
+        unit_a = F.normalize(selected_text.mean(dim=1), dim=-1)
+    else:
+        unit_a = F.normalize(class_anchors.detach().float()[labels], dim=-1)
     student_similarity = (unit_e[:, None, :] * unit_t).sum(dim=-1)
     teacher_similarity = (unit_a[:, None, :] * unit_t).sum(dim=-1)
     return (student_similarity - teacher_similarity).square().mean()
@@ -94,4 +104,5 @@ def independence_loss(causal_features, spurious_features, eps=1e-6):
         causal_features, spurious_features, dim=-1, eps=eps
     )
     return 0.5 * cosine.square().mean()
+
 

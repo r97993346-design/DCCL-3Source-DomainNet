@@ -61,6 +61,8 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_env_topk"] = (40, 40)
         hparams["cipt_env_loss_weight"] = (1.0, 1.0)
         hparams["cipt_env_selection"] = ("entropy", "entropy")
+        # RD teacher center: all 80 templates by default, or the same selected n.
+        hparams["cipt_rd_anchor_mode"] = ("full", "full")
         # env_kl uses a unit E CE anchor; None for S falls back to beta.
         hparams["cipt_e_cls_weight"] = (1.0, 1.0)
         hparams["cipt_s_uniform_weight"] = (None, None)
@@ -151,4 +153,5 @@ def default_hparams(algorithm, dataset):
 def random_hparams(algorithm, dataset, seed):
     random_state = np.random.RandomState(seed)
     return {a: c for a, (b, c) in _hparams(algorithm, dataset, random_state).items()}
+
 
