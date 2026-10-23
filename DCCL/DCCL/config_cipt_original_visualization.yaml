@@ -1,0 +1,23 @@
+# Original CIPT path retained in this branch; no RD/MCC/entropy/contrastive loss.
+# Load after config.yaml. Do not combine with an env_anchor/env_kl preset.
+cipt_objective: legacy
+cipt_template_mode: b5b
+cipt_pure: true
+cipt_use_de: true
+cipt_use_ind: true
+cipt_use_tda: true
+cipt_use_contrastive: false
+cipt_use_aug_view: false
+cipt_selector_mode: random
+cipt_beta: 4.0
+cipt_gamma: 5.0
+cipt_k: 4
+cipt_tda_heads: 1
+cipt_prompt_length: 16
+cipt_prompt_init: a photo of a
+cipt_causal_contrastive_weight: 0.0
+cipt_env_kl_weight: 0.0
+cipt_fused_cls_weight: 0.0
+lr: 5.0e-5
+# Use ordinary checkpoints for mechanism analysis. SWAD is a separate protocol.
+swad: null
