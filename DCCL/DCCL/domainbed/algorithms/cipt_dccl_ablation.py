@@ -26,6 +26,12 @@ from domainbed.algorithms.cipt_neighbor_contrastive import (
     neighbor_retention_weights,
     validate_neighbor_options,
 )
+from domainbed.algorithms.cipt_clip_guided_contrastive import (
+    clip_guided_cross_domain_loss,
+    empty_clip_guided_stats,
+    source_domain_ids,
+    validate_clip_teacher_options,
+)
 from domainbed.algorithms.cipt_modules import SafeDiversePromptSelector
 from domainbed.optimizers import get_optimizer
 
@@ -110,8 +116,19 @@ class CIPTDCCL(_BaseCIPTDCCL):
         if self.contrastive_temperature <= 0.0:
             raise ValueError("cipt_contrastive_temperature must be positive")
         self.contrastive_type = str(hparams.get("cipt_contrastive_type", "supcon")).lower()
-        if self.contrastive_type not in ("supcon", "neighbor_retention"):
-            raise ValueError("cipt_contrastive_type must be supcon or neighbor_retention")
+        if self.contrastive_type not in (
+            "supcon", "neighbor_retention", "cross_domain_supcon", "clip_guided_cross_domain"
+        ):
+            raise ValueError(
+                "cipt_contrastive_type must be supcon, neighbor_retention, "
+                "cross_domain_supcon, or clip_guided_cross_domain"
+            )
+        self.clip_teacher_temperature = float(hparams.get("cipt_clip_teacher_temperature", 0.2))
+        self.clip_teacher_mix = float(hparams.get("cipt_clip_teacher_mix", 0.5))
+        self.clip_teacher_topk = hparams.get("cipt_clip_teacher_topk", 0)
+        validate_clip_teacher_options(
+            self.clip_teacher_temperature, self.clip_teacher_mix, self.clip_teacher_topk
+        )
         self.neighbor_k = hparams.get("cipt_neighbor_k", 5)
         self.neighbor_alpha = float(hparams.get("cipt_neighbor_alpha", 0.5))
         validate_neighbor_options(self.neighbor_k, self.neighbor_alpha)
@@ -176,6 +193,16 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "neighbor_diagnostics={}, detached_weights=True".format(
                 self.contrastive_type, self.neighbor_k, self.neighbor_alpha,
                 self.neighbor_diagnostics,
+            )
+        )
+        print(
+            "CIPTDCCL cross-domain contrastive: mode={}, teacher_temperature={}, "
+            "teacher_mix={}, teacher_topk={}, temperature={}, configured_weight={}, "
+            "warmup_steps={}".format(
+                self.contrastive_type, self.clip_teacher_temperature,
+                self.clip_teacher_mix, self.clip_teacher_topk,
+                self.contrastive_temperature, self.contrastive_weight,
+                self.contrastive_warmup_steps,
             )
         )
 
@@ -336,8 +363,26 @@ class CIPTDCCL(_BaseCIPTDCCL):
             and self.neighbor_alpha > 0.0
         )
         stats = empty_neighbor_stats(causal)
+        stats.update(empty_clip_guided_stats(causal))
         stats["nbr_wmean"] = causal.new_ones(())
         stats["nbr_wmax"] = causal.new_ones(())
+        if enabled and self.contrastive_type in (
+            "cross_domain_supcon", "clip_guided_cross_domain"
+        ):
+            domains = source_domain_ids(labels, label_batches)
+            loss, measured = clip_guided_cross_domain_loss(
+                visual, causal, labels, domains,
+                temperature=self.contrastive_temperature,
+                teacher_temperature=self.clip_teacher_temperature,
+                teacher_mix=(self.clip_teacher_mix
+                             if self.contrastive_type == "clip_guided_cross_domain" else 0.0),
+                topk=self.clip_teacher_topk,
+            )
+            stats.update(measured)
+            self._causal_contrastive_step.add_(1)
+            scale = self._contrastive_scale()
+            stats["cg_active"] = stats["cg_active"] * float(scale > 0.0)
+            return loss, stats["cg_valid_anchor_fraction"], scale, stats
         anchor_weights = None
         if apply_weights or self.neighbor_diagnostics:
             # The trainer supplies one label tensor per SOURCE domain, in the
