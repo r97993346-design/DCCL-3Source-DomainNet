@@ -31,6 +31,7 @@ def load_file(name, path):
 
 
 neighbor = load_file("neighbor_loss", ALGORITHMS / "cipt_neighbor_contrastive.py")
+clip_guided = load_file("clip_guided_loss", ALGORITHMS / "cipt_clip_guided_contrastive.py")
 losses = load_file("base_losses", ALGORITHMS / "cipt_losses.py")
 modules = load_file("base_modules", ALGORITHMS / "cipt_modules.py")
 optimizer = load_file("base_optimizer", ROOT / "domainbed" / "optimizers.py")
@@ -98,6 +99,10 @@ NAMESPACE = {
     "empty_neighbor_stats": neighbor.empty_neighbor_stats,
     "neighbor_retention_weights": neighbor.neighbor_retention_weights,
     "validate_neighbor_options": neighbor.validate_neighbor_options,
+    "clip_guided_cross_domain_loss": clip_guided.clip_guided_cross_domain_loss,
+    "empty_clip_guided_stats": clip_guided.empty_clip_guided_stats,
+    "source_domain_ids": clip_guided.source_domain_ids,
+    "validate_clip_teacher_options": clip_guided.validate_clip_teacher_options,
     "CLASS_CONDITIONED_TDA_MODES": {"b5b", "bconst"},
     "SELECTABLE_TDA_MODES": {"b5a", "b5c"},
     "SafeDiversePromptSelector": modules.SafeDiversePromptSelector,
