@@ -135,7 +135,7 @@ for spec in "${experiments[@]}"; do
         --cipt_use_de "$use_de" --cipt_beta 1.0
         --cipt_e_cls_weight 1.0 --cipt_s_uniform_weight "$s_weight"
         --cipt_use_ind false --cipt_gamma 0.0
-        --cipt_use_tda false --cipt_env_inference e_only
+        --cipt_use_tda false
         --cipt_env_kl_weight 0.0 --cipt_fused_cls_weight 0.0
         --cipt_pure "$pure" --cipt_use_aug_view false
         --cipt_template_mode b5b --cipt_selector_mode random
@@ -147,6 +147,12 @@ for spec in "${experiments[@]}"; do
         --cipt_contrastive_warmup_steps 0
         --cipt_neighbor_k 10 --cipt_neighbor_alpha 4.0
     )
+
+    # sconf rejects overrides for keys absent from the merged preset.
+    # clip_ce does not define or consume cipt_env_inference.
+    if [[ "$objective" == env_anchor ]]; then
+        cmd+=(--cipt_env_inference e_only)
+    fi
 
     if $dry_run; then
         printf '\nCUDA_VISIBLE_DEVICES=0 '
