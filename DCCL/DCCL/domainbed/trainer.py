@@ -31,6 +31,19 @@ def json_handler(v):
     raise TypeError(f"`{type(v)}` is not JSON Serializable")
 
 
+def resolve_loader_workers(args, dataset):
+    """Keep legacy defaults while allowing separate training/evaluation limits."""
+    train_workers = getattr(args, "num_workers", None)
+    if train_workers is None:
+        train_workers = dataset.N_WORKERS
+    eval_workers = getattr(args, "eval_num_workers", None)
+    if eval_workers is None:
+        eval_workers = train_workers
+    if train_workers < 0 or eval_workers < 0:
+        raise ValueError("DataLoader worker counts must be non-negative")
+    return train_workers, eval_workers
+
+
 def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, target_env=None):
     logger.info("")
 
@@ -102,12 +115,17 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     prt_steps = ", ".join([f"{step:.2f}" for step in steps_per_epochs])
     logger.info(f"steps-per-epoch for each domain: {prt_steps} -> min = {steps_per_epoch:.2f}")
 
+    train_workers, eval_workers = resolve_loader_workers(args, dataset)
+    logger.info(
+        f"DataLoader workers: train={train_workers} per source domain "
+        f"({train_workers * len(train_envs)} total), eval={eval_workers} per loader"
+    )
     train_loaders = [
         InfiniteDataLoader(
             dataset=env,
             weights=env_weights,
             batch_size=batch_size,
-            num_workers=dataset.N_WORKERS,
+            num_workers=train_workers,
         )
         for (env, env_weights), batch_size in iterator.train(zip(in_splits, batch_sizes))
     ]
@@ -119,7 +137,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         loader_kwargs = {
             "dataset": env,
             "batch_size": batchsize,
-            "num_workers": dataset.N_WORKERS,
+            "num_workers": eval_workers,
         }
         if args.prebuild_loader:
             loader_kwargs = FastDataLoader(**loader_kwargs)
@@ -384,3 +402,4 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         logger.info(f"{k} = {acc:.3%}")
 
     return ret, records
+
