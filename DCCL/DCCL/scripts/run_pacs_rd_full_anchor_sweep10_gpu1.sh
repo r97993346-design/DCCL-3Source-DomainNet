@@ -38,6 +38,8 @@ export PYTHONUNBUFFERED=1
 
 printf 'SWEEP_ROOT=%s\nGPU=1\nRD_anchor=full\nRD_weight=2.0\nEntropy_topk=40\n' "$run_root"
 printf 'There are 10 serial runs; each train_all.py call covers all four PACS target domains.\n'
+printf 'DataLoader workers: train=%s per source domain; eval=%s per loader.\n' \
+    "${CIPT_NUM_WORKERS:-2}" "${CIPT_EVAL_NUM_WORKERS:-0}"
 
 # id | contrastive_type | E contrastive temperature | contrastive weight | IND (gamma=1 when enabled)
 experiments=(
@@ -75,6 +77,8 @@ for spec in "${experiments[@]}"; do
         --output_root "$exp_root"
         --deterministic --seed 0 --trial_seed 0
         --aug 0 --lr 5e-5 --batch_size 32 --checkpoint_freq 100
+        --num_workers "${CIPT_NUM_WORKERS:-2}"
+        --eval_num_workers "${CIPT_EVAL_NUM_WORKERS:-0}"
         --cipt_prompt_length 16 --cipt_prompt_init "a photo of a"
         --cipt_objective env_anchor --cipt_env_constraint relative_distance
         --cipt_template_mode b5b --cipt_selector_mode random
@@ -117,3 +121,4 @@ done
 
 printf '\nALL 10 EXPERIMENTS COMPLETED: %s\n' "$run_root"
 cat "$run_root/status.tsv"
+
