@@ -79,6 +79,14 @@ def main():
     parser.add_argument("--weak_erm", action="store_true", help="When --algorithm ERM is run directly, use the weak ERM baseline settings (ImageNet pretrained backbone, no SWAD).")
     parser.add_argument("--holdout_fraction", type=float, default=0.2)
     parser.add_argument("--model_save", default=None, type=int, help="Model save start step")
+    parser.add_argument(
+        "--num_workers", type=int, default=None,
+        help="DataLoader workers per source domain; default uses the dataset setting.",
+    )
+    parser.add_argument(
+        "--eval_num_workers", type=int, default=None,
+        help="Workers per evaluation loader; default follows --num_workers; 0 loads in the main process.",
+    )
     parser.add_argument("--deterministic", action="store_true")
     parser.add_argument("--tb_freq", default=10)
     parser.add_argument("--debug", action="store_true", help="Run w/ debug mode")
@@ -147,6 +155,10 @@ def main():
         help="Root directory for training outputs"
     )
     args, left_argv = parser.parse_known_args()
+    for worker_option in ("num_workers", "eval_num_workers"):
+        worker_value = getattr(args, worker_option)
+        if worker_value is not None and worker_value < 0:
+            parser.error("--{} must be non-negative".format(worker_option))
 
     # setup hparams
     hparams = hparams_registry.default_hparams(args.algorithm, args.dataset)
@@ -378,3 +390,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
