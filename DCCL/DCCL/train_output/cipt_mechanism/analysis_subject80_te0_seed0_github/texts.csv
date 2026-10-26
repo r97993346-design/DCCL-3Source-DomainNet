@@ -1,0 +1,642 @@
+﻿condition,class,template_id,native_z_bank,text
+class,dog,0,False,a bad photo of a dog.
+class,dog,1,False,a photo of many dog.
+class,dog,2,False,a sculpture of a dog.
+class,dog,3,False,a photo of the hard to see dog.
+class,dog,4,False,a low resolution photo of the dog.
+class,dog,5,False,a rendering of a dog.
+class,dog,6,False,graffiti of a dog.
+class,dog,7,False,a bad photo of the dog.
+class,dog,8,False,a cropped photo of the dog.
+class,dog,9,False,a tattoo of a dog.
+class,dog,10,False,the embroidered dog.
+class,dog,11,False,a photo of a hard to see dog.
+class,dog,12,False,a bright photo of a dog.
+class,dog,13,False,a photo of a clean dog.
+class,dog,14,False,a photo of a dirty dog.
+class,dog,15,False,a dark photo of the dog.
+class,dog,16,False,a drawing of a dog.
+class,dog,17,False,a photo of my dog.
+class,dog,18,False,the plastic dog.
+class,dog,19,False,a photo of the cool dog.
+class,dog,20,False,a close-up photo of a dog.
+class,dog,21,False,a black and white photo of the dog.
+class,dog,22,False,a painting of the dog.
+class,dog,23,False,a painting of a dog.
+class,dog,24,False,a pixelated photo of the dog.
+class,dog,25,False,a sculpture of the dog.
+class,dog,26,False,a bright photo of the dog.
+class,dog,27,False,a cropped photo of a dog.
+class,dog,28,False,a plastic dog.
+class,dog,29,False,a photo of the dirty dog.
+class,dog,30,False,a jpeg corrupted photo of a dog.
+class,dog,31,False,a blurry photo of the dog.
+class,dog,32,False,a photo of the dog.
+class,dog,33,False,a good photo of the dog.
+class,dog,34,False,a rendering of the dog.
+class,dog,35,False,a dog in a video game.
+class,dog,36,False,a photo of one dog.
+class,dog,37,False,a doodle of a dog.
+class,dog,38,False,a close-up photo of the dog.
+class,dog,39,False,a photo of a dog.
+class,dog,40,False,the origami dog.
+class,dog,41,False,the dog in a video game.
+class,dog,42,False,a sketch of a dog.
+class,dog,43,False,a doodle of the dog.
+class,dog,44,False,a origami dog.
+class,dog,45,False,a low resolution photo of a dog.
+class,dog,46,False,the toy dog.
+class,dog,47,False,a rendition of the dog.
+class,dog,48,False,a photo of the clean dog.
+class,dog,49,False,a photo of a large dog.
+class,dog,50,False,a rendition of a dog.
+class,dog,51,False,a photo of a nice dog.
+class,dog,52,False,a photo of a weird dog.
+class,dog,53,False,a blurry photo of a dog.
+class,dog,54,False,a cartoon dog.
+class,dog,55,False,art of a dog.
+class,dog,56,False,a sketch of the dog.
+class,dog,57,False,a embroidered dog.
+class,dog,58,False,a pixelated photo of a dog.
+class,dog,59,False,itap of the dog.
+class,dog,60,False,a jpeg corrupted photo of the dog.
+class,dog,61,False,a good photo of a dog.
+class,dog,62,False,a plushie dog.
+class,dog,63,False,a photo of the nice dog.
+class,dog,64,False,a photo of the small dog.
+class,dog,65,False,a photo of the weird dog.
+class,dog,66,False,the cartoon dog.
+class,dog,67,False,art of the dog.
+class,dog,68,False,a drawing of the dog.
+class,dog,69,False,a photo of the large dog.
+class,dog,70,False,a black and white photo of a dog.
+class,dog,71,False,the plushie dog.
+class,dog,72,False,a dark photo of a dog.
+class,dog,73,False,itap of a dog.
+class,dog,74,False,graffiti of the dog.
+class,dog,75,False,a toy dog.
+class,dog,76,False,itap of my dog.
+class,dog,77,False,a photo of a cool dog.
+class,dog,78,False,a photo of a small dog.
+class,dog,79,False,a tattoo of the dog.
+class,elephant,0,False,a bad photo of a elephant.
+class,elephant,1,False,a photo of many elephant.
+class,elephant,2,False,a sculpture of a elephant.
+class,elephant,3,False,a photo of the hard to see elephant.
+class,elephant,4,False,a low resolution photo of the elephant.
+class,elephant,5,False,a rendering of a elephant.
+class,elephant,6,False,graffiti of a elephant.
+class,elephant,7,False,a bad photo of the elephant.
+class,elephant,8,False,a cropped photo of the elephant.
+class,elephant,9,False,a tattoo of a elephant.
+class,elephant,10,False,the embroidered elephant.
+class,elephant,11,False,a photo of a hard to see elephant.
+class,elephant,12,False,a bright photo of a elephant.
+class,elephant,13,False,a photo of a clean elephant.
+class,elephant,14,False,a photo of a dirty elephant.
+class,elephant,15,False,a dark photo of the elephant.
+class,elephant,16,False,a drawing of a elephant.
+class,elephant,17,False,a photo of my elephant.
+class,elephant,18,False,the plastic elephant.
+class,elephant,19,False,a photo of the cool elephant.
+class,elephant,20,False,a close-up photo of a elephant.
+class,elephant,21,False,a black and white photo of the elephant.
+class,elephant,22,False,a painting of the elephant.
+class,elephant,23,False,a painting of a elephant.
+class,elephant,24,False,a pixelated photo of the elephant.
+class,elephant,25,False,a sculpture of the elephant.
+class,elephant,26,False,a bright photo of the elephant.
+class,elephant,27,False,a cropped photo of a elephant.
+class,elephant,28,False,a plastic elephant.
+class,elephant,29,False,a photo of the dirty elephant.
+class,elephant,30,False,a jpeg corrupted photo of a elephant.
+class,elephant,31,False,a blurry photo of the elephant.
+class,elephant,32,False,a photo of the elephant.
+class,elephant,33,False,a good photo of the elephant.
+class,elephant,34,False,a rendering of the elephant.
+class,elephant,35,False,a elephant in a video game.
+class,elephant,36,False,a photo of one elephant.
+class,elephant,37,False,a doodle of a elephant.
+class,elephant,38,False,a close-up photo of the elephant.
+class,elephant,39,False,a photo of a elephant.
+class,elephant,40,False,the origami elephant.
+class,elephant,41,False,the elephant in a video game.
+class,elephant,42,False,a sketch of a elephant.
+class,elephant,43,False,a doodle of the elephant.
+class,elephant,44,False,a origami elephant.
+class,elephant,45,False,a low resolution photo of a elephant.
+class,elephant,46,False,the toy elephant.
+class,elephant,47,False,a rendition of the elephant.
+class,elephant,48,False,a photo of the clean elephant.
+class,elephant,49,False,a photo of a large elephant.
+class,elephant,50,False,a rendition of a elephant.
+class,elephant,51,False,a photo of a nice elephant.
+class,elephant,52,False,a photo of a weird elephant.
+class,elephant,53,False,a blurry photo of a elephant.
+class,elephant,54,False,a cartoon elephant.
+class,elephant,55,False,art of a elephant.
+class,elephant,56,False,a sketch of the elephant.
+class,elephant,57,False,a embroidered elephant.
+class,elephant,58,False,a pixelated photo of a elephant.
+class,elephant,59,False,itap of the elephant.
+class,elephant,60,False,a jpeg corrupted photo of the elephant.
+class,elephant,61,False,a good photo of a elephant.
+class,elephant,62,False,a plushie elephant.
+class,elephant,63,False,a photo of the nice elephant.
+class,elephant,64,False,a photo of the small elephant.
+class,elephant,65,False,a photo of the weird elephant.
+class,elephant,66,False,the cartoon elephant.
+class,elephant,67,False,art of the elephant.
+class,elephant,68,False,a drawing of the elephant.
+class,elephant,69,False,a photo of the large elephant.
+class,elephant,70,False,a black and white photo of a elephant.
+class,elephant,71,False,the plushie elephant.
+class,elephant,72,False,a dark photo of a elephant.
+class,elephant,73,False,itap of a elephant.
+class,elephant,74,False,graffiti of the elephant.
+class,elephant,75,False,a toy elephant.
+class,elephant,76,False,itap of my elephant.
+class,elephant,77,False,a photo of a cool elephant.
+class,elephant,78,False,a photo of a small elephant.
+class,elephant,79,False,a tattoo of the elephant.
+class,giraffe,0,False,a bad photo of a giraffe.
+class,giraffe,1,False,a photo of many giraffe.
+class,giraffe,2,False,a sculpture of a giraffe.
+class,giraffe,3,False,a photo of the hard to see giraffe.
+class,giraffe,4,False,a low resolution photo of the giraffe.
+class,giraffe,5,False,a rendering of a giraffe.
+class,giraffe,6,False,graffiti of a giraffe.
+class,giraffe,7,False,a bad photo of the giraffe.
+class,giraffe,8,False,a cropped photo of the giraffe.
+class,giraffe,9,False,a tattoo of a giraffe.
+class,giraffe,10,False,the embroidered giraffe.
+class,giraffe,11,False,a photo of a hard to see giraffe.
+class,giraffe,12,False,a bright photo of a giraffe.
+class,giraffe,13,False,a photo of a clean giraffe.
+class,giraffe,14,False,a photo of a dirty giraffe.
+class,giraffe,15,False,a dark photo of the giraffe.
+class,giraffe,16,False,a drawing of a giraffe.
+class,giraffe,17,False,a photo of my giraffe.
+class,giraffe,18,False,the plastic giraffe.
+class,giraffe,19,False,a photo of the cool giraffe.
+class,giraffe,20,False,a close-up photo of a giraffe.
+class,giraffe,21,False,a black and white photo of the giraffe.
+class,giraffe,22,False,a painting of the giraffe.
+class,giraffe,23,False,a painting of a giraffe.
+class,giraffe,24,False,a pixelated photo of the giraffe.
+class,giraffe,25,False,a sculpture of the giraffe.
+class,giraffe,26,False,a bright photo of the giraffe.
+class,giraffe,27,False,a cropped photo of a giraffe.
+class,giraffe,28,False,a plastic giraffe.
+class,giraffe,29,False,a photo of the dirty giraffe.
+class,giraffe,30,False,a jpeg corrupted photo of a giraffe.
+class,giraffe,31,False,a blurry photo of the giraffe.
+class,giraffe,32,False,a photo of the giraffe.
+class,giraffe,33,False,a good photo of the giraffe.
+class,giraffe,34,False,a rendering of the giraffe.
+class,giraffe,35,False,a giraffe in a video game.
+class,giraffe,36,False,a photo of one giraffe.
+class,giraffe,37,False,a doodle of a giraffe.
+class,giraffe,38,False,a close-up photo of the giraffe.
+class,giraffe,39,False,a photo of a giraffe.
+class,giraffe,40,False,the origami giraffe.
+class,giraffe,41,False,the giraffe in a video game.
+class,giraffe,42,False,a sketch of a giraffe.
+class,giraffe,43,False,a doodle of the giraffe.
+class,giraffe,44,False,a origami giraffe.
+class,giraffe,45,False,a low resolution photo of a giraffe.
+class,giraffe,46,False,the toy giraffe.
+class,giraffe,47,False,a rendition of the giraffe.
+class,giraffe,48,False,a photo of the clean giraffe.
+class,giraffe,49,False,a photo of a large giraffe.
+class,giraffe,50,False,a rendition of a giraffe.
+class,giraffe,51,False,a photo of a nice giraffe.
+class,giraffe,52,False,a photo of a weird giraffe.
+class,giraffe,53,False,a blurry photo of a giraffe.
+class,giraffe,54,False,a cartoon giraffe.
+class,giraffe,55,False,art of a giraffe.
+class,giraffe,56,False,a sketch of the giraffe.
+class,giraffe,57,False,a embroidered giraffe.
+class,giraffe,58,False,a pixelated photo of a giraffe.
+class,giraffe,59,False,itap of the giraffe.
+class,giraffe,60,False,a jpeg corrupted photo of the giraffe.
+class,giraffe,61,False,a good photo of a giraffe.
+class,giraffe,62,False,a plushie giraffe.
+class,giraffe,63,False,a photo of the nice giraffe.
+class,giraffe,64,False,a photo of the small giraffe.
+class,giraffe,65,False,a photo of the weird giraffe.
+class,giraffe,66,False,the cartoon giraffe.
+class,giraffe,67,False,art of the giraffe.
+class,giraffe,68,False,a drawing of the giraffe.
+class,giraffe,69,False,a photo of the large giraffe.
+class,giraffe,70,False,a black and white photo of a giraffe.
+class,giraffe,71,False,the plushie giraffe.
+class,giraffe,72,False,a dark photo of a giraffe.
+class,giraffe,73,False,itap of a giraffe.
+class,giraffe,74,False,graffiti of the giraffe.
+class,giraffe,75,False,a toy giraffe.
+class,giraffe,76,False,itap of my giraffe.
+class,giraffe,77,False,a photo of a cool giraffe.
+class,giraffe,78,False,a photo of a small giraffe.
+class,giraffe,79,False,a tattoo of the giraffe.
+class,guitar,0,False,a bad photo of a guitar.
+class,guitar,1,False,a photo of many guitar.
+class,guitar,2,False,a sculpture of a guitar.
+class,guitar,3,False,a photo of the hard to see guitar.
+class,guitar,4,False,a low resolution photo of the guitar.
+class,guitar,5,False,a rendering of a guitar.
+class,guitar,6,False,graffiti of a guitar.
+class,guitar,7,False,a bad photo of the guitar.
+class,guitar,8,False,a cropped photo of the guitar.
+class,guitar,9,False,a tattoo of a guitar.
+class,guitar,10,False,the embroidered guitar.
+class,guitar,11,False,a photo of a hard to see guitar.
+class,guitar,12,False,a bright photo of a guitar.
+class,guitar,13,False,a photo of a clean guitar.
+class,guitar,14,False,a photo of a dirty guitar.
+class,guitar,15,False,a dark photo of the guitar.
+class,guitar,16,False,a drawing of a guitar.
+class,guitar,17,False,a photo of my guitar.
+class,guitar,18,False,the plastic guitar.
+class,guitar,19,False,a photo of the cool guitar.
+class,guitar,20,False,a close-up photo of a guitar.
+class,guitar,21,False,a black and white photo of the guitar.
+class,guitar,22,False,a painting of the guitar.
+class,guitar,23,False,a painting of a guitar.
+class,guitar,24,False,a pixelated photo of the guitar.
+class,guitar,25,False,a sculpture of the guitar.
+class,guitar,26,False,a bright photo of the guitar.
+class,guitar,27,False,a cropped photo of a guitar.
+class,guitar,28,False,a plastic guitar.
+class,guitar,29,False,a photo of the dirty guitar.
+class,guitar,30,False,a jpeg corrupted photo of a guitar.
+class,guitar,31,False,a blurry photo of the guitar.
+class,guitar,32,False,a photo of the guitar.
+class,guitar,33,False,a good photo of the guitar.
+class,guitar,34,False,a rendering of the guitar.
+class,guitar,35,False,a guitar in a video game.
+class,guitar,36,False,a photo of one guitar.
+class,guitar,37,False,a doodle of a guitar.
+class,guitar,38,False,a close-up photo of the guitar.
+class,guitar,39,False,a photo of a guitar.
+class,guitar,40,False,the origami guitar.
+class,guitar,41,False,the guitar in a video game.
+class,guitar,42,False,a sketch of a guitar.
+class,guitar,43,False,a doodle of the guitar.
+class,guitar,44,False,a origami guitar.
+class,guitar,45,False,a low resolution photo of a guitar.
+class,guitar,46,False,the toy guitar.
+class,guitar,47,False,a rendition of the guitar.
+class,guitar,48,False,a photo of the clean guitar.
+class,guitar,49,False,a photo of a large guitar.
+class,guitar,50,False,a rendition of a guitar.
+class,guitar,51,False,a photo of a nice guitar.
+class,guitar,52,False,a photo of a weird guitar.
+class,guitar,53,False,a blurry photo of a guitar.
+class,guitar,54,False,a cartoon guitar.
+class,guitar,55,False,art of a guitar.
+class,guitar,56,False,a sketch of the guitar.
+class,guitar,57,False,a embroidered guitar.
+class,guitar,58,False,a pixelated photo of a guitar.
+class,guitar,59,False,itap of the guitar.
+class,guitar,60,False,a jpeg corrupted photo of the guitar.
+class,guitar,61,False,a good photo of a guitar.
+class,guitar,62,False,a plushie guitar.
+class,guitar,63,False,a photo of the nice guitar.
+class,guitar,64,False,a photo of the small guitar.
+class,guitar,65,False,a photo of the weird guitar.
+class,guitar,66,False,the cartoon guitar.
+class,guitar,67,False,art of the guitar.
+class,guitar,68,False,a drawing of the guitar.
+class,guitar,69,False,a photo of the large guitar.
+class,guitar,70,False,a black and white photo of a guitar.
+class,guitar,71,False,the plushie guitar.
+class,guitar,72,False,a dark photo of a guitar.
+class,guitar,73,False,itap of a guitar.
+class,guitar,74,False,graffiti of the guitar.
+class,guitar,75,False,a toy guitar.
+class,guitar,76,False,itap of my guitar.
+class,guitar,77,False,a photo of a cool guitar.
+class,guitar,78,False,a photo of a small guitar.
+class,guitar,79,False,a tattoo of the guitar.
+class,horse,0,False,a bad photo of a horse.
+class,horse,1,False,a photo of many horse.
+class,horse,2,False,a sculpture of a horse.
+class,horse,3,False,a photo of the hard to see horse.
+class,horse,4,False,a low resolution photo of the horse.
+class,horse,5,False,a rendering of a horse.
+class,horse,6,False,graffiti of a horse.
+class,horse,7,False,a bad photo of the horse.
+class,horse,8,False,a cropped photo of the horse.
+class,horse,9,False,a tattoo of a horse.
+class,horse,10,False,the embroidered horse.
+class,horse,11,False,a photo of a hard to see horse.
+class,horse,12,False,a bright photo of a horse.
+class,horse,13,False,a photo of a clean horse.
+class,horse,14,False,a photo of a dirty horse.
+class,horse,15,False,a dark photo of the horse.
+class,horse,16,False,a drawing of a horse.
+class,horse,17,False,a photo of my horse.
+class,horse,18,False,the plastic horse.
+class,horse,19,False,a photo of the cool horse.
+class,horse,20,False,a close-up photo of a horse.
+class,horse,21,False,a black and white photo of the horse.
+class,horse,22,False,a painting of the horse.
+class,horse,23,False,a painting of a horse.
+class,horse,24,False,a pixelated photo of the horse.
+class,horse,25,False,a sculpture of the horse.
+class,horse,26,False,a bright photo of the horse.
+class,horse,27,False,a cropped photo of a horse.
+class,horse,28,False,a plastic horse.
+class,horse,29,False,a photo of the dirty horse.
+class,horse,30,False,a jpeg corrupted photo of a horse.
+class,horse,31,False,a blurry photo of the horse.
+class,horse,32,False,a photo of the horse.
+class,horse,33,False,a good photo of the horse.
+class,horse,34,False,a rendering of the horse.
+class,horse,35,False,a horse in a video game.
+class,horse,36,False,a photo of one horse.
+class,horse,37,False,a doodle of a horse.
+class,horse,38,False,a close-up photo of the horse.
+class,horse,39,False,a photo of a horse.
+class,horse,40,False,the origami horse.
+class,horse,41,False,the horse in a video game.
+class,horse,42,False,a sketch of a horse.
+class,horse,43,False,a doodle of the horse.
+class,horse,44,False,a origami horse.
+class,horse,45,False,a low resolution photo of a horse.
+class,horse,46,False,the toy horse.
+class,horse,47,False,a rendition of the horse.
+class,horse,48,False,a photo of the clean horse.
+class,horse,49,False,a photo of a large horse.
+class,horse,50,False,a rendition of a horse.
+class,horse,51,False,a photo of a nice horse.
+class,horse,52,False,a photo of a weird horse.
+class,horse,53,False,a blurry photo of a horse.
+class,horse,54,False,a cartoon horse.
+class,horse,55,False,art of a horse.
+class,horse,56,False,a sketch of the horse.
+class,horse,57,False,a embroidered horse.
+class,horse,58,False,a pixelated photo of a horse.
+class,horse,59,False,itap of the horse.
+class,horse,60,False,a jpeg corrupted photo of the horse.
+class,horse,61,False,a good photo of a horse.
+class,horse,62,False,a plushie horse.
+class,horse,63,False,a photo of the nice horse.
+class,horse,64,False,a photo of the small horse.
+class,horse,65,False,a photo of the weird horse.
+class,horse,66,False,the cartoon horse.
+class,horse,67,False,art of the horse.
+class,horse,68,False,a drawing of the horse.
+class,horse,69,False,a photo of the large horse.
+class,horse,70,False,a black and white photo of a horse.
+class,horse,71,False,the plushie horse.
+class,horse,72,False,a dark photo of a horse.
+class,horse,73,False,itap of a horse.
+class,horse,74,False,graffiti of the horse.
+class,horse,75,False,a toy horse.
+class,horse,76,False,itap of my horse.
+class,horse,77,False,a photo of a cool horse.
+class,horse,78,False,a photo of a small horse.
+class,horse,79,False,a tattoo of the horse.
+class,house,0,False,a bad photo of a house.
+class,house,1,False,a photo of many house.
+class,house,2,False,a sculpture of a house.
+class,house,3,False,a photo of the hard to see house.
+class,house,4,False,a low resolution photo of the house.
+class,house,5,False,a rendering of a house.
+class,house,6,False,graffiti of a house.
+class,house,7,False,a bad photo of the house.
+class,house,8,False,a cropped photo of the house.
+class,house,9,False,a tattoo of a house.
+class,house,10,False,the embroidered house.
+class,house,11,False,a photo of a hard to see house.
+class,house,12,False,a bright photo of a house.
+class,house,13,False,a photo of a clean house.
+class,house,14,False,a photo of a dirty house.
+class,house,15,False,a dark photo of the house.
+class,house,16,False,a drawing of a house.
+class,house,17,False,a photo of my house.
+class,house,18,False,the plastic house.
+class,house,19,False,a photo of the cool house.
+class,house,20,False,a close-up photo of a house.
+class,house,21,False,a black and white photo of the house.
+class,house,22,False,a painting of the house.
+class,house,23,False,a painting of a house.
+class,house,24,False,a pixelated photo of the house.
+class,house,25,False,a sculpture of the house.
+class,house,26,False,a bright photo of the house.
+class,house,27,False,a cropped photo of a house.
+class,house,28,False,a plastic house.
+class,house,29,False,a photo of the dirty house.
+class,house,30,False,a jpeg corrupted photo of a house.
+class,house,31,False,a blurry photo of the house.
+class,house,32,False,a photo of the house.
+class,house,33,False,a good photo of the house.
+class,house,34,False,a rendering of the house.
+class,house,35,False,a house in a video game.
+class,house,36,False,a photo of one house.
+class,house,37,False,a doodle of a house.
+class,house,38,False,a close-up photo of the house.
+class,house,39,False,a photo of a house.
+class,house,40,False,the origami house.
+class,house,41,False,the house in a video game.
+class,house,42,False,a sketch of a house.
+class,house,43,False,a doodle of the house.
+class,house,44,False,a origami house.
+class,house,45,False,a low resolution photo of a house.
+class,house,46,False,the toy house.
+class,house,47,False,a rendition of the house.
+class,house,48,False,a photo of the clean house.
+class,house,49,False,a photo of a large house.
+class,house,50,False,a rendition of a house.
+class,house,51,False,a photo of a nice house.
+class,house,52,False,a photo of a weird house.
+class,house,53,False,a blurry photo of a house.
+class,house,54,False,a cartoon house.
+class,house,55,False,art of a house.
+class,house,56,False,a sketch of the house.
+class,house,57,False,a embroidered house.
+class,house,58,False,a pixelated photo of a house.
+class,house,59,False,itap of the house.
+class,house,60,False,a jpeg corrupted photo of the house.
+class,house,61,False,a good photo of a house.
+class,house,62,False,a plushie house.
+class,house,63,False,a photo of the nice house.
+class,house,64,False,a photo of the small house.
+class,house,65,False,a photo of the weird house.
+class,house,66,False,the cartoon house.
+class,house,67,False,art of the house.
+class,house,68,False,a drawing of the house.
+class,house,69,False,a photo of the large house.
+class,house,70,False,a black and white photo of a house.
+class,house,71,False,the plushie house.
+class,house,72,False,a dark photo of a house.
+class,house,73,False,itap of a house.
+class,house,74,False,graffiti of the house.
+class,house,75,False,a toy house.
+class,house,76,False,itap of my house.
+class,house,77,False,a photo of a cool house.
+class,house,78,False,a photo of a small house.
+class,house,79,False,a tattoo of the house.
+class,person,0,False,a bad photo of a person.
+class,person,1,False,a photo of many person.
+class,person,2,False,a sculpture of a person.
+class,person,3,False,a photo of the hard to see person.
+class,person,4,False,a low resolution photo of the person.
+class,person,5,False,a rendering of a person.
+class,person,6,False,graffiti of a person.
+class,person,7,False,a bad photo of the person.
+class,person,8,False,a cropped photo of the person.
+class,person,9,False,a tattoo of a person.
+class,person,10,False,the embroidered person.
+class,person,11,False,a photo of a hard to see person.
+class,person,12,False,a bright photo of a person.
+class,person,13,False,a photo of a clean person.
+class,person,14,False,a photo of a dirty person.
+class,person,15,False,a dark photo of the person.
+class,person,16,False,a drawing of a person.
+class,person,17,False,a photo of my person.
+class,person,18,False,the plastic person.
+class,person,19,False,a photo of the cool person.
+class,person,20,False,a close-up photo of a person.
+class,person,21,False,a black and white photo of the person.
+class,person,22,False,a painting of the person.
+class,person,23,False,a painting of a person.
+class,person,24,False,a pixelated photo of the person.
+class,person,25,False,a sculpture of the person.
+class,person,26,False,a bright photo of the person.
+class,person,27,False,a cropped photo of a person.
+class,person,28,False,a plastic person.
+class,person,29,False,a photo of the dirty person.
+class,person,30,False,a jpeg corrupted photo of a person.
+class,person,31,False,a blurry photo of the person.
+class,person,32,False,a photo of the person.
+class,person,33,False,a good photo of the person.
+class,person,34,False,a rendering of the person.
+class,person,35,False,a person in a video game.
+class,person,36,False,a photo of one person.
+class,person,37,False,a doodle of a person.
+class,person,38,False,a close-up photo of the person.
+class,person,39,False,a photo of a person.
+class,person,40,False,the origami person.
+class,person,41,False,the person in a video game.
+class,person,42,False,a sketch of a person.
+class,person,43,False,a doodle of the person.
+class,person,44,False,a origami person.
+class,person,45,False,a low resolution photo of a person.
+class,person,46,False,the toy person.
+class,person,47,False,a rendition of the person.
+class,person,48,False,a photo of the clean person.
+class,person,49,False,a photo of a large person.
+class,person,50,False,a rendition of a person.
+class,person,51,False,a photo of a nice person.
+class,person,52,False,a photo of a weird person.
+class,person,53,False,a blurry photo of a person.
+class,person,54,False,a cartoon person.
+class,person,55,False,art of a person.
+class,person,56,False,a sketch of the person.
+class,person,57,False,a embroidered person.
+class,person,58,False,a pixelated photo of a person.
+class,person,59,False,itap of the person.
+class,person,60,False,a jpeg corrupted photo of the person.
+class,person,61,False,a good photo of a person.
+class,person,62,False,a plushie person.
+class,person,63,False,a photo of the nice person.
+class,person,64,False,a photo of the small person.
+class,person,65,False,a photo of the weird person.
+class,person,66,False,the cartoon person.
+class,person,67,False,art of the person.
+class,person,68,False,a drawing of the person.
+class,person,69,False,a photo of the large person.
+class,person,70,False,a black and white photo of a person.
+class,person,71,False,the plushie person.
+class,person,72,False,a dark photo of a person.
+class,person,73,False,itap of a person.
+class,person,74,False,graffiti of the person.
+class,person,75,False,a toy person.
+class,person,76,False,itap of my person.
+class,person,77,False,a photo of a cool person.
+class,person,78,False,a photo of a small person.
+class,person,79,False,a tattoo of the person.
+neutral,subject,0,True,a bad photo of a subject.
+neutral,subject,1,True,a photo of many subject.
+neutral,subject,2,True,a sculpture of a subject.
+neutral,subject,3,True,a photo of the hard to see subject.
+neutral,subject,4,True,a low resolution photo of the subject.
+neutral,subject,5,True,a rendering of a subject.
+neutral,subject,6,True,graffiti of a subject.
+neutral,subject,7,True,a bad photo of the subject.
+neutral,subject,8,True,a cropped photo of the subject.
+neutral,subject,9,True,a tattoo of a subject.
+neutral,subject,10,True,the embroidered subject.
+neutral,subject,11,True,a photo of a hard to see subject.
+neutral,subject,12,True,a bright photo of a subject.
+neutral,subject,13,True,a photo of a clean subject.
+neutral,subject,14,True,a photo of a dirty subject.
+neutral,subject,15,True,a dark photo of the subject.
+neutral,subject,16,True,a drawing of a subject.
+neutral,subject,17,True,a photo of my subject.
+neutral,subject,18,True,the plastic subject.
+neutral,subject,19,True,a photo of the cool subject.
+neutral,subject,20,True,a close-up photo of a subject.
+neutral,subject,21,True,a black and white photo of the subject.
+neutral,subject,22,True,a painting of the subject.
+neutral,subject,23,True,a painting of a subject.
+neutral,subject,24,True,a pixelated photo of the subject.
+neutral,subject,25,True,a sculpture of the subject.
+neutral,subject,26,True,a bright photo of the subject.
+neutral,subject,27,True,a cropped photo of a subject.
+neutral,subject,28,True,a plastic subject.
+neutral,subject,29,True,a photo of the dirty subject.
+neutral,subject,30,True,a jpeg corrupted photo of a subject.
+neutral,subject,31,True,a blurry photo of the subject.
+neutral,subject,32,True,a photo of the subject.
+neutral,subject,33,True,a good photo of the subject.
+neutral,subject,34,True,a rendering of the subject.
+neutral,subject,35,True,a subject in a video game.
+neutral,subject,36,True,a photo of one subject.
+neutral,subject,37,True,a doodle of a subject.
+neutral,subject,38,True,a close-up photo of the subject.
+neutral,subject,39,True,a photo of a subject.
+neutral,subject,40,True,the origami subject.
+neutral,subject,41,True,the subject in a video game.
+neutral,subject,42,True,a sketch of a subject.
+neutral,subject,43,True,a doodle of the subject.
+neutral,subject,44,True,a origami subject.
+neutral,subject,45,True,a low resolution photo of a subject.
+neutral,subject,46,True,the toy subject.
+neutral,subject,47,True,a rendition of the subject.
+neutral,subject,48,True,a photo of the clean subject.
+neutral,subject,49,True,a photo of a large subject.
+neutral,subject,50,True,a rendition of a subject.
+neutral,subject,51,True,a photo of a nice subject.
+neutral,subject,52,True,a photo of a weird subject.
+neutral,subject,53,True,a blurry photo of a subject.
+neutral,subject,54,True,a cartoon subject.
+neutral,subject,55,True,art of a subject.
+neutral,subject,56,True,a sketch of the subject.
+neutral,subject,57,True,a embroidered subject.
+neutral,subject,58,True,a pixelated photo of a subject.
+neutral,subject,59,True,itap of the subject.
+neutral,subject,60,True,a jpeg corrupted photo of the subject.
+neutral,subject,61,True,a good photo of a subject.
+neutral,subject,62,True,a plushie subject.
+neutral,subject,63,True,a photo of the nice subject.
+neutral,subject,64,True,a photo of the small subject.
+neutral,subject,65,True,a photo of the weird subject.
+neutral,subject,66,True,the cartoon subject.
+neutral,subject,67,True,art of the subject.
+neutral,subject,68,True,a drawing of the subject.
+neutral,subject,69,True,a photo of the large subject.
+neutral,subject,70,True,a black and white photo of a subject.
+neutral,subject,71,True,the plushie subject.
+neutral,subject,72,True,a dark photo of a subject.
+neutral,subject,73,True,itap of a subject.
+neutral,subject,74,True,graffiti of the subject.
+neutral,subject,75,True,a toy subject.
+neutral,subject,76,True,itap of my subject.
+neutral,subject,77,True,a photo of a cool subject.
+neutral,subject,78,True,a photo of a small subject.
+neutral,subject,79,True,a tattoo of the subject.
+constant,subject,-1,False,a photo of a subject.

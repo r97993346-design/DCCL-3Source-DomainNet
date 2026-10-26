@@ -1,0 +1,26 @@
+{
+  "seed": 2,
+  "perplexity": 30,
+  "iterations": 1000,
+  "pca_dim_requested": 50,
+  "pca_dim_effective": 50,
+  "sklearn_version": "1.7.2",
+  "representations": [
+    "E",
+    "LN(E)",
+    "Z_constant",
+    "Z_mean80",
+    "Z_template_00"
+  ],
+  "joint_points": 500,
+  "unique_images": 100,
+  "checkpoint_sha256": "6c02a511830eab9245868b83662efd091cb0190e821e04b5b70e7e0b57e17e25",
+  "samples_sha256": "67a131502ee268b6fd3288ea49002636587a39a20a601cac5da7883fbcfb6496",
+  "samples_identity_sha256": "e2ad0643d4ddde22706dc6b7207298e79ce54f3dc9755784c468ad73dcfe6f6b",
+  "template_mode": "b5a",
+  "z_uses_ground_truth_class_word": false,
+  "z_condition": "B5A: shared 'subject' texts; no label-conditioned fusion",
+  "coordinate_scope": "Only panels in this file share a joint fit. Distances are illustrative.",
+  "class_id": 3,
+  "template_id": 0
+}

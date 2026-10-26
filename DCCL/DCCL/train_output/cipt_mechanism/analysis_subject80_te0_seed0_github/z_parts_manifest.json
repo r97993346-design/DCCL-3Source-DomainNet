@@ -1,0 +1,32 @@
+{
+  "original_file": "z_neutral_unit.npy",
+  "shape": [
+    700,
+    80,
+    512
+  ],
+  "dtype": "float32",
+  "concatenate_axis": 1,
+  "parts": [
+    {
+      "file": "z_neutral_templates_00_19.npz",
+      "start": 0,
+      "stop_exclusive": 20
+    },
+    {
+      "file": "z_neutral_templates_20_39.npz",
+      "start": 20,
+      "stop_exclusive": 40
+    },
+    {
+      "file": "z_neutral_templates_40_59.npz",
+      "start": 40,
+      "stop_exclusive": 60
+    },
+    {
+      "file": "z_neutral_templates_60_79.npz",
+      "start": 60,
+      "stop_exclusive": 80
+    }
+  ]
+}
