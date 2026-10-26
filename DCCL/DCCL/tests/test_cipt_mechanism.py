@@ -19,13 +19,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 from analyze_cipt_mechanism import validate_original_checkpoint, validate_samples
-from cipt_mechanism_report import (cosine_shift, domain_metrics, dump_json, neighbor_weights,
+from cipt_mechanism_report import (cosine_shift, domain_metrics, dump_json, native_z_info, neighbor_weights,
                                     plot_metrics, plot_overview_tsne, plot_template_tsne, plot_tsne,
                                     stratified_bootstrap, summarize,
                                     template_spread, topology_metrics, unit, write_csv)
 
 
-def synthetic_run(folder):
+def synthetic_run(folder, template_mode="b5b"):
     """Create a diagnostic fixture with domain structure and nonzero shifts."""
     folder = Path(folder)
     folder.mkdir(exist_ok=True, parents=True)
@@ -38,15 +38,20 @@ def synthetic_run(folder):
     basis = np.eye(16)
     e = unit(basis[labels] + .7 * basis[domain + 2] + rng.normal(0, .08, (16, 16)))
     ln_e = unit(e - e.mean(axis=1, keepdims=True))
-    constant = unit(e + .5 * basis[labels + 4])
+    constant = unit(e + .5 * basis[labels + 4 if template_mode == "b5b" else np.full(16, 4)])
     z = unit(constant[:, None, :] + rng.normal(0, .01, (16, 80, 16)))
-    for name, data in [("e_unit", e), ("ln_e_unit", ln_e), ("z_constant_unit", constant), ("z_class_unit", z)]:
+    z_key = "z_class_unit" if template_mode == "b5b" else "z_neutral_unit"
+    for name, data in [("e_unit", e), ("ln_e_unit", ln_e), ("z_constant_unit", constant), (z_key, z)]:
         np.save(folder / (name + ".npy"), data.astype(np.float32))
-    np.savez_compressed(folder / "intervention_metrics.npz",
-                        class_swap_cosine_shift=np.full(16, .15), neutral_swap_cosine_shift=np.full(16, .1))
+    probes = ({"class_swap_cosine_shift": np.full(16, .15), "neutral_swap_cosine_shift": np.full(16, .1)}
+              if template_mode == "b5b" else {"class_insertion_cosine_shift": np.full(16, .1)})
+    np.savez_compressed(folder / "intervention_metrics.npz", **probes)
     write_csv(folder / "samples.csv", samples)
-    dump_json(folder / "metadata.json", {"class_names": ["dog", "horse"], "target_domains": ["sketch"],
-                                        "sample_seed": 0, "synthetic_validation_only": True})
+    meta = {"class_names": ["dog", "horse"], "target_domains": ["sketch"],
+            "sample_seed": 0, "synthetic_validation_only": True}
+    if template_mode == "b5a":
+        meta.update(schema_version=2, template_mode="b5a", neutral_subject="subject", z_file=z_key + ".npy")
+    dump_json(folder / "metadata.json", meta)
 
 
 class MechanismTests(unittest.TestCase):
@@ -97,10 +102,13 @@ class MechanismTests(unittest.TestCase):
 
     def test_wrong_checkpoint_rejected(self):
         original = {"cipt_objective": "legacy", "cipt_template_mode": "b5b", "cipt_pure": True}
-        validate_original_checkpoint(original)
+        self.assertEqual(validate_original_checkpoint(original), "b5b")
+        self.assertEqual(validate_original_checkpoint({**original, "cipt_template_mode": "b5a"}), "b5a")
         validate_original_checkpoint({**original, "cipt_pure": "false", "cipt_use_contrastive": "false"})
         for override in [{"cipt_objective": "env_anchor"}, {"cipt_use_tda": False},
-                         {"cipt_template_mode": "b5a"}, {"cipt_pure": False}, {"cipt_use_de": False}]:
+                         {"cipt_template_mode": "b5c"}, {"cipt_template_mode": "bconst"},
+                         {"cipt_selector_mode": "adaptive"}, {"cipt_selector_mode": "all"},
+                         {"cipt_pure": False}, {"cipt_use_de": False}]:
             with self.assertRaises(ValueError):
                 validate_original_checkpoint({**original, **override})
 
@@ -164,16 +172,49 @@ class MechanismTests(unittest.TestCase):
                 self.assertEqual(paired_domains.count("photo"), 2)
                 self.assertEqual(paired_domains.count("sketch"), 2)
 
+    def test_b5a_report_uses_native_neutral_z_and_no_fabricated_class_swap(self):
+        with tempfile.TemporaryDirectory() as folder:
+            synthetic_run(folder, "b5a")
+            meta, samples, representations, z, rows, per_image = summarize(folder)
+            self.assertFalse((Path(folder) / "z_class_unit.npy").exists())
+            self.assertNotIn("class_swap_cosine_shift", per_image)
+            self.assertNotIn("class_minus_template_shift", per_image)
+            self.assertIn("class_insertion_cosine_shift", per_image)
+            summary = json.loads((Path(folder) / "summary.json").read_text())
+            self.assertFalse(summary["native_z"]["z_uses_ground_truth_class_word"])
+            self.assertEqual(len(rows), 2 * (80 + 4))
+            with patch("cipt_mechanism_report.joint_tsne",
+                       side_effect=lambda arrays, *args: [a[:, :2] for a in arrays]):
+                with patch("cipt_mechanism_report._save"):
+                    plot_metrics(folder, rows, per_image, meta)
+                    plot_tsne(folder, meta, samples, representations, z, [0], [5])
+                    plot_template_tsne(folder, meta, samples, representations, z, [0], [5])
+                    plot_overview_tsne(folder, meta, samples, representations, z, [0], [5])
+            for subdir in ["tsne", "tsne_templates", "tsne_overview"]:
+                for path in (Path(folder) / subdir).glob("*.json"):
+                    settings = json.loads(path.read_text())
+                    self.assertEqual(settings["template_mode"], "b5a")
+                    self.assertFalse(settings["z_uses_ground_truth_class_word"])
+                    self.assertIn("shared 'subject'", settings["z_condition"])
+
+    def test_old_archives_default_to_ground_truth_conditioned_b5b(self):
+        info = native_z_info({})
+        self.assertEqual(info["template_mode"], "b5b")
+        self.assertTrue(info["z_uses_ground_truth_class_word"])
+        self.assertIn("object", native_z_info({"template_mode": "b5a", "neutral_subject": "object"})["z_condition"])
+
 
 if __name__ == "__main__":
     if "--smoke-output" in sys.argv:
         out = Path(sys.argv[sys.argv.index("--smoke-output") + 1])
-        synthetic_run(out)
+        mode = sys.argv[sys.argv.index("--template-mode") + 1] if "--template-mode" in sys.argv else "b5b"
+        synthetic_run(out, mode)
         meta, samples, representations, z, rows, per_image = summarize(out)
-        plot_metrics(out, rows, per_image)
+        plot_metrics(out, rows, per_image, meta)
         plot_tsne(out, meta, samples, representations, z, [0], [5], iterations=300)
         plot_template_tsne(out, meta, samples, representations, z, [0], [5], iterations=300)
         plot_overview_tsne(out, meta, samples, representations, z, [0], [5], iterations=300)
         print("SYNTHETIC plotting validation only; not a CIPT experiment.")
     else:
         unittest.main()
+

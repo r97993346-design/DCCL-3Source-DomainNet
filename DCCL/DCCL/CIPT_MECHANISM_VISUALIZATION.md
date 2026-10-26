@@ -1,8 +1,13 @@
-# 原 CIPT：E、文本干预与同类域子簇的证据链
+# CIPT B5B/B5A：训练后 E、原生融合 Z 与同类域子簇
 
 此流程使用本分支已有的 `CIPTDCCL + cipt_objective=legacy`，复用真实的
 `CausalDecomposition` 和 `TextDiversityAugmentation`，关闭新增的对比、RD、MCC、熵选择目标。
 它固定了本仓库的原 CIPT 复现路径；不等于已经复现论文的全部实验协议或报告精度。
+
+提取器也支持单独训练的配对 **B5A（80 个 `subject` 模板）** checkpoint。
+从 checkpoint 的 `cipt_template_mode` 自动选择训练时的文本条件，无需额外指定提取模式。
+B5B 的原生 Z 使用真实类别对应的文本；B5A 的原生 Z 使用所有图片共享的中性主体文本，
+不按真实类别索引文本。两组的 E 都来自各自训练完成的因果适配器。
 
 ## 1. 三组机制实验：同一个 checkpoint、同一批图像
 
@@ -24,8 +29,8 @@
 
 - `E`：L2(CLIP 图像特征) → 训练好的因果适配器 → L2。
 - `LN(E)`：同一 TDA 中训练好的 LayerNorm 直接作用于 E，再 L2；这是零文本残差对照。
-- `Z_constant`：E 与 `a photo of a {真实类别}.` 融合，再 L2。
-- `Z_template_00`：所有图像使用同一个编号的 B5B 描述，类别词按真实类别填入，再 L2。
+- `Z_constant`：B5B 融合 `a photo of a {真实类别}.`；B5A 融合 `a photo of a {中性主体}.`，再 L2。
+- `Z_template_00`：训练文本库的同一编号描述；B5B 填入真实类别，B5A 填入 checkpoint 中的中性主体词。
 - `Z_mean80`：先对每个 Z_k 做 L2，平均全部 80 个，再 L2；只用来概括几何结构。
 
 本实现是 80 次独立的单文本 token 注意力，每次只有一个 key/value。
@@ -39,6 +44,8 @@
 
 所有真实类别条件化 Z 都用于机制分析，**不能当作无需标签的测试表征来报告精度**。
 legacy 推理仍按候选类别分别融合并平均 K 个 logits；不是 `Z_mean80` 的真标签条件化分类。
+上述候选类别推理指 B5B；B5A 推理使用共享文本库并平均 K 个 logits。
+对两组遍历全部 80 模板提取特征，都属于训练后分支诊断，并非其 K 分支预测结果。
 
 ## 3. 先得到原 CIPT 检查点
 
@@ -66,7 +73,9 @@ PACS 环境顺序是 art_painting、cartoon、photo、sketch；上例目标域�
 `beta=4, gamma=5, K=4, lr=5e-5`，总损失为 `L_cls(Z) + 4 L_de + 5 L_ind`。
 SWAD 在这个预设中显式关闭，避免把普通步号快照当成 SWAD 模型。
 若已有匹配检查点，可直接进入下一步；旧检查点还需确认训练时也使用 L2 视觉输入及 identity 初始化。
-分析器会拒绝 RD/MCC、TDA 关闭、B5A 或额外对比训练的检查点，但无法从权重反推旧代码的全部训练历史。
+分析器接受原 B5B 和配对 B5A，拒绝 RD/MCC、TDA 关闭、额外对比或新增选择器训练的检查点，
+但无法从权重反推旧代码的全部训练历史。B5A 必须包含与当前 80 模板及主体词匹配的
+`text_features.b5a_text_bank`，历史非配对文本库不能冒充本对照。
 
 ## 4. 用同一批图片导出并画图
 
@@ -102,6 +111,7 @@ t-SNE 默认每个类别分别联合拟合 E、LN(E)、固定文本 Z、Z_mean80
 并排展示 E、固定文本 Z、固定模板 Z_k。其联合坐标与逐类图不共用；
 它辅助观察类别结构，类内域子簇的主要证据仍来自前两组。
 Z 中使用了真实类别词，所以全类别分离更好也不能直接视为无标签推理性能提升。
+这一限制针对 B5B；B5A 的图注会明确写共享主体词、不使用类别标签选择融合文本。
 
 输出目录必须为空，以防覆盖原始提取结果。需要只导出可加 `--extract-only`；
 需要跳过 t-SNE 可加 `--no-tsne`。后续重复画图无需再次运行 CLIP：
@@ -130,21 +140,60 @@ python analyze_cipt_mechanism.py --report-only \
 源域中可能包含训练图片，所以是描述性机制证据，不是独立测试精度。
 研究结论应在训练 seed 0/1/2、各留一目标域上复核，不只依赖一个类别或一个检查点。
 
+### 4.1 配对提取单独训练的 B5A 模型（GPU1）
+
+先完成 `cipt_subject80_te0_seed0` 训练，保存其 `TE0_5000.pth`。
+使用这个新 checkpoint，而不是在原 B5B checkpoint 上临时换成 `subject`。
+以下命令复用已有原 CIPT 的 700 张图片，输出到独立目录：
+
+```bash
+export CIPT_SUBJECT_CHECKPOINT='/path/to/cipt_subject80_te0_seed0/checkpoints/TE0_5000.pth'
+
+CUDA_VISIBLE_DEVICES=1 python analyze_cipt_mechanism.py \
+  --dataset PACS --data-dir "$CIPT_DATA_DIR" \
+  --checkpoint "$CIPT_SUBJECT_CHECKPOINT" --clip-path "$CIPT_CLIP_PATH" \
+  --sample-manifest train_output/cipt_mechanism/analysis_te0_seed0/samples.csv \
+  --samples-per-class-domain 25 --sample-seed 0 --batch-size 8 \
+  --template-id 0 --template-ids 0 20 40 60 --overview \
+  --tsne-seeds 0 1 2 --perplexities 10 30 \
+  --output-dir train_output/cipt_mechanism/analysis_subject80_te0_seed0
+```
+
+checkpoint 中的中性主体词（`subject`/`thing`/`object`/`entity`）和已保存文本库会一并校验；
+提取时不覆盖该主体词。报告可直接读取旧 B5B 提取结果，无需重提取。
+
+| 输出/解释 | B5B | B5A |
+|---|---|---|
+| 完整原生 Z | `z_class_unit.npy`，`[N,80,D]` | `z_neutral_unit.npy`，`[N,80,D]` |
+| `metadata.json` | `template_mode=b5b`，`z_uses_ground_truth_class_word=true` | `template_mode=b5a`，`z_uses_ground_truth_class_word=false` |
+| 固定文本对照 | `a photo of a {真实类别}.` | `a photo of a {中性主体}.` |
+| 事后文本探针 | 换为其他类别词、换为中性主体词 | 将中性主体词换为真实类别词，命名 `class_insertion_cosine_shift` |
+
+B5A 原生文本没有类别词，因此不生成 `class_swap_cosine_shift` 或 `class_minus_template_shift`，
+也不将“不适用”写成零。B5A 的“加入类别词”是事后探针，不能与 B5B 的“换错误类别词”
+当成同一种干预做数值比较，更不能据此直接声称训练泛化更好。
+
+两组训练结果的主比较对象是各自的 **E**，再检查各自原生 Z 的类内域结构。
+核对两份 `samples.csv` 的相对路径、类别、域与顺序完全一致；新提取结果还保存
+`samples_identity_sha256`，忽略服务器绝对路径，用于识别同一批配对样本。
+两个 checkpoint 输出的 t-SNE 仍是各自拟合，不能直接比较其二维坐标位移；
+跨模型的数值比较使用原始高维指标，并保持训练预算、seed、数据划分和选模规则一致。
+
 ## 5. 查看哪些文件
 
 | 输出 | 用途 |
 |---|---|
 | `tsne/class*_k*_seed*_p*.png/.pdf` | 每类六面板图：E、LN(E)、固定文本、80 模板均值、固定 Z_k、E→Z 配对 |
 | `tsne_templates/class*_templates*_seed*_p*.png/.pdf` | 第三组：相同图像与类别词下，不同描述模板的结构及逐图像对应关系 |
-| `tsne_overview/all_classes_k*_seed*_p*.png/.pdf` | 可选全类别概览：类别配色、域点形；含真实类别词条件化 Z |
+| `tsne_overview/all_classes_k*_seed*_p*.png/.pdf` | 可选全类别概览：类别配色、域点形；图注明确 B5B/B5A 的原生文本条件 |
 | `domain_metrics.png/.pdf` | 各类别的域 silhouette、同域近邻超额比例、同域/跨域余弦差 |
-| `intervention_sensitivity.png/.pdf` | E→Z、LN(E)→Z、固定文本→Z、改模板、改类别词、中性词替换的位移分布 |
+| `intervention_sensitivity.png/.pdf` | E→原生 Z、LN(E)→Z、固定文本→Z、改模板，以及明确标注的事后文本探针 |
 | `class_domain_metrics.csv` | E、对照及全部 80 个固定模板逐类的域结构指标 |
 | `within_class_topology.csv` | E/Z、LN(E)/Z 逐类逐模板的近邻重合率和距离秩相关 |
 | `per_image_metrics.csv` | 每张图像的模板冗余、类别词敏感性和融合位移 |
 | `summary.json`、`report.md` | 图像级汇总与解释限制 |
 | `samples.csv`、`texts.csv` | 精确图片和模板清单 |
-| `metadata.json`、`plot_settings.json` | 检查点/CLIP/source 文件哈希、训练参数、目标域及绘图设置 |
+| `metadata.json`、`plot_settings.json` | 检查点/CLIP/source 文件哈希、训练参数、原生文本模式、Z 文件名、目标域及绘图设置 |
 | `*_unit.npy`、`text_banks.npz` | 可重画和复核的高维单位特征；完整 Z 是 `[N,80,D]` |
 
 指标定义：
@@ -170,10 +219,11 @@ bootstrap 在固定类×域内重采样**图像**，不重采样 80 个文本当
 | 组 | 在同一原 CIPT 预设上追加参数 | 检验范围 |
 |---|---|---|
 | 完整 B5B | 不追加 | 基线 |
+| 配对 B5A | `--cipt_template_mode b5a --cipt_neutral_subject subject` | 相同 80 描述，只改变主体词是否包含类别信息 |
 | Bconst | `--cipt_template_mode bconst` | 保留类别词、TDA、K 与损失平均方式，仅移除描述多样性 |
 | TDA-off | `--cipt_use_tda false` | 去除 TDA 的整体训练/推理贡献；该组直接使用 E 推理 |
 
-这三组需要分别重新训练。训练 seed、数据 split、预算和源域选模规则保持一致。
+这些训练条件需要分别重新训练。训练 seed、数据 split、预算和源域选模规则保持一致。
 它们不共享同一个 checkpoint 改开关来冒充重新训练的消融。
 B5B 与 Bconst 是检验“描述多样性是否必要”的主要性能对照；TDA-off 也改变了推理结构，解释范围更宽。
 若另用统一 E-only 评估隔离训练作用，需要额外实现该评估；legacy 下 `cipt_env_inference=e_only` 不生效。
@@ -190,11 +240,16 @@ B5B 与 Bconst 是检验“描述多样性是否必要”的主要性能对照�
 
 ```bash
 python -m unittest discover -s tests -p 'test_cipt_mechanism.py'
+python -m unittest discover -s tests -p 'test_cipt_mechanism_extraction.py'
 python tests/test_cipt_mechanism.py --smoke-output /tmp/cipt_mechanism_synthetic
+python tests/test_cipt_mechanism.py --smoke-output /tmp/cipt_b5a_synthetic --template-mode b5a
 ```
 
 验证涵盖：域子簇/域混合两种方向、重复模板、LayerNorm 对照、并列近邻、旋转不变结构指标、
 错误检查点拒绝、平衡清单、图像级区间、全部模板覆盖、跨模板图像配对及模板顺序。
+提取测试使用真实 E/TDA 模块与合成 CLIP 替身，验证 B5A 不按类别选文本、保存文本库的使用、
+主体词一致性、B5B 兼容性及跨 checkpoint 图片清单复用；需要 PyTorch，无 GPU 也可运行。
 smoke 图完全来自合成数据，不能作为实验结果。
 真实训练与特征提取仍需训练服务器上的 PyTorch、OpenAI CLIP、本地数据和检查点；
 离线报告只需 NumPy、SciPy、scikit-learn、Matplotlib。
+

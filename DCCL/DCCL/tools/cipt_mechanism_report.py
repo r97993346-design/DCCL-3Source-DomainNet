@@ -128,6 +128,19 @@ def dump_json(path, value):
     Path(path).write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
 
 
+def native_z_info(meta):
+    """Old archives are B5B; new archives explicitly identify their native Z."""
+    mode = str(meta.get("template_mode", meta.get("checkpoint_hparams", {}).get(
+        "cipt_template_mode", "b5b"))).lower()
+    if mode not in {"b5b", "b5a"}:
+        raise ValueError("Reports support only B5B or paired B5A native Z.")
+    subject = meta.get("neutral_subject", meta.get("checkpoint_hparams", {}).get("cipt_neutral_subject", "subject"))
+    condition = ("B5B: true-class texts; mechanism diagnostic" if mode == "b5b" else
+                 "B5A: shared '{}' texts; no label-conditioned fusion".format(subject))
+    return {"template_mode": mode, "z_uses_ground_truth_class_word": mode == "b5b",
+            "z_condition": condition}
+
+
 def summarize(folder, neighbors=5):
     folder = Path(folder)
     meta = json.loads((folder / "metadata.json").read_text())
@@ -138,7 +151,9 @@ def summarize(folder, neighbors=5):
     e = np.load(folder / "e_unit.npy", mmap_mode="r")
     ln_e = np.load(folder / "ln_e_unit.npy", mmap_mode="r")
     constant = np.load(folder / "z_constant_unit.npy", mmap_mode="r")
-    z = np.load(folder / "z_class_unit.npy", mmap_mode="r")
+    native = native_z_info(meta)
+    default_z_file = "z_class_unit.npy" if native["template_mode"] == "b5b" else "z_neutral_unit.npy"
+    z = np.load(folder / meta.get("z_file", default_z_file), mmap_mode="r")
     z_mean = unit(z.mean(axis=1))
     scalars = dict(np.load(folder / "intervention_metrics.npz"))
     for array in [e, ln_e, constant, z, *scalars.values()]:
@@ -151,10 +166,11 @@ def summarize(folder, neighbors=5):
         "template_pairwise_cosine_shift": template_spread(z),
         **scalars,
     }
-    # The class word changes while template and image stay fixed. Compare with
-    # changing the template while the image and true class word stay fixed.
-    per_image["class_minus_template_shift"] = (per_image["class_swap_cosine_shift"] -
-                                               per_image["template_pairwise_cosine_shift"])
+    # B5A contains no class noun. Do not fabricate a zero class-swap score or
+    # subtract its native template spread from an unrelated class-word probe.
+    if native["template_mode"] == "b5b":
+        per_image["class_minus_template_shift"] = (per_image["class_swap_cosine_shift"] -
+                                                   per_image["template_pairwise_cosine_shift"])
     strata = np.array(["{}:{}".format(c, d) for c, d in zip(labels, domains)])
     paired = {name: {**describe(values), **stratified_bootstrap(values, strata, meta["sample_seed"])}
               for name, values in per_image.items()}
@@ -177,17 +193,29 @@ def summarize(folder, neighbors=5):
                                       "template_id": k, **topology_metrics(baseline[mask], z[mask, k], neighbors)})
     write_csv(folder / "class_domain_metrics.csv", metric_rows)
     write_csv(folder / "within_class_topology.csv", topology_rows)
-    summary = {"protocol": meta, "neighbors": neighbors, "per_image": paired,
-               "interpretation": [
-                   "Positive within-class domain silhouette, cosine gap and neighbor excess support residual domain structure.",
-                   "Small template spread does not imply that E and Z are identical; check both paired shifts and topology.",
-                   "A positive class-minus-template contrast indicates larger class-word sensitivity under these swaps.",
-                   "Ground-truth-conditioned Z is a mechanism diagnostic, not a label-free test representation.",
-                   "Bootstrap intervals condition on one checkpoint and sampled domains; no training-seed uncertainty.",
-                   "Performance benefit or equivalence requires separately trained B5B, Bconst and TDA-off controls.",
-               ]}
+    interpretation = [
+        "Positive within-class domain silhouette, cosine gap and neighbor excess support residual domain structure.",
+        "Small template spread does not imply that E and Z are identical; check both paired shifts and topology.",
+        "Bootstrap intervals condition on one checkpoint and sampled domains; no training-seed uncertainty.",
+        "Performance benefit or equivalence requires separately trained B5B, Bconst and TDA-off controls.",
+        "Z_mean80 summarizes geometry; it is not the model's K-branch logit aggregation rule.",
+    ]
+    if native["template_mode"] == "b5b":
+        interpretation += [
+            "A positive class-minus-template contrast indicates larger class-word sensitivity under these swaps.",
+            "Ground-truth-conditioned Z is a mechanism diagnostic, not a label-free test representation.",
+        ]
+    else:
+        interpretation += [
+            "Native B5A Z uses the saved shared neutral-subject bank; image labels only group the domain statistics.",
+            "Class insertion is a post-training text probe, not a native class swap or evidence of training benefit.",
+            "Compare separately trained B5B/B5A E on the same manifest to study learned visual representations.",
+        ]
+    summary = {"protocol": meta, "native_z": native, "neighbors": neighbors,
+               "per_image": paired, "interpretation": interpretation}
     dump_json(folder / "summary.json", summary)
-    lines = ["# CIPT mechanism diagnostics", "", "No conclusion is selected automatically.", "",
+    lines = ["# CIPT mechanism diagnostics", "", native["z_condition"], "",
+             "No conclusion is selected automatically.", "",
              "All quantitative metrics use unit features in the original embedding dimension.",
              "Each image contributes one value to intervention summaries. All 80 templates are evaluated.", "",
              "| Paired image metric | Mean | Image bootstrap 95% CI (class/domain macro) |",
@@ -197,10 +225,10 @@ def summarize(folder, neighbors=5):
     lines += ["", "## Interpretation", ""] + ["- " + s for s in summary["interpretation"]]
     lines += ["", "## Files", "", "- class_domain_metrics.csv: E, LN(E), constant text, Z mean, and every fixed template; one row per class.",
               "- within_class_topology.csv: E/Z and LN(E)/Z neighborhood overlap and distance rank correlation, all templates.",
-              "- per_image_metrics.csv: paired shifts, template spread, neutral-text and wrong-class swaps.",
+              "- per_image_metrics.csv: native E/Z shifts, template spread, and explicitly named post-training probes.",
               "- domain_metrics.png/pdf and intervention_sensitivity.png/pdf: quantitative summaries.",
               "- tsne/: one joint fit per class/seed/perplexity; arrows show correspondence only.",
-              "- tsne_templates/ (unless skipped): fixed images and class words, varying templates; one joint fit per class.",
+              "- tsne_templates/ (unless skipped): fixed images and native subject words, varying templates; one joint fit per class.",
               "- tsne_overview/ (with --overview): all selected classes; colors = classes, markers = domains.",
               "", "Z_mean80 averages unit Z_k and normalizes again. It is a descriptive feature, not the legacy inference rule.",
               "Displayed domains include source/target designations from checkpoint metadata; dataset files may include training images."]
@@ -220,7 +248,7 @@ def _save(fig, path):
         fig.savefig(str(path) + suffix, dpi=160, bbox_inches="tight")
 
 
-def plot_metrics(folder, rows, per_image):
+def plot_metrics(folder, rows, per_image, meta=None):
     plt = _plot_setup()
     names = list(dict.fromkeys(row["class"] for row in rows))
     fig, axes = plt.subplots(1, 3, figsize=(15, 4), constrained_layout=True)
@@ -241,14 +269,19 @@ def plot_metrics(folder, rows, per_image):
     axes[-1].legend(fontsize=8)
     _save(fig, Path(folder) / "domain_metrics")
     plt.close(fig)
-    keys = ["e_to_z_cosine_shift", "ln_e_to_z_cosine_shift", "constant_to_z_cosine_shift",
-            "template_pairwise_cosine_shift", "class_swap_cosine_shift", "neutral_swap_cosine_shift"]
-    labels = ["E to Z", "LN(E) to Z", "Constant to Z", "Change template", "Change class word", "Class to subject"]
+    options = [("e_to_z_cosine_shift", "E to native Z"), ("ln_e_to_z_cosine_shift", "LN(E) to native Z"),
+               ("constant_to_z_cosine_shift", "Constant to native Z"),
+               ("template_pairwise_cosine_shift", "Change template"),
+               ("class_swap_cosine_shift", "Class swap (probe)"),
+               ("neutral_swap_cosine_shift", "Class to neutral (probe)"),
+               ("class_insertion_cosine_shift", "Neutral to class (probe)")]
+    keys, labels = zip(*[(key, label) for key, label in options if key in per_image])
     fig, ax = plt.subplots(figsize=(10, 4), constrained_layout=True)
     label_key = "tick_labels" if "tick_labels" in inspect.signature(ax.boxplot).parameters else "labels"
     ax.boxplot([per_image[key] for key in keys], showfliers=False, **{label_key: labels})
     ax.set_ylabel("1 - cosine (one average per image)")
-    ax.set_title("Paired intervention sensitivity; original embedding dimension")
+    ax.set_title("Native Z and post-training text probes; original embedding dimension" +
+                 ("\n" + native_z_info(meta)["z_condition"] if meta is not None else ""))
     ax.tick_params(axis="x", labelrotation=15)
     _save(fig, Path(folder) / "intervention_sensitivity")
     plt.close(fig)
@@ -290,17 +323,9 @@ def plot_tsne(folder, meta, samples, representations, z, seeds, perplexities,
                 mask = labels == c
                 coords = joint_tsne([a[mask] for a in arrays], seed, perplexity, iterations, pca_dim)
                 basename = "class{}_k{}_seed{}_p{:g}".format(c, template_id, seed, perplexity)
-                np.savez_compressed(folder / (basename + ".npz"),
-                                    **dict(zip(keys, coords)), image_ids=np.flatnonzero(mask), domains=domains[mask])
-                dump_json(folder / (basename + ".json"), {
-                    "class_id": c, "template_id": template_id, "seed": seed,
-                    "perplexity": perplexity, "iterations": iterations, "pca_dim_requested": pca_dim,
-                    "pca_dim_effective": pca_dim if pca_dim and min(int(mask.sum()) * len(arrays), z.shape[-1]) > pca_dim else 0,
-                    "sklearn_version": sklearn.__version__, "representations": keys,
-                    "joint_points": int(mask.sum()) * len(arrays),
-                    "checkpoint_sha256": meta.get("checkpoint_sha256"),
-                    "samples_sha256": meta.get("samples_sha256"),
-                })
+                _archive_tsne(folder, basename, keys, coords, meta, samples, np.flatnonzero(mask),
+                              seed, perplexity, iterations, pca_dim, z.shape[-1],
+                              class_id=c, template_id=template_id)
                 fig, axes = plt.subplots(2, 3, figsize=(12, 7), sharex=True, sharey=True)
                 for ax, key, xy in zip(axes.flat, keys, coords):
                     for j, domain in enumerate(domain_names):
@@ -326,9 +351,9 @@ def plot_tsne(folder, meta, samples, representations, z, seeds, perplexities,
                                    " [target]" if domain in target_domains else " [source]"))
                           for j, domain in enumerate(domain_names)]
                 fig.legend(handles=legend, loc="lower center", ncol=len(domain_names), fontsize=9)
-                fig.suptitle("{}: joint t-SNE, seed={}, perplexity={:g}; arrows show pairing only".format(
-                    meta["class_names"][c], seed, perplexity), fontsize=11)
-                fig.tight_layout(rect=[0, .05, 1, .95])
+                fig.suptitle("{}: joint t-SNE, seed={}, perplexity={:g}; arrows show pairing only\n{}".format(
+                    meta["class_names"][c], seed, perplexity, native_z_info(meta)["z_condition"]), fontsize=11)
+                fig.tight_layout(rect=[0, .05, 1, .92])
                 _save(fig, folder / basename)
                 plt.close(fig)
                 print("Rendered {}".format(basename), flush=True)
@@ -353,6 +378,8 @@ def _archive_tsne(folder, basename, keys, coords, meta, samples, indices,
         "joint_points": point_count, "unique_images": len(selected),
         "checkpoint_sha256": meta.get("checkpoint_sha256"),
         "samples_sha256": meta.get("samples_sha256"),
+        "samples_identity_sha256": meta.get("samples_identity_sha256"),
+        **native_z_info(meta),
         "coordinate_scope": "Only panels in this file share a joint fit. Distances are illustrative.",
         **settings,
     })
@@ -366,7 +393,7 @@ def _domain_label(domain, meta):
 
 def plot_template_tsne(folder, meta, samples, representations, z, seeds, perplexities,
                        template_ids=(0, 20, 40, 60), iterations=1000, pca_dim=50):
-    """Experiment 3: same image/class word, different text descriptions.
+    """Same image/native subject word, different text descriptions.
 
     All images enter every panel. The last panel connects a deterministic,
     domain-balanced subset for legibility; it never selects by measured shift.
@@ -402,7 +429,8 @@ def plot_template_tsne(folder, meta, samples, representations, z, seeds, perplex
                               class_id=c, template_ids=template_ids,
                               paired_sample_indices=[int(indices[i]) for i in paired],
                               pairing_rule="Up to two images per domain, evenly spaced in manifest order; no shift-based selection.",
-                              intervention="Image and ground-truth class word fixed; only text description varies.")
+                              intervention=("Image and native subject word fixed; only text description varies. " +
+                                            native_z_info(meta)["z_condition"]))
                 panel_count = len(keys) + 1
                 ncols = min(3, panel_count)
                 nrows = (panel_count + ncols - 1) // ncols
@@ -431,10 +459,10 @@ def plot_template_tsne(folder, meta, samples, representations, z, seeds, perplex
                 legend = [Line2D([0], [0], color=colors(j), marker="o", linestyle="",
                                  label=_domain_label(domain, meta)) for j, domain in enumerate(domain_names)]
                 fig.legend(handles=legend, loc="lower center", ncol=len(domain_names), fontsize=8)
-                fig.suptitle("{}: fixed images/class words, varying descriptions\n"
+                fig.suptitle("{}: fixed images/native subject words, varying descriptions\n{}\n"
                              "joint t-SNE; lines indicate correspondence, not feature-distance magnitude".format(
-                                 meta["class_names"][c]), fontsize=11)
-                fig.tight_layout(rect=[0, .05, 1, .92])
+                                 meta["class_names"][c], native_z_info(meta)["z_condition"]), fontsize=11)
+                fig.tight_layout(rect=[0, .05, 1, .88])
                 _save(fig, folder / basename)
                 plt.close(fig)
                 print("Rendered {}".format(basename), flush=True)
@@ -465,8 +493,7 @@ def plot_overview_tsne(folder, meta, samples, representations, z, seeds, perplex
             _archive_tsne(folder, basename, keys, coords, meta, samples, indices,
                           seed, perplexity, iterations, pca_dim, z.shape[-1],
                           template_id=template_id, colors="classes", markers="domains",
-                          class_color_order=classes, domain_marker_order=domain_names,
-                          z_uses_ground_truth_class_word=True)
+                          class_color_order=classes, domain_marker_order=domain_names)
             fig, axes = plt.subplots(1, 3, figsize=(15, 5.4), sharex=True, sharey=True)
             for ax, key, xy in zip(axes, keys, coords):
                 for j, c in enumerate(classes):
@@ -488,8 +515,9 @@ def plot_overview_tsne(folder, meta, samples, representations, z, seeds, perplex
             fig.legend(handles=domain_legend, loc="lower center", ncol=len(domain_names),
                        bbox_to_anchor=(.5, .005), fontsize=8)
             fig.suptitle("Joint t-SNE: class colors, domain markers; seed={}, perplexity={:g}\n"
-                         "Z uses ground-truth class words for mechanism analysis".format(seed, perplexity), fontsize=11)
+                         "{}".format(seed, perplexity, native_z_info(meta)["z_condition"]), fontsize=11)
             fig.tight_layout(rect=[0, legend_space, 1, .90])
             _save(fig, folder / basename)
             plt.close(fig)
             print("Rendered {}".format(basename), flush=True)
+
