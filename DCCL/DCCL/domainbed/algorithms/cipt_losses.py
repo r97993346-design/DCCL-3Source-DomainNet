@@ -98,6 +98,49 @@ def relative_distance_loss(causal_features, class_anchors, text_bank, labels, in
     return (student_similarity - teacher_similarity).square().mean()
 
 
+
+def template_alignment_loss(causal_features, text_bank, labels, indices,
+                            mode="center_mse"):
+    """Official 80-template controls for relative-distance ablations.
+
+    center_mse:         mean_B ||unit(E) - mean_j unit(T_yj)||_2^2.
+    mean_template_mse:  mean_{B,j} ||unit(E) - unit(T_yj)||_2^2.
+
+    The class-conditioned text bank is frozen. In both variants the caller
+    passes all 80 indices, with no entropy or random sampling. The arithmetic
+    center is intentionally NOT normalized again: this makes both variants
+    produce identical gradients w.r.t. E, differing only by frozen text
+    variance (a useful mathematical/implementation check).
+    """
+    if mode not in ("center_mse", "mean_template_mse"):
+        raise ValueError("mode must be center_mse or mean_template_mse")
+    if causal_features.ndim != 2 or causal_features.shape[0] < 1:
+        raise ValueError("causal_features must have shape [B,D]")
+    batch, dim = causal_features.shape
+    if (text_bank.ndim != 3 or text_bank.shape[0] < 1
+            or text_bank.shape[1:] != (80, dim)):
+        raise ValueError("text_bank must have shape [C,80,D]")
+    if labels.shape != (batch,) or labels.dtype != torch.long:
+        raise ValueError("labels must be LongTensor [B]")
+    if (indices.ndim != 2 or indices.shape != (batch, 80)
+            or indices.dtype != torch.long):
+        raise ValueError("all-80 alignment requires indices [B,80]")
+    if (labels < 0).any() or (labels >= text_bank.shape[0]).any():
+        raise ValueError("labels outside class bank")
+    if (indices < 0).any() or (indices >= 80).any():
+        raise ValueError("indices must be between 0 and 79")
+
+    unit_e = F.normalize(causal_features.float(), dim=-1)
+    unit_t = F.normalize(
+        text_bank.detach().float()[labels[:, None], indices], dim=-1
+    )
+    if mode == "center_mse":
+        # Crucial: do not renormalize this mean; otherwise the identity with
+        # mean_template_mse no longer holds exactly.
+        center = unit_t.mean(dim=1)
+        return (unit_e - center).square().sum(dim=-1).mean()
+    return (unit_e[:, None, :] - unit_t).square().sum(dim=-1).mean()
+
 def independence_loss(causal_features, spurious_features, eps=1e-6):
     """Official CIPT independence penalty: 0.5 * mean(cos(e, s)^2)."""
     cosine = F.cosine_similarity(
