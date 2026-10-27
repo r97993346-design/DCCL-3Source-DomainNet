@@ -28,6 +28,7 @@ from domainbed.algorithms.cipt_losses import (
     independence_loss,
     prompt_consistency_loss,
     relative_distance_loss,
+    template_alignment_loss,
 )
 
 
@@ -168,8 +169,10 @@ class CIPTDCCL(_BaseCIPTDCCL):
             return value
 
         self.env_constraint = str(hparams.get("cipt_env_constraint", "mcc")).lower()
-        if self.env_constraint not in ("mcc", "relative_distance", "none"):
-            raise ValueError("cipt_env_constraint must be mcc, relative_distance, or none (ablation)")
+        if self.env_constraint not in (
+                "mcc", "relative_distance", "center_mse",
+                "mean_template_mse", "none"):
+            raise ValueError("cipt_env_constraint must be mcc, relative_distance, center_mse, mean_template_mse, or none")
         if self.cipt_template_mode != "b5b" or self.prompt_selector_mode != "random":
             raise ValueError("env_anchor requires cipt_template_mode=b5b and cipt_selector_mode=random")
         self.inference_mode = str(hparams.get("cipt_env_inference", "e_only")).lower()
@@ -187,13 +190,20 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.gamma = coefficient("cipt_gamma", self.gamma)
         self.env_loss_weight = coefficient("cipt_env_loss_weight", 1.0)
         self.env_selection = str(hparams.get("cipt_env_selection", "entropy")).lower()
-        if self.env_selection not in ("entropy", "random"):
-            raise ValueError("cipt_env_selection must be entropy or random")
+        if self.env_selection not in ("entropy", "random", "all"):
+            raise ValueError("cipt_env_selection must be entropy, random or all")
         self.rd_anchor_mode = str(hparams.get("cipt_rd_anchor_mode", "full")).lower()
         if self.rd_anchor_mode not in ("full", "selected"):
             raise ValueError("cipt_rd_anchor_mode must be full or selected")
         topk = hparams.get("cipt_env_topk", 40)
-        if self.env_selection == "entropy":
+        if self.env_selection == "all":
+            if isinstance(topk, bool) or topk != 80:
+                raise ValueError("cipt_env_selection=all requires cipt_env_topk=80")
+            # No sampler is constructed, and all eighty indices are used.
+            self.entropy_selector = None
+            self.random_selector = None
+            self.env_topk = 80
+        elif self.env_selection == "entropy":
             self.entropy_selector = EntropyPromptSelector(topk)
             self.random_selector = None
             self.env_topk = self.entropy_selector.topk
@@ -201,6 +211,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
             self.entropy_selector = None
             self.random_selector = RandomPromptSelector(topk)
             self.env_topk = self.random_selector.topk
+        if self.env_constraint in ("center_mse", "mean_template_mse") and self.env_selection != "all":
+            raise ValueError("center/mean-template MSE controls require all 80 official templates")
         self.env_active = self.env_constraint != "none" and self.env_loss_weight > 0.0
         self.fusion_mode = "none"
         self.env_kl_active = self.fused_cls_active = False
@@ -236,14 +248,19 @@ class CIPTDCCL(_BaseCIPTDCCL):
                   self.e_cls_weight, self.s_uniform_weight,
                   self.gamma if self.use_ind else 0.0, self.env_selection,
                   "frozen_CLIP_entropy" if self.env_selection == "entropy"
-                  else "per_image_random_without_replacement",
+                  else ("per_image_random_without_replacement" if self.env_selection == "random"
+                        else "all_80_without_selection"),
                   self.rd_anchor_mode))
 
     def _env_anchor_loss(self, visual, causal, labels):
         """Select without labels/E/S, then regularize differentiable E."""
         bank = self.text_features.full_b5b_text_features()
         scale = self.clip_model.logit_scale.exp().detach().float()
-        if self.env_selection == "random":
+        if self.env_selection == "all":
+            indices = torch.arange(80, device=visual.device, dtype=torch.long)
+            indices = indices.unsqueeze(0).expand(visual.shape[0], -1)
+            metrics = {"entropy_selector_active": visual.new_zeros(())}
+        elif self.env_selection == "random":
             indices, metrics = self.random_selector(visual, bank)
         else:
             indices, metrics = self.entropy_selector(visual, bank, scale)
@@ -257,6 +274,10 @@ class CIPTDCCL(_BaseCIPTDCCL):
             loss = relative_distance_loss(
                 causal, self.env_class_anchors, bank, labels, indices,
                 anchor_mode=self.rd_anchor_mode,
+            )
+        elif self.env_constraint in ("center_mse", "mean_template_mse"):
+            loss = template_alignment_loss(
+                causal, bank, labels, indices, mode=self.env_constraint,
             )
         else:
             raise RuntimeError("Disabled environment constraint must bypass selection")
@@ -335,8 +356,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 "env_loss": loss_env.item(),
                 "env_mcc_loss": loss_env.item() if self.env_constraint == "mcc" else 0.0,
                 "env_rd_loss": loss_env.item() if self.env_constraint == "relative_distance" else 0.0,
+                "env_center_mse_loss": loss_env.item() if self.env_constraint == "center_mse" else 0.0,
+                "env_mean_template_mse_loss": loss_env.item() if self.env_constraint == "mean_template_mse" else 0.0,
                 "env_loss_w": self.env_loss_weight if self.env_active else 0.0,
                 "env_topk": float(self.env_topk),
+                "env_all_templates_active": float(self.env_active and self.env_selection == "all"),
                 "env_anchor_active": float(self.env_active),
                 "random_selector_active": float(self.env_active and self.env_selection == "random"),
                 "env_rd_selected_anchor": float(
