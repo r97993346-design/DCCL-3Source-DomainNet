@@ -130,6 +130,7 @@ namespace = dict(
     independence_loss=losses.independence_loss,
     prompt_consistency_loss=losses.prompt_consistency_loss,
     relative_distance_loss=losses.relative_distance_loss,
+    template_alignment_loss=losses.template_alignment_loss,
     CLIPTextEncoder=prompts.CLIPTextEncoder, PromptLearner=prompts.PromptLearner,
 )
 execute_classes("cipt_env_kl.py", ("CIPTDCCL",), namespace)
