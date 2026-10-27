@@ -35,6 +35,7 @@ original RD can be evaluated without entropy selection for a three-way study.
 
 - `config_cipt_b5b_all80_center_mse.yaml` (second formula)
 - `config_cipt_b5b_all80_mean_template_mse.yaml` (fourth formula)
+- `config_cipt_b5b_all80_relative_distance.yaml` (original third formula, using all 80 templates)
 
 These presets isolate the alignment losses with E CE=1, S uniform=1, IND off,
 contrastive off, no TDA/fusion, e_only inference, SWAD LossValley, lr=5e-5.
@@ -65,10 +66,10 @@ CUDA_VISIBLE_DEVICES=0 python train_all.py pacs_all80_mean_template_mse_swad \
 ```
 
 If using a different server, replace the data/output/CLIP checkpoint paths.
-For the original third formula using all 80 templates, launch the existing
-`config_cipt_b5b_entropy_rd.yaml` but explicitly override
-`--cipt_env_selection all --cipt_env_topk 80`, and disable IND/contrastive to
-match the ablation presets. The third formula still uses normalized centers.
+For the original third formula using all 80 templates, use the provided
+`config_cipt_b5b_all80_relative_distance.yaml` preset. This matches the same
+E/S/IND/contrastive settings as the other two presets. Its RD still uses the
+normalized class center, unlike the unnormalized arithmetic mean in L2.
 
 ## Validation
 
