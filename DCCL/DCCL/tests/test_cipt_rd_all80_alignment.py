@@ -93,12 +93,19 @@ class All80AlignmentTests(unittest.TestCase):
             fixture.build(
                 "center_mse", cipt_env_selection="all", cipt_env_topk=40
             )
-        with self.assertRaisesRegex(ValueError, "require all 80"):
+        # Center MSE now supports entropy-selected top-k and computes
+        # its teacher mean from precisely those image-dependent indices.
+        entropy_model = fixture.build(
+            "center_mse", cipt_env_selection="entropy", cipt_env_topk=40
+        )
+        self.assertEqual(entropy_model.env_topk, 40)
+        self.assertIsNotNone(entropy_model.entropy_selector)
+        with self.assertRaisesRegex(ValueError, "requires all 80"):
             fixture.build(
-                "center_mse", cipt_env_selection="entropy", cipt_env_topk=40
+                "mean_template_mse", cipt_env_selection="entropy", cipt_env_topk=40
             )
         e, bank, labels, idx = self._inputs()
-        with self.assertRaisesRegex(ValueError, "requires indices"):
+        with self.assertRaisesRegex(ValueError, "requires all 80"):
             losses.template_alignment_loss(
                 e, bank, labels, idx[:, :40], mode="mean_template_mse"
             )
