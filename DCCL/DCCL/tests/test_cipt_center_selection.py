@@ -104,14 +104,31 @@ class EntropyCenterSelectionTests(unittest.TestCase):
         visual = model._visual(torch.cat(images))
         causal, _ = model.causal_decomposition(visual)
         labels = torch.cat(ys)
+        observed = {}
+        original_forward = model.random_selector.forward
+
+        def capture(*args, **kwargs):
+            indices, metrics = original_forward(*args, **kwargs)
+            observed["indices"] = indices.clone()
+            return indices, metrics
+
         with mock.patch.object(
-            model.random_selector, "forward",
-            wraps=model.random_selector.forward,
+            model.random_selector, "forward", side_effect=capture
         ) as spy:
-            loss, _ = model._env_anchor_loss(visual, causal, labels)
+            loss, metrics = model._env_anchor_loss(visual, causal, labels)
         self.assertEqual(spy.call_count, 1)
-        idx = spy.call_args_list  # The selector's draw is random: capture the actual output next.
-        self.assertGreaterEqual(loss.item(), 0.0)
+        idx = observed["indices"]
+        self.assertEqual(tuple(idx.shape), (len(labels), 6))
+        bank = model.text_features.full_b5b_text_features()
+        selected = F.normalize(
+            bank.detach().float()[labels[:, None], idx], dim=-1
+        )
+        expected = (
+            F.normalize(causal.float(), dim=-1) - selected.mean(dim=1)
+        ).square().sum(-1).mean()
+        torch.testing.assert_close(loss, expected)
+        self.assertEqual(metrics["entropy_selector_active"].item(), 0.0)
+        self.assertEqual(metrics["random_selector_active"].item(), 1.0)
 
     def test_invalid_n_and_mean_template_ablation_stays_all80(self):
         for n in (1, 81):
