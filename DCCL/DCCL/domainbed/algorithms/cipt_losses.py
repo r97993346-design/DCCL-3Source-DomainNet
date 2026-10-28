@@ -101,16 +101,17 @@ def relative_distance_loss(causal_features, class_anchors, text_bank, labels, in
 
 def template_alignment_loss(causal_features, text_bank, labels, indices,
                             mode="center_mse"):
-    """Official 80-template controls for relative-distance ablations.
+    """Official-template controls for causal-feature alignment.
 
-    center_mse:         mean_B ||unit(E) - mean_j unit(T_yj)||_2^2.
-    mean_template_mse:  mean_{B,j} ||unit(E) - unit(T_yj)||_2^2.
+    center_mse:        mean_B ||unit(E) - mean_{j in J_i} unit(T_yj)||_2^2.
+    mean_template_mse: mean_{B,j=1..80} ||unit(E) - unit(T_yj)||_2^2.
 
-    The class-conditioned text bank is frozen. In both variants the caller
-    passes all 80 indices, with no entropy or random sampling. The arithmetic
-    center is intentionally NOT normalized again: this makes both variants
-    produce identical gradients w.r.t. E, differing only by frozen text
-    variance (a useful mathematical/implementation check).
+    J_i may be an image-dependent set selected from the official 80-template
+    bank by frozen-CLIP entropy, by random selection, or all 80. For center_mse,
+    the arithmetic center is recomputed from *exactly J_i* for each image.
+    The mean is deliberately NOT renormalized, preserving the original all-80
+    center_mse definition and its gradient equivalence with mean_template_mse.
+    Frozen teacher text never receives gradients.
     """
     if mode not in ("center_mse", "mean_template_mse"):
         raise ValueError("mode must be center_mse or mean_template_mse")
@@ -122,9 +123,12 @@ def template_alignment_loss(causal_features, text_bank, labels, indices,
         raise ValueError("text_bank must have shape [C,80,D]")
     if labels.shape != (batch,) or labels.dtype != torch.long:
         raise ValueError("labels must be LongTensor [B]")
-    if (indices.ndim != 2 or indices.shape != (batch, 80)
+    if (indices.ndim != 2 or indices.shape[0] != batch
+            or not 2 <= indices.shape[1] <= 80
             or indices.dtype != torch.long):
-        raise ValueError("all-80 alignment requires indices [B,80]")
+        raise ValueError("alignment requires LongTensor indices [B,n], 2 <= n <= 80")
+    if mode == "mean_template_mse" and indices.shape[1] != 80:
+        raise ValueError("mean_template_mse requires all 80 official templates")
     if (labels < 0).any() or (labels >= text_bank.shape[0]).any():
         raise ValueError("labels outside class bank")
     if (indices < 0).any() or (indices >= 80).any():
@@ -135,8 +139,9 @@ def template_alignment_loss(causal_features, text_bank, labels, indices,
         text_bank.detach().float()[labels[:, None], indices], dim=-1
     )
     if mode == "center_mse":
-        # Crucial: do not renormalize this mean; otherwise the identity with
-        # mean_template_mse no longer holds exactly.
+        # The selected index set J_i can differ for every image. We compute
+        # its class-conditional center AFTER selection, never from all 80
+        # unless selection='all'. Do not renormalize the arithmetic mean.
         center = unit_t.mean(dim=1)
         return (unit_e - center).square().sum(dim=-1).mean()
     return (unit_e[:, None, :] - unit_t).square().sum(dim=-1).mean()
