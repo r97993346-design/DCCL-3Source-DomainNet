@@ -211,8 +211,10 @@ class CIPTDCCL(_BaseCIPTDCCL):
             self.entropy_selector = None
             self.random_selector = RandomPromptSelector(topk)
             self.env_topk = self.random_selector.topk
-        if self.env_constraint in ("center_mse", "mean_template_mse") and self.env_selection != "all":
-            raise ValueError("center/mean-template MSE controls require all 80 official templates")
+        # center_mse uses the current selector's per-image indices (entropy,
+        # random or all). mean_template_mse remains the original all-80 control.
+        if self.env_constraint == "mean_template_mse" and self.env_selection != "all":
+            raise ValueError("mean_template_mse requires all 80 official templates")
         self.env_active = self.env_constraint != "none" and self.env_loss_weight > 0.0
         self.fusion_mode = "none"
         self.env_kl_active = self.fused_cls_active = False
