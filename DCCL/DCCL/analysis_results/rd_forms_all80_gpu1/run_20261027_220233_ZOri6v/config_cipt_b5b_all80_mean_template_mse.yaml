@@ -1,0 +1,26 @@
+# Fourth formula: mean squared Euclidean distance to each unit text feature.
+cipt_env_constraint: mean_template_mse
+# Official CLIP B5b class-conditioned template bank; all 80 templates, no selection.
+# Apply after config.yaml. CLI overrides can set weights independently.
+cipt_objective: env_anchor
+cipt_template_mode: b5b
+cipt_selector_mode: random   # inherited constructor only; NOT env selection
+cipt_env_selection: all       # bypass entropy and random selection entirely
+cipt_env_topk: 80
+cipt_env_loss_weight: 1.0
+cipt_rd_anchor_mode: full
+cipt_env_inference: e_only
+cipt_use_tda: false
+cipt_env_kl_weight: 0.0
+cipt_fused_cls_weight: 0.0
+
+# Isolate the semantic alignment effect for the advisor's comparison.
+cipt_use_de: true
+cipt_e_cls_weight: 1.0
+cipt_s_uniform_weight: 1.0
+cipt_use_ind: false
+cipt_use_contrastive: false
+cipt_pure: false
+cipt_use_aug_view: false
+lr: 5.0e-5
+swad: LossValley

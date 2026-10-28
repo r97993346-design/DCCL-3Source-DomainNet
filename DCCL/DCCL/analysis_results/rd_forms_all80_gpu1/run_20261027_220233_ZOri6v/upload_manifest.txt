@@ -1,0 +1,10 @@
+PACS official B5b all-80 comparison: E1 S1 RD1
+Source run: /home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/train_output/ablation/rd_forms_all80_gpu1/run_20261027_220233_ZOri6v
+Upload UTC: 2026-10-28T05:59:10Z
+Results files: 3 (expected 3 complete methods)
+Copied files: 18
+
+id	constraint	E_weight	S_weight	env_weight	status	output_root
+01	center_mse	1.0	1.0	1.0	SUCCESS	train_output/ablation/rd_forms_all80_gpu1/run_20261027_220233_ZOri6v/pacs_all80_center_mse_e1_s1_rd1_swad
+02	relative_distance	1.0	1.0	1.0	SUCCESS	train_output/ablation/rd_forms_all80_gpu1/run_20261027_220233_ZOri6v/pacs_all80_relative_distance_e1_s1_rd1_swad
+03	mean_template_mse	1.0	1.0	1.0	SUCCESS	train_output/ablation/rd_forms_all80_gpu1/run_20261027_220233_ZOri6v/pacs_all80_mean_template_mse_e1_s1_rd1_swad
