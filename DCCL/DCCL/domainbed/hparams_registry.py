@@ -64,6 +64,9 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_env_topk"] = (40, 40)
         hparams["cipt_env_loss_weight"] = (1.0, 1.0)
         hparams["cipt_env_selection"] = ("entropy", "entropy")
+        # Classification prototypes for E/S and e_only inference in env_anchor:
+        # learnable CIPT prompts (default) or frozen CLIP B5b 80-template mean.
+        hparams["cipt_class_text_mode"] = ("learnable", "learnable")
         # RD teacher center: all 80 templates by default, or the same selected n.
         hparams["cipt_rd_anchor_mode"] = ("full", "full")
         # env_kl uses a unit E CE anchor; None for S falls back to beta.
