@@ -17,10 +17,14 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
         algorithm_class is not None
         and algorithm_class.__name__ == "CIPTDCCL"
     )
+    is_gdfas = (algorithm_class is not None and algorithm_class.__name__ == "GDFAS")
 
     additional_data = False
     if data_type == "train":
-        if is_cipt_dccl:
+        if is_gdfas:
+            # GD-FAS requires two independently augmented views per example.
+            dset.transforms = {"x": DBT.gdfas_aug, "x_2": DBT.gdfas_aug}
+        elif is_cipt_dccl:
             # This branch is single-view by default: the original image follows
             # the official CLIP preprocessing and no x_2 view is constructed.
             # The flag is retained only for backward compatibility with older
@@ -37,9 +41,9 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
             additional_data = True
     elif data_type == "valid":
         if hparams["val_augment"] is False:
-            dset.transforms = {"x": DBT.clip_basic if is_cipt_dccl else DBT.basic}
+            dset.transforms = {"x": DBT.gdfas_eval if is_gdfas else (DBT.clip_basic if is_cipt_dccl else DBT.basic)}
         else:
-            dset.transforms = {"x": DBT.clip_aug if is_cipt_dccl else DBT.aug}
+            dset.transforms = {"x": DBT.gdfas_aug if is_gdfas else (DBT.clip_aug if is_cipt_dccl else DBT.aug)}
     elif data_type == "test":
         dset.transforms = {"x": DBT.clip_basic if is_cipt_dccl else DBT.basic}
     elif data_type == "mnist":
