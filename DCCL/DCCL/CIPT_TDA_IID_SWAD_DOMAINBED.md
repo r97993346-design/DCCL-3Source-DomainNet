@@ -109,3 +109,29 @@ python -m unittest discover -s tests -p 'test_cipt_tda_consistent.py' -v
 测试覆盖源域宏平均、IID 并列规则、目标域访问隔离、与原 LossValley
 数值一致性、密集平均、valley 结束后继续基础训练、随机状态隔离、
 checkpoint 重载、目标 in/out 分表，以及上游训练循环的微型端到端运行。
+
+## GPU1 串行执行 PACS、VLCS、OfficeHome
+
+在仓库根目录更新代码后启动 tmux：
+
+```bash
+git fetch origin
+git switch feature/cipt-tda-domainbed-iid-swad
+git pull --ff-only origin feature/cipt-tda-domainbed-iid-swad
+git submodule update --init --recursive
+cd DCCL/DCCL
+tmux new-session -s cipt_tda_iid_swad_gpu1 'bash run_cipt_tda_iid_swad_gpu1.sh; exec bash'
+```
+
+脚本锁定物理 GPU1，按 PACS → VLCS → OfficeHome 顺序，每组执行四个留出域；
+参数为上文的 30 epochs、global batch64、lr=0.0025，并计算 IID、last、SWAD。
+每次启动自动创建
+`train_output/ablation/cipt_tda_iid_swad_gpu1/run_时间_随机后缀/`，
+其中含三个数据集的结果表、checkpoint、`logs/`、`launcher.log` 和 `status.tsv`。
+某个数据集失败时记录退出码并继续下一个；用户中断则停止队列。
+数据路径、CLIP 路径和 Python 可分别通过 `CIPT_DATA_DIR`、
+`CIPT_CLIP_PATH`、`CIPT_PYTHON` 环境变量覆盖。
+
+使用 Ctrl+B、D 脱离会话；通过
+`tmux attach -t cipt_tda_iid_swad_gpu1` 回到运行窗口。
+
