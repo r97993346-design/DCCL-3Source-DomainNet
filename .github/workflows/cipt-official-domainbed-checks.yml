@@ -1,0 +1,20 @@
+name: Official CIPT DomainBed static checks
+on:
+  push:
+    branches:
+      - repro/cipt-official-domainbed
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Check upstream source and Python syntax
+        run: |
+          python -m py_compile DCCL/DCCL/train_cipt_official_domainbed.py
+          python -m unittest discover -s DCCL/DCCL/tests -p "test_cipt_official_domainbed.py" -v

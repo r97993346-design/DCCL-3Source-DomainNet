@@ -1,0 +1,3 @@
+[submodule "DCCL/DCCL/third_party/CIPT"]
+	path = DCCL/DCCL/third_party/CIPT
+	url = https://github.com/ckghostwj/CIPT.git
