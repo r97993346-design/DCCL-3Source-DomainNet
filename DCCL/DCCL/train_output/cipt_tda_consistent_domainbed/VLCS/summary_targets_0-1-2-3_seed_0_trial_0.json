@@ -1,0 +1,31 @@
+{
+  "dataset": "VLCS",
+  "targets": [
+    {
+      "target": "CALTECH",
+      "target_in": 0.9372791519434629,
+      "target_out": 0.901060070671378,
+      "source_val": 0.835123523093448
+    },
+    {
+      "target": "LABELME",
+      "target_in": 0.6508235294117647,
+      "target_out": 0.6497175141242938,
+      "source_val": 0.8736059479553904
+    },
+    {
+      "target": "PASCAL",
+      "target_in": 0.7682339874120696,
+      "target_out": 0.7614814814814815,
+      "source_val": 0.8448979591836735
+    },
+    {
+      "target": "SUN",
+      "target_in": 0.7284843869002284,
+      "target_out": 0.711890243902439,
+      "source_val": 0.8656816655473473
+    }
+  ],
+  "target_in_mean": 0.7712052639168814,
+  "target_out_mean": 0.7560373275448982
+}

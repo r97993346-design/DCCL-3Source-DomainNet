@@ -1,0 +1,31 @@
+{
+  "dataset": "PACS",
+  "targets": [
+    {
+      "target": "art_painting",
+      "target_in": 0.9517998779743746,
+      "target_out": 0.9559902200488998,
+      "source_val": 0.9747952110901071
+    },
+    {
+      "target": "cartoon",
+      "target_in": 0.976545842217484,
+      "target_out": 0.9871794871794872,
+      "source_val": 0.9770942408376964
+    },
+    {
+      "target": "photo",
+      "target_in": 0.9880239520958084,
+      "target_out": 0.9910179640718563,
+      "source_val": 0.9741275571600482
+    },
+    {
+      "target": "sketch",
+      "target_in": 0.8870865139949109,
+      "target_out": 0.89171974522293,
+      "source_val": 0.9966969446738233
+    }
+  ],
+  "target_in_mean": 0.9508640465706444,
+  "target_out_mean": 0.9564768541307933
+}

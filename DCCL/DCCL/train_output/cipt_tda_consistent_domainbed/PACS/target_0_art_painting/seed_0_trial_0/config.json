@@ -1,0 +1,47 @@
+{
+  "upstream": "https://github.com/ckghostwj/CIPT",
+  "upstream_commit": "a805d878acc7d79778d1ec1c1e4d73ba6aff334b",
+  "split": "DCCL domainbed.datasets.get_dataset",
+  "dataset": "PACS",
+  "environment": "art_painting",
+  "test_env": 0,
+  "seed": 0,
+  "trial_seed": 0,
+  "holdout_fraction": 0.2,
+  "no_few_shot_sampling": true,
+  "no_swad": true,
+  "lr": 0.0025,
+  "batch_size": 64,
+  "epochs": 30,
+  "weight_decay": 0.0,
+  "beta": 4.0,
+  "gamma": 5.0,
+  "k": 4,
+  "n_ctx": 16,
+  "num_heads": 8,
+  "backbone_or_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+  "source_val_for_model_selection": false,
+  "sizes": {
+    "source_train": {
+      "cartoon": 1876,
+      "photo": 1336,
+      "sketch": 3144
+    },
+    "source_val": {
+      "cartoon": 468,
+      "photo": 334,
+      "sketch": 785
+    },
+    "target_in": 1639,
+    "target_out": 409
+  },
+  "classes": [
+    "dog",
+    "elephant",
+    "giraffe",
+    "guitar",
+    "horse",
+    "house",
+    "person"
+  ]
+}

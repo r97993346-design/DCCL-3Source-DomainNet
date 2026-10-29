@@ -1,0 +1,45 @@
+{
+  "upstream": "https://github.com/ckghostwj/CIPT",
+  "upstream_commit": "a805d878acc7d79778d1ec1c1e4d73ba6aff334b",
+  "split": "DCCL domainbed.datasets.get_dataset",
+  "dataset": "VLCS",
+  "environment": "PASCAL",
+  "test_env": 2,
+  "seed": 0,
+  "trial_seed": 0,
+  "holdout_fraction": 0.2,
+  "no_few_shot_sampling": true,
+  "no_swad": true,
+  "lr": 0.0025,
+  "batch_size": 64,
+  "epochs": 30,
+  "weight_decay": 0.0,
+  "beta": 4.0,
+  "gamma": 5.0,
+  "k": 4,
+  "n_ctx": 16,
+  "num_heads": 8,
+  "backbone_or_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+  "source_val_for_model_selection": false,
+  "sizes": {
+    "source_train": {
+      "CALTECH": 1132,
+      "LABELME": 2125,
+      "SUN": 2626
+    },
+    "source_val": {
+      "CALTECH": 283,
+      "LABELME": 531,
+      "SUN": 656
+    },
+    "target_in": 2701,
+    "target_out": 675
+  },
+  "classes": [
+    "bird",
+    "car",
+    "chair",
+    "dog",
+    "person"
+  ]
+}
