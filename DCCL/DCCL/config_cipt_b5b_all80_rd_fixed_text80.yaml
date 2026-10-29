@@ -19,6 +19,7 @@ cipt_use_tda: false
 cipt_env_kl_weight: 0.0
 cipt_fused_cls_weight: 0.0
 cipt_use_de: true
+cipt_beta: 1.0
 cipt_e_cls_weight: 1.0
 cipt_s_uniform_weight: 1.0
 cipt_use_ind: false
