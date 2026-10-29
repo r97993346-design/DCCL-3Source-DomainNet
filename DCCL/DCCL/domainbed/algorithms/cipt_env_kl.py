@@ -189,6 +189,14 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.s_uniform_weight = s_weight if self.use_de else 0.0
         self.gamma = coefficient("cipt_gamma", self.gamma)
         self.env_loss_weight = coefficient("cipt_env_loss_weight", 1.0)
+        # Independent classifier text switch: keep learnable CIPT prompts by
+        # default; optionally replace them with frozen 80-template prototypes.
+        # This does NOT alter the RD / Center-MSE teacher bank or formula.
+        self.class_text_mode = str(
+            hparams.get("cipt_class_text_mode", "learnable")
+        ).lower()
+        if self.class_text_mode not in ("learnable", "fixed80"):
+            raise ValueError("cipt_class_text_mode must be learnable or fixed80")
         self.env_selection = str(hparams.get("cipt_env_selection", "entropy")).lower()
         if self.env_selection not in ("entropy", "random", "all"):
             raise ValueError("cipt_env_selection must be entropy, random or all")
@@ -229,6 +237,10 @@ class CIPTDCCL(_BaseCIPTDCCL):
         with torch.no_grad():
             anchors = F.normalize(bank.detach().float().mean(dim=1), dim=-1)
         self.register_buffer("env_class_anchors", anchors)
+        if self.class_text_mode == "fixed80":
+            # No trainable text classifier: these context tokens are never
+            # evaluated in env_anchor and must not enter the optimizer.
+            self.text_features.prompt_learner.requires_grad_(False)
 
         # The inherited constructor creates TDA. Keep it inactive and frozen;
         # do not instantiate SIGM even if a previous YAML set fusion_mode=sigm.
@@ -245,14 +257,25 @@ class CIPTDCCL(_BaseCIPTDCCL):
         print("CIPTDCCL env_anchor: constraint={}, topk={}, env_weight={}, "
               "E_CE_weight={}, S_uniform_weight={}, IND_weight={}, "
               "fusion=none, inference=e_only, env_selection={}, selector={}, "
-              "rd_anchor_mode={}".format(
+              "rd_anchor_mode={}, class_text_mode={}".format(
                   self.env_constraint, self.env_topk, self.env_loss_weight,
                   self.e_cls_weight, self.s_uniform_weight,
                   self.gamma if self.use_ind else 0.0, self.env_selection,
                   "frozen_CLIP_entropy" if self.env_selection == "entropy"
                   else ("per_image_random_without_replacement" if self.env_selection == "random"
                         else "all_80_without_selection"),
-                  self.rd_anchor_mode))
+                  self.rd_anchor_mode, self.class_text_mode))
+
+    def _class_text_features(self):
+        """Class prototypes shared by E-CE, S-uniformity and e_only inference.
+
+        fixed80 is the normalized ensemble of ALL 80 frozen official B5b
+        class texts, not the trainable CoOp/CIPT class prompt. It is independent
+        of the number of templates used for the environment loss.
+        """
+        if self.objective_mode == "env_anchor" and self.class_text_mode == "fixed80":
+            return self.env_class_anchors
+        return self.text_features.class_features()
 
     def _env_anchor_loss(self, visual, causal, labels):
         """Select without labels/E/S, then regularize differentiable E."""
@@ -318,7 +341,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         visual = self._visual(torch.cat(x))
         labels = torch.cat(y)
         causal, spurious = self.causal_decomposition(visual)
-        class_features = self.text_features.class_features()
+        class_features = self._class_text_features()
         causal_logits = self._logits(causal[:, None, :], class_features)[:, 0]
         zero = causal.new_zeros(())
 
@@ -485,7 +508,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             return super().predict(x)
         visual = self._visual(x)
         causal, _ = self.causal_decomposition(visual)
-        class_features = self.text_features.class_features()
+        class_features = self._class_text_features()
         if self.inference_mode == "e_only":
             # Original env_kl deployment: no text selection/fusion at test time.
             return self._logits(causal[:, None, :], class_features)[:, 0]
