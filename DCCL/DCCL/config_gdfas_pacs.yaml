@@ -1,0 +1,20 @@
+# ICCV 2025 GD-FAS: independent faithful multi-class transfer to PACS.
+# Usage: python train_all.py name config_gdfas_pacs.yaml --algorithm GDFAS ...
+# No CIPT decomposition, MCC, RD, prompt tuner, or SWAD.
+optimizer: adam
+lr: 3.0e-6
+weight_decay: 1.0e-6
+batch_size: 3   # per domain, 3 source domains -> 9 images, each with TWO views
+swad: null
+data_augmentation: true
+gdfas_clip_backbone: ViT-B/16
+gdfas_clip_path: ""  # optionally: /home/hooasia/.cache/clip/ViT-B-16.pt
+gdfas_gs: true
+gdfas_beta: 1.5
+gdfas_temperature: 0.1
+gdfas_fod_weight: 0.8
+gdfas_ii_weight: 0.1
+gdfas_aux_weight: 1.0
+gdfas_lr_step_size: 10
+gdfas_lr_gamma: 0.1
+gdfas_lr_steps_per_epoch: 10
