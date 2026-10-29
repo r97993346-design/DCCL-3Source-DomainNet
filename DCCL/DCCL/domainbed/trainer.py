@@ -16,6 +16,7 @@ from domainbed.lib import misc
 from domainbed.lib import swa_utils
 from domainbed.lib.query import Q
 from domainbed.lib.fast_data_loader import InfiniteDataLoader, FastDataLoader
+from domainbed.lib.cipt_lr_schedule import make_cipt_lr_scheduler
 from domainbed import swad as swad_module
 
 
@@ -173,6 +174,21 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     n_params = sum([p.numel() for p in algorithm.parameters()])
     logger.info("# of params = %d" % n_params)
 
+    # Original behavior is unchanged unless cipt_lr_schedule=cosine is set.
+    # The upstream CIPT repro anneals once per epoch; in this step-based
+    # DomainBed trainer we span the entire actual optimizer-step budget.
+    lr_scheduler = None
+    if args.algorithm == "CIPTDCCL":
+        lr_scheduler = make_cipt_lr_scheduler(algorithm, hparams, n_steps)
+        if lr_scheduler is not None:
+            logger.info(
+                "CIPT cosine LR: initial=%s, eta_min=%s, T_max=%d steps; "
+                "optimizer=Adam (per-step annealing).",
+                [g["lr"] for g in algorithm.optimizer.param_groups],
+                hparams.get("cipt_lr_min", 0.0),
+                n_steps,
+            )
+
     train_minibatches_iterator = zip(*train_loaders)
     checkpoint_vals = collections.defaultdict(lambda: [])
 
@@ -212,7 +228,16 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         }
 
         inputs = {**batches, "step": step}
+        # Log the LR *used* for this optimizer update, rather than the LR set
+        # for the next step. In CIPTDCCL, optimizer.step() runs in update().
+        used_lr = (
+            float(algorithm.optimizer.param_groups[0]["lr"])
+            if lr_scheduler is not None else None
+        )
         step_vals = algorithm.update(**inputs)
+        if lr_scheduler is not None:
+            step_vals["lr"] = used_lr
+            lr_scheduler.step()
 
         for key, val in step_vals.items():
             checkpoint_vals[key].append(val)
