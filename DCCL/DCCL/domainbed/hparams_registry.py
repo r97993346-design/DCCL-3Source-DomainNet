@@ -19,6 +19,21 @@ def _hparams(algorithm, dataset, random_state):
     hparams["class_balanced"] = (False, False)
     hparams["optimizer"] = ("adam", "adam")
 
+    if algorithm == "GDFAS":
+        # Official GD-FAS: full fine-tuning of CLIP ViT-B/16 + GS-RM + FOD
+        # (ICCV 2025). Loss weights are those in the released implementation.
+        hparams["gdfas_clip_backbone"] = ("ViT-B/16", "ViT-B/16")
+        hparams["gdfas_clip_path"] = ("", "")
+        hparams["gdfas_gs"] = (True, True)
+        hparams["gdfas_beta"] = (1.5, 1.5)
+        hparams["gdfas_temperature"] = (0.1, 0.1)
+        hparams["gdfas_fod_weight"] = (0.8, 0.8)
+        hparams["gdfas_ii_weight"] = (0.1, 0.1)
+        hparams["gdfas_aux_weight"] = (1.0, 1.0)
+        hparams["gdfas_lr_step_size"] = (10, 10)
+        hparams["gdfas_lr_gamma"] = (0.1, 0.1)
+        hparams["gdfas_lr_steps_per_epoch"] = (10, 10)
+
     if algorithm == "CIPTDCCL":
         hparams["cipt_enabled"] = (True, True)
         hparams["cipt_clip_backbone"] = ("ViT-B/16", "ViT-B/16")
@@ -92,6 +107,13 @@ def _hparams(algorithm, dataset, random_state):
         hparams["weight_decay"] = (0.0, 0.0)
     else:
         hparams["weight_decay"] = (0.0, 10 ** random_state.uniform(-6, -2))
+
+    if algorithm == "GDFAS":
+        # DomainBed batch_size is per *source domain*, unlike the author's
+        # global batch-size. Start small for full CLIP fine-tuning on 24-GB GPUs.
+        hparams["lr"] = (3e-6, 3e-6)
+        hparams["batch_size"] = (3, 3)
+        hparams["weight_decay"] = (1e-6, 1e-6)
 
     if algorithm in ["DANN", "CDANN"]:
         if dataset not in SMALL_IMAGES:
