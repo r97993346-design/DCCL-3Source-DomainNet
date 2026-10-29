@@ -2,6 +2,7 @@ from .algorithms import *
 # The wrapper delegates unchanged legacy runs, or enables training-only
 # class-agnostic fused CE / prompt KL with explicit decomposition terms.
 from .cipt_env_kl import CIPTDCCL
+from .gdfas import GDFAS
 
 
 def get_algorithm_class(algorithm_name):
