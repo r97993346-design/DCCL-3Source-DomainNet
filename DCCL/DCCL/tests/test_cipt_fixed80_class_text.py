@@ -71,6 +71,8 @@ class Fixed80ClassTextTests(unittest.TestCase):
         self.assertGreater(metrics["env_rd_loss"], 0.0)
         self.assertGreater(metrics["e_cls_loss"], 0.0)
         self.assertGreater(metrics["s_uni_loss"], 0.0)
+        self.assertEqual(metrics["class_text_fixed80_active"], 1.0)
+        self.assertEqual(metrics["class_text_learnable_active"], 0.0)
         self.assertIsNone(model.text_features.prompt_learner.context.grad)
         self.assertGreater(
             model.causal_decomposition.causal_adapter.weight.grad.abs().sum().item(),
