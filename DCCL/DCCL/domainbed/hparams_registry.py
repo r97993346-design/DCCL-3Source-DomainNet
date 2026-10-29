@@ -67,6 +67,10 @@ def _hparams(algorithm, dataset, random_state):
         # Classification prototypes for E/S and e_only inference in env_anchor:
         # learnable CIPT prompts (default) or frozen CLIP B5b 80-template mean.
         hparams["cipt_class_text_mode"] = ("learnable", "learnable")
+        # Learning-rate policy: constant (DomainBed original, default) or
+        # cosine annealing over the configured optimizer-step budget.
+        hparams["cipt_lr_schedule"] = ("constant", "constant")
+        hparams["cipt_lr_min"] = (0.0, 0.0)
         # RD teacher center: all 80 templates by default, or the same selected n.
         hparams["cipt_rd_anchor_mode"] = ("full", "full")
         # env_kl uses a unit E CE anchor; None for S falls back to beta.
