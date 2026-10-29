@@ -73,3 +73,29 @@ clip_aug = T.Compose([
     T.ToTensor(),
     T.Normalize(mean=CLIP_MEAN, std=CLIP_STD),
 ])
+
+
+# GD-FAS (ICCV 2025): image augmentations from the official
+# data/__init__.py (rotation, square random crop, flip, ImageNet statistics).
+# The FAS-specific MTCNN face detector is not used on PACS/DomainBed.
+gdfas_aug = T.Compose([
+    T.RandomRotation(degrees=(-180, 180)),
+    T.RandomResizedCrop(
+        224, scale=(0.9, 0.9), ratio=(1.0, 1.0),
+    ),
+    T.RandomHorizontalFlip(),
+    T.Lambda(_convert_image_to_rgb),
+    T.ToTensor(),
+    T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+
+# The official FAS test transform uses a stochastic RandomResizedCrop.
+# A deterministic resize/center-crop is used for fair DomainBed evaluation;
+# normalization stays exactly as in the official implementation.
+gdfas_eval = T.Compose([
+    T.Resize(224),
+    T.CenterCrop(224),
+    T.Lambda(_convert_image_to_rgb),
+    T.ToTensor(),
+    T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
