@@ -476,6 +476,15 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "ablation_ind_enabled": float(self.use_ind),
             "ablation_tda_enabled": float(self.use_tda),
             "ablation_contrastive_enabled": float(self.use_contrastive),
+            # Explicit runtime proof of which classifier was used. For fixed80
+            # E/S CE and E-only inference use frozen mean B5b class vectors,
+            # while the RD teacher and its all/entropy selector are unchanged.
+            "class_text_fixed80_active": float(
+                anchor_mode and self.class_text_mode == "fixed80"
+            ),
+            "class_text_learnable_active": float(
+                anchor_mode and self.class_text_mode == "learnable"
+            ),
             "e_cls_loss": loss_e.item(),
             "fused_cls_loss": loss_fused_cls.item(),
             "s_uni_loss": loss_s.item(),
