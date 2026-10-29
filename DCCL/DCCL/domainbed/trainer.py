@@ -153,13 +153,15 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # setup algorithm (model)
     #######################################################
     hparams["total_num_domains"] = len(dataset)
-    if args.algorithm == "CIPTDCCL":
+    if args.algorithm in ("CIPTDCCL", "GDFAS"):
         if hasattr(dataset, "datasets") and dataset.datasets:
-            hparams["cipt_class_names"] = list(dataset.datasets[0].classes)
+            names = list(dataset.datasets[0].classes)
+            hparams["cipt_class_names"] = names
+            hparams["gdfas_class_names"] = names
         else:
-            hparams["cipt_class_names"] = [
-                "class {}".format(i) for i in range(dataset.num_classes)
-            ]
+            names = ["class {}".format(i) for i in range(dataset.num_classes)]
+            hparams["cipt_class_names"] = names
+            hparams["gdfas_class_names"] = names
 
     algorithm = algorithm_class(
         dataset.input_shape,
