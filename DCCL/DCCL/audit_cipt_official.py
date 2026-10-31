@@ -6,6 +6,8 @@ No checkpoint or repository file is modified. Results are printed as JSON.
 Compare E-only, the original LayerNorm applied to E, and native TDA using
 exactly the same images, learned class texts, weights, and template indices.
 The optional optimizer probe changes in-memory weights once, then restores them.
+Optional --alphas and --probe-zero-image are evaluation-only interventions;
+alpha=1 is the original model and alpha=0 removes only the attention increment.
 """
 from __future__ import annotations
 
@@ -46,19 +48,50 @@ def history_summary(path):
     }
 
 
+def alpha_mode_name(alpha):
+    return "tda_alpha_" + format(alpha, ".12g")
+
+
+def predict_scaled_tda(model, images, template_indices, alpha):
+    """Scale the attention output, retaining native candidate scoring and LN."""
+    def scale_increment(_module, _inputs, output):
+        return (output[0] * alpha, output[1])
+    handle = model.diversity_augmentation.attn.register_forward_hook(scale_increment)
+    try:
+        return model.predict(images, use_tda=True, template_indices=template_indices)
+    finally:
+        handle.remove()
+
+
+def predict_zero_image_tda(model, images, template_indices):
+    """Set E to zero at its source, affecting BOTH attention Query and residual."""
+    def zero_causal_features(_module, _inputs, output):
+        return torch.zeros_like(output)
+    handle = model.causal_adapter.register_forward_hook(zero_causal_features)
+    try:
+        return model.predict(images, use_tda=True, template_indices=template_indices)
+    finally:
+        handle.remove()
+
+
 def diagnose_split(model, batches, fixed_text, num_classes, cipt_loss, beta, gamma,
-                   template_indices):
+                   template_indices, alphas=None, probe_zero_image=False):
     with torch.no_grad():
         return _diagnose_split(model, batches, fixed_text, num_classes, cipt_loss,
-                               beta, gamma, template_indices)
+                               beta, gamma, template_indices, alphas, probe_zero_image)
 
 
 def _diagnose_split(model, batches, fixed_text, num_classes, cipt_loss, beta, gamma,
-                    template_indices):
+                    template_indices, alphas=None, probe_zero_image=False):
     model.eval()
+    alphas = [] if alphas is None else list(alphas)
     modes = ["clip_fixed_prompt", "clip_learned_prompt", "e_only", "e_layernorm_only",
              "tda_inference", "tda_true_label_ORACLE"]
+    modes += [alpha_mode_name(alpha) for alpha in alphas]
+    if probe_zero_image:
+        modes.append("tda_zero_image")
     totals = {name: {"correct": 0, "ce_sum": 0.0,
+                     "score_sum": torch.zeros(num_classes, dtype=torch.float64),
                      "confusion": torch.zeros(num_classes, num_classes, dtype=torch.long)}
               for name in modes}
     losses_sum = {}
@@ -95,12 +128,23 @@ def _diagnose_split(model, batches, fixed_text, num_classes, cipt_loss, beta, ga
             "tda_inference": native_tda,
             "tda_true_label_ORACLE": out.interventional_logits.mean(dim=1),
         }
+        for alpha in alphas:
+            key = alpha_mode_name(alpha)
+            # alpha=1 reuses the native result, so it cannot drift by re-encoding.
+            scores[key] = native_tda if alpha == 1.0 else predict_scaled_tda(
+                model, images, template_indices, alpha)
+            if alpha == 0.0 and not torch.allclose(
+                    scores[key], scores["e_layernorm_only"], rtol=1e-5, atol=1e-4):
+                raise RuntimeError("alpha=0 does not reproduce LayerNorm(E); inspect the upstream model version")
+        if probe_zero_image:
+            scores["tda_zero_image"] = predict_zero_image_tda(model, images, template_indices)
         for mode, logits in scores.items():
             if not torch.isfinite(logits).all():
                 raise RuntimeError(f"Non-finite logits in {mode}")
             pred = logits.argmax(dim=-1)
             totals[mode]["correct"] += int((pred == labels).sum())
             totals[mode]["ce_sum"] += float(F.cross_entropy(logits, labels, reduction="sum"))
+            totals[mode]["score_sum"] += logits.detach().double().sum(dim=0).cpu()
             pairs = labels * num_classes + pred
             counts = torch.bincount(pairs, minlength=num_classes ** 2)
             totals[mode]["confusion"] += counts.cpu().reshape(num_classes, num_classes)
@@ -121,7 +165,14 @@ def _diagnose_split(model, batches, fixed_text, num_classes, cipt_loss, beta, ga
             "true_class_counts": confusion.sum(1).tolist(),
             "predicted_class_counts": confusion.sum(0).tolist(),
             "confusion_true_rows_predicted_columns": confusion.tolist(),
+            "mean_class_logits": (stats["score_sum"] / n).tolist(),
         }
+    result["alpha_diagnostics"] = {
+        "alphas": alphas, "zero_image_enabled": probe_zero_image,
+        "scaling_location": "attention output before residual addition and original LayerNorm",
+        "zero_image_location": "causal adapter output: zeros both image Query and image residual",
+        "note": "Frozen-checkpoint diagnostics on source data; these are not retrained models or target-domain model selection.",
+    }
     result["losses_with_fixed_templates"] = {k: v / n for k, v in losses_sum.items()}
     # This is a checkpoint diagnostic, not a claim that large ratios are a bug.
     rows = fusion_sum.pop("rows")
@@ -162,6 +213,15 @@ def summary_rows(report):
                 "B_minus_A_pp": round(modes["e_layernorm_only"]["accuracy_pct"] - modes["e_only"]["accuracy_pct"], 6),
                 "C_minus_B_pp": round(modes["tda_inference"]["accuracy_pct"] - modes["e_layernorm_only"]["accuracy_pct"], 6),
             })
+            for mode, stats in modes.items():
+                if not (mode.startswith("tda_alpha_") or mode == "tda_zero_image"):
+                    continue
+                counts = stats["predicted_class_counts"]
+                index = max(range(len(counts)), key=counts.__getitem__)
+                rows[-1][mode + "_pct"] = stats["accuracy_pct"]
+                rows[-1][mode + "_dominant_class"] = result["classes"][index]
+                rows[-1][mode + "_dominant_prediction_pct"] = round(
+                    100 * counts[index] / item["num_samples"], 6)
     return rows
 
 
@@ -174,6 +234,18 @@ def print_summary(rows):
               f"{row['B_LayerNorm_E_pct']:10.3f} {row['C_native_TDA_pct']:10.3f} "
               f"{row['ORACLE_invalid_as_test_pct']:12.3f}", file=sys.stderr)
     print("* ORACLE uses true labels to select text; diagnostic only, not valid test accuracy.\n", file=sys.stderr)
+    for row in rows:
+        probes = [key[:-4] for key in row if key.endswith("_pct")
+                  and not key.endswith("_dominant_prediction_pct")
+                  and (key.startswith("tda_alpha_") or key == "tda_zero_image_pct")]
+        if not probes:
+            continue
+        print(f"{row['target']} / {row['split']}: attention-increment probes", file=sys.stderr)
+        print("mode                         accuracy%   dominant prediction   share%", file=sys.stderr)
+        for mode in probes:
+            print(f"{mode:<29} {row[mode + '_pct']:9.3f}   "
+                  f"{row[mode + '_dominant_class']:<21} "
+                  f"{row[mode + '_dominant_prediction_pct']:7.3f}", file=sys.stderr)
 
 
 def optimizer_probe(model, batch, make_optimizer, cipt_loss, cfg):
@@ -229,6 +301,10 @@ def main():
     parser.add_argument("--max-train-samples", type=int, default=1024)
     parser.add_argument("--template-indices", nargs="+", type=int,
                         help="Exactly K distinct template indices; default is native first K")
+    parser.add_argument("--alphas", nargs="+", type=float,
+                        help="Evaluation-only attention-increment scales, e.g. 0 0.1 0.25 0.5 1")
+    parser.add_argument("--probe-zero-image", action="store_true",
+                        help="Also run native TDA after zeroing the causal image features")
     parser.add_argument("--output", type=Path,
                         help="Write JSON plus a sibling .csv summary; refuses existing files")
     parser.add_argument("--check-gradients", action="store_true")
@@ -240,6 +316,11 @@ def main():
     if args.template_indices is not None and (
             min(args.template_indices) < 0 or len(set(args.template_indices)) != len(args.template_indices)):
         parser.error("template-indices must be distinct nonnegative integers")
+    if args.alphas is not None and (
+            any(not math.isfinite(alpha) or alpha < 0 for alpha in args.alphas)
+            or len(set(args.alphas)) != len(args.alphas)
+            or len(set(map(alpha_mode_name, args.alphas))) != len(args.alphas)):
+        parser.error("alphas must be distinct finite nonnegative numbers")
     repo = args.repo_dir.resolve()
     output = None
     if args.output is not None:
@@ -282,7 +363,7 @@ def main():
         parser.error(f"No checkpoints for test-envs {sorted(missing)} under {root}")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    report = {"audit_version": "2026-10-31-abc", "torch_version": torch.__version__,
+    report = {"audit_version": "2026-10-31-alpha-zero-image", "torch_version": torch.__version__,
               "device": str(device), "results": [], "model_variant": "upstream_CIPT",
               "note": "Source splits only. ORACLE uses true labels to choose TDA texts; it is NOT valid test accuracy."}
     for path, cfg in chosen:
@@ -342,7 +423,8 @@ def main():
         for name, split in [("source_train_sample", train_sample), ("source_val", val)]:
             print(f"  Evaluating {name} ({len(split)} samples)", file=sys.stderr, flush=True)
             item[name] = diagnose_split(model, batches(split), fixed_text, len(names),
-                                        cipt_loss, cfg["beta"], cfg["gamma"], template_indices)
+                                        cipt_loss, cfg["beta"], cfg["gamma"], template_indices,
+                                        args.alphas, args.probe_zero_image)
         if args.check_gradients:
             item["optimizer_probe"] = optimizer_probe(model, next(iter(batches(train_sample))),
                                                        make_optimizer, cipt_loss, cfg)
