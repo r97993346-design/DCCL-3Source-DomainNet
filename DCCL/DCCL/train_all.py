@@ -119,6 +119,10 @@ def main():
     parser.add_argument("--cipt_prompt_init", default="a photo of a")
     parser.add_argument("--cipt_tda_heads", type=int, default=1)
     parser.add_argument(
+        "--cipt_cosine_lr", action="store_true",
+        help="Enable cosine annealing for CIPTDCCL while keeping the configured initial LR.",
+    )
+    parser.add_argument(
         "--cipt_selector_mode", choices=["random", "all", "adaptive"],
         default="random",
         help="B5a/B5c selection: original random K, full bank, or per-image Safe-Diverse K",
