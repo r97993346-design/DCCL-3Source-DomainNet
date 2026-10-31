@@ -76,5 +76,6 @@ def setup_alg_hparams(hparams, args):
             "cipt_contrastive_weight", "cipt_debug_shapes",
         ):
             hparams[name] = getattr(args, name)
+        hparams["cipt_cosine_lr"] = bool(args.cipt_cosine_lr)
 
     return hparams
