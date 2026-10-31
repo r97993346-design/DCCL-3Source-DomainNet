@@ -29,9 +29,9 @@ cipt_use_aug_view: false
 cipt_contrastive_type: neighbor_retention
 cipt_neighbor_k: 10
 cipt_neighbor_alpha: 4.0
-cipt_contrastive_temperature: 0.07
+cipt_contrastive_temperature: 0.1
 cipt_causal_contrastive_weight: 1.0
-cipt_contrastive_warmup_steps: 500
+cipt_contrastive_warmup_steps: 0
 
 # Keep the initial LR identical to the fixed-LR baseline; only the schedule changes.
 lr: 5.0e-5
