@@ -1,0 +1,40 @@
+# Aggressive PACS sweep candidate:
+# E/S=6, IND gamma=5, causal contrastive=1, RD=2, cosine LR.
+# Apply after config.yaml. Explicit CLI --key value overrides this preset.
+
+cipt_objective: env_anchor
+cipt_env_constraint: relative_distance
+cipt_template_mode: b5b
+# The inherited constructor expects "random" for the class-conditioned B5b bank;
+# env_anchor performs the actual per-image entropy selection below.
+cipt_selector_mode: random
+cipt_env_selection: entropy
+cipt_env_topk: 40
+cipt_rd_anchor_mode: full
+cipt_env_loss_weight: 2.0
+cipt_env_inference: e_only
+cipt_use_tda: false
+cipt_env_kl_weight: 0.0
+cipt_fused_cls_weight: 0.0
+
+cipt_use_de: true
+cipt_e_cls_weight: 6.0
+cipt_s_uniform_weight: 6.0
+cipt_use_ind: true
+cipt_gamma: 5.0
+
+cipt_use_contrastive: true
+cipt_pure: false
+cipt_use_aug_view: false
+cipt_contrastive_type: neighbor_retention
+cipt_neighbor_k: 10
+cipt_neighbor_alpha: 4.0
+cipt_contrastive_temperature: 0.07
+cipt_causal_contrastive_weight: 1.0
+cipt_contrastive_warmup_steps: 500
+
+# Keep the initial LR identical to the fixed-LR baseline; only the schedule changes.
+lr: 5.0e-5
+cipt_lr_schedule: cosine
+cipt_lr_min: 0.0
+swad: LossValley
