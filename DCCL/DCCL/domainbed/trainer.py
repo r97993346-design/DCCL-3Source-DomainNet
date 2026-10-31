@@ -152,6 +152,23 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     num_class = dataset.num_classes
     algorithm.to(device)
 
+    # Apply cosine annealing only to CIPTDCCL. Keep the configured optimizer,
+    # initial learning rate, weight decay, and total training-step budget intact.
+    lr_scheduler = None
+    if args.algorithm == "CIPTDCCL":
+        if not hasattr(algorithm, "optimizer"):
+            raise RuntimeError("CIPTDCCL must expose its optimizer for cosine annealing.")
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            algorithm.optimizer,
+            T_max=max(1, int(n_steps)),
+            eta_min=0.0,
+        )
+        logger.info(
+            "CIPTDCCL cosine LR scheduler: initial_lr=%g, T_max=%d, eta_min=0",
+            algorithm.optimizer.param_groups[0]["lr"],
+            max(1, int(n_steps)),
+        )
+
     n_params = sum([p.numel() for p in algorithm.parameters()])
     logger.info("# of params = %d" % n_params)
 
@@ -194,7 +211,14 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         }
 
         inputs = {**batches, "step": step}
+        current_lr = (
+            lr_scheduler.get_last_lr()[0] if lr_scheduler is not None else None
+        )
         step_vals = algorithm.update(**inputs)
+        if lr_scheduler is not None:
+            # Step after the optimizer update; log the LR used for this update.
+            step_vals["lr"] = float(current_lr)
+            lr_scheduler.step()
 
         for key, val in step_vals.items():
             checkpoint_vals[key].append(val)
