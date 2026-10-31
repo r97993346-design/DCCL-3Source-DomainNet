@@ -1,0 +1,434 @@
+{
+  "label": "02_original_lr5e-5_art",
+  "source_checkpoint": "/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/train_output/cipt_mechanism/PACS/261023_14-43-14_cipt_original_te0_seed0/checkpoints/TE0_5000.pth",
+  "source_checkpoint_sha256": "fa03ca305faf18feba0347058713910a3c8664bf750b5e6c9cc2e3f58b860a42",
+  "source_bytes": 608667507,
+  "export_file": "02_original_lr5e-5_art.pth",
+  "export_bytes": 9938894,
+  "export_sha256": "ad67239f58a7e09800f16bcd547e54efb09c9b22f84318a8f310ad0e56ea324b",
+  "export_format": "domainbed_cipt_without_frozen_clip_v1",
+  "model_hparams": {
+    "data_augmentation": true,
+    "val_augment": false,
+    "resnet18": false,
+    "resnet_dropout": 0.0,
+    "class_balanced": false,
+    "optimizer": "adam",
+    "cipt_enabled": true,
+    "cipt_clip_backbone": "ViT-B/16",
+    "cipt_clip_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+    "cipt_beta": 4.0,
+    "cipt_gamma": 5.0,
+    "cipt_k": 4,
+    "cipt_prompt_length": 16,
+    "cipt_prompt_init": "a photo of a",
+    "cipt_template_mode": "b5b",
+    "cipt_neutral_subject": "subject",
+    "cipt_tda_heads": 1,
+    "cipt_selector_mode": "random",
+    "cipt_selector_candidates": 8,
+    "cipt_contrastive_weight": 1.0,
+    "cipt_contrastive_temperature": 0.1,
+    "cipt_contrastive_type": "neighbor_retention",
+    "cipt_neighbor_k": 5,
+    "cipt_neighbor_alpha": 0.5,
+    "cipt_neighbor_diagnostics": false,
+    "cipt_use_aug_view": false,
+    "cipt_debug_shapes": false,
+    "cipt_objective": "legacy",
+    "cipt_env_kl_weight": 0.0,
+    "cipt_fused_cls_weight": 0.0,
+    "cipt_env_constraint": "mcc",
+    "cipt_env_topk": 40,
+    "cipt_env_loss_weight": 1.0,
+    "cipt_env_selection": "entropy",
+    "cipt_rd_anchor_mode": "full",
+    "cipt_e_cls_weight": 1.0,
+    "cipt_s_uniform_weight": null,
+    "freeze_bn": true,
+    "pretrained": true,
+    "lr": 5e-05,
+    "batch_size": 32,
+    "weight_decay": 0.0,
+    "t": 0.1,
+    "t_pre": 0.2,
+    "l": 1,
+    "l_d": 0.01,
+    "l_layer": 1,
+    "n_layer": 1,
+    "sup": true,
+    "two_ce": false,
+    "sample_d": false,
+    "re_w": false,
+    "pos_mask": false,
+    "mix": 0,
+    "aug": 0,
+    "model": "resnet50",
+    "label_ratio": 1.0,
+    "TN": false,
+    "lamda": 5,
+    "start_epoch": 1000,
+    "log": false,
+    "swad": null,
+    "swad_kwargs": {
+      "n_converge": 3,
+      "n_tolerance": 6,
+      "tolerance_ratio": 0.3
+    },
+    "test_batchsize": 128,
+    "indomain_test": false,
+    "cipt_pure": true,
+    "cipt_use_de": true,
+    "cipt_use_ind": true,
+    "cipt_use_tda": true,
+    "cipt_use_contrastive": false,
+    "cipt_causal_contrastive_weight": 0.0,
+    "cipt_contrastive_warmup_steps": 500,
+    "total_num_domains": 4,
+    "cipt_class_names": [
+      "dog",
+      "elephant",
+      "giraffe",
+      "guitar",
+      "horse",
+      "house",
+      "person"
+    ]
+  },
+  "args": {
+    "name": "cipt_original_te0_seed0",
+    "configs": [
+      "config_cipt_original_visualization.yaml"
+    ],
+    "data_dir": "/home/hooasia/lgg/data/repro_dccl_data",
+    "dataset": "PACS",
+    "algorithm": "CIPTDCCL",
+    "trial_seed": 0,
+    "seed": 0,
+    "steps": 5001,
+    "checkpoint_freq": 100,
+    "test_envs": [
+      [
+        0
+      ]
+    ],
+    "source_envs": null,
+    "target_env": null,
+    "erm_baseline": "weak",
+    "domainnet_auto_source_count": 3,
+    "weak_erm": false,
+    "holdout_fraction": 0.2,
+    "model_save": 5000,
+    "deterministic": true,
+    "tb_freq": 10,
+    "debug": false,
+    "show": false,
+    "evalmode": "fast",
+    "prebuild_loader": false,
+    "model": "resnet50",
+    "label_ratio": 1.0,
+    "l": 1,
+    "l_d": null,
+    "l_layer": null,
+    "t": 0.1,
+    "t_pre": 0.2,
+    "n_layer": 1,
+    "sample_d": false,
+    "re_w": false,
+    "sup": true,
+    "mix": 0,
+    "aug": 0,
+    "two_ce": false,
+    "pos_mask": false,
+    "TN": false,
+    "lamda": 5,
+    "start_epoch": 1000,
+    "log": false,
+    "cipt_enabled": true,
+    "cipt_clip_backbone": "ViT-B/16",
+    "cipt_clip_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+    "cipt_beta": 4.0,
+    "cipt_gamma": 5.0,
+    "cipt_k": 4,
+    "cipt_prompt_length": 16,
+    "cipt_prompt_init": "a photo of a",
+    "cipt_tda_heads": 1,
+    "cipt_selector_mode": "random",
+    "cipt_selector_candidates": 8,
+    "cipt_contrastive_weight": 1.0,
+    "cipt_debug_shapes": false,
+    "output_root": "train_output/cipt_mechanism",
+    "unique_name": "261023_14-43-14_cipt_original_te0_seed0",
+    "work_dir": ".",
+    "out_root": "train_output/cipt_mechanism/PACS",
+    "out_dir": "train_output/cipt_mechanism/PACS/261023_14-43-14_cipt_original_te0_seed0",
+    "real_test_envs": [
+      0
+    ]
+  },
+  "test_envs": [
+    0
+  ],
+  "learned_parameter_statistics": {
+    "causal_decomposition.causal_adapter.weight": {
+      "shape": [
+        512,
+        512
+      ],
+      "dtype": "torch.float32",
+      "norm": 22.898479461669922,
+      "mean": 0.001931133447214961,
+      "rms": 0.04472392424941063,
+      "max_abs": 1.0226260423660278
+    },
+    "causal_decomposition.causal_adapter.bias": {
+      "shape": [
+        512
+      ],
+      "dtype": "torch.float32",
+      "norm": 0.2101060450077057,
+      "mean": -0.0005188659415580332,
+      "rms": 0.009285463020205498,
+      "max_abs": 0.03708890080451965
+    },
+    "causal_decomposition.spurious_adapter.weight": {
+      "shape": [
+        512,
+        512
+      ],
+      "dtype": "torch.float32",
+      "norm": 22.656076431274414,
+      "mean": 0.0019397387513890862,
+      "rms": 0.04425044730305672,
+      "max_abs": 1.014500617980957
+    },
+    "causal_decomposition.spurious_adapter.bias": {
+      "shape": [
+        512
+      ],
+      "dtype": "torch.float32",
+      "norm": 0.3019145429134369,
+      "mean": 0.00025053168064914644,
+      "rms": 0.013342862948775291,
+      "max_abs": 0.03529483452439308
+    },
+    "text_features.prompt_learner.context": {
+      "shape": [
+        16,
+        512
+      ],
+      "dtype": "torch.float32",
+      "norm": 1.6501274108886719,
+      "mean": 0.00017033956828527153,
+      "rms": 0.018231503665447235,
+      "max_abs": 0.1165815070271492
+    },
+    "tda.attention.in_proj_weight": {
+      "shape": [
+        1536,
+        512
+      ],
+      "dtype": "torch.float32",
+      "norm": 27.75404167175293,
+      "mean": -5.1923125283792615e-06,
+      "rms": 0.03129668906331062,
+      "max_abs": 0.061297304928302765
+    },
+    "tda.attention.in_proj_bias": {
+      "shape": [
+        1536
+      ],
+      "dtype": "torch.float32",
+      "norm": 0.03979693725705147,
+      "mean": -4.254251962265698e-06,
+      "rms": 0.0010154393967241049,
+      "max_abs": 0.004539497662335634
+    },
+    "tda.attention.out_proj.weight": {
+      "shape": [
+        512,
+        512
+      ],
+      "dtype": "torch.float32",
+      "norm": 13.137948989868164,
+      "mean": -2.8295517040533014e-05,
+      "rms": 0.025660080835223198,
+      "max_abs": 0.05247385427355766
+    },
+    "tda.attention.out_proj.bias": {
+      "shape": [
+        512
+      ],
+      "dtype": "torch.float32",
+      "norm": 0.024509988725185394,
+      "mean": 0.00012351830082479864,
+      "rms": 0.0010831987019628286,
+      "max_abs": 0.003890748368576169
+    },
+    "tda.layer_norm.weight": {
+      "shape": [
+        512
+      ],
+      "dtype": "torch.float32",
+      "norm": 22.650863647460938,
+      "mean": 1.0010337829589844,
+      "rms": 1.0010361671447754,
+      "max_abs": 1.0059833526611328
+    },
+    "tda.layer_norm.bias": {
+      "shape": [
+        512
+      ],
+      "dtype": "torch.float32",
+      "norm": 0.02387234941124916,
+      "mean": 0.0001198518875753507,
+      "rms": 0.0010550187435001135,
+      "max_abs": 0.0036218634340912104
+    }
+  },
+  "retained_state_inventory": {
+    "reg_log_variance": {
+      "shape": [
+        1,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "_causal_contrastive_step": {
+      "shape": [],
+      "dtype": "torch.int64"
+    },
+    "causal_decomposition.causal_adapter.weight": {
+      "shape": [
+        512,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "causal_decomposition.causal_adapter.bias": {
+      "shape": [
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "causal_decomposition.spurious_adapter.weight": {
+      "shape": [
+        512,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "causal_decomposition.spurious_adapter.bias": {
+      "shape": [
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "text_features.b5a_text_bank": {
+      "shape": [
+        80,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "text_features.sconst_text_bank": {
+      "shape": [
+        80,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "text_features.b5c_text_bank": {
+      "shape": [
+        42,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "text_features.b5b_text_bank": {
+      "shape": [
+        7,
+        80,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "text_features.bconst_text_bank": {
+      "shape": [
+        7,
+        80,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "text_features.prompt_learner.context": {
+      "shape": [
+        16,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "text_features.prompt_learner.token_prefix": {
+      "shape": [
+        7,
+        1,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "text_features.prompt_learner.token_suffix": {
+      "shape": [
+        7,
+        60,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "text_features.prompt_learner.tokenized_prompts": {
+      "shape": [
+        7,
+        77
+      ],
+      "dtype": "torch.int32"
+    },
+    "tda.attention.in_proj_weight": {
+      "shape": [
+        1536,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "tda.attention.in_proj_bias": {
+      "shape": [
+        1536
+      ],
+      "dtype": "torch.float32"
+    },
+    "tda.attention.out_proj.weight": {
+      "shape": [
+        512,
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "tda.attention.out_proj.bias": {
+      "shape": [
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "tda.layer_norm.weight": {
+      "shape": [
+        512
+      ],
+      "dtype": "torch.float32"
+    },
+    "tda.layer_norm.bias": {
+      "shape": [
+        512
+      ],
+      "dtype": "torch.float32"
+    }
+  },
+  "excluded_frozen_clip_key_count": 906
+}

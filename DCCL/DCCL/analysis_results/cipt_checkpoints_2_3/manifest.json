@@ -1,0 +1,20 @@
+{
+  "purpose": "The two exact lr=5e-5 PACS-to-Art checkpoints, numbered 2 and 3.",
+  "files": [
+    {
+      "label": "02_original_lr5e-5_art",
+      "source_checkpoint_sha256": "fa03ca305faf18feba0347058713910a3c8664bf750b5e6c9cc2e3f58b860a42",
+      "export_file": "02_original_lr5e-5_art.pth",
+      "export_sha256": "ad67239f58a7e09800f16bcd547e54efb09c9b22f84318a8f310ad0e56ea324b"
+    },
+    {
+      "label": "03_subject80_lr5e-5_art",
+      "source_checkpoint_sha256": "6c02a511830eab9245868b83662efd091cb0190e821e04b5b70e7e0b57e17e25",
+      "export_file": "03_subject80_lr5e-5_art.pth",
+      "export_sha256": "f9bc88421814264e450a71ba1db25fe574fa6752496926a8045ca953c26206e8"
+    }
+  ],
+  "torch_version": "2.5.1+cu121",
+  "upload_checkout_commit_not_training_commit": "8f3abfc42214d1759efbd270718bba48cb5ea872",
+  "note": "CPU export and parameter comparison only. No inference or generalization evaluation was executed. Original checkpoints remain at their original paths. Frozen CLIP is excluded; all other state is retained."
+}

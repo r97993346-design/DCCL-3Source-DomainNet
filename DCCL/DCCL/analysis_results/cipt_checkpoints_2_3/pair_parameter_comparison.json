@@ -1,0 +1,125 @@
+{
+  "original": "02_original_lr5e-5_art",
+  "subject80": "03_subject80_lr5e-5_art",
+  "parameters": {
+    "causal_decomposition.causal_adapter.weight": {
+      "shape": [
+        512,
+        512
+      ],
+      "exactly_equal": false,
+      "max_abs_difference": 0.010763902217149734,
+      "difference_norm": 0.3872663676738739,
+      "relative_difference_to_original": 0.016912318056844098,
+      "flattened_cosine": 0.9998716938081043,
+      "original_distance_from_identity_reference": 4.3262834548950195,
+      "subject80_distance_from_identity_reference": 4.314599990844727
+    },
+    "causal_decomposition.causal_adapter.bias": {
+      "shape": [
+        512
+      ],
+      "exactly_equal": false,
+      "max_abs_difference": 0.0044835032895207405,
+      "difference_norm": 0.0164922047406435,
+      "relative_difference_to_original": 0.07849467034629416,
+      "flattened_cosine": 0.9975092078943794
+    },
+    "causal_decomposition.spurious_adapter.weight": {
+      "shape": [
+        512,
+        512
+      ],
+      "exactly_equal": false,
+      "max_abs_difference": 0.007674133405089378,
+      "difference_norm": 0.3823636472225189,
+      "relative_difference_to_original": 0.016876869584298574,
+      "flattened_cosine": 0.9998714633956876,
+      "original_distance_from_identity_reference": 3.9729299545288086,
+      "subject80_distance_from_identity_reference": 4.026515483856201
+    },
+    "causal_decomposition.spurious_adapter.bias": {
+      "shape": [
+        512
+      ],
+      "exactly_equal": false,
+      "max_abs_difference": 0.005663078743964434,
+      "difference_norm": 0.02266407199203968,
+      "relative_difference_to_original": 0.0750678379826764,
+      "flattened_cosine": 0.9973316643175676
+    },
+    "text_features.prompt_learner.context": {
+      "shape": [
+        16,
+        512
+      ],
+      "exactly_equal": false,
+      "max_abs_difference": 0.0032971310429275036,
+      "difference_norm": 0.0577731691300869,
+      "relative_difference_to_original": 0.03501133836627397,
+      "flattened_cosine": 0.9993880132791895
+    },
+    "tda.attention.in_proj_weight": {
+      "shape": [
+        1536,
+        512
+      ],
+      "exactly_equal": false,
+      "max_abs_difference": 0.01609443500638008,
+      "difference_norm": 2.0468552112579346,
+      "relative_difference_to_original": 0.0737498068016937,
+      "flattened_cosine": 0.9972888688670355
+    },
+    "tda.attention.in_proj_bias": {
+      "shape": [
+        1536
+      ],
+      "exactly_equal": false,
+      "max_abs_difference": 0.009264878928661346,
+      "difference_norm": 0.07739319652318954,
+      "relative_difference_to_original": 1.9447023278022868,
+      "flattened_cosine": 0.3802925276668436
+    },
+    "tda.attention.out_proj.weight": {
+      "shape": [
+        512,
+        512
+      ],
+      "exactly_equal": false,
+      "max_abs_difference": 0.01618458703160286,
+      "difference_norm": 1.6562052965164185,
+      "relative_difference_to_original": 0.12606269805078898,
+      "flattened_cosine": 0.992023530960794
+    },
+    "tda.attention.out_proj.bias": {
+      "shape": [
+        512
+      ],
+      "exactly_equal": false,
+      "max_abs_difference": 0.010017897933721542,
+      "difference_norm": 0.02958185225725174,
+      "relative_difference_to_original": 1.2069304718551224,
+      "flattened_cosine": 0.6732980894302723
+    },
+    "tda.layer_norm.weight": {
+      "shape": [
+        512
+      ],
+      "exactly_equal": false,
+      "max_abs_difference": 0.022158026695251465,
+      "difference_norm": 0.1490875780582428,
+      "relative_difference_to_original": 0.006581982055017794,
+      "flattened_cosine": 0.9999787579562985
+    },
+    "tda.layer_norm.bias": {
+      "shape": [
+        512
+      ],
+      "exactly_equal": false,
+      "max_abs_difference": 0.008922971785068512,
+      "difference_norm": 0.029725011438131332,
+      "relative_difference_to_original": 1.245164894584036,
+      "flattened_cosine": 0.6546147497925121
+    }
+  }
+}
