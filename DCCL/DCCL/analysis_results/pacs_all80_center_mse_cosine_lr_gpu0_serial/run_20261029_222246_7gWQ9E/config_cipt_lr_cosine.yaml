@@ -1,0 +1,8 @@
+# Opt-in upstream-style Adam cosine learning-rate annealing for CIPTDCCL env_anchor.
+# Applies to each target-domain training run in train_all.py, once per optimizer
+# step across the actual step budget (including checkpoint round-up).
+# This differs from upstream's 30-epoch schedule in its stepping frequency.
+# Keep --lr 5e-5 for a controlled schedule-only comparison with the old baseline.
+# Use --lr 0.0025 separately to test the upstream initial learning rate.
+cipt_lr_schedule: cosine
+cipt_lr_min: 0.0
