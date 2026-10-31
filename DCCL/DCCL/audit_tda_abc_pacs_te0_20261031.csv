@@ -1,0 +1,3 @@
+target,split,samples,CLIP_fixed_pct,CLIP_learned_pct,A_E_only_pct,B_LayerNorm_E_pct,C_native_TDA_pct,ORACLE_invalid_as_test_pct,B_minus_A_pp,C_minus_B_pp
+art_painting,source_train_sample,512,93.75,91.796875,100.0,100.0,20.703125,100.0,0.0,-79.296875
+art_painting,source_val,1587,94.139887,91.68242,97.416509,97.416509,20.856963,100.0,0.0,-76.559546

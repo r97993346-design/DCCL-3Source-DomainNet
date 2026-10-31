@@ -1,0 +1,1192 @@
+{
+  "audit_version": "2026-10-31-abc",
+  "torch_version": "2.5.1+cu121",
+  "device": "cuda",
+  "results": [
+    {
+      "checkpoint": "/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/train_output/cipt_official_domainbed/PACS/target_0_art_painting/seed_0_trial_0/final_trainable.pth",
+      "checkpoint_sha256": "86c2d5561e00702f7afe021627b1cb42942ad171319017ff80c788fd754a924f",
+      "target": "art_painting",
+      "classes": [
+        "dog",
+        "elephant",
+        "giraffe",
+        "guitar",
+        "horse",
+        "house",
+        "person"
+      ],
+      "class_names_are_numeric": false,
+      "sizes": {
+        "source_train": {
+          "cartoon": 1876,
+          "photo": 1336,
+          "sketch": 3144
+        },
+        "source_val": {
+          "cartoon": 468,
+          "photo": 334,
+          "sketch": 785
+        },
+        "target_in": 1639,
+        "target_out": 409
+      },
+      "history": {
+        "available": true,
+        "first": {
+          "epoch": 1,
+          "lr": 0.0024931523692103418,
+          "loss": 0.9696986131121559,
+          "classification": 0.05877472104557564,
+          "decomposition": 0.19578738682220537,
+          "independence": 0.025554868869700036,
+          "causal_ce": 0.14284520905260922,
+          "spurious_kl": 0.052942177631275095,
+          "source_val": 0.2867044738500315
+        },
+        "best_source_val": {
+          "epoch": 6,
+          "lr": 0.0022612712429686843,
+          "loss": 0.20417982648502475,
+          "classification": 2.1365813719404625e-05,
+          "decomposition": 0.050954726246690236,
+          "independence": 6.791118354133059e-05,
+          "causal_ce": 0.05029732686461021,
+          "spurious_kl": 0.0006573992875704156,
+          "source_val": 0.48582230623818523
+        },
+        "last": {
+          "epoch": 30,
+          "lr": 0.0,
+          "loss": 0.020617648185719605,
+          "classification": 5.9782438352188935e-09,
+          "decomposition": 0.005135859879657934,
+          "independence": 1.4840523341341021e-05,
+          "causal_ce": 0.005125641293786084,
+          "spurious_kl": 1.0218600232879053e-05,
+          "source_val": 0.2085696282293636
+        }
+      },
+      "learned_text_mean_off_diagonal_cosine": 0.8700799942016602,
+      "clip_parameters_frozen": true,
+      "config": {
+        "lr": 0.0025,
+        "epochs": 30,
+        "beta": 4.0,
+        "gamma": 5.0,
+        "k": 4,
+        "n_ctx": 16,
+        "num_heads": 8
+      },
+      "template_indices": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "template_texts": [
+        "a bad photo of a {}.",
+        "a photo of many {}.",
+        "a sculpture of a {}.",
+        "a photo of the hard to see {}."
+      ],
+      "upstream_commit_saved_in_config": "a805d878acc7d79778d1ec1c1e4d73ba6aff334b",
+      "source_train_sample": {
+        "num_samples": 512,
+        "modes": {
+          "clip_fixed_prompt": {
+            "accuracy_pct": 93.75,
+            "cross_entropy": 0.20589298172853887,
+            "true_class_counts": [
+              97,
+              97,
+              86,
+              44,
+              86,
+              41,
+              61
+            ],
+            "predicted_class_counts": [
+              89,
+              98,
+              74,
+              43,
+              104,
+              41,
+              63
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                85,
+                1,
+                0,
+                0,
+                11,
+                0,
+                0
+              ],
+              [
+                2,
+                94,
+                0,
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                2,
+                1,
+                74,
+                0,
+                8,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                0,
+                43,
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                2,
+                0,
+                0,
+                83,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                41,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                60
+              ]
+            ]
+          },
+          "clip_learned_prompt": {
+            "accuracy_pct": 91.796875,
+            "cross_entropy": 0.2825079057365656,
+            "true_class_counts": [
+              97,
+              97,
+              86,
+              44,
+              86,
+              41,
+              61
+            ],
+            "predicted_class_counts": [
+              82,
+              108,
+              82,
+              44,
+              106,
+              41,
+              49
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                80,
+                6,
+                0,
+                0,
+                11,
+                0,
+                0
+              ],
+              [
+                0,
+                96,
+                0,
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                78,
+                0,
+                7,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                43,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                2,
+                1,
+                0,
+                83,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                41,
+                0
+              ],
+              [
+                2,
+                2,
+                3,
+                1,
+                4,
+                0,
+                49
+              ]
+            ]
+          },
+          "e_only": {
+            "accuracy_pct": 100.0,
+            "cross_entropy": 0.0033731761118360737,
+            "true_class_counts": [
+              97,
+              97,
+              86,
+              44,
+              86,
+              41,
+              61
+            ],
+            "predicted_class_counts": [
+              97,
+              97,
+              86,
+              44,
+              86,
+              41,
+              61
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                97,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                97,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                86,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                44,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                86,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                41,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                61
+              ]
+            ]
+          },
+          "e_layernorm_only": {
+            "accuracy_pct": 100.0,
+            "cross_entropy": 0.003397947713438043,
+            "true_class_counts": [
+              97,
+              97,
+              86,
+              44,
+              86,
+              41,
+              61
+            ],
+            "predicted_class_counts": [
+              97,
+              97,
+              86,
+              44,
+              86,
+              41,
+              61
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                97,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                97,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                86,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                44,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                86,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                41,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                61
+              ]
+            ]
+          },
+          "tda_inference": {
+            "accuracy_pct": 20.703125,
+            "cross_entropy": 5.011872261762619,
+            "true_class_counts": [
+              97,
+              97,
+              86,
+              44,
+              86,
+              41,
+              61
+            ],
+            "predicted_class_counts": [
+              0,
+              1,
+              492,
+              19,
+              0,
+              0,
+              0
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                0,
+                0,
+                97,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                96,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                86,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                25,
+                19,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                86,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                41,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                61,
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "tda_true_label_ORACLE": {
+            "accuracy_pct": 100.0,
+            "cross_entropy": 0.0,
+            "true_class_counts": [
+              97,
+              97,
+              86,
+              44,
+              86,
+              41,
+              61
+            ],
+            "predicted_class_counts": [
+              97,
+              97,
+              86,
+              44,
+              86,
+              41,
+              61
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                97,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                97,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                86,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                44,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                86,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                41,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                61
+              ]
+            ]
+          }
+        },
+        "losses_with_fixed_templates": {
+          "loss": 0.013581936682385276,
+          "classification": 4.6566125955216364e-10,
+          "causal_ce": 0.0033731761118360737,
+          "spurious_kl": 6.2390463426709175e-06,
+          "independence": 1.2855108479925548e-05
+        },
+        "native_fusion": {
+          "num_image_candidate_template_rows": 14336,
+          "image_norm_mean": 1.7572352205004012,
+          "text_increment_norm_mean": 3.230401175362723,
+          "text_to_image_norm_ratio_mean": 1.9087259258542741
+        },
+        "template_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "diagnostic_note": "ORACLE selects TDA contexts using true labels and is NOT a deployable accuracy. A/B/C isolate evaluation paths; their gaps alone do not prove an upstream bug."
+      },
+      "source_val": {
+        "num_samples": 1587,
+        "modes": {
+          "clip_fixed_prompt": {
+            "accuracy_pct": 94.139887,
+            "cross_entropy": 0.18356151013120436,
+            "true_class_counts": [
+              264,
+              292,
+              247,
+              190,
+              268,
+              134,
+              192
+            ],
+            "predicted_class_counts": [
+              245,
+              284,
+              203,
+              189,
+              329,
+              135,
+              202
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                238,
+                4,
+                0,
+                0,
+                21,
+                0,
+                1
+              ],
+              [
+                1,
+                278,
+                0,
+                0,
+                9,
+                0,
+                4
+              ],
+              [
+                3,
+                1,
+                203,
+                0,
+                38,
+                0,
+                2
+              ],
+              [
+                0,
+                0,
+                0,
+                189,
+                0,
+                0,
+                1
+              ],
+              [
+                3,
+                1,
+                0,
+                0,
+                261,
+                0,
+                3
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                134,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                191
+              ]
+            ]
+          },
+          "clip_learned_prompt": {
+            "accuracy_pct": 91.68242,
+            "cross_entropy": 0.253112800217456,
+            "true_class_counts": [
+              264,
+              292,
+              247,
+              190,
+              268,
+              134,
+              192
+            ],
+            "predicted_class_counts": [
+              220,
+              312,
+              243,
+              193,
+              335,
+              137,
+              147
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                219,
+                7,
+                6,
+                0,
+                32,
+                0,
+                0
+              ],
+              [
+                0,
+                285,
+                1,
+                0,
+                6,
+                0,
+                0
+              ],
+              [
+                0,
+                2,
+                217,
+                0,
+                28,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                189,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                3,
+                0,
+                264,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                134,
+                0
+              ],
+              [
+                1,
+                17,
+                15,
+                4,
+                5,
+                3,
+                147
+              ]
+            ]
+          },
+          "e_only": {
+            "accuracy_pct": 97.416509,
+            "cross_entropy": 0.14294578509665795,
+            "true_class_counts": [
+              264,
+              292,
+              247,
+              190,
+              268,
+              134,
+              192
+            ],
+            "predicted_class_counts": [
+              264,
+              296,
+              245,
+              192,
+              261,
+              135,
+              194
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                254,
+                5,
+                0,
+                0,
+                4,
+                0,
+                1
+              ],
+              [
+                0,
+                289,
+                1,
+                0,
+                1,
+                0,
+                1
+              ],
+              [
+                2,
+                1,
+                238,
+                1,
+                4,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                1,
+                189,
+                0,
+                0,
+                0
+              ],
+              [
+                8,
+                1,
+                4,
+                1,
+                252,
+                1,
+                1
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                134,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                1,
+                0,
+                0,
+                190
+              ]
+            ]
+          },
+          "e_layernorm_only": {
+            "accuracy_pct": 97.416509,
+            "cross_entropy": 0.1422418137432249,
+            "true_class_counts": [
+              264,
+              292,
+              247,
+              190,
+              268,
+              134,
+              192
+            ],
+            "predicted_class_counts": [
+              264,
+              296,
+              245,
+              192,
+              261,
+              134,
+              195
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                254,
+                5,
+                0,
+                0,
+                4,
+                0,
+                1
+              ],
+              [
+                0,
+                289,
+                1,
+                0,
+                1,
+                0,
+                1
+              ],
+              [
+                2,
+                1,
+                238,
+                1,
+                4,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                1,
+                189,
+                0,
+                0,
+                0
+              ],
+              [
+                8,
+                1,
+                4,
+                1,
+                252,
+                0,
+                2
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                134,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                1,
+                0,
+                0,
+                190
+              ]
+            ]
+          },
+          "tda_inference": {
+            "accuracy_pct": 20.856963,
+            "cross_entropy": 5.02774618493737,
+            "true_class_counts": [
+              264,
+              292,
+              247,
+              190,
+              268,
+              134,
+              192
+            ],
+            "predicted_class_counts": [
+              0,
+              2,
+              1503,
+              82,
+              0,
+              0,
+              0
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                0,
+                0,
+                264,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                2,
+                290,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                247,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                108,
+                82,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                268,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                134,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                192,
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "tda_true_label_ORACLE": {
+            "accuracy_pct": 100.0,
+            "cross_entropy": 1.6825962973967577e-08,
+            "true_class_counts": [
+              264,
+              292,
+              247,
+              190,
+              268,
+              134,
+              192
+            ],
+            "predicted_class_counts": [
+              264,
+              292,
+              247,
+              190,
+              268,
+              134,
+              192
+            ],
+            "confusion_true_rows_predicted_columns": [
+              [
+                264,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                292,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                247,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                190,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                268,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                134,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                192
+              ]
+            ]
+          }
+        },
+        "losses_with_fixed_templates": {
+          "loss": 0.5719211424413949,
+          "classification": 9.041774327890625e-08,
+          "causal_ce": 0.14294578514360554,
+          "spurious_kl": 8.83701768520764e-06,
+          "independence": 2.0515135412958508e-05
+        },
+        "native_fusion": {
+          "num_image_candidate_template_rows": 44436,
+          "image_norm_mean": 1.755318453743516,
+          "text_increment_norm_mean": 3.2304011712420673,
+          "text_to_image_norm_ratio_mean": 1.9126494199303141
+        },
+        "template_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "diagnostic_note": "ORACLE selects TDA contexts using true labels and is NOT a deployable accuracy. A/B/C isolate evaluation paths; their gaps alone do not prove an upstream bug."
+      }
+    }
+  ],
+  "model_variant": "upstream_CIPT",
+  "note": "Source splits only. ORACLE uses true labels to choose TDA texts; it is NOT valid test accuracy."
+}
