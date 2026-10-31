@@ -1,0 +1,94 @@
+{
+  "source_train": {
+    "native_TDA": {
+      "both_correct": 5475,
+      "corrected": 90,
+      "regressed": 146,
+      "both_wrong": 645,
+      "accuracy_gain_pp": -0.8810572687224738
+    },
+    "E_only": {
+      "both_correct": 6285,
+      "corrected": 2,
+      "regressed": 52,
+      "both_wrong": 17,
+      "accuracy_gain_pp": -0.786658275645058
+    },
+    "LN_E": {
+      "both_correct": 6283,
+      "corrected": 2,
+      "regressed": 54,
+      "both_wrong": 17,
+      "accuracy_gain_pp": -0.8181246066708558
+    }
+  },
+  "source_val": {
+    "native_TDA": {
+      "both_correct": 1353,
+      "corrected": 24,
+      "regressed": 29,
+      "both_wrong": 181,
+      "accuracy_gain_pp": -0.3150598613736677
+    },
+    "E_only": {
+      "both_correct": 1544,
+      "corrected": 9,
+      "regressed": 7,
+      "both_wrong": 27,
+      "accuracy_gain_pp": 0.1260239445494693
+    },
+    "LN_E": {
+      "both_correct": 1543,
+      "corrected": 10,
+      "regressed": 7,
+      "both_wrong": 27,
+      "accuracy_gain_pp": 0.1890359168241984
+    }
+  },
+  "target_in": {
+    "native_TDA": {
+      "both_correct": 1360,
+      "corrected": 68,
+      "regressed": 123,
+      "both_wrong": 88,
+      "accuracy_gain_pp": -3.3557046979865834
+    },
+    "E_only": {
+      "both_correct": 1585,
+      "corrected": 11,
+      "regressed": 9,
+      "both_wrong": 34,
+      "accuracy_gain_pp": 0.12202562538132788
+    },
+    "LN_E": {
+      "both_correct": 1586,
+      "corrected": 11,
+      "regressed": 9,
+      "both_wrong": 33,
+      "accuracy_gain_pp": 0.12202562538132788
+    }
+  },
+  "target_out": {
+    "native_TDA": {
+      "both_correct": 342,
+      "corrected": 16,
+      "regressed": 29,
+      "both_wrong": 22,
+      "accuracy_gain_pp": -3.17848410757946
+    },
+    "E_only": {
+      "both_correct": 397,
+      "corrected": 3,
+      "regressed": 3,
+      "both_wrong": 6,
+      "accuracy_gain_pp": 0.0
+    },
+    "LN_E": {
+      "both_correct": 397,
+      "corrected": 2,
+      "regressed": 4,
+      "both_wrong": 6,
+      "accuracy_gain_pp": -0.4889975550122272
+    }
+  }
+}

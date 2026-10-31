@@ -1,0 +1,9 @@
+{
+  "status": "COMPLETE",
+  "identical_input_tensors": true,
+  "resumed_model_results": [
+    "domainbed"
+  ],
+  "evaluated_images": 9991,
+  "coverage": "FULL_DATASET_SPLITS"
+}

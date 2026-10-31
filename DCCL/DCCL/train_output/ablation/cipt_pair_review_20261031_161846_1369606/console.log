@@ -1,0 +1,59 @@
+CIPTDCCL parameters: trainable=1716992, frozen=149620737
+CIPTDCCL trainable tensors: reg_log_variance, causal_decomposition.causal_adapter.weight, causal_decomposition.causal_adapter.bias, causal_decomposition.spurious_adapter.weight, causal_decomposition.spurious_adapter.bias, text_features.prompt_learner.context, tda.attention.in_proj_weight, tda.attention.in_proj_bias, tda.attention.out_proj.weight, tda.attention.out_proj.bias, tda.layer_norm.weight, tda.layer_norm.bias, proj_head.0.weight, proj_head.0.bias, pre_proj_head.0.weight, pre_proj_head.0.bias
+CIPTDCCL single-view-causal-contrastive: pure_cipt=True, template_mode=b5b, neutral_subject=subject, K=4, tda_heads=1, lr=5e-05, contrastive_weight=0.0, contrastive_warmup_steps=500, temp=0.1, selector_mode=random, selector_candidates=8, visual_l2_norm=True, adapter_init=identity, augmented_view=False, projection_head=False, pre_cl=False, reg=False
+CIPTDCCL single-view-causal-contrastive parameters: trainable=1585152, frozen=149621249
+CIPTDCCL contrastive_type=neighbor_retention, neighbor_k=5, neighbor_alpha=0.5, neighbor_diagnostics=False, detached_weights=True
+CIPTDCCL cross-domain contrastive: mode=neighbor_retention, teacher_temperature=0.2, teacher_mix=0.5, teacher_topk=0, temperature=0.1, configured_weight=0.0, warmup_steps=500
+CIPTDCCL component switches: L_de=True, L_ind=True, TDA=True, Contrastive=False (legacy cipt_pure=True)
+domainbed: evaluated 1280/9991 shared images
+domainbed: evaluated 2560/9991 shared images
+domainbed: evaluated 3840/9991 shared images
+domainbed: evaluated 5120/9991 shared images
+domainbed: evaluated 6400/9991 shared images
+domainbed: evaluated 7680/9991 shared images
+domainbed: evaluated 8960/9991 shared images
+domainbed: evaluated 9991/9991 shared images
+Traceback (most recent call last):
+  File "/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/CIPT_pair_review/audit_cipt_pair.py", line 524, in <module>
+    main()
+  File "/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/CIPT_pair_review/audit_cipt_pair.py", line 474, in main
+    model, _ = load_upstream(root, args.upstream_checkpoint, args.clip_path, classes, args.device, torch)
+  File "/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/CIPT_pair_review/audit_cipt_pair.py", line 214, in load_upstream
+    raise ValueError("Upstream source has local modifications")
+ValueError: Upstream source has local modifications
+Upstream preflight: isolated official source a805d878acc7d79778d1ec1c1e4d73ba6aff334b; local changes retained: 5 file(s)
+RESUME: reusing verified domainbed results for 9991 images
+upstream_lr5e5: evaluated 1280/9991 shared images
+upstream_lr5e5: evaluated 2560/9991 shared images
+upstream_lr5e5: evaluated 3840/9991 shared images
+upstream_lr5e5: evaluated 5120/9991 shared images
+upstream_lr5e5: evaluated 6400/9991 shared images
+upstream_lr5e5: evaluated 7680/9991 shared images
+upstream_lr5e5: evaluated 8960/9991 shared images
+upstream_lr5e5: evaluated 9991/9991 shared images
+Saved-metric recheck source_val: delta=+0.000000 pp
+Saved-metric recheck target_in: delta=+0.000000 pp
+Saved-metric recheck target_out: delta=+0.000000 pp
+
+# Saved CIPT checkpoint comparison
+
+Coverage: FULL_DATASET_SPLITS; identical input tensor hashes verified.
+
+Accuracies below are pooled over images. Source domain-macro accuracies are also saved in comparison.csv.
+
+| Split | Model | E-only | LN(E) | Native TDA |
+|---|---|---:|---:|---:|
+| source_train | DomainBed | 99.70% | 99.70% | 88.44% |
+| source_train | Upstream lr5e-5 | 98.91% | 98.88% | 87.56% |
+| source_val | DomainBed | 97.73% | 97.67% | 87.08% |
+| source_val | Upstream lr5e-5 | 97.86% | 97.86% | 86.77% |
+| target_in | DomainBed | 97.25% | 97.32% | 90.48% |
+| target_in | Upstream lr5e-5 | 97.38% | 97.44% | 87.13% |
+| target_out | DomainBed | 97.80% | 98.04% | 90.71% |
+| target_out | Upstream lr5e-5 | 97.80% | 97.56% | 87.53% |
+
+Both target_in and target_out were unused for training. This audit does not select a target partition, model, or alpha.
+
+Inspect report.json for per-class counts, confusion matrices, margins, dtype, and alpha controls.
+
+Saved: /home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/train_output/ablation/cipt_pair_review_20261031_161846_1369606

@@ -1,0 +1,310 @@
+{
+  "legacy_checkpoint": "/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/train_output/cipt_mechanism/PACS/261023_14-43-14_cipt_original_te0_seed0/checkpoints/TE0_5000.pth",
+  "legacy_sha256": "fa03ca305faf18feba0347058713910a3c8664bf750b5e6c9cc2e3f58b860a42",
+  "upstream_checkpoint": "/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/train_output/ablation/cipt_official_lr5e5_te0/PACS/target_0_art_painting/seed_0_trial_0/final_trainable.pth",
+  "upstream_sha256": "d13755b82be79bda6306d25225a6a333d29def6c71daf4b4790e4631ba8f8313",
+  "legacy_hparams": {
+    "data_augmentation": true,
+    "val_augment": false,
+    "resnet18": false,
+    "resnet_dropout": 0.0,
+    "class_balanced": false,
+    "optimizer": "adam",
+    "cipt_enabled": true,
+    "cipt_clip_backbone": "ViT-B/16",
+    "cipt_clip_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+    "cipt_beta": 4.0,
+    "cipt_gamma": 5.0,
+    "cipt_k": 4,
+    "cipt_prompt_length": 16,
+    "cipt_prompt_init": "a photo of a",
+    "cipt_template_mode": "b5b",
+    "cipt_neutral_subject": "subject",
+    "cipt_tda_heads": 1,
+    "cipt_selector_mode": "random",
+    "cipt_selector_candidates": 8,
+    "cipt_contrastive_weight": 1.0,
+    "cipt_contrastive_temperature": 0.1,
+    "cipt_contrastive_type": "neighbor_retention",
+    "cipt_neighbor_k": 5,
+    "cipt_neighbor_alpha": 0.5,
+    "cipt_neighbor_diagnostics": false,
+    "cipt_use_aug_view": false,
+    "cipt_debug_shapes": false,
+    "cipt_objective": "legacy",
+    "cipt_env_kl_weight": 0.0,
+    "cipt_fused_cls_weight": 0.0,
+    "cipt_env_constraint": "mcc",
+    "cipt_env_topk": 40,
+    "cipt_env_loss_weight": 1.0,
+    "cipt_env_selection": "entropy",
+    "cipt_rd_anchor_mode": "full",
+    "cipt_e_cls_weight": 1.0,
+    "cipt_s_uniform_weight": null,
+    "freeze_bn": true,
+    "pretrained": true,
+    "lr": 5e-05,
+    "batch_size": 32,
+    "weight_decay": 0.0,
+    "t": 0.1,
+    "t_pre": 0.2,
+    "l": 1,
+    "l_d": 0.01,
+    "l_layer": 1,
+    "n_layer": 1,
+    "sup": true,
+    "two_ce": false,
+    "sample_d": false,
+    "re_w": false,
+    "pos_mask": false,
+    "mix": 0,
+    "aug": 0,
+    "model": "resnet50",
+    "label_ratio": 1.0,
+    "TN": false,
+    "lamda": 5,
+    "start_epoch": 1000,
+    "log": false,
+    "swad": null,
+    "swad_kwargs": {
+      "n_converge": 3,
+      "n_tolerance": 6,
+      "tolerance_ratio": 0.3
+    },
+    "test_batchsize": 128,
+    "indomain_test": false,
+    "cipt_pure": true,
+    "cipt_use_de": true,
+    "cipt_use_ind": true,
+    "cipt_use_tda": true,
+    "cipt_use_contrastive": false,
+    "cipt_causal_contrastive_weight": 0.0,
+    "cipt_contrastive_warmup_steps": 500,
+    "total_num_domains": 4,
+    "cipt_class_names": [
+      "dog",
+      "elephant",
+      "giraffe",
+      "guitar",
+      "horse",
+      "house",
+      "person"
+    ]
+  },
+  "legacy_args": {
+    "name": "cipt_original_te0_seed0",
+    "configs": [
+      "config_cipt_original_visualization.yaml"
+    ],
+    "data_dir": "/home/hooasia/lgg/data/repro_dccl_data",
+    "dataset": "PACS",
+    "algorithm": "CIPTDCCL",
+    "trial_seed": 0,
+    "seed": 0,
+    "steps": 5001,
+    "checkpoint_freq": 100,
+    "test_envs": [
+      [
+        0
+      ]
+    ],
+    "source_envs": null,
+    "target_env": null,
+    "erm_baseline": "weak",
+    "domainnet_auto_source_count": 3,
+    "weak_erm": false,
+    "holdout_fraction": 0.2,
+    "model_save": 5000,
+    "deterministic": true,
+    "tb_freq": 10,
+    "debug": false,
+    "show": false,
+    "evalmode": "fast",
+    "prebuild_loader": false,
+    "model": "resnet50",
+    "label_ratio": 1.0,
+    "l": 1,
+    "l_d": null,
+    "l_layer": null,
+    "t": 0.1,
+    "t_pre": 0.2,
+    "n_layer": 1,
+    "sample_d": false,
+    "re_w": false,
+    "sup": true,
+    "mix": 0,
+    "aug": 0,
+    "two_ce": false,
+    "pos_mask": false,
+    "TN": false,
+    "lamda": 5,
+    "start_epoch": 1000,
+    "log": false,
+    "cipt_enabled": true,
+    "cipt_clip_backbone": "ViT-B/16",
+    "cipt_clip_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+    "cipt_beta": 4.0,
+    "cipt_gamma": 5.0,
+    "cipt_k": 4,
+    "cipt_prompt_length": 16,
+    "cipt_prompt_init": "a photo of a",
+    "cipt_tda_heads": 1,
+    "cipt_selector_mode": "random",
+    "cipt_selector_candidates": 8,
+    "cipt_contrastive_weight": 1.0,
+    "cipt_debug_shapes": false,
+    "output_root": "train_output/cipt_mechanism",
+    "unique_name": "261023_14-43-14_cipt_original_te0_seed0",
+    "work_dir": ".",
+    "out_root": "train_output/cipt_mechanism/PACS",
+    "out_dir": "train_output/cipt_mechanism/PACS/261023_14-43-14_cipt_original_te0_seed0",
+    "real_test_envs": [
+      0
+    ]
+  },
+  "upstream_metadata": {
+    "upstream": "https://github.com/ckghostwj/CIPT",
+    "upstream_commit": "a805d878acc7d79778d1ec1c1e4d73ba6aff334b",
+    "split": "DCCL domainbed.datasets.get_dataset",
+    "dataset": "PACS",
+    "environment": "art_painting",
+    "test_env": 0,
+    "seed": 0,
+    "trial_seed": 0,
+    "holdout_fraction": 0.2,
+    "no_few_shot_sampling": true,
+    "no_swad": true,
+    "lr": 5e-05,
+    "batch_size": 64,
+    "epochs": 30,
+    "weight_decay": 0.0,
+    "beta": 4.0,
+    "gamma": 5.0,
+    "k": 4,
+    "n_ctx": 16,
+    "num_heads": 8,
+    "backbone_or_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+    "source_val_for_model_selection": false,
+    "sizes": {
+      "source_train": {
+        "cartoon": 1876,
+        "photo": 1336,
+        "sketch": 3144
+      },
+      "source_val": {
+        "cartoon": 468,
+        "photo": 334,
+        "sketch": 785
+      },
+      "target_in": 1639,
+      "target_out": 409
+    },
+    "classes": [
+      "dog",
+      "elephant",
+      "giraffe",
+      "guitar",
+      "horse",
+      "house",
+      "person"
+    ]
+  },
+  "clip_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+  "clip_sha256": "5806e77cd80f8b59890b7e101eabd078d9fb84e6937f9e85e4ecb61988df416f",
+  "repository_commit": "8f3abfc42214d1759efbd270718bba48cb5ea872",
+  "torch_version": "2.5.1+cu121",
+  "repository_dirty": true,
+  "source_sha256": {
+    "domainbed/algorithms/cipt_env_kl.py": "7ed71b5ca49cdd92333021fbdda2a79ac6f80a62f8862e2e685a5470cce34f5f",
+    "domainbed/algorithms/cipt_dccl_ablation.py": "df51ce26ae9a6ee8dda0dbb1f73fc39c3b23d4cd5db81a15c6f93231a6ac9119",
+    "domainbed/algorithms/cipt_modules.py": "fb4b33c103d3abd96c7b71ecf47e2b2ddac9c346f9d2f0dde10f2fc2197dda6b",
+    "domainbed/algorithms/cipt_prompt.py": "08da896c098b9fa8b1765f49e13405ab05a3ab24798740334750d66fe93910ca",
+    "domainbed/datasets/__init__.py": "015271b5c1ff3217a5ecb5f001fc6ce497f0baa9a78f87608e56717c458131f5",
+    "domainbed/datasets/transforms.py": "c5904cd1adcf04b6087d41980e29e2b9da59b4ddb8d9d698315802eaefe772f6"
+  },
+  "script_sha256": "c20eb2a222a6c9326d4f90d65f9d707060111dfea56f919cd3587c823160a8d4",
+  "audit_revision": "2026-10-31-pinned-source-resume",
+  "manifest_sha256": "3313cf4e1e9c59759278866aea76749e9c57855b51614c95a3f2aec33a2751f7",
+  "upstream_source": {
+    "source_mode": "isolated_pinned_git_archive",
+    "evaluated_commit": "a805d878acc7d79778d1ec1c1e4d73ba6aff334b",
+    "snapshot_dir": "/tmp/cipt_pair_pinned_0694ysla",
+    "working_tree_head": "a805d878acc7d79778d1ec1c1e4d73ba6aff334b",
+    "working_tree_changed_paths": [
+      "cipt/__pycache__/__init__.cpython-310.pyc",
+      "cipt/__pycache__/engine.cpython-310.pyc",
+      "cipt/__pycache__/losses.cpython-310.pyc",
+      "cipt/__pycache__/model.cpython-310.pyc",
+      "cipt/__pycache__/templates.cpython-310.pyc"
+    ],
+    "working_tree_diff_sha256": "bb64f32fb6d9d025af0778a13fc3fb92f474bae2babe705229c92fed27380a1b",
+    "snapshot_file_sha256": {
+      "cipt/__init__.py": "69a084b22f8dd2924a51f84fe8efa10b894908e3b274bfb83e178b0f219ae3c8",
+      "cipt/engine.py": "ab1200473c8a2f4a36a9fd948fbf2dadfb7c563c2c3e3194bea018fde9eff6bc",
+      "cipt/losses.py": "bdf479fe3b91114734d7578ee5743409119d41aca3793823b4cb0fd8a38436e4",
+      "cipt/model.py": "8555b8dc25fa607d9194ec62a66e706ffaa152314e81c27bf57b605d70e6a2c8",
+      "cipt/templates.py": "8b3d26b6d9f70289dfb0564d21cfced83a47d122a61fd970a5a1343781c8f233"
+    },
+    "note": "Evaluation uses only pinned Git objects; existing working-tree modifications are retained."
+  },
+  "coverage": "FULL_DATASET_SPLITS",
+  "classes": [
+    "dog",
+    "elephant",
+    "giraffe",
+    "guitar",
+    "horse",
+    "house",
+    "person"
+  ],
+  "sizes": {
+    "source_train": {
+      "cartoon": 1876,
+      "photo": 1336,
+      "sketch": 3144
+    },
+    "source_val": {
+      "cartoon": 468,
+      "photo": 334,
+      "sketch": 785
+    },
+    "target_in": {
+      "art_painting": 1639
+    },
+    "target_out": {
+      "art_painting": 409
+    }
+  },
+  "diagnostic_alphas": [
+    0,
+    0.1,
+    0.25,
+    0.5,
+    1
+  ],
+  "notes": [
+    "Each model retains its own native frozen CLIP dtype and learned prompts.",
+    "All partitions use deterministic CLIP evaluation preprocessing.",
+    "Neither target partition was used to train either model.",
+    "No checkpoint/alpha selection is performed on source or target data.",
+    "Alpha=0 is LN(E); alpha=1 is verified against native inference."
+  ],
+  "resumed_from_script_sha256": "a4d2af9e63c534c40d444b3cefe5d9a59074e6e9a987f06869cd0b838e4a377d",
+  "upstream_saved_metrics_recheck": {
+    "source_val": {
+      "recorded": 0.8676748582230623,
+      "reevaluated": 0.8676748582230623,
+      "difference_pp": 0.0
+    },
+    "target_in": {
+      "recorded": 0.8712629652226968,
+      "reevaluated": 0.8712629652226968,
+      "difference_pp": 0.0
+    },
+    "target_out": {
+      "recorded": 0.8753056234718827,
+      "reevaluated": 0.8753056234718827,
+      "difference_pp": 0.0
+    }
+  }
+}

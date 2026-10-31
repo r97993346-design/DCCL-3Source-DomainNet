@@ -1,0 +1,43 @@
+{
+  "source_train": {
+    "n": 6356,
+    "mean_cosine": 0.7607783578587354,
+    "median_cosine": 0.7606122948635404,
+    "p10_cosine": 0.702961165643057,
+    "before_norm_mean": 0.9044214263411243,
+    "after_norm_mean": 1.0398019361001603
+  },
+  "source_val": {
+    "n": 1587,
+    "mean_cosine": 0.7607714252904548,
+    "median_cosine": 0.7590500865365316,
+    "p10_cosine": 0.70407302755845,
+    "before_norm_mean": 0.9064167315857817,
+    "after_norm_mean": 1.040278728668728
+  },
+  "target_in": {
+    "n": 1639,
+    "mean_cosine": 0.8277533404001259,
+    "median_cosine": 0.8291062685423746,
+    "p10_cosine": 0.7884911008837134,
+    "before_norm_mean": 1.0166792503156026,
+    "after_norm_mean": 1.0930292196286333
+  },
+  "target_out": {
+    "n": 409,
+    "mean_cosine": 0.8257859766328657,
+    "median_cosine": 0.8273761036753084,
+    "p10_cosine": 0.7803546212902743,
+    "before_norm_mean": 1.015617299863377,
+    "after_norm_mean": 1.0921825620118273
+  },
+  "class_text_anchors": {
+    "n": 7,
+    "mean_cosine": 0.47504533060396514,
+    "median_cosine": 0.43829029438337774,
+    "p10_cosine": 0.41397177229728943,
+    "before_norm_mean": 1.0000000491929106,
+    "after_norm_mean": 1.000000020239423
+  },
+  "note": "Native E can differ because of the frozen encoder dtype and/or learned adapter. E-only scores also depend on each model's learned class texts."
+}
