@@ -152,21 +152,27 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     num_class = dataset.num_classes
     algorithm.to(device)
 
-    # Apply cosine annealing only to CIPTDCCL. Keep the configured optimizer,
-    # initial learning rate, weight decay, and total training-step budget intact.
+    # Keep the optimizer and configured initial LR unchanged. Cosine annealing
+    # is opt-in so constant-LR and cosine-LR runs can be compared on this branch.
     lr_scheduler = None
-    if args.algorithm == "CIPTDCCL":
+    is_cipt = args.algorithm == "CIPTDCCL"
+    if is_cipt:
         if not hasattr(algorithm, "optimizer"):
-            raise RuntimeError("CIPTDCCL must expose its optimizer for cosine annealing.")
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            algorithm.optimizer,
-            T_max=max(1, int(n_steps)),
-            eta_min=0.0,
-        )
+            raise RuntimeError("CIPTDCCL must expose its optimizer.")
+        initial_lr = float(algorithm.optimizer.param_groups[0]["lr"])
+        use_cosine_lr = bool(hparams.get("cipt_cosine_lr", False))
+        if use_cosine_lr:
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                algorithm.optimizer,
+                T_max=max(1, int(n_steps)),
+                eta_min=0.0,
+            )
         logger.info(
-            "CIPTDCCL cosine LR scheduler: initial_lr=%g, T_max=%d, eta_min=0",
-            algorithm.optimizer.param_groups[0]["lr"],
+            "CIPTDCCL LR schedule: mode=%s, initial_lr=%g, T_max=%d, eta_min=%s",
+            "cosine" if use_cosine_lr else "constant",
+            initial_lr,
             max(1, int(n_steps)),
+            "0" if use_cosine_lr else "unchanged",
         )
 
     n_params = sum([p.numel() for p in algorithm.parameters()])
@@ -212,12 +218,14 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
         inputs = {**batches, "step": step}
         current_lr = (
-            lr_scheduler.get_last_lr()[0] if lr_scheduler is not None else None
+            float(algorithm.optimizer.param_groups[0]["lr"]) if is_cipt else None
         )
         step_vals = algorithm.update(**inputs)
-        if lr_scheduler is not None:
-            # Step after the optimizer update; log the LR used for this update.
+        if is_cipt:
+            # Log the LR used for this update in both constant and cosine runs.
             step_vals["lr"] = float(current_lr)
+        if lr_scheduler is not None:
+            # Step after the optimizer update, matching PyTorch scheduler order.
             lr_scheduler.step()
 
         for key, val in step_vals.items():
