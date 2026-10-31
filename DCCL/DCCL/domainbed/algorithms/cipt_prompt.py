@@ -396,9 +396,10 @@ class CIPTTextFeatures(nn.Module):
         bconst with labels   -> [B, K, D], class-conditioned constant prompts.
         b5b/bconst without labels -> [C, K, D], candidate-class inference.
 
-        All modes use random K during training and deterministic first K at
-        evaluation. For const modes the 80 positions are deliberately retained,
-        although their content is identical.
+        B5B uses deterministic first K in both training and evaluation.
+        Other modes retain their existing train/eval selection behavior.
+        For const modes the 80 positions are deliberately retained, although
+        their content is identical.
         """
         if self.template_mode == "b5a":
             bank = self.b5a_text_bank
@@ -417,12 +418,16 @@ class CIPTTextFeatures(nn.Module):
 
         if self.template_mode == "b5b":
             bank = self.b5b_text_bank
+            # Keep B5B TDA identical between training and evaluation:
+            # both stages always use the reproducible first K templates.
+            idx = torch.arange(self.k, device=bank.device) % bank.shape[1]
         elif self.template_mode == "bconst":
             bank = self.bconst_text_bank
+            # Preserve the original random-train / fixed-eval behavior.
+            idx = self._select_indices(bank.shape[1], bank.device)
         else:
             raise RuntimeError("Unhandled template mode: {}".format(self.template_mode))
 
-        idx = self._select_indices(bank.shape[1], bank.device)
         selected = bank.index_select(1, idx)
         if labels is None:
             return selected
