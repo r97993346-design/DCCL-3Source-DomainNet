@@ -4,6 +4,7 @@ import copy
 import itertools
 import random
 import sys
+from contextlib import ExitStack
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +22,7 @@ from domainbed.lib.writers import get_writer
 from domainbed.lib.logger import Logger
 from domainbed.trainer import train
 from domainbed.lib.cl_hparams import setup_alg_hparams
+from domainbed.lib.cipt_training import validate_cipt_training_options
 
 
 def apply_weak_erm_hparams(hparams):
@@ -64,6 +66,18 @@ def main():
     parser.add_argument("--seed", type=int, default=0, help="Seed for everything else")
     parser.add_argument(
         "--steps", type=int, default=None, help="Number of steps. Default is dataset-dependent."
+    )
+    parser.add_argument(
+        "--epochs", "--cipt_train_epochs", dest="cipt_train_epochs", type=int, default=None,
+        help="CIPTDCCL mixed-source epochs; mutually exclusive with --steps.",
+    )
+    parser.add_argument(
+        "--cipt_train_sampling", choices=["domain_balanced", "mixed"], default=None,
+        help="CIPTDCCL sampling: per-domain infinite batches or pooled finite epochs.",
+    )
+    parser.add_argument(
+        "--cipt_lr_step_unit", choices=["step", "epoch"], default=None,
+        help="Advance the optional CIPTDCCL cosine scheduler per step or epoch.",
     )
     parser.add_argument(
         "--checkpoint_freq",
@@ -164,12 +178,25 @@ def main():
     hparams = hparams_registry.default_hparams(args.algorithm, args.dataset)
     hparams = setup_alg_hparams(hparams, args)
     keys = ["config.yaml"] + args.configs
-    keys = [open(key, encoding="utf8") for key in keys]
-    hparams = Config(*keys, default=hparams)
+    with ExitStack() as config_files:
+        keys = [config_files.enter_context(open(key, encoding="utf8")) for key in keys]
+        hparams = Config(*keys, default=hparams)
     hparams.argv_update(left_argv)
     apply_explicit_hparam_cli(parser, args, hparams, sys.argv[1:])
     if args.algorithm == "ERM" and args.weak_erm:
         hparams = apply_weak_erm_hparams(hparams)
+
+    epoch_training = False
+    if args.algorithm == "CIPTDCCL":
+        try:
+            sampling, _, _ = validate_cipt_training_options(hparams, args.steps)
+        except ValueError as error:
+            parser.error(str(error))
+        epoch_training = sampling == "mixed"
+    elif any(getattr(args, key) is not None for key in (
+        "cipt_train_epochs", "cipt_train_sampling", "cipt_lr_step_unit"
+    )):
+        parser.error("CIPT training options require --algorithm CIPTDCCL")
 
     # setup debug
     if args.debug:
@@ -204,9 +231,6 @@ def main():
     logger.nofmt("\tNumPy: {}".format(np.__version__))
     logger.nofmt("\tPIL: {}".format(PIL.__version__))
 
-    # Different to DomainBed, we support CUDA only.
-    assert torch.cuda.is_available(), "CUDA is not available"
-
     logger.nofmt("Args:")
     for k, v in sorted(vars(args).items()):
         logger.nofmt("\t{}: {}".format(k, v))
@@ -217,6 +241,9 @@ def main():
 
     if args.show:
         exit()
+
+    # Configuration inspection above is also available on CPU-only machines.
+    assert torch.cuda.is_available(), "CUDA is not available"
 
     # seed
     random.seed(args.seed)
@@ -259,14 +286,21 @@ def main():
         target_name = all_env_names[args.target_env]
         logger.info(f"DomainNet custom split enabled: source_envs={args.source_envs} ({source_names}), target_env={args.target_env} ({target_name})")
 
-    n_steps = args.steps or dataset.N_STEPS
     checkpoint_freq = args.checkpoint_freq or dataset.CHECKPOINT_FREQ
-    logger.info(f"n_steps = {n_steps}")
+    if checkpoint_freq < 1:
+        raise ValueError("checkpoint_freq must be positive")
     logger.info(f"checkpoint_freq = {checkpoint_freq}")
-
-    org_n_steps = n_steps
-    n_steps = (n_steps // checkpoint_freq) * checkpoint_freq + 1
-    logger.info(f"n_steps is updated to {org_n_steps} => {n_steps} for checkpointing")
+    if epoch_training:
+        # Each held-out domain leaves a different-sized source union. Resolve
+        # the exact epoch budget inside train(), after the real split is known.
+        n_steps = None
+        logger.info("Mixed-source epoch budget is resolved separately for each target domain.")
+    else:
+        n_steps = args.steps or dataset.N_STEPS
+        logger.info(f"n_steps = {n_steps}")
+        org_n_steps = n_steps
+        n_steps = (n_steps // checkpoint_freq) * checkpoint_freq + 1
+        logger.info(f"n_steps is updated to {org_n_steps} => {n_steps} for checkpointing")
 
     if args.dataset == "DomainNet" and args.source_envs is not None and args.target_env is not None:
         args.test_envs = [[args.target_env]]

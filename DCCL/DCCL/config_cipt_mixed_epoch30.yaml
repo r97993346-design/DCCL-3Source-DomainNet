@@ -1,0 +1,14 @@
+# Training-only overlay. Apply AFTER the desired method YAML, for example:
+# config_cipt_b5b_entropy_rd.yaml config_cipt_mixed_epoch30.yaml
+# RD/MCC, text selection, E/S/IND, contrastive losses, inference and SWAD are
+# inherited from that method configuration rather than replaced here.
+cipt_train_sampling: mixed
+cipt_train_epochs: 30
+batch_size: 64  # TOTAL source images, not images per domain; keep the last batch.
+class_balanced: false
+optimizer: adam
+lr: 0.0025
+weight_decay: 0.0
+cipt_lr_schedule: cosine
+cipt_lr_step_unit: epoch
+cipt_lr_min: 0.0

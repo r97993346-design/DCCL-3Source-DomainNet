@@ -17,6 +17,9 @@ from domainbed.lib import swa_utils
 from domainbed.lib.query import Q
 from domainbed.lib.fast_data_loader import InfiniteDataLoader, FastDataLoader
 from domainbed.lib.cipt_lr_schedule import make_cipt_lr_scheduler
+from domainbed.lib.cipt_training import (
+    MixedSourceDataLoader, repeat_epochs, validate_cipt_training_options,
+)
 from domainbed import swad as swad_module
 
 
@@ -47,6 +50,11 @@ def resolve_loader_workers(args, dataset):
 
 def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, target_env=None):
     logger.info("")
+    sampling, training_epochs, lr_step_unit = (
+        validate_cipt_training_options(hparams)
+        if args.algorithm == "CIPTDCCL" else ("domain_balanced", 0, "step")
+    )
+    epoch_training = sampling == "mixed"
 
     #######################################################
     # setup dataset & loader
@@ -101,35 +109,67 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     n_envs = len(dataset)
     train_envs = sorted(set(range(n_envs)) - set(test_envs))
     iterator = misc.SplitIterator(test_envs)
-    batch_sizes = np.full([n_envs], hparams["batch_size"], dtype=int)
-    batch_sizes[test_envs] = 0
-    batch_sizes = batch_sizes.tolist()
-
-    logger.info(f"Batch sizes for each domain: {batch_sizes} (total={sum(batch_sizes)})")
-
-    # calculate steps per epoch
-    steps_per_epochs = [
-        len(env) / batch_size
-        for (env, _), batch_size in iterator.train(zip(in_splits, batch_sizes))
-    ]
-    steps_per_epoch = min(steps_per_epochs)
-    prt_steps = ", ".join([f"{step:.2f}" for step in steps_per_epochs])
-    logger.info(f"steps-per-epoch for each domain: {prt_steps} -> min = {steps_per_epoch:.2f}")
-
     train_workers, eval_workers = resolve_loader_workers(args, dataset)
-    logger.info(
-        f"DataLoader workers: train={train_workers} per source domain "
-        f"({train_workers * len(train_envs)} total), eval={eval_workers} per loader"
-    )
-    train_loaders = [
-        InfiniteDataLoader(
-            dataset=env,
-            weights=env_weights,
-            batch_size=batch_size,
-            num_workers=train_workers,
+    training_plan = None
+    if epoch_training:
+        mixed_loader = MixedSourceDataLoader(
+            in_splits, test_envs, hparams["batch_size"], train_workers,
+            seed=misc.seed_hash(args.seed, args.trial_seed, tuple(test_envs), "mixed-source"),
         )
-        for (env, env_weights), batch_size in iterator.train(zip(in_splits, batch_sizes))
-    ]
+        steps_per_epoch = len(mixed_loader)
+        n_steps = training_epochs * steps_per_epoch
+        if args.debug:
+            n_steps = min(n_steps, 10)
+        train_minibatches_iterator = repeat_epochs(mixed_loader)
+        training_plan = {
+            "sampling": sampling,
+            "epochs": training_epochs,
+            "steps_per_epoch": steps_per_epoch,
+            "n_steps": n_steps,
+            "source_train_samples": {str(i): len(in_splits[i][0]) for i in train_envs},
+            "total_source_train_samples": len(mixed_loader.dataset),
+            "total_batch_size": int(hparams["batch_size"]),
+            "drop_last": False,
+            "replacement": False,
+            "lr_step_unit": lr_step_unit,
+        }
+        logger.info("CIPT mixed-source training plan: %s", json.dumps(training_plan, sort_keys=True))
+        logger.info(
+            "One epoch visits every SOURCE training sample once; the last partial batch is kept. "
+            "Domain counts per batch are random; no checkpoint step rounding is applied."
+        )
+        logger.info(
+            f"DataLoader workers: train={train_workers} total (one mixed loader), "
+            f"eval={eval_workers} per loader"
+        )
+    else:
+        batch_sizes = np.full([n_envs], hparams["batch_size"], dtype=int)
+        batch_sizes[test_envs] = 0
+        batch_sizes = batch_sizes.tolist()
+        logger.info(f"Batch sizes for each domain: {batch_sizes} (total={sum(batch_sizes)})")
+        steps_per_epochs = [
+            len(env) / batch_size
+            for (env, _), batch_size in iterator.train(zip(in_splits, batch_sizes))
+        ]
+        steps_per_epoch = min(steps_per_epochs)
+        prt_steps = ", ".join([f"{step:.2f}" for step in steps_per_epochs])
+        logger.info(f"steps-per-epoch for each domain: {prt_steps} -> min = {steps_per_epoch:.2f}")
+        logger.info(
+            f"DataLoader workers: train={train_workers} per source domain "
+            f"({train_workers * len(train_envs)} total), eval={eval_workers} per loader"
+        )
+        train_loaders = [
+            InfiniteDataLoader(
+                dataset=env, weights=env_weights, batch_size=batch_size,
+                num_workers=train_workers,
+            )
+            for (env, env_weights), batch_size in iterator.train(zip(in_splits, batch_sizes))
+        ]
+        train_minibatches_iterator = zip(*train_loaders)
+        if n_steps is None:
+            # DomainNet's automatic ERM comparison retains its legacy budget
+            # even when the main CIPTDCCL run uses the mixed-epoch preset.
+            n_steps = (dataset.N_STEPS // checkpoint_freq) * checkpoint_freq + 1
 
     # setup eval loaders
     eval_loaders_kwargs = []
@@ -174,22 +214,22 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     n_params = sum([p.numel() for p in algorithm.parameters()])
     logger.info("# of params = %d" % n_params)
 
-    # Original behavior is unchanged unless cipt_lr_schedule=cosine is set.
-    # The upstream CIPT repro anneals once per epoch; in this step-based
-    # DomainBed trainer we span the entire actual optimizer-step budget.
     lr_scheduler = None
     if args.algorithm == "CIPTDCCL":
-        lr_scheduler = make_cipt_lr_scheduler(algorithm, hparams, n_steps)
+        lr_scheduler = make_cipt_lr_scheduler(
+            algorithm, hparams, n_steps,
+            total_epochs=training_epochs if epoch_training else None,
+        )
         if lr_scheduler is not None:
             logger.info(
-                "CIPT cosine LR: initial=%s, eta_min=%s, T_max=%d steps; "
-                "optimizer=Adam (per-step annealing).",
+                "CIPT cosine LR: initial=%s, eta_min=%s, T_max=%d %ss; optimizer=%s.",
                 [g["lr"] for g in algorithm.optimizer.param_groups],
                 hparams.get("cipt_lr_min", 0.0),
-                n_steps,
+                lr_scheduler.T_max,
+                lr_step_unit,
+                hparams["optimizer"],
             )
 
-    train_minibatches_iterator = zip(*train_loaders)
     checkpoint_vals = collections.defaultdict(lambda: [])
 
     #######################################################
@@ -235,9 +275,14 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             if lr_scheduler is not None else None
         )
         step_vals = algorithm.update(**inputs)
+        epoch_end = epoch_training and (step + 1) % steps_per_epoch == 0
+        if epoch_training:
+            step_vals["batch_images"] = sum(len(group["y"]) for group in batches_dictlist)
+            step_vals["batch_source_domains"] = len(batches_dictlist)
         if lr_scheduler is not None:
             step_vals["lr"] = used_lr
-            lr_scheduler.step()
+            if lr_step_unit == "step" or epoch_end:
+                lr_scheduler.step()
 
         for key, val in step_vals.items():
             checkpoint_vals[key].append(val)
@@ -261,11 +306,17 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             # the base model continues to the fixed training budget.
             swad_algorithm.update_parameters(algorithm, step=step)
 
-        if step % checkpoint_freq == 0:
+        should_evaluate = (
+            (step + 1) % checkpoint_freq == 0 or epoch_end or step == n_steps - 1
+            if epoch_training else step % checkpoint_freq == 0
+        )
+        if should_evaluate:
             results = {
                 "step": step,
-                "epoch": step / steps_per_epoch,
+                "epoch": (step + 1) / steps_per_epoch if epoch_training else step / steps_per_epoch,
             }
+            if epoch_training:
+                results["updates"] = step + 1
 
             for key, val in checkpoint_vals.items():
                 results[key] = np.mean(val)
@@ -287,6 +338,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             records.append(copy.deepcopy(results))
 
             results.update({"hparams": dict(hparams), "args": vars(args)})
+            if training_plan is not None:
+                results["training_plan"] = training_plan
             with open(epochs_path, "a") as f:
                 f.write(json.dumps(results, sort_keys=True, default=json_handler) + "\n")
 
@@ -312,6 +365,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
                     "test_envs": test_envs,
                     "model_dict": algorithm.cpu().state_dict(),
                 }
+                if training_plan is not None:
+                    save_dict["training_plan"] = training_plan
                 algorithm.cuda()
                 if not args.debug:
                     torch.save(save_dict, path)

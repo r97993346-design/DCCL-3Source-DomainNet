@@ -71,6 +71,10 @@ def _hparams(algorithm, dataset, random_state):
         # cosine annealing over the configured optimizer-step budget.
         hparams["cipt_lr_schedule"] = ("constant", "constant")
         hparams["cipt_lr_min"] = (0.0, 0.0)
+        # Opt-in pooled-source finite epochs; existing runs remain step-based.
+        hparams["cipt_train_sampling"] = ("domain_balanced", "domain_balanced")
+        hparams["cipt_train_epochs"] = (0, 0)
+        hparams["cipt_lr_step_unit"] = ("step", "step")
         # RD teacher center: all 80 templates by default, or the same selected n.
         hparams["cipt_rd_anchor_mode"] = ("full", "full")
         # env_kl uses a unit E CE anchor; None for S falls back to beta.

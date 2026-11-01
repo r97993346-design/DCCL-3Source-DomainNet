@@ -1,9 +1,9 @@
 """Optional CIPTDCCL learning-rate schedule.
 
 The upstream CIPT reproduction uses Adam with cosine annealing over 30 epochs.
-DomainBed trains with a user-selected number of optimizer steps; the cosine
-option here maps the same annealing *shape* to the full step budget, while the
-original fixed-LR behavior remains the default.
+The default cosine option maps that shape to the configured optimizer-step
+budget. The opt-in mixed-source strategy instead supports one scheduler update
+per complete epoch. Original fixed-LR behavior remains the default.
 Both the legacy CIPT/TDA objective and direct-E env_anchor objective are
 supported; the schedule does not change their losses or model components.
 """
@@ -12,12 +12,12 @@ import math
 import torch
 
 
-def make_cipt_lr_scheduler(algorithm, hparams, total_steps):
-    """Return None for fixed LR or a per-optimizer-step cosine scheduler.
+def make_cipt_lr_scheduler(algorithm, hparams, total_steps, *, total_epochs=None):
+    """Return None for fixed LR or a cosine scheduler with an explicit unit.
 
-    The scheduler must be stepped ONCE *after* each algorithm.update(), which
-    performs optimizer.step() internally. total_steps is the actual loop length
-    after train_all.py's checkpoint rounding (e.g., 3000 -> 3001).
+    With cipt_lr_step_unit=step (default), advance after each optimizer update.
+    With cipt_lr_step_unit=epoch, advance only after the last batch of an epoch,
+    using total_epochs as T_max. The trainer owns this boundary decision.
     """
     mode = str(hparams.get("cipt_lr_schedule", "constant")).lower()
     if mode not in ("constant", "cosine"):
@@ -32,6 +32,15 @@ def make_cipt_lr_scheduler(algorithm, hparams, total_steps):
         )
     if not isinstance(total_steps, int) or isinstance(total_steps, bool) or total_steps < 1:
         raise ValueError("total_steps must be a positive integer")
+    unit = str(hparams.get("cipt_lr_step_unit", "step")).lower()
+    if unit not in ("step", "epoch"):
+        raise ValueError("cipt_lr_step_unit must be step or epoch")
+    period = total_steps
+    if unit == "epoch":
+        if (not isinstance(total_epochs, int) or isinstance(total_epochs, bool)
+                or total_epochs < 1):
+            raise ValueError("epoch LR stepping requires a positive total_epochs")
+        period = total_epochs
     optimizer = algorithm.optimizer
     if not optimizer.param_groups:
         raise ValueError("optimizer has no parameter groups")
@@ -42,5 +51,5 @@ def make_cipt_lr_scheduler(algorithm, hparams, total_steps):
         raise ValueError("cipt_lr_min must be finite and 0 <= min_lr < each initial LR")
 
     return torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=total_steps, eta_min=min_lr
+        optimizer, T_max=period, eta_min=min_lr
     )
