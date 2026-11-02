@@ -1,0 +1,4 @@
+?? ../../run_cipt_gpu1_center_mse_3exp.sh
+?? ../../run_cipt_gpu1_pacs_nocon_after_queue_2exp.sh
+?? ../../run_cipt_gpu1_vlcs_center_mse_5exp.sh
+?? ../../wait_vlcs_then_oh_terra.sh

@@ -1,0 +1,448 @@
+"""CLIP loading, prompt learning, and selectable CIPT textual contexts."""
+
+from pathlib import Path
+import sys
+
+import torch
+from torch import nn
+import torch.nn.functional as F
+
+# The repository vendors the official OpenAI CLIP package. Import it directly
+# so a local checkpoint works in an offline environment without a pip install.
+_BUNDLED_CLIP = Path(__file__).resolve().parents[4] / "CLIP"
+if str(_BUNDLED_CLIP) not in sys.path:
+    sys.path.insert(0, str(_BUNDLED_CLIP))
+import clip
+
+
+# B5b / B0: OpenAI ImageNet prompt bank used by the official CIPT implementation.
+# These prompts are class-conditioned via the {} placeholder.
+B5B_IMAGENET_TEMPLATES = (
+    "a bad photo of a {}.",
+    "a photo of many {}.",
+    "a sculpture of a {}.",
+    "a photo of the hard to see {}.",
+    "a low resolution photo of the {}.",
+    "a rendering of a {}.",
+    "graffiti of a {}.",
+    "a bad photo of the {}.",
+    "a cropped photo of the {}.",
+    "a tattoo of a {}.",
+    "the embroidered {}.",
+    "a photo of a hard to see {}.",
+    "a bright photo of a {}.",
+    "a photo of a clean {}.",
+    "a photo of a dirty {}.",
+    "a dark photo of the {}.",
+    "a drawing of a {}.",
+    "a photo of my {}.",
+    "the plastic {}.",
+    "a photo of the cool {}.",
+    "a close-up photo of a {}.",
+    "a black and white photo of the {}.",
+    "a painting of the {}.",
+    "a painting of a {}.",
+    "a pixelated photo of the {}.",
+    "a sculpture of the {}.",
+    "a bright photo of the {}.",
+    "a cropped photo of a {}.",
+    "a plastic {}.",
+    "a photo of the dirty {}.",
+    "a jpeg corrupted photo of a {}.",
+    "a blurry photo of the {}.",
+    "a photo of the {}.",
+    "a good photo of the {}.",
+    "a rendering of the {}.",
+    "a {} in a video game.",
+    "a photo of one {}.",
+    "a doodle of a {}.",
+    "a close-up photo of the {}.",
+    "a photo of a {}.",
+    "the origami {}.",
+    "the {} in a video game.",
+    "a sketch of a {}.",
+    "a doodle of the {}.",
+    "a origami {}.",
+    "a low resolution photo of a {}.",
+    "the toy {}.",
+    "a rendition of the {}.",
+    "a photo of the clean {}.",
+    "a photo of a large {}.",
+    "a rendition of a {}.",
+    "a photo of a nice {}.",
+    "a photo of a weird {}.",
+    "a blurry photo of a {}.",
+    "a cartoon {}.",
+    "art of a {}.",
+    "a sketch of the {}.",
+    "a embroidered {}.",
+    "a pixelated photo of a {}.",
+    "itap of the {}.",
+    "a jpeg corrupted photo of the {}.",
+    "a good photo of a {}.",
+    "a plushie {}.",
+    "a photo of the nice {}.",
+    "a photo of the small {}.",
+    "a photo of the weird {}.",
+    "the cartoon {}.",
+    "art of the {}.",
+    "a drawing of the {}.",
+    "a photo of the large {}.",
+    "a black and white photo of a {}.",
+    "the plushie {}.",
+    "a dark photo of a {}.",
+    "itap of a {}.",
+    "graffiti of the {}.",
+    "a toy {}.",
+    "itap of my {}.",
+    "a photo of a cool {}.",
+    "a photo of a small {}.",
+    "a tattoo of the {}.",
+)
+
+
+# Neutral subject robustness protocol. These words intentionally share the same
+# generic-subject role and are only used inside the TDA intervention bank.
+NEUTRAL_SUBJECTS = ("subject", "thing", "object", "entity")
+
+
+def _validate_neutral_subject(subject):
+    subject = str(subject).strip().lower()
+    if subject not in NEUTRAL_SUBJECTS:
+        raise ValueError(
+            "Unknown cipt_neutral_subject={!r}; expected one of {}".format(
+                subject, NEUTRAL_SUBJECTS
+            )
+        )
+    return subject
+
+
+def build_paired_generic_templates(subject="subject"):
+    """Build the 80-way S0 bank paired 1:1 with B5b/B0 contexts."""
+    subject = _validate_neutral_subject(subject)
+    templates = tuple(
+        template.format(subject) for template in B5B_IMAGENET_TEMPLATES
+    )
+    assert len(templates) == len(B5B_IMAGENET_TEMPLATES) == 80
+    return templates
+
+
+def build_sconst_templates(subject="subject"):
+    """Build Sconst: 80 identical class-agnostic prompts."""
+    subject = _validate_neutral_subject(subject)
+    return tuple(
+        "a photo of a {}.".format(subject)
+        for _ in range(len(B5B_IMAGENET_TEMPLATES))
+    )
+
+
+# Backward-compatible default constant: historical b5a now means paired S0
+# with the default neutral word "subject".
+B5A_GENERIC_TEMPLATES = build_paired_generic_templates("subject")
+
+
+# B5c: expanded class-agnostic bank inspired by B5b. It deliberately removes
+# class names so interventions describe image quality/style/context only.
+B5C_GENERIC_EXPANDED_TEMPLATES = (
+    "a bad photo.",
+    "a photo with many objects.",
+    "a sculpture.",
+    "a hard to see photo.",
+    "a low resolution photo.",
+    "a rendering.",
+    "graffiti.",
+    "a cropped photo.",
+    "a tattoo.",
+    "an embroidered image.",
+    "a bright photo.",
+    "a clean photo.",
+    "a dirty photo.",
+    "a dark photo.",
+    "a drawing.",
+    "a plastic object.",
+    "a close-up photo.",
+    "a black and white photo.",
+    "a painting.",
+    "a pixelated photo.",
+    "a jpeg corrupted photo.",
+    "a blurry photo.",
+    "a natural photo.",
+    "a good photo.",
+    "a video game rendering.",
+    "a doodle.",
+    "an origami object.",
+    "a toy.",
+    "a rendition.",
+    "a nice photo.",
+    "a weird photo.",
+    "a cartoon.",
+    "artwork.",
+    "a sketch.",
+    "a plushie.",
+    "a low quality photo.",
+    "a high quality photo.",
+    "an image in an unusual style.",
+    "an image in an unusual context.",
+    "an image with unusual texture.",
+    "an image with unusual lighting.",
+    "an image with an unusual background.",
+)
+
+# Experiment mapping:
+#   b5b    = B0     : class-conditioned + diverse contexts (80)
+#   b5a    = S0     : neutral subject + paired diverse contexts (80)
+#   bconst = Bconst : class-conditioned + constant context (80 duplicates)
+#   sconst = Sconst : neutral subject + constant context (80 duplicates)
+#   b5c             : legacy expanded class-agnostic bank
+TEMPLATE_MODES = ("b5a", "b5b", "b5c", "bconst", "sconst")
+CLASS_CONDITIONED_TEMPLATE_MODES = ("b5b", "bconst")
+
+
+def load_frozen_clip(backbone, local_path=""):
+    """Load OpenAI CLIP, preferring an explicit local checkpoint without network I/O."""
+    if local_path:
+        path = Path(local_path).expanduser()
+        if not path.is_file():
+            raise FileNotFoundError("CIPT offline CLIP checkpoint does not exist: {}".format(path))
+        model, _ = clip.load(str(path), device="cpu", jit=False)
+    else:
+        model, _ = clip.load(backbone, device="cpu", jit=False)
+    model.float()
+    model.requires_grad_(False)
+    return model, clip.tokenize
+
+
+class CLIPTextEncoder(nn.Module):
+    def __init__(self, clip_model):
+        super().__init__()
+        self.clip_model = clip_model
+
+    def forward(self, prompts, tokenized_prompts):
+        model = self.clip_model
+        x = prompts + model.positional_embedding.to(prompts.dtype)
+        x = x.permute(1, 0, 2)
+        x = model.transformer(x)
+        x = x.permute(1, 0, 2)
+        x = model.ln_final(x).to(prompts.dtype)
+        return x[torch.arange(x.shape[0], device=x.device), tokenized_prompts.argmax(dim=-1)] @ model.text_projection
+
+
+class PromptLearner(nn.Module):
+    """CoOp-style learnable CLIP context tokens used by CIPT."""
+
+    def __init__(self, class_names, clip_model, tokenize, prompt_length=16, prompt_init="a photo of a"):
+        super().__init__()
+        dtype = clip_model.dtype
+        width = clip_model.ln_final.weight.shape[0]
+        init_words = prompt_init.replace("_", " ").split()
+        if prompt_init and len(init_words) <= prompt_length:
+            initialized = tokenize(prompt_init)
+            with torch.no_grad():
+                init_embedding = clip_model.token_embedding(initialized).to(dtype)
+            context = init_embedding[0, 1 : 1 + len(init_words)]
+            if len(init_words) < prompt_length:
+                context = torch.cat([context, torch.empty(prompt_length-len(init_words), width, dtype=dtype).normal_(std=0.02)])
+        else:
+            context = torch.empty(prompt_length, width, dtype=dtype).normal_(std=0.02)
+        self.context = nn.Parameter(context)
+        names = [name.replace("_", " ") for name in class_names]
+        tokenized = tokenize(["X " * prompt_length + name + "." for name in names])
+        with torch.no_grad():
+            embedding = clip_model.token_embedding(tokenized).to(dtype)
+        self.register_buffer("token_prefix", embedding[:, :1])
+        self.register_buffer("token_suffix", embedding[:, 1 + prompt_length :])
+        self.register_buffer("tokenized_prompts", tokenized)
+
+    def forward(self):
+        context = self.context.unsqueeze(0).expand(self.token_prefix.shape[0], -1, -1)
+        return torch.cat((self.token_prefix, context, self.token_suffix), dim=1)
+
+
+class CIPTTextFeatures(nn.Module):
+    """Learnable class prompts plus selectable CIPT intervention template banks."""
+
+    def __init__(self, class_names, clip_model, tokenize, prompt_length, prompt_init, k):
+        super().__init__()
+        self.clip_model = clip_model
+        self.text_encoder = CLIPTextEncoder(clip_model)
+        self.prompt_learner = PromptLearner(class_names, clip_model, tokenize, prompt_length, prompt_init)
+        self.class_names = [name.replace("_", " ") for name in class_names]
+        self.k = int(k)
+        self.template_mode = "b5a"
+        self.neutral_subject = "subject"
+        self._tokenize = tokenize
+
+        self.register_buffer(
+            "b5a_text_bank",
+            self._encode_texts(
+                list(build_paired_generic_templates(self.neutral_subject)),
+                tokenize,
+            ),
+        )
+        self.register_buffer(
+            "sconst_text_bank",
+            self._encode_texts(
+                list(build_sconst_templates(self.neutral_subject)),
+                tokenize,
+            ),
+        )
+        self.register_buffer(
+            "b5c_text_bank",
+            self._encode_texts(list(B5C_GENERIC_EXPANDED_TEMPLATES), tokenize),
+        )
+
+        # [num_classes, num_templates, dim] for B0 / official B5b.
+        b5b_texts = [
+            template.format(class_name)
+            for class_name in self.class_names
+            for template in B5B_IMAGENET_TEMPLATES
+        ]
+        b5b_encoded = self._encode_texts(b5b_texts, tokenize)
+        self.register_buffer(
+            "b5b_text_bank",
+            b5b_encoded.reshape(
+                len(self.class_names), len(B5B_IMAGENET_TEMPLATES), -1
+            ),
+        )
+
+        # [num_classes, 80, dim] for Bconst. Keep 80 positions and the same
+        # K-selection machinery, but make every context identical.
+        bconst_texts = [
+            "a photo of a {}.".format(class_name)
+            for class_name in self.class_names
+            for _ in range(len(B5B_IMAGENET_TEMPLATES))
+        ]
+        bconst_encoded = self._encode_texts(bconst_texts, tokenize)
+        self.register_buffer(
+            "bconst_text_bank",
+            bconst_encoded.reshape(
+                len(self.class_names), len(B5B_IMAGENET_TEMPLATES), -1
+            ),
+        )
+
+    def _encode_texts(self, texts, tokenize, batch_size=256):
+        encoded_chunks = []
+        device = next(self.clip_model.parameters()).device
+        with torch.no_grad():
+            for start in range(0, len(texts), batch_size):
+                tokens = tokenize(texts[start : start + batch_size]).to(device)
+                encoded = self.clip_model.encode_text(tokens).float()
+                encoded_chunks.append(F.normalize(encoded, dim=-1))
+        return torch.cat(encoded_chunks, dim=0)
+
+    def set_neutral_subject(self, subject):
+        """Switch S0/Sconst among subject/thing/object/entity without other changes."""
+        subject = _validate_neutral_subject(subject)
+        if subject == self.neutral_subject:
+            return
+        self.neutral_subject = subject
+        self.b5a_text_bank = self._encode_texts(
+            list(build_paired_generic_templates(subject)), self._tokenize
+        )
+        self.sconst_text_bank = self._encode_texts(
+            list(build_sconst_templates(subject)), self._tokenize
+        )
+
+    def set_template_mode(self, mode):
+        mode = str(mode).lower()
+        if mode not in TEMPLATE_MODES:
+            raise ValueError(
+                "Unknown cipt_template_mode={!r}; expected one of {}".format(
+                    mode, TEMPLATE_MODES
+                )
+            )
+        self.template_mode = mode
+
+    def _select_indices(self, num_available, device, legacy_fixed=False):
+        if num_available < 1:
+            raise ValueError("Template bank must contain at least one prompt.")
+        if legacy_fixed:
+            return torch.arange(self.k, device=device) % num_available
+        if self.training:
+            if self.k <= num_available:
+                return torch.randperm(num_available, device=device)[: self.k]
+            pieces = []
+            remaining = self.k
+            while remaining > 0:
+                perm = torch.randperm(num_available, device=device)
+                take = min(remaining, num_available)
+                pieces.append(perm[:take])
+                remaining -= take
+            return torch.cat(pieces, dim=0)
+        return torch.arange(self.k, device=device) % num_available
+
+    def full_b5b_text_features(self):
+        """Read-only full official class-conditioned bank [C,80,D].
+
+        No random K selection or label lookup occurs here. Callers must not
+        mutate the returned buffer; it is detached from every training graph.
+        """
+        return self.b5b_text_bank.detach()
+
+    def full_intervention_features(self):
+        """Complete shared bank for per-image class-agnostic prompt selection.
+
+        The paired B5a bank is rebuilt when ``neutral_subject`` changes, so
+        selection always uses the subject variant active in this experiment.
+        """
+        if self.template_mode == "b5a":
+            return self.b5a_text_bank
+        if self.template_mode == "b5c":
+            return self.b5c_text_bank
+        raise ValueError(
+            "Full prompt selection requires a diverse class-agnostic bank "
+            "(b5a or b5c)."
+        )
+
+    def intervention_features(self, labels=None):
+        """Return selected intervention embeddings for the active TDA mode.
+
+        b5a / S0 -> [K, D], paired neutral-subject prompts.
+        sconst    -> [K, D], 80 identical neutral-subject prompts.
+        b5c       -> [K, D], legacy expanded class-agnostic prompts.
+        b5b / B0 with labels -> [B, K, D], class-conditioned diverse prompts.
+        bconst with labels   -> [B, K, D], class-conditioned constant prompts.
+        b5b/bconst without labels -> [C, K, D], candidate-class inference.
+
+        All modes use random K during training and deterministic first K at
+        evaluation. For const modes the 80 positions are deliberately retained,
+        although their content is identical.
+        """
+        if self.template_mode == "b5a":
+            bank = self.b5a_text_bank
+            idx = self._select_indices(bank.shape[0], bank.device)
+            return bank.index_select(0, idx)
+
+        if self.template_mode == "sconst":
+            bank = self.sconst_text_bank
+            idx = self._select_indices(bank.shape[0], bank.device)
+            return bank.index_select(0, idx)
+
+        if self.template_mode == "b5c":
+            bank = self.b5c_text_bank
+            idx = self._select_indices(bank.shape[0], bank.device)
+            return bank.index_select(0, idx)
+
+        if self.template_mode == "b5b":
+            bank = self.b5b_text_bank
+        elif self.template_mode == "bconst":
+            bank = self.bconst_text_bank
+        else:
+            raise RuntimeError("Unhandled template mode: {}".format(self.template_mode))
+
+        idx = self._select_indices(bank.shape[1], bank.device)
+        selected = bank.index_select(1, idx)
+        if labels is None:
+            return selected
+        return selected[labels.to(device=bank.device, dtype=torch.long)]
+
+    @property
+    def irrelevant_text_features(self):
+        # Backward-compatible path used by the original high-performance
+        # CIPTDCCL implementation. Class-conditioned modes (b5b/bconst) are
+        # handled by the ablation wrapper because they need labels/candidates.
+        return self.intervention_features(labels=None)
+
+    def class_features(self):
+        features = self.text_encoder(self.prompt_learner(), self.prompt_learner.tokenized_prompts)
+        return F.normalize(features.float(), dim=-1)

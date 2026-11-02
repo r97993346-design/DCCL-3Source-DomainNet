@@ -1,0 +1,47 @@
+{
+  "cipt_causal_contrastive_weight": {
+    "01_nr_3800": 1.0,
+    "02_nocon_3800": 0.0,
+    "03_nocon_5000": 0.0
+  },
+  "cipt_class_text_mode": {
+    "01_nr_3800": "learnable",
+    "02_nocon_3800": "learnable",
+    "03_nocon_5000": "<absent>"
+  },
+  "cipt_contrastive_temperature": {
+    "01_nr_3800": 0.1,
+    "02_nocon_3800": 0.07,
+    "03_nocon_5000": 0.1
+  },
+  "cipt_contrastive_warmup_steps": {
+    "01_nr_3800": 0,
+    "02_nocon_3800": 500,
+    "03_nocon_5000": 500
+  },
+  "cipt_lr_min": {
+    "01_nr_3800": 0.0,
+    "02_nocon_3800": 0.0,
+    "03_nocon_5000": "<absent>"
+  },
+  "cipt_lr_schedule": {
+    "01_nr_3800": "constant",
+    "02_nocon_3800": "constant",
+    "03_nocon_5000": "<absent>"
+  },
+  "cipt_neighbor_alpha": {
+    "01_nr_3800": 4.0,
+    "02_nocon_3800": 4.0,
+    "03_nocon_5000": 0.5
+  },
+  "cipt_neighbor_k": {
+    "01_nr_3800": 10,
+    "02_nocon_3800": 10,
+    "03_nocon_5000": 5
+  },
+  "cipt_use_contrastive": {
+    "01_nr_3800": true,
+    "02_nocon_3800": false,
+    "03_nocon_5000": false
+  }
+}
