@@ -48,6 +48,18 @@ def resolve_loader_workers(args, dataset):
 def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, target_env=None):
     logger.info("")
 
+    # train_all.py runs target domains sequentially in one process. Give each
+    # training task the same explicit RNG starting point, independent of the
+    # preceding task's budget, sampling and evaluation. Keep trial_seed for
+    # dataset splits; do not derive the training seed from steps or run order.
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)  # Seeds both CPU and CUDA generators.
+    logger.info(
+        "Reset training RNG: test_envs=%s, seed=%s, trial_seed=%s",
+        test_envs, args.seed, args.trial_seed,
+    )
+
     #######################################################
     # setup dataset & loader
     #######################################################
