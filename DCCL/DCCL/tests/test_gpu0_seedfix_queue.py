@@ -20,6 +20,11 @@ BRANCH = 'feature/cipt-per-target-seed-20261102'
 
 
 class GPU0SeedFixQueueTests(unittest.TestCase):
+    script = SCRIPT
+    dataset = 'PACS'
+    gpu = '0'
+    wait_pid = 3112421
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -29,14 +34,14 @@ class GPU0SeedFixQueueTests(unittest.TestCase):
         self.events = self.folder / 'events.jsonl'
         self.output = self.folder / 'output'
         data = self.folder / 'data'
-        (data / 'PACS').mkdir(parents=True)
+        (data / self.dataset).mkdir(parents=True)
         clip = self.folder / 'clip.pt'
         clip.touch()
         self.write_executable('git', '#!/bin/sh\nprintf "%s\\n" ' + BRANCH + '\n')
         self.write_executable('nvidia-smi', f'''#!{sys.executable}
 import os,sys
 from pathlib import Path
-if '--id=0' not in sys.argv:
+if '--id={self.gpu}' not in sys.argv:
     sys.exit(90)
 if os.environ.get('FAKE_QUERY_FAILURE'):
     print('mock driver error',file=sys.stderr)
@@ -86,23 +91,28 @@ os.execv(sys.executable,[sys.executable]+args)
         return path
 
     def run_queue(self, *args, **env):
-        return subprocess.run(['bash', str(SCRIPT), '--wait-pid', '0', *args],
+        return subprocess.run(['bash', str(self.script), '--wait-pid', '0', *args],
             env=dict(self.env, **env), text=True, capture_output=True, timeout=20)
 
     def read_events(self):
         return [json.loads(line) for line in self.events.read_text().splitlines()] if self.events.exists() else []
 
     def test_dry_run_has_exact_six_approved_parameter_sets(self):
-        result = self.run_queue('--dry-run')
+        result = subprocess.run(['bash', str(self.script), '--dry-run'],
+            env=self.env, text=True, capture_output=True, timeout=20)
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f'wait only for PID {self.wait_pid} to exit',result.stdout)
         commands = [shlex.split(line) for line in result.stdout.splitlines()
-                    if line.startswith('CUDA_VISIBLE_DEVICES=0 ')]
+                    if line.startswith(f'CUDA_VISIBLE_DEVICES={self.gpu} ')]
         self.assertEqual(len(commands), 6)
         expected = [(5000,'false','0','none','0'), (5000,'true','0.1','none','0'),
                     (5000,'true','0.2','none','0'), (5000,'true','0.5','none','0'),
                     (5000,'false','0','center_mse','1'), (3800,'false','0','center_mse','1')]
         for command, values in zip(commands, expected):
             def value(flag): return command[command.index(flag)+1]
+            self.assertEqual(value('--dataset'),self.dataset)
+            self.assertEqual(command[command.index('--test_envs')+1:command.index('--test_envs')+5],
+                             ['0','1','2','3'])
             self.assertEqual(tuple(value(f) for f in ('--steps','--cipt_use_ind','--cipt_gamma',
                 '--cipt_env_constraint','--cipt_env_loss_weight')), tuple(map(str,values)))
             for flag, setting in (('--lr','5e-5'),('--cipt_lr_schedule','constant'),
@@ -118,23 +128,24 @@ os.execv(sys.executable,[sys.executable]+args)
         result = self.run_queue(FAKE_GPU_BUSY_CHECKS='99999')
         self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
         self.assertFalse((self.folder/'gpu_checks').exists())
-        self.assertNotIn('GPU0 idle',result.stdout)
+        self.assertNotIn(f'GPU{self.gpu} idle',result.stdout)
         events = self.read_events()
         self.assertEqual(len(events),12)
         self.assertEqual([e['event'] for e in events],['START','END']*6)
         for start,end in zip(events[::2],events[1::2]):
             self.assertEqual(start['name'],end['name'])
-            self.assertEqual(start['gpu'],'0')
+            self.assertEqual(start['gpu'],self.gpu)
         self.assertEqual(len(list(self.output.glob('run_*/*/command.sh'))),6)
         statuses = next(self.output.glob('run_*/status.tsv')).read_text()
         self.assertEqual(statuses.count('\tDONE\t0'),6)
         self.assertIn('\tQUEUE\tEXIT\t0',statuses)
 
     def test_failure_stops_remaining_experiments(self):
-        result = self.run_queue(FAKE_FAIL_NAME='02_pacs_es1_ind01_n5000')
+        prefix=self.dataset.lower()
+        result = self.run_queue(FAKE_FAIL_NAME=f'02_{prefix}_es1_ind01_n5000')
         self.assertNotEqual(result.returncode,0)
         self.assertEqual([e['name'] for e in self.read_events() if e['event']=='START'],
-                         ['01_pacs_es1_ind0_n5000','02_pacs_es1_ind01_n5000'])
+                         [f'01_{prefix}_es1_ind0_n5000',f'02_{prefix}_es1_ind01_n5000'])
         statuses = next(self.output.glob('run_*/status.tsv')).read_text()
         self.assertIn('\tFAILED\t17',statuses)
 
@@ -155,7 +166,7 @@ os.execv(sys.executable,[sys.executable]+args)
         log = self.folder/'queue.log'
         try:
             with log.open('w') as stream:
-                process = subprocess.Popen(['bash',str(SCRIPT),'--wait-pid',str(target_pid)],
+                process = subprocess.Popen(['bash',str(self.script),'--wait-pid',str(target_pid)],
                     env=dict(self.env,FAKE_GPU_BUSY_CHECKS='99999'),
                     stdout=stream,stderr=subprocess.STDOUT,text=True)
                 deadline = time.monotonic()+5
