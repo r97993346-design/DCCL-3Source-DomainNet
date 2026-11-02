@@ -31,6 +31,11 @@ SPECS = [
     ('03_nocon_5000', 'old_result', 'rd_forms_all80_gpu1',
      '261027_22-02-36_pacs_all80_center_mse_e1_s1_rd1_swad', 5000, False),
 ]
+SELECTED_RUNS = {
+    '01_nr_3800': ('run_20261101_175424_UywWqT', '01_center_mse_lr5e5_constant_3800'),
+    '02_nocon_3800': ('run_20261102_014917_2gr2Nj', '01_center_mse_nocon_lr5e5_constant_3800'),
+    '03_nocon_5000': ('run_20261027_220233_ZOri6v', 'pacs_all80_center_mse_e1_s1_rd1_swad'),
+}
 SOURCE_FILES = [
     'train_all.py', 'domainbed/trainer.py', 'domainbed/evaluator.py',
     'domainbed/datasets/__init__.py', 'domainbed/lib/fast_data_loader.py',
@@ -68,22 +73,37 @@ def trainer_dirs(project):
 
 def find_result(spec, args):
     key, option, family, leaf, _, _ = spec
+
+    def is_result(directory):
+        # TensorBoard writes PACS/runs/<same_unique_name>; the name alone
+        # does not identify an experiment result directory.
+        return (directory.is_dir() and not directory.is_symlink()
+                and (directory / 'log.txt').is_file()
+                and (directory / 'results.jsonl').is_file())
+
     explicit = getattr(args, option)
     if explicit:
         result = Path(explicit).expanduser().resolve()
-        if not result.is_dir():
-            fail('--' + option.replace('_', '-') + ' does not exist: ' + str(result))
+        if not is_result(result):
+            fail('--' + option.replace('_', '-') + ' must contain log.txt and results.jsonl: ' + str(result))
         return result
     projects = [args.old_project, args.project] if key.startswith('03') else [args.project]
     for project in projects:
         for train_dir in trainer_dirs(project):
             for parent in ['train_output/ablation', 'analysis_results']:
-                candidates = sorted(p for p in (train_dir / parent / family).glob('run_*/**/' + leaf)
-                                    if p.is_dir() and not p.is_symlink())
+                family_dir = train_dir / parent / family
+                run_name, experiment = SELECTED_RUNS[key]
+                selected = family_dir / run_name / experiment / 'PACS' / leaf
+                if is_result(selected):
+                    return selected.resolve()
+                candidates = sorted({p.resolve() for p in family_dir.glob('run_*/**/' + leaf)
+                                     if is_result(p)})
                 if len(candidates) == 1:
                     return candidates[0].resolve()
                 if len(candidates) > 1:
-                    fail('Multiple matches for ' + key + '; provide --' + option.replace('_', '-'))
+                    fail('Multiple result directories for ' + key + '; provide --'
+                         + option.replace('_', '-') + ' with one of:\n  '
+                         + '\n  '.join(str(p) for p in candidates))
     fail('Cannot find ' + key + ' (' + leaf + '). Provide --' + option.replace('_', '-')
          + ' /absolute/path/to/the/directory/containing/log.txt')
 
