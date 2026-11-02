@@ -1,4 +1,4 @@
-"""Exercise the real Bash queue with fake GPU queries and Python training jobs.
+"""Exercise PID-only waiting and serial jobs; GPU queries must never be called.
 
 No training data, CLIP, PyTorch or GPU is used. Run from DCCL/DCCL:
 python -m unittest discover -s tests -p 'test_gpu0_seedfix_queue.py' -v
@@ -75,7 +75,7 @@ os.execv(sys.executable,[sys.executable]+args)
             CIPT_PROJECT_DIR=str(ROOT), CIPT_PYTHON_BIN=str(self.python),
             CIPT_DATA_DIR=str(data), CIPT_CLIP_PATH=str(clip),
             CIPT_OUTPUT_ROOT=str(self.output), CIPT_POLL_SECONDS='0.02',
-            CIPT_IDLE_CHECKS='2', FAKE_TRAIN_EVENTS=str(self.events),
+            FAKE_TRAIN_EVENTS=str(self.events),
             FAKE_GPU_COUNT=str(self.folder/'gpu_checks'),
             FAKE_PROC_ROOT=str(self.folder/'proc'))
 
@@ -114,10 +114,11 @@ os.execv(sys.executable,[sys.executable]+args)
         self.assertFalse(self.events.exists())
         self.assertFalse(self.output.exists())
 
-    def test_busy_gpu_is_waited_and_training_is_serial(self):
-        result = self.run_queue(FAKE_GPU_BUSY_CHECKS='2')
+    def test_busy_gpu_is_ignored_and_training_is_serial(self):
+        result = self.run_queue(FAKE_GPU_BUSY_CHECKS='99999')
         self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
-        self.assertIn('GPU0 still has compute PID(s): 987654', result.stdout)
+        self.assertFalse((self.folder/'gpu_checks').exists())
+        self.assertNotIn('GPU0 idle',result.stdout)
         events = self.read_events()
         self.assertEqual(len(events),12)
         self.assertEqual([e['event'] for e in events],['START','END']*6)
@@ -137,13 +138,13 @@ os.execv(sys.executable,[sys.executable]+args)
         statuses = next(self.output.glob('run_*/status.tsv')).read_text()
         self.assertIn('\tFAILED\t17',statuses)
 
-    def test_gpu_query_failure_never_starts_training(self):
+    def test_gpu_query_availability_does_not_gate_training(self):
         result = self.run_queue(FAKE_QUERY_FAILURE='1')
-        self.assertNotEqual(result.returncode,0)
-        self.assertIn('Cannot query GPU0',result.stderr)
-        self.assertEqual(self.read_events(),[])
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertEqual(len(self.read_events()),12)
+        self.assertFalse((self.folder/'gpu_checks').exists())
 
-    def test_live_training_pid_is_waited_before_free_gpu(self):
+    def test_live_pid_is_the_only_wait_condition(self):
         target_pid = 515151
         proc = self.folder/'proc'/str(target_pid)
         proc.mkdir(parents=True)
@@ -155,7 +156,8 @@ os.execv(sys.executable,[sys.executable]+args)
         try:
             with log.open('w') as stream:
                 process = subprocess.Popen(['bash',str(SCRIPT),'--wait-pid',str(target_pid)],
-                    env=self.env,stdout=stream,stderr=subprocess.STDOUT,text=True)
+                    env=dict(self.env,FAKE_GPU_BUSY_CHECKS='99999'),
+                    stdout=stream,stderr=subprocess.STDOUT,text=True)
                 deadline = time.monotonic()+5
                 while 'Waiting for original training PID' not in log.read_text():
                     self.assertIsNone(process.poll(),log.read_text())
@@ -167,6 +169,7 @@ os.execv(sys.executable,[sys.executable]+args)
                 process.wait(timeout=15)
             self.assertEqual(process.returncode,0,log.read_text())
             self.assertEqual(len(self.read_events()),12)
+            self.assertFalse((self.folder/'gpu_checks').exists())
         finally:
             if process is not None and process.poll() is None:
                 process.terminate(); process.wait(timeout=5)
