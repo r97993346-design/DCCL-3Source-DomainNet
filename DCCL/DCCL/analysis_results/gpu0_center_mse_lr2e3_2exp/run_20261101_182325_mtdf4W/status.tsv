@@ -1,0 +1,5 @@
+id	name	lr	schedule	steps	status	time	output_root
+01	pacs_es1_ind0_center_mse1_all80_nocon_lr2e3_constant_3000	2e-3	constant	3000	START	2026-11-01T18:23:26+08:00	/home/hooasia/lgg/projects/cipt_gpu0/DCCL/DCCL/train_output/ablation/gpu0_center_mse_lr2e3_2exp/run_20261101_182325_mtdf4W/01_center_mse_nocon_lr2e3_constant_3000
+01	pacs_es1_ind0_center_mse1_all80_nocon_lr2e3_constant_3000	2e-3	constant	3000	SUCCESS	2026-11-01T21:02:23+08:00	/home/hooasia/lgg/projects/cipt_gpu0/DCCL/DCCL/train_output/ablation/gpu0_center_mse_lr2e3_2exp/run_20261101_182325_mtdf4W/01_center_mse_nocon_lr2e3_constant_3000
+02	pacs_es1_ind0_center_mse1_all80_nr1_lr2e3_constant_3000	2e-3	constant	3000	START	2026-11-01T21:02:24+08:00	/home/hooasia/lgg/projects/cipt_gpu0/DCCL/DCCL/train_output/ablation/gpu0_center_mse_lr2e3_2exp/run_20261101_182325_mtdf4W/02_center_mse_nr1_lr2e3_constant_3000
+02	pacs_es1_ind0_center_mse1_all80_nr1_lr2e3_constant_3000	2e-3	constant	3000	SUCCESS	2026-11-02T00:26:34+08:00	/home/hooasia/lgg/projects/cipt_gpu0/DCCL/DCCL/train_output/ablation/gpu0_center_mse_lr2e3_2exp/run_20261101_182325_mtdf4W/02_center_mse_nr1_lr2e3_constant_3000
