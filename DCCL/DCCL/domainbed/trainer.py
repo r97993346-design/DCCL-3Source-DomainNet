@@ -50,8 +50,11 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     logger.info("")
     source_sampling = getattr(args, "source_sampling", "domain_balanced")
     epochs = getattr(args, "epochs", None)
+    warmup_epochs = getattr(args, "cipt_contrastive_warmup_epochs", None)
     if epochs is not None and (epochs < 1 or source_sampling != "pooled_shuffle"):
         raise ValueError("Epoch training requires a positive epoch count and pooled_shuffle")
+    if warmup_epochs is not None and (epochs is None or warmup_epochs < 0):
+        raise ValueError("Contrastive warmup epochs require epoch training and a non-negative count")
     if source_sampling == "pooled_shuffle":
         if (
             args.algorithm != "CIPTDCCL"
@@ -178,6 +181,11 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             "Epoch budget: %d epochs x %d updates = %d updates; evaluate at each epoch end",
             epochs, steps_per_epoch, n_steps,
         )
+        if warmup_epochs is not None:
+            hparams = copy.deepcopy(hparams)
+            warmup_steps = warmup_epochs * steps_per_epoch
+            hparams["cipt_contrastive_warmup_steps"] = warmup_steps
+            logger.info("Contrastive warmup: %d epochs = %d updates", warmup_epochs, warmup_steps)
 
     # setup eval loaders
     eval_loaders_kwargs = []

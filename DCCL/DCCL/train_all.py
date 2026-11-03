@@ -156,6 +156,11 @@ def main():
     )
     parser.add_argument("--cipt_selector_candidates", type=int, default=8)
     parser.add_argument("--cipt_contrastive_weight", type=float, default=1.0)
+    parser.add_argument(
+        "--cipt_contrastive_warmup_epochs",
+        type=int,
+        help="Ramp contrastive weight over this many complete source passes (requires --epochs).",
+    )
     parser.add_argument("--cipt_debug_shapes", action="store_true")
     parser.add_argument(
         "--output_root",
@@ -164,6 +169,11 @@ def main():
         help="Root directory for training outputs"
     )
     args, left_argv = parser.parse_known_args()
+    if args.cipt_contrastive_warmup_epochs is not None:
+        if args.epochs is None or args.cipt_contrastive_warmup_epochs < 0:
+            parser.error("--cipt_contrastive_warmup_epochs requires --epochs and a non-negative count")
+        if any(token.split("=", 1)[0] == "--cipt_contrastive_warmup_steps" for token in left_argv):
+            parser.error("Specify contrastive warmup in either epochs or steps")
     if args.epochs is not None:
         if args.epochs < 1:
             parser.error("--epochs must be positive")
