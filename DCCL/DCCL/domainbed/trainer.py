@@ -56,9 +56,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         if (
             args.algorithm != "CIPTDCCL"
             or hparams.get("cipt_objective") != "env_anchor"
-            or hparams.get("cipt_use_contrastive", True)
         ):
-            raise ValueError("pooled_shuffle requires CIPTDCCL env_anchor with cipt_use_contrastive=false")
+            raise ValueError("pooled_shuffle requires CIPTDCCL env_anchor")
         if hparams["class_balanced"]:
             raise ValueError("pooled_shuffle requires class_balanced=false")
 

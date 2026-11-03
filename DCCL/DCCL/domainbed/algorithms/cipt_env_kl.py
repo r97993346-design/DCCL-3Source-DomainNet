@@ -426,7 +426,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 ).float().mean()
 
         loss_con, valid_fraction, con_weight, neighbor_stats = (
-            self._causal_contrastive_loss(visual, causal, labels, y)
+            self._causal_contrastive_loss(
+                visual, causal, labels, y, domain_batches=kwargs.get("d"),
+            )
         )
         env_term = (self.env_loss_weight if anchor_mode else self.env_kl_weight) * loss_env
         if anchor_mode:

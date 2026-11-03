@@ -351,7 +351,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         valid_fraction = valid_anchor.float().mean()
         return loss, valid_fraction
 
-    def _causal_contrastive_loss(self, visual, causal, labels, label_batches):
+    def _causal_contrastive_loss(self, visual, causal, labels, label_batches, *, domain_batches=None):
         """Shared route for standard, weighted and disabled contrastive modes."""
         enabled = (
             not self.cipt_pure
@@ -366,10 +366,18 @@ class CIPTDCCL(_BaseCIPTDCCL):
         stats.update(empty_clip_guided_stats(causal))
         stats["nbr_wmean"] = causal.new_ones(())
         stats["nbr_wmax"] = causal.new_ones(())
-        if enabled and self.contrastive_type in (
+        cross_domain = enabled and self.contrastive_type in (
             "cross_domain_supcon", "clip_guided_cross_domain"
-        ):
-            domains = source_domain_ids(labels, label_batches)
+        )
+        if cross_domain or apply_weights or self.neighbor_diagnostics:
+            # Pooled batches mix source domains, so tensor position alone
+            # cannot identify a sample's domain. Keep the legacy fallback.
+            domains = (
+                torch.cat(domain_batches)
+                if domain_batches is not None
+                else source_domain_ids(labels, label_batches)
+            )
+        if cross_domain:
             loss, measured = clip_guided_cross_domain_loss(
                 visual, causal, labels, domains,
                 temperature=self.contrastive_temperature,
@@ -385,12 +393,6 @@ class CIPTDCCL(_BaseCIPTDCCL):
             return loss, stats["cg_valid_anchor_fraction"], scale, stats
         anchor_weights = None
         if apply_weights or self.neighbor_diagnostics:
-            # The trainer supplies one label tensor per SOURCE domain, in the
-            # same order as torch.cat(x)/torch.cat(y). No target labels enter.
-            domains = torch.cat([
-                torch.full_like(batch_labels, domain, dtype=torch.long)
-                for domain, batch_labels in enumerate(label_batches)
-            ])
             candidate_weights, measured = neighbor_retention_weights(
                 visual, causal, labels, domains,
                 k=self.neighbor_k, alpha=self.neighbor_alpha,
