@@ -62,8 +62,12 @@ def main():
         help="Trial number (used for seeding split_dataset and random_hparams).",
     )
     parser.add_argument("--seed", type=int, default=0, help="Seed for everything else")
-    parser.add_argument(
+    training_budget = parser.add_mutually_exclusive_group()
+    training_budget.add_argument(
         "--steps", type=int, default=None, help="Number of steps. Default is dataset-dependent."
+    )
+    training_budget.add_argument(
+        "--epochs", type=int, help="Train for this many complete pooled source passes."
     )
     parser.add_argument(
         "--checkpoint_freq",
@@ -78,6 +82,11 @@ def main():
     parser.add_argument("--domainnet_auto_source_count", type=int, default=3, choices=[3, 5], help="Number of source domains to use when automatically sweeping DomainNet combinations without --source_envs/--target_env. Use 3 for the original 3-source sweep or 5 for the full 5-source sweep.")
     parser.add_argument("--weak_erm", action="store_true", help="When --algorithm ERM is run directly, use the weak ERM baseline settings (ImageNet pretrained backbone, no SWAD).")
     parser.add_argument("--holdout_fraction", type=float, default=0.2)
+    parser.add_argument(
+        "--source_sampling",
+        choices=("domain_balanced", "pooled_shuffle"),
+        help="Use separate source loaders, or shuffle all source training splits together.",
+    )
     parser.add_argument("--model_save", default=None, type=int, help="Model save start step")
     parser.add_argument(
         "--num_workers", type=int, default=None,
@@ -155,6 +164,15 @@ def main():
         help="Root directory for training outputs"
     )
     args, left_argv = parser.parse_known_args()
+    if args.epochs is not None:
+        if args.epochs < 1:
+            parser.error("--epochs must be positive")
+        if args.checkpoint_freq is not None or args.debug:
+            parser.error("--epochs evaluates every epoch and cannot be combined with --checkpoint_freq or --debug")
+        if args.source_sampling == "domain_balanced":
+            parser.error("--epochs requires pooled_shuffle source sampling")
+    if args.source_sampling is None:
+        args.source_sampling = "pooled_shuffle" if args.epochs is not None else "domain_balanced"
     for worker_option in ("num_workers", "eval_num_workers"):
         worker_value = getattr(args, worker_option)
         if worker_value is not None and worker_value < 0:
@@ -259,14 +277,15 @@ def main():
         target_name = all_env_names[args.target_env]
         logger.info(f"DomainNet custom split enabled: source_envs={args.source_envs} ({source_names}), target_env={args.target_env} ({target_name})")
 
-    n_steps = args.steps or dataset.N_STEPS
-    checkpoint_freq = args.checkpoint_freq or dataset.CHECKPOINT_FREQ
-    logger.info(f"n_steps = {n_steps}")
-    logger.info(f"checkpoint_freq = {checkpoint_freq}")
-
-    org_n_steps = n_steps
-    n_steps = (n_steps // checkpoint_freq) * checkpoint_freq + 1
-    logger.info(f"n_steps is updated to {org_n_steps} => {n_steps} for checkpointing")
+    n_steps = checkpoint_freq = None
+    if args.epochs is None:
+        checkpoint_freq = args.checkpoint_freq or dataset.CHECKPOINT_FREQ
+        org_n_steps = args.steps or dataset.N_STEPS
+        n_steps = (org_n_steps // checkpoint_freq) * checkpoint_freq + 1
+        logger.info(f"checkpoint_freq = {checkpoint_freq}")
+        logger.info(f"n_steps is updated to {org_n_steps} => {n_steps} for checkpointing")
+    else:
+        logger.info("Training budget: %d complete source epochs per target", args.epochs)
 
     if args.dataset == "DomainNet" and args.source_envs is not None and args.target_env is not None:
         args.test_envs = [[args.target_env]]
