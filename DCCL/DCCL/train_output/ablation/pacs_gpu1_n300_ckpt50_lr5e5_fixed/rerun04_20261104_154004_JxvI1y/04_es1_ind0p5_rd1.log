@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_all.py", line 22, in <module>
+    from domainbed.trainer import train
+  File "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/domainbed/trainer.py", line 14, in <module>
+    from domainbed import algorithms
+  File "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/domainbed/algorithms/__init__.py", line 1, in <module>
+    from .algorithms import *
+  File "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/domainbed/algorithms/algorithms.py", line 15, in <module>
+    from domainbed import networks
+  File "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/domainbed/networks.py", line 7, in <module>
+    from domainbed.backbones import get_backbone
+  File "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/domainbed/backbones.py", line 6, in <module>
+    import clip
+ModuleNotFoundError: No module named 'clip'
