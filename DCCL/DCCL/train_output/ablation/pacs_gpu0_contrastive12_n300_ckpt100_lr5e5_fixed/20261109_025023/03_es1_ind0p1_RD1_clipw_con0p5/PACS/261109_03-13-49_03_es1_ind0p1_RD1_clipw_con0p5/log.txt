@@ -1,0 +1,285 @@
+[37m[36mINFO[0m[0m 11/09 03:13:49 | Command :: train_all.py 03_es1_ind0p1_RD1_clipw_con0p5 config_cipt_b5b_all80_relative_distance.yaml --dataset PACS --algorithm CIPTDCCL --test_envs 0 1 2 3 --data_dir /home/hooasia/lgg/data/repro_dccl_data --cipt_clip_path /home/hooasia/.cache/clip/ViT-B-16.pt --source_sampling domain_balanced --batch_size 32 --num_workers 2 --aug 0 --deterministic --seed 0 --trial_seed 0 --steps 300 --checkpoint_freq 100 --model_save 0 --optimizer adam --weight_decay 0 --lr 5e-5 --cipt_lr_schedule constant --cipt_class_text_mode learnable --cipt_pure false --cipt_use_de true --cipt_e_cls_weight 1 --cipt_s_uniform_weight 1 --cipt_use_ind true --cipt_gamma 0.1 --cipt_env_constraint relative_distance --cipt_env_loss_weight 1 --cipt_env_selection all --cipt_env_topk 80 --cipt_rd_anchor_mode full --cipt_env_inference e_only --cipt_use_contrastive true --cipt_contrastive_type clip_guided_cross_domain --cipt_causal_contrastive_weight 0.5 --cipt_contrastive_weight 0.5 --cipt_contrastive_temperature 0.1 --cipt_contrastive_warmup_steps 0 --cipt_clip_teacher_mix 0.25 --cipt_clip_teacher_temperature 0.2 --cipt_clip_teacher_topk 0 --cipt_neighbor_k 5 --cipt_neighbor_alpha 0.5 --output_root /home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu0_contrastive12_n300_ckpt100_lr5e5_fixed/20261109_025023/03_es1_ind0p1_RD1_clipw_con0p5
+Environment:
+	Python: 3.10.20
+	PyTorch: 2.5.1+cu121
+	Torchvision: 0.20.1+cu121
+	CUDA: 12.1
+	CUDNN: 90100
+	NumPy: 2.2.6
+	PIL: 12.0.0
+Args:
+	TN: False
+	algorithm: CIPTDCCL
+	aug: 0.0
+	checkpoint_freq: 100
+	cipt_beta: 4.0
+	cipt_clip_backbone: ViT-B/16
+	cipt_clip_path: /home/hooasia/.cache/clip/ViT-B-16.pt
+	cipt_contrastive_warmup_epochs: None
+	cipt_contrastive_weight: 0.5
+	cipt_debug_shapes: False
+	cipt_enabled: True
+	cipt_gamma: 0.1
+	cipt_k: 4
+	cipt_prompt_init: a photo of a
+	cipt_prompt_length: 16
+	cipt_selector_candidates: 8
+	cipt_selector_mode: random
+	cipt_tda_heads: 1
+	configs: ['config_cipt_b5b_all80_relative_distance.yaml']
+	data_dir: /home/hooasia/lgg/data/repro_dccl_data
+	dataset: PACS
+	debug: False
+	deterministic: True
+	domainnet_auto_source_count: 3
+	epochs: None
+	erm_baseline: weak
+	eval_num_workers: None
+	evalmode: fast
+	holdout_fraction: 0.2
+	l: 1
+	l_d: None
+	l_layer: None
+	label_ratio: 1.0
+	lamda: 5
+	log: False
+	mix: 0
+	model: resnet50
+	model_save: 0
+	n_layer: 1
+	name: 03_es1_ind0p1_RD1_clipw_con0p5
+	num_workers: 2
+	out_dir: /home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu0_contrastive12_n300_ckpt100_lr5e5_fixed/20261109_025023/03_es1_ind0p1_RD1_clipw_con0p5/PACS/261109_03-13-49_03_es1_ind0p1_RD1_clipw_con0p5
+	out_root: /home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu0_contrastive12_n300_ckpt100_lr5e5_fixed/20261109_025023/03_es1_ind0p1_RD1_clipw_con0p5/PACS
+	output_root: /home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu0_contrastive12_n300_ckpt100_lr5e5_fixed/20261109_025023/03_es1_ind0p1_RD1_clipw_con0p5
+	pos_mask: False
+	prebuild_loader: False
+	re_w: False
+	sample_d: False
+	seed: 0
+	show: False
+	source_envs: None
+	source_sampling: domain_balanced
+	start_epoch: 1000
+	steps: 300
+	sup: True
+	t: 0.1
+	t_pre: 0.2
+	target_env: None
+	tb_freq: 10
+	test_envs: [0, 1, 2, 3]
+	trial_seed: 0
+	two_ce: False
+	unique_name: 261109_03-13-49_03_es1_ind0p1_RD1_clipw_con0p5
+	weak_erm: False
+	work_dir: .
+HParams:
+	data_augmentation: True
+	val_augment: False
+	resnet18: False
+	resnet_dropout: 0.0
+	class_balanced: False
+	[36moptimizer: adam
+	[0mcipt_enabled: True
+	cipt_clip_backbone: ViT-B/16
+	cipt_clip_path: /home/hooasia/.cache/clip/ViT-B-16.pt
+	cipt_beta: 4.0
+	cipt_gamma: 0.1
+	cipt_k: 4
+	cipt_prompt_length: 16
+	cipt_prompt_init: a photo of a
+	cipt_template_mode: b5b
+	cipt_neutral_subject: subject
+	cipt_tda_heads: 1
+	cipt_selector_mode: random
+	cipt_selector_candidates: 8
+	cipt_contrastive_weight: 0.5
+	[36mcipt_contrastive_temperature: 0.1
+	[0m[36mcipt_contrastive_type: clip_guided_cross_domain
+	[0m[36mcipt_clip_teacher_temperature: 0.2
+	[0m[36mcipt_clip_teacher_mix: 0.25
+	[0m[36mcipt_clip_teacher_topk: 0
+	[0m[36mcipt_neighbor_k: 5
+	[0m[36mcipt_neighbor_alpha: 0.5
+	[0mcipt_neighbor_diagnostics: False
+	cipt_use_aug_view: False
+	cipt_debug_shapes: False
+	cipt_objective: env_anchor
+	cipt_env_kl_weight: 0.0
+	cipt_fused_cls_weight: 0.0
+	[36mcipt_env_constraint: relative_distance
+	[0m[36mcipt_env_topk: 80
+	[0m[36mcipt_env_loss_weight: 1
+	[0m[36mcipt_env_selection: all
+	[0m[36mcipt_class_text_mode: learnable
+	[0m[36mcipt_lr_schedule: constant
+	[0mcipt_lr_min: 0.0
+	[36mcipt_rd_anchor_mode: full
+	[0m[36mcipt_e_cls_weight: 1
+	[0m[36mcipt_s_uniform_weight: 1
+	[0mfreeze_bn: True
+	pretrained: True
+	[36mlr: 5e-05
+	[0m[36mbatch_size: 32
+	[0m[36mweight_decay: 0
+	[0mt: 0.1
+	t_pre: 0.2
+	l: 1
+	l_d: 0.01
+	l_layer: 1
+	n_layer: 1
+	sup: True
+	two_ce: False
+	sample_d: False
+	re_w: False
+	pos_mask: False
+	mix: 0
+	aug: 0.0
+	model: resnet50
+	label_ratio: 1.0
+	TN: False
+	lamda: 5
+	start_epoch: 1000
+	log: False
+	swad: LossValley
+	swad_kwargs: 
+	  n_converge: 3
+	  n_tolerance: 6
+	  tolerance_ratio: 0.3
+	test_batchsize: 128
+	indomain_test: False
+	[36mcipt_pure: False
+	[0m[36mcipt_use_de: True
+	[0m[36mcipt_use_ind: True
+	[0mcipt_use_tda: False
+	[36mcipt_use_contrastive: True
+	[0m[36mcipt_causal_contrastive_weight: 0.5
+	[0m[36mcipt_contrastive_warmup_steps: 0
+	[0m[36mcipt_env_inference: e_only[0m
+Dataset:
+	[PACS] #envs=4, #classes=7
+	env0: art_painting (#2048)
+	env1: cartoon (#2344)
+	env2: photo (#1670)
+	env3: sketch (#3929)
+
+[37m[36mINFO[0m[0m 11/09 03:13:53 | checkpoint_freq = 100
+[37m[36mINFO[0m[0m 11/09 03:13:53 | n_steps is updated to 300 => 301 for checkpointing
+[37m[36mINFO[0m[0m 11/09 03:13:53 | Target test envs = [[0], [1], [2], [3]]
+[37m[36mINFO[0m[0m 11/09 03:13:53 | 
+[37m[36mINFO[0m[0m 11/09 03:13:53 | Reset training RNG: test_envs=[0], seed=0, trial_seed=0
+[37m[36mINFO[0m[0m 11/09 03:13:58 | Testenv name escaping te_art_painting -> te_art_painting
+[37m[36mINFO[0m[0m 11/09 03:13:58 | Test envs = [0], name = te_art_painting
+[37m[36mINFO[0m[0m 11/09 03:13:58 | Source sampling: domain_balanced
+[37m[36mINFO[0m[0m 11/09 03:13:58 | Batch sizes for each domain: [0, 32, 32, 32] (total=96)
+[37m[36mINFO[0m[0m 11/09 03:13:58 | steps-per-epoch for each domain: 58.62, 41.75, 98.25 -> min = 41.75
+[37m[36mINFO[0m[0m 11/09 03:13:58 | DataLoader workers: train=2 per source domain (6 total), eval=2 per loader
+[37m[36mINFO[0m[0m 11/09 03:14:31 | # of params = 151206401
+[37m[36mINFO[0m[0m 11/09 03:14:43 | test_in     test_out    train_in    train_out   tr_outloss  env0_in     env0_out    env1_out    env2_out    env3_out    step        epoch       entropy_se  env_loss    env_mcc_lo  env_rd_los  env_center  env_mean_t  env_loss_w  env_topk    env_all_te  env_anchor  random_sel  env_rd_sel  env_loss_t  nbr_check   nbr_pur_v   nbr_pur_e   nbr_gap     nbr_cover   nbr_drop    cg_contras  cg_valid_a  cg_cross_d  cg_teacher  cg_teacher  cg_teacher  cg_active   nbr_wmean   nbr_wmax    prompt_sel  prompt_cou  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  total_loss  cipt_base_  cipt_cls_l  cipt_de_lo  cipt_de_or  cipt_de_au  cipt_ind_l  causal_con  dccl_contr  contrastiv  contrastiv  pre_cl_los  reg_loss    mean_e_nor  mean_s_nor  mean_es_co  ablation_d  ablation_i  ablation_t  ablation_c  class_text  class_text  e_cls_loss  fused_cls_  s_uni_loss  env_kl_los  e_cls_w     fused_cls_  s_uni_w     env_kl_w    e_cls_term  fused_cls_  s_uni_term  env_kl_ter  env_shift   env_spread  env_l2_shi  env_spread  env_pred_a  sigm_activ  inference_  env_active  env_kl_act  fused_cls_  e_only_inf  step_time   eval_time  
+[37m[36mINFO[0m[0m 11/09 03:14:43 | 0.794997    0.811736    0.000000    0.948785    0.698302    0.794997    0.811736    0.944444    1.000000    0.901911    0           0.000000    0.000000    0.418111    0.000000    0.418111    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.418111    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    4.167327    1.000000    9.062500    0.692701    2.137507    0.237817    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    3.921170    1.419395    0.709835    1.369395    1.369395    0.000000    0.500000    0.418111    4.167327    0.500000    1.000000    0.000000    0.000000    1.000000    1.000000    1.000000    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.709835    0.000000    0.659560    0.000000    1.000000    0.000000    1.000000    0.000000    0.709835    0.000000    0.659560    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.603923    10.325841  
+[37m[36mINFO[0m[0m 11/09 03:15:26 | 0.974985    0.973105    0.000000    0.976346    0.093968    0.974985    0.973105    0.995726    0.997006    0.936306    100         2.395210    0.000000    0.346977    0.000000    0.346977    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.346977    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    3.656487    0.999062    8.753326    0.692236    2.082125    0.416209    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.687410    0.512189    0.292840    0.466521    0.466521    0.000000    0.456680    0.346977    3.656487    0.500000    0.999062    0.000000    0.000000    0.983085    1.032127    0.954991    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.292840    0.000000    0.173681    0.000000    1.000000    0.000000    1.000000    0.000000    0.292840    0.000000    0.173681    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.231765    11.434699  
+[37m[36mINFO[0m[0m 11/09 03:16:03 | 0.981086    0.980440    0.000000    0.979467    0.073491    0.981086    0.980440    0.995726    1.000000    0.942675    200         4.790419    0.000000    0.258441    0.000000    0.258441    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.258441    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    3.036471    1.000000    8.787500    0.693424    2.074469    0.450375    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.919248    0.142571    0.076105    0.107062    0.107062    0.000000    0.355097    0.258441    3.036471    0.500000    1.000000    0.000000    0.000000    0.976314    1.075567    0.840854    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.076105    0.000000    0.030957    0.000000    1.000000    0.000000    1.000000    0.000000    0.076105    0.000000    0.030957    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.202592    11.123875  
+[37m[36mINFO[0m[0m 11/09 03:16:41 | 0.981696    0.980440    0.000000    0.979892    0.067330    0.981696    0.980440    0.995726    1.000000    0.943949    300         7.185629    0.000000    0.213520    0.000000    0.213520    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.213520    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.735175    0.998958    8.735809    0.693286    2.074383    0.436986    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.684801    0.103694    0.061812    0.075508    0.075508    0.000000    0.281864    0.213520    2.735175    0.500000    0.998958    0.000000    0.000000    0.989555    1.102211    0.747120    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.061812    0.000000    0.013696    0.000000    1.000000    0.000000    1.000000    0.000000    0.061812    0.000000    0.013696    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.203275    11.028643  
+[37m[36mINFO[0m[0m 11/09 03:16:42 | ---
+[37m[31mERROR[0m[0m 11/09 03:16:42 | Requested final model, but model is not yet converged; return last model instead
+[37m[33mWARNING[0m[0m 11/09 03:16:42 | Evaluate SWAD ...
+[37m[36mINFO[0m[0m 11/09 03:16:53 | 0.981696    0.980440    0.000000    0.978193    0.069173    0.981696    0.980440    0.995726    1.000000    0.938854    [201-300]  (N=100)
+[37m[36mINFO[0m[0m 11/09 03:16:53 | oracle = 98.109%
+[37m[36mINFO[0m[0m 11/09 03:16:53 | iid = 98.170%
+[37m[36mINFO[0m[0m 11/09 03:16:53 | last = 98.170%
+[37m[36mINFO[0m[0m 11/09 03:16:53 | last (inD) = 97.989%
+[37m[36mINFO[0m[0m 11/09 03:16:53 | iid (inD) = 97.989%
+[37m[36mINFO[0m[0m 11/09 03:16:53 | SWAD = 98.170%
+[37m[36mINFO[0m[0m 11/09 03:16:53 | SWAD (inD) = 97.819%
+[37m[36mINFO[0m[0m 11/09 03:16:54 | 
+[37m[36mINFO[0m[0m 11/09 03:16:54 | Reset training RNG: test_envs=[1], seed=0, trial_seed=0
+[37m[36mINFO[0m[0m 11/09 03:16:58 | Testenv name escaping te_cartoon -> te_cartoon
+[37m[36mINFO[0m[0m 11/09 03:16:58 | Test envs = [1], name = te_cartoon
+[37m[36mINFO[0m[0m 11/09 03:16:58 | Source sampling: domain_balanced
+[37m[36mINFO[0m[0m 11/09 03:16:58 | Batch sizes for each domain: [32, 0, 32, 32] (total=96)
+[37m[36mINFO[0m[0m 11/09 03:16:58 | steps-per-epoch for each domain: 51.22, 41.75, 98.25 -> min = 41.75
+[37m[36mINFO[0m[0m 11/09 03:16:58 | DataLoader workers: train=2 per source domain (6 total), eval=2 per loader
+[37m[36mINFO[0m[0m 11/09 03:17:33 | # of params = 151206401
+[37m[36mINFO[0m[0m 11/09 03:17:45 | test_in     test_out    train_in    train_out   tr_outloss  env0_out    env1_in     env1_out    env2_out    env3_out    step        epoch       entropy_se  env_loss    env_mcc_lo  env_rd_los  env_center  env_mean_t  env_loss_w  env_topk    env_all_te  env_anchor  random_sel  env_rd_sel  env_loss_t  nbr_check   nbr_pur_v   nbr_pur_e   nbr_gap     nbr_cover   nbr_drop    cg_contras  cg_valid_a  cg_cross_d  cg_teacher  cg_teacher  cg_teacher  cg_active   nbr_wmean   nbr_wmax    prompt_sel  prompt_cou  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  total_loss  cipt_base_  cipt_cls_l  cipt_de_lo  cipt_de_or  cipt_de_au  cipt_ind_l  causal_con  dccl_contr  contrastiv  contrastiv  pre_cl_los  reg_loss    mean_e_nor  mean_s_nor  mean_es_co  ablation_d  ablation_i  ablation_t  ablation_c  class_text  class_text  e_cls_loss  fused_cls_  s_uni_loss  env_kl_los  e_cls_w     fused_cls_  s_uni_w     env_kl_w    e_cls_term  fused_cls_  s_uni_term  env_kl_ter  env_shift   env_spread  env_l2_shi  env_spread  env_pred_a  sigm_activ  inference_  env_active  env_kl_act  fused_cls_  e_only_inf  step_time   eval_time  
+[37m[36mINFO[0m[0m 11/09 03:17:45 | 0.937100    0.946581    0.000000    0.908234    0.742040    0.821516    0.937100    0.946581    1.000000    0.903185    0           0.000000    0.000000    0.427930    0.000000    0.427930    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.427930    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    4.366585    1.000000    9.187500    0.623927    2.129774    0.364061    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    4.084346    1.473124    0.854258    1.423124    1.423124    0.000000    0.500000    0.427930    4.366585    0.500000    1.000000    0.000000    0.000000    1.000000    1.000000    1.000000    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.854258    0.000000    0.568865    0.000000    1.000000    0.000000    1.000000    0.000000    0.854258    0.000000    0.568865    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.184910    11.784667  
+[37m[36mINFO[0m[0m 11/09 03:18:24 | 0.989339    0.991453    0.000000    0.970253    0.104062    0.980440    0.989339    0.991453    0.994012    0.936306    100         2.395210    0.000000    0.354327    0.000000    0.354327    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.354327    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    3.816159    0.999479    8.667120    0.641453    2.073729    0.387286    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.788071    0.525665    0.303036    0.479676    0.479676    0.000000    0.459882    0.354327    3.816159    0.500000    0.999479    0.000000    0.000000    0.982783    1.032749    0.958466    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.303036    0.000000    0.176641    0.000000    1.000000    0.000000    1.000000    0.000000    0.303036    0.000000    0.176641    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.202120    11.917398  
+[37m[36mINFO[0m[0m 11/09 03:19:03 | 0.986674    0.991453    0.000000    0.975577    0.080127    0.985330    0.986674    0.991453    1.000000    0.941401    200         4.790419    0.000000    0.265007    0.000000    0.265007    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.265007    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    3.133884    0.999375    8.657681    0.643738    2.078118    0.366586    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.983535    0.151587    0.081309    0.115425    0.115425    0.000000    0.361618    0.265007    3.133884    0.500000    0.999375    0.000000    0.000000    0.972236    1.077146    0.848893    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.081309    0.000000    0.034116    0.000000    1.000000    0.000000    1.000000    0.000000    0.081309    0.000000    0.034116    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.202418    11.483334  
+[37m[36mINFO[0m[0m 11/09 03:19:41 | 0.989872    0.993590    0.000000    0.976002    0.072209    0.985330    0.989872    0.993590    1.000000    0.942675    300         7.185629    0.000000    0.220249    0.000000    0.220249    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.220249    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.811128    0.998750    8.592364    0.640063    2.065866    0.391058    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.737340    0.111527    0.067498    0.082784    0.082784    0.000000    0.287436    0.220249    2.811128    0.500000    0.998750    0.000000    0.000000    0.979671    1.103933    0.755240    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.067498    0.000000    0.015285    0.000000    1.000000    0.000000    1.000000    0.000000    0.067498    0.000000    0.015285    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.201922    11.834819  
+[37m[36mINFO[0m[0m 11/09 03:19:42 | ---
+[37m[31mERROR[0m[0m 11/09 03:19:42 | Requested final model, but model is not yet converged; return last model instead
+[37m[33mWARNING[0m[0m 11/09 03:19:42 | Evaluate SWAD ...
+[37m[36mINFO[0m[0m 11/09 03:19:54 | 0.989339    0.991453    0.000000    0.975004    0.074023    0.985330    0.989339    0.991453    0.997006    0.942675    [201-300]  (N=100)
+[37m[36mINFO[0m[0m 11/09 03:19:54 | oracle = 98.987%
+[37m[36mINFO[0m[0m 11/09 03:19:54 | iid = 98.987%
+[37m[36mINFO[0m[0m 11/09 03:19:54 | last = 98.987%
+[37m[36mINFO[0m[0m 11/09 03:19:54 | last (inD) = 97.600%
+[37m[36mINFO[0m[0m 11/09 03:19:54 | iid (inD) = 97.600%
+[37m[36mINFO[0m[0m 11/09 03:19:54 | SWAD = 98.934%
+[37m[36mINFO[0m[0m 11/09 03:19:54 | SWAD (inD) = 97.500%
+[37m[36mINFO[0m[0m 11/09 03:19:55 | 
+[37m[36mINFO[0m[0m 11/09 03:19:55 | Reset training RNG: test_envs=[2], seed=0, trial_seed=0
+[37m[36mINFO[0m[0m 11/09 03:19:59 | Testenv name escaping te_photo -> te_photo
+[37m[36mINFO[0m[0m 11/09 03:19:59 | Test envs = [2], name = te_photo
+[37m[36mINFO[0m[0m 11/09 03:19:59 | Source sampling: domain_balanced
+[37m[36mINFO[0m[0m 11/09 03:19:59 | Batch sizes for each domain: [32, 32, 0, 32] (total=96)
+[37m[36mINFO[0m[0m 11/09 03:19:59 | steps-per-epoch for each domain: 51.22, 58.62, 98.25 -> min = 51.22
+[37m[36mINFO[0m[0m 11/09 03:19:59 | DataLoader workers: train=2 per source domain (6 total), eval=2 per loader
+[37m[36mINFO[0m[0m 11/09 03:20:31 | # of params = 151206401
+[37m[36mINFO[0m[0m 11/09 03:20:42 | test_in     test_out    train_in    train_out   tr_outloss  env0_out    env1_out    env2_in     env2_out    env3_out    step        epoch       entropy_se  env_loss    env_mcc_lo  env_rd_los  env_center  env_mean_t  env_loss_w  env_topk    env_all_te  env_anchor  random_sel  env_rd_sel  env_loss_t  nbr_check   nbr_pur_v   nbr_pur_e   nbr_gap     nbr_cover   nbr_drop    cg_contras  cg_valid_a  cg_cross_d  cg_teacher  cg_teacher  cg_teacher  cg_active   nbr_wmean   nbr_wmax    prompt_sel  prompt_cou  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  total_loss  cipt_base_  cipt_cls_l  cipt_de_lo  cipt_de_or  cipt_de_au  cipt_ind_l  causal_con  dccl_contr  contrastiv  contrastiv  pre_cl_los  reg_loss    mean_e_nor  mean_s_nor  mean_es_co  ablation_d  ablation_i  ablation_t  ablation_c  class_text  class_text  e_cls_loss  fused_cls_  s_uni_loss  env_kl_los  e_cls_w     fused_cls_  s_uni_w     env_kl_w    e_cls_term  fused_cls_  s_uni_term  env_kl_ter  env_shift   env_spread  env_l2_shi  env_spread  env_pred_a  sigm_activ  inference_  env_active  env_kl_act  fused_cls_  e_only_inf  step_time   eval_time  
+[37m[36mINFO[0m[0m 11/09 03:20:42 | 0.994760    0.994012    0.000000    0.891174    0.760251    0.819071    0.948718    0.994760    0.994012    0.905732    0           0.000000    0.000000    0.430873    0.000000    0.430873    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.430873    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    4.296050    1.000000    9.937500    0.674763    2.151388    1.000000    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    4.024330    1.445432    0.863863    1.395432    1.395432    0.000000    0.500000    0.430873    4.296050    0.500000    1.000000    0.000000    0.000000    1.000000    1.000000    1.000000    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.863863    0.000000    0.531569    0.000000    1.000000    0.000000    1.000000    0.000000    0.863863    0.000000    0.531569    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.184462    10.912978  
+[37m[36mINFO[0m[0m 11/09 03:21:20 | 0.995509    0.994012    0.000000    0.969263    0.109735    0.980440    0.993590    0.995509    0.994012    0.933758    100         1.952410    0.000000    0.350956    0.000000    0.350956    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.350956    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    3.842867    0.999062    9.038190    0.691265    2.101994    0.443239    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.812873    0.540484    0.318041    0.494824    0.494824    0.000000    0.456598    0.350956    3.842867    0.500000    0.999062    0.000000    0.000000    0.974937    1.039299    0.954897    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.318041    0.000000    0.176783    0.000000    1.000000    0.000000    1.000000    0.000000    0.318041    0.000000    0.176783    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.201794    10.266685  
+[37m[36mINFO[0m[0m 11/09 03:21:58 | 0.997006    0.997006    0.000000    0.971639    0.082354    0.982885    0.995726    0.997006    0.997006    0.936306    200         3.904820    0.000000    0.256692    0.000000    0.256692    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.256692    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    3.204308    0.997396    9.111601    0.692472    2.103809    0.492578    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.014768    0.155922    0.088122    0.120803    0.120803    0.000000    0.351191    0.256692    3.204308    0.500000    0.997396    0.000000    0.000000    0.956187    1.089206    0.836144    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.088122    0.000000    0.032681    0.000000    1.000000    0.000000    1.000000    0.000000    0.088122    0.000000    0.032681    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.204094    11.040294  
+[37m[36mINFO[0m[0m 11/09 03:22:36 | 0.997754    1.000000    0.000000    0.973762    0.077457    0.982885    0.995726    0.997754    1.000000    0.942675    300         5.857230    0.000000    0.210172    0.000000    0.210172    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.210172    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.897449    0.999479    9.076862    0.693044    2.108074    0.464604    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.773418    0.114522    0.071998    0.087090    0.087090    0.000000    0.274319    0.210172    2.897449    0.500000    0.999479    0.000000    0.000000    0.962139    1.118255    0.737065    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.071998    0.000000    0.015093    0.000000    1.000000    0.000000    1.000000    0.000000    0.071998    0.000000    0.015093    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.203454    11.075045  
+[37m[36mINFO[0m[0m 11/09 03:22:36 | ---
+[37m[31mERROR[0m[0m 11/09 03:22:36 | Requested final model, but model is not yet converged; return last model instead
+[37m[33mWARNING[0m[0m 11/09 03:22:36 | Evaluate SWAD ...
+[37m[36mINFO[0m[0m 11/09 03:22:47 | 0.997006    0.997006    0.000000    0.973338    0.077916    0.982885    0.995726    0.997006    0.997006    0.941401    [201-300]  (N=100)
+[37m[36mINFO[0m[0m 11/09 03:22:47 | oracle = 99.775%
+[37m[36mINFO[0m[0m 11/09 03:22:47 | iid = 99.775%
+[37m[36mINFO[0m[0m 11/09 03:22:47 | last = 99.775%
+[37m[36mINFO[0m[0m 11/09 03:22:47 | last (inD) = 97.376%
+[37m[36mINFO[0m[0m 11/09 03:22:47 | iid (inD) = 97.376%
+[37m[36mINFO[0m[0m 11/09 03:22:47 | SWAD = 99.701%
+[37m[36mINFO[0m[0m 11/09 03:22:47 | SWAD (inD) = 97.334%
+[37m[36mINFO[0m[0m 11/09 03:22:48 | 
+[37m[36mINFO[0m[0m 11/09 03:22:48 | Reset training RNG: test_envs=[3], seed=0, trial_seed=0
+[37m[36mINFO[0m[0m 11/09 03:22:52 | Testenv name escaping te_sketch -> te_sketch
+[37m[36mINFO[0m[0m 11/09 03:22:52 | Test envs = [3], name = te_sketch
+[37m[36mINFO[0m[0m 11/09 03:22:52 | Source sampling: domain_balanced
+[37m[36mINFO[0m[0m 11/09 03:22:52 | Batch sizes for each domain: [32, 32, 32, 0] (total=96)
+[37m[36mINFO[0m[0m 11/09 03:22:52 | steps-per-epoch for each domain: 51.22, 58.62, 41.75 -> min = 41.75
+[37m[36mINFO[0m[0m 11/09 03:22:52 | DataLoader workers: train=2 per source domain (6 total), eval=2 per loader
+[37m[36mINFO[0m[0m 11/09 03:23:31 | # of params = 151206401
+[37m[36mINFO[0m[0m 11/09 03:23:45 | test_in     test_out    train_in    train_out   tr_outloss  env0_out    env1_out    env2_out    env3_in     env3_out    step        epoch       entropy_se  env_loss    env_mcc_lo  env_rd_los  env_center  env_mean_t  env_loss_w  env_topk    env_all_te  env_anchor  random_sel  env_rd_sel  env_loss_t  nbr_check   nbr_pur_v   nbr_pur_e   nbr_gap     nbr_cover   nbr_drop    cg_contras  cg_valid_a  cg_cross_d  cg_teacher  cg_teacher  cg_teacher  cg_active   nbr_wmean   nbr_wmax    prompt_sel  prompt_cou  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  total_loss  cipt_base_  cipt_cls_l  cipt_de_lo  cipt_de_or  cipt_de_au  cipt_ind_l  causal_con  dccl_contr  contrastiv  contrastiv  pre_cl_los  reg_loss    mean_e_nor  mean_s_nor  mean_es_co  ablation_d  ablation_i  ablation_t  ablation_c  class_text  class_text  e_cls_loss  fused_cls_  s_uni_loss  env_kl_los  e_cls_w     fused_cls_  s_uni_w     env_kl_w    e_cls_term  fused_cls_  s_uni_term  env_kl_ter  env_shift   env_spread  env_l2_shi  env_spread  env_pred_a  sigm_activ  inference_  env_active  env_kl_act  fused_cls_  e_only_inf  step_time   eval_time  
+[37m[36mINFO[0m[0m 11/09 03:23:45 | 0.882952    0.900637    0.000000    0.922596    0.734981    0.819071    0.948718    1.000000    0.882952    0.900637    0           0.000000    0.000000    0.435187    0.000000    0.435187    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.435187    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    4.051306    1.000000    10.895834   0.628226    2.276317    1.000000    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    3.876064    1.415224    0.798228    1.365224    1.365224    0.000000    0.500000    0.435187    4.051306    0.500000    1.000000    0.000000    0.000000    1.000000    1.000000    1.000000    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.798228    0.000000    0.566996    0.000000    1.000000    0.000000    1.000000    0.000000    0.798228    0.000000    0.566996    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.201949    14.246416  
+[37m[36mINFO[0m[0m 11/09 03:24:26 | 0.904580    0.915924    0.000000    0.992871    0.054626    0.982885    0.995726    1.000000    0.904580    0.915924    100         2.395210    0.000000    0.370360    0.000000    0.370360    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.370360    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    3.588359    0.998750    9.755966    0.628030    2.181150    0.428147    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.658005    0.493466    0.266605    0.447357    0.447357    0.000000    0.461092    0.370360    3.588359    0.500000    0.998750    0.000000    0.000000    0.989231    1.028398    0.959764    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.266605    0.000000    0.180752    0.000000    1.000000    0.000000    1.000000    0.000000    0.266605    0.000000    0.180752    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.201635    13.452123  
+[37m[36mINFO[0m[0m 11/09 03:25:06 | 0.900763    0.908280    0.000000    0.993686    0.027431    0.985330    0.995726    1.000000    0.900763    0.908280    200         4.790419    0.000000    0.281504    0.000000    0.281504    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.281504    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.976601    0.998229    9.779644    0.628154    2.184904    0.388793    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.874574    0.104770    0.033688    0.068073    0.068073    0.000000    0.366975    0.281504    2.976601    0.500000    0.998229    0.000000    0.000000    0.994234    1.068159    0.855409    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.033688    0.000000    0.034385    0.000000    1.000000    0.000000    1.000000    0.000000    0.033688    0.000000    0.034385    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.203707    13.992780  
+[37m[36mINFO[0m[0m 11/09 03:25:47 | 0.900127    0.908280    0.000000    0.992871    0.021013    0.982885    0.995726    1.000000    0.900127    0.908280    300         7.185629    0.000000    0.232527    0.000000    0.232527    0.000000    0.000000    1.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.232527    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.699273    0.999375    9.590064    0.629913    2.166097    0.399440    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.649010    0.066847    0.021237    0.037315    0.037315    0.000000    0.295316    0.232527    2.699273    0.500000    0.999375    0.000000    0.000000    1.015290    1.094347    0.766121    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.021237    0.000000    0.016078    0.000000    1.000000    0.000000    1.000000    0.000000    0.021237    0.000000    0.016078    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.204131    13.987252  
+[37m[36mINFO[0m[0m 11/09 03:25:48 | ---
+[37m[31mERROR[0m[0m 11/09 03:25:48 | Requested final model, but model is not yet converged; return last model instead
+[37m[33mWARNING[0m[0m 11/09 03:25:48 | Evaluate SWAD ...
+[37m[36mINFO[0m[0m 11/09 03:26:02 | 0.901081    0.907006    0.000000    0.993686    0.023399    0.985330    0.995726    1.000000    0.901081    0.907006    [201-300]  (N=100)
+[37m[36mINFO[0m[0m 11/09 03:26:02 | oracle = 90.458%
+[37m[36mINFO[0m[0m 11/09 03:26:02 | iid = 90.076%
+[37m[36mINFO[0m[0m 11/09 03:26:02 | last = 90.013%
+[37m[36mINFO[0m[0m 11/09 03:26:02 | last (inD) = 99.287%
+[37m[36mINFO[0m[0m 11/09 03:26:02 | iid (inD) = 99.369%
+[37m[36mINFO[0m[0m 11/09 03:26:02 | SWAD = 90.108%
+[37m[36mINFO[0m[0m 11/09 03:26:02 | SWAD (inD) = 99.369%
+[37m[36mINFO[0m[0m 11/09 03:26:03 | === Summary ===
+[37m[36mINFO[0m[0m 11/09 03:26:03 | Command: train_all.py 03_es1_ind0p1_RD1_clipw_con0p5 config_cipt_b5b_all80_relative_distance.yaml --dataset PACS --algorithm CIPTDCCL --test_envs 0 1 2 3 --data_dir /home/hooasia/lgg/data/repro_dccl_data --cipt_clip_path /home/hooasia/.cache/clip/ViT-B-16.pt --source_sampling domain_balanced --batch_size 32 --num_workers 2 --aug 0 --deterministic --seed 0 --trial_seed 0 --steps 300 --checkpoint_freq 100 --model_save 0 --optimizer adam --weight_decay 0 --lr 5e-5 --cipt_lr_schedule constant --cipt_class_text_mode learnable --cipt_pure false --cipt_use_de true --cipt_e_cls_weight 1 --cipt_s_uniform_weight 1 --cipt_use_ind true --cipt_gamma 0.1 --cipt_env_constraint relative_distance --cipt_env_loss_weight 1 --cipt_env_selection all --cipt_env_topk 80 --cipt_rd_anchor_mode full --cipt_env_inference e_only --cipt_use_contrastive true --cipt_contrastive_type clip_guided_cross_domain --cipt_causal_contrastive_weight 0.5 --cipt_contrastive_weight 0.5 --cipt_contrastive_temperature 0.1 --cipt_contrastive_warmup_steps 0 --cipt_clip_teacher_mix 0.25 --cipt_clip_teacher_temperature 0.2 --cipt_clip_teacher_topk 0 --cipt_neighbor_k 5 --cipt_neighbor_alpha 0.5 --output_root /home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu0_contrastive12_n300_ckpt100_lr5e5_fixed/20261109_025023/03_es1_ind0p1_RD1_clipw_con0p5
+[37m[36mINFO[0m[0m 11/09 03:26:03 | Unique name: 261109_03-13-49_03_es1_ind0p1_RD1_clipw_con0p5
+[37m[36mINFO[0m[0m 11/09 03:26:03 | Out path: /home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu0_contrastive12_n300_ckpt100_lr5e5_fixed/20261109_025023/03_es1_ind0p1_RD1_clipw_con0p5/PACS/261109_03-13-49_03_es1_ind0p1_RD1_clipw_con0p5
+[37m[36mINFO[0m[0m 11/09 03:26:03 | Algorithm: CIPTDCCL
+[37m[36mINFO[0m[0m 11/09 03:26:03 | Dataset: PACS
++------------+---------+---------+---------+---------+---------+
+| Selection  |   env0  |   env1  |   env2  |   env3  |   Avg.  |
++------------+---------+---------+---------+---------+---------+
+|   oracle   | 98.109% | 98.987% | 99.775% | 90.458% | 96.832% |
+|    iid     | 98.170% | 98.987% | 99.775% | 90.076% | 96.752% |
+|    last    | 98.170% | 98.987% | 99.775% | 90.013% | 96.736% |
+| last (inD) | 97.989% | 97.600% | 97.376% | 99.287% | 98.063% |
+| iid (inD)  | 97.989% | 97.600% | 97.376% | 99.369% | 98.084% |
+|    SWAD    | 98.170% | 98.934% | 99.701% | 90.108% | 96.728% |
+| SWAD (inD) | 97.819% | 97.500% | 97.334% | 99.369% | 98.006% |
++------------+---------+---------+---------+---------+---------+
