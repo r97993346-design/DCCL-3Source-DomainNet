@@ -1,0 +1,146 @@
+[
+  {
+    "batch": "pacs_text",
+    "name": "01_es1_ind0p1_RD1_learnable_constant",
+    "source_results": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu0_textmode_lr4_ind0p1_n300_ckpt10/20261109_213524/01_es1_ind0p1_RD1_learnable_constant/PACS/261109_21-35-28_01_es1_ind0p1_RD1_learnable_constant/results.jsonl",
+    "source_group": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu0_textmode_lr4_ind0p1_n300_ckpt10/20261109_213524/01_es1_ind0p1_RD1_learnable_constant",
+    "copied_results": "pacs_text/01_es1_ind0p1_RD1_learnable_constant/results.jsonl",
+    "sha256": "13d0e8b223d0329d7433d13c572ffbe57bd66c0299680a6a89deec047a7a6e2b",
+    "complete": true,
+    "rows": 124,
+    "malformed": 0,
+    "summary": true,
+    "last_steps": {
+      "0": 300,
+      "1": 300,
+      "2": 300,
+      "3": 300
+    }
+  },
+  {
+    "batch": "pacs_text",
+    "name": "02_es1_ind0p1_RD1_learnable_cosine",
+    "source_results": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_queue_recovery/20261110_174745_455044/pacs_text/02_es1_ind0p1_RD1_learnable_cosine/PACS/261110_17-48-13_02_es1_ind0p1_RD1_learnable_cosine/results.jsonl",
+    "source_group": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_queue_recovery/20261110_174745_455044/pacs_text/02_es1_ind0p1_RD1_learnable_cosine",
+    "copied_results": "pacs_text/02_es1_ind0p1_RD1_learnable_cosine/results.jsonl",
+    "sha256": "8057fd2f46e493927ccecc9fbc7cfff59fae26596b2be54e0a6e80e472ad2921",
+    "complete": true,
+    "rows": 124,
+    "malformed": 0,
+    "summary": true,
+    "last_steps": {
+      "0": 300,
+      "1": 300,
+      "2": 300,
+      "3": 300
+    }
+  },
+  {
+    "batch": "pacs_text",
+    "name": "03_es1_ind0p1_RD1_fixed80_constant",
+    "source_results": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_queue_recovery/20261110_174745_455044/pacs_text/03_es1_ind0p1_RD1_fixed80_constant/PACS/261110_18-26-57_03_es1_ind0p1_RD1_fixed80_constant/results.jsonl",
+    "source_group": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_queue_recovery/20261110_174745_455044/pacs_text/03_es1_ind0p1_RD1_fixed80_constant",
+    "copied_results": "pacs_text/03_es1_ind0p1_RD1_fixed80_constant/results.jsonl",
+    "sha256": "0a414baf62bcfde39a7507142b15228a1a83e9b47588b9e1f0b4e0c7a8328a11",
+    "complete": true,
+    "rows": 124,
+    "malformed": 0,
+    "summary": true,
+    "last_steps": {
+      "0": 300,
+      "1": 300,
+      "2": 300,
+      "3": 300
+    }
+  },
+  {
+    "batch": "pacs_text",
+    "name": "04_es1_ind0p1_RD1_fixed80_cosine",
+    "source_results": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_queue_recovery/20261110_174745_455044/pacs_text/04_es1_ind0p1_RD1_fixed80_cosine/PACS/261110_19-03-22_04_es1_ind0p1_RD1_fixed80_cosine/results.jsonl",
+    "source_group": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_queue_recovery/20261110_174745_455044/pacs_text/04_es1_ind0p1_RD1_fixed80_cosine",
+    "copied_results": "pacs_text/04_es1_ind0p1_RD1_fixed80_cosine/results.jsonl",
+    "sha256": "1451911b5dab2257cc81f106c5a0009428d8152c545dff6fa6ac156bb9ab6156",
+    "complete": true,
+    "rows": 124,
+    "malformed": 0,
+    "summary": true,
+    "last_steps": {
+      "0": 300,
+      "1": 300,
+      "2": 300,
+      "3": 300
+    }
+  },
+  {
+    "batch": "pacs_con",
+    "name": "01_es1_ind0p1_RD1_supcon_con0p25",
+    "source_results": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu1_contrastive4_n300_ckpt10_lr5e5_fixed/20261109_205356/01_es1_ind0p1_RD1_supcon_con0p25/PACS/261109_20-53-58_01_es1_ind0p1_RD1_supcon_con0p25/results.jsonl",
+    "source_group": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu1_contrastive4_n300_ckpt10_lr5e5_fixed/20261109_205356/01_es1_ind0p1_RD1_supcon_con0p25",
+    "copied_results": "pacs_con/01_es1_ind0p1_RD1_supcon_con0p25/results.jsonl",
+    "sha256": "22fb8b423193f68667a8c5f9838de592aa0714635b4bd3f083a419464c505ba9",
+    "complete": true,
+    "rows": 124,
+    "malformed": 0,
+    "summary": true,
+    "last_steps": {
+      "0": 300,
+      "1": 300,
+      "2": 300,
+      "3": 300
+    }
+  },
+  {
+    "batch": "pacs_con",
+    "name": "02_es1_ind0p1_RD1_cross_con0p1",
+    "source_results": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu1_contrastive4_n300_ckpt10_lr5e5_fixed/20261109_205356/02_es1_ind0p1_RD1_cross_con0p1/PACS/261109_21-34-50_02_es1_ind0p1_RD1_cross_con0p1/results.jsonl",
+    "source_group": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/pacs_gpu1_contrastive4_n300_ckpt10_lr5e5_fixed/20261109_205356/02_es1_ind0p1_RD1_cross_con0p1",
+    "copied_results": "pacs_con/02_es1_ind0p1_RD1_cross_con0p1/results.jsonl",
+    "sha256": "e6af920133a44fd19127fe1f276518f821cf519fb8e7d02b0a698f517c6d647a",
+    "complete": true,
+    "rows": 124,
+    "malformed": 0,
+    "summary": true,
+    "last_steps": {
+      "0": 300,
+      "1": 300,
+      "2": 300,
+      "3": 300
+    }
+  },
+  {
+    "batch": "pacs_con",
+    "name": "03_es1_ind0p1_RD1_clipw_con0p1",
+    "source_results": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_queue_recovery/20261110_174745_455044/pacs_con/03_es1_ind0p1_RD1_clipw_con0p1/PACS/261110_17-48-13_03_es1_ind0p1_RD1_clipw_con0p1/results.jsonl",
+    "source_group": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_queue_recovery/20261110_174745_455044/pacs_con/03_es1_ind0p1_RD1_clipw_con0p1",
+    "copied_results": "pacs_con/03_es1_ind0p1_RD1_clipw_con0p1/results.jsonl",
+    "sha256": "435763ab76cf5d8c97db0fc8f2b25d9887883f9bde3fee57b31eecb40939ccf0",
+    "complete": true,
+    "rows": 124,
+    "malformed": 0,
+    "summary": true,
+    "last_steps": {
+      "0": 300,
+      "1": 300,
+      "2": 300,
+      "3": 300
+    }
+  },
+  {
+    "batch": "pacs_con",
+    "name": "04_es1_ind0p1_RD1_supcon_con1",
+    "source_results": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_queue_recovery/20261110_174745_455044/pacs_con/04_es1_ind0p1_RD1_supcon_con1/PACS/261110_18-27-00_04_es1_ind0p1_RD1_supcon_con1/results.jsonl",
+    "source_group": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_queue_recovery/20261110_174745_455044/pacs_con/04_es1_ind0p1_RD1_supcon_con1",
+    "copied_results": "pacs_con/04_es1_ind0p1_RD1_supcon_con1/results.jsonl",
+    "sha256": "b258c79e07df4e225ce26a3098ced348b92e0d3fd202411c4d84412d411b132f",
+    "complete": true,
+    "rows": 124,
+    "malformed": 0,
+    "summary": true,
+    "last_steps": {
+      "0": 300,
+      "1": 300,
+      "2": 300,
+      "3": 300
+    }
+  }
+]
