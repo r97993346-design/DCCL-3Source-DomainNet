@@ -173,6 +173,18 @@ TensorBoard 在该 PACS 目录的 runs 子目录。可选模型权重也跟随�
 相对路径按脚本切换后的 DCCL/DCCL 目录解释，绝对路径直接使用，支持带空格的路径。
 配置预览会显示目标路径但不创建目录；参数只影响新启动的进程，不会迁移正在写入的旧日志。
 
+VLCS 的五组 A1–A5（不含 A0）使用独立配置和脚本：
+
+```bash
+OUTPUT_ROOT=train_output/dicm_vlcs_a1_a5_gpu1 \
+  bash scripts/run_vlcs_a1_a5.sh --show
+```
+
+默认 ResNet-50、seed=0、trial_seed=0、每域 batch=32、lr=5e-5、最多 5000 次更新、
+check=100、workers=4、逐目标域重置种子。A5 的 VLCS GT 权重为原数据集配置的
+0.05，不能套用 PACS 的 0.01。所有组都只用源域验证选模，不默认隔离评估 RNG。
+去掉 --show 并指定 --data_dir 后，五组依次各跑四个目标域，共 20 个泛化任务。
+
 相同目标域仅改变总步数时，在学习率、checkpoint_freq、数据与环境相同的条件下，
 公共更新前缀应一致。默认仍使用共享训练 / 评估 RNG，保留原 DCCL 行为；
 改变评估频率仍可能改变 RNG 消耗与 SWAD 行为。

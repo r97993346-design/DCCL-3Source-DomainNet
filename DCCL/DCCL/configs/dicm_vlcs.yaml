@@ -1,0 +1,24 @@
+# VLCS A1-A5: retain dataset-specific DCCL task settings; GT exists only in A5.
+lr: 0.00005
+weight_decay: 0.0
+batch_size: 32
+l: 1.0
+l_layer: 1.0
+l_d: 0.0
+t: 0.1
+t_pre: 0.2
+n_layer: 1
+dicm_ablation: A4
+dicm_gt_weight: 0.05
+dicm_rank: 8
+dicm_beta: 1.0
+dicm_isr_weight: 0.05
+dicm_aug_weight: 0.25
+dicm_dom_weight: 0.75
+dicm_proto_momentum: 0.95
+dicm_min_domain_samples: 8
+dicm_min_domain_updates: 3
+dicm_min_valid_domains: 3
+dicm_min_delta_norm: 0.0001
+dicm_basis_lr: 0.00005
+dicm_basis_seed: -1
