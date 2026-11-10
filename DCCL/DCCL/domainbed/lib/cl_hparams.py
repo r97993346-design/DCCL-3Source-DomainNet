@@ -61,4 +61,6 @@ def setup_alg_hparams(hparams, args):
     hparams["lamda"] = args.lamda
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
+    if getattr(args, "algorithm", None) == "DICM":
+        hparams["l_d"] = 0.0
     return hparams

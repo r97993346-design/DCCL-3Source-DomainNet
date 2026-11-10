@@ -2,6 +2,7 @@ import collections
 import json
 import time
 import copy
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +17,7 @@ from domainbed.lib import swa_utils
 from domainbed.lib.query import Q
 from domainbed.lib.fast_data_loader import InfiniteDataLoader, FastDataLoader
 from domainbed import swad as swad_module
+from domainbed.lib.dicm_selection import select_source_iid
 
 
 if torch.cuda.is_available():
@@ -33,6 +35,7 @@ def json_handler(v):
 def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, target_env=None):
 
     logger.info("")
+    is_dicm = args.algorithm == "DICM"
 
     #######################################################
     # setup dataset & loader
@@ -77,6 +80,20 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
     n_envs = len(dataset)
     train_envs = sorted(set(range(n_envs)) - set(test_envs))
+    if is_dicm:
+        hparams["dicm_source_envs"] = train_envs
+        split_keys = {
+            str(env_id): {
+                "in": list(in_splits[env_id][0].keys),
+                "out": list(out_splits[env_id][0].keys),
+            }
+            for env_id in train_envs
+        }
+        split_digest = hashlib.sha256(
+            json.dumps(split_keys, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        logger.info(f"DICM local source IDs -> global IDs: {list(enumerate(train_envs))}")
+        logger.info(f"DICM source split SHA256: {split_digest}")
     iterator = misc.SplitIterator(test_envs)
     batch_sizes = np.full([n_envs], hparams["batch_size"], dtype=int)
 
@@ -486,8 +503,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # find best
     logger.info("---")
     records = Q(records)
-    oracle_best = records.argmax("test_out")["test_in"]
-    iid_best = records.argmax("train_out")["test_in"]
+    iid_record = select_source_iid(records) if is_dicm else records.argmax("train_out")
+    iid_best = iid_record["test_in"]
     last = records[-1]["test_in"]
 
     if hparams.indomain_test:
@@ -500,12 +517,28 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     last_indomain = records[-1][in_key]
 
     ret = {
-        "oracle": oracle_best,
         "iid": iid_best,
         "last": last,
         "last (inD)": last_indomain,
         "iid (inD)": iid_best_indomain,
     }
+    if is_dicm:
+        ret["iid (test_out)"] = iid_record["test_out"]
+        ret["last (test_out)"] = records[-1]["test_out"]
+        selection = {
+            "test_envs": list(test_envs), "source_envs": train_envs,
+            "seed": args.seed, "trial_seed": args.trial_seed,
+            "source_split_sha256": split_digest,
+            "iid": {"criterion": "max train_out; first tie", "step": iid_record["step"],
+                    "source_val_accuracy": iid_record["train_out"],
+                    "reported_test_in": iid_record["test_in"],
+                    "reported_test_out": iid_record["test_out"]},
+            "last_step": records[-1]["step"],
+        }
+        logger.info(f"DICM source-selected IID checkpoint: step {iid_record['step']}")
+    else:
+        # Preserve the legacy DCCL summary, including its historical oracle row.
+        ret = {"oracle": records.argmax("test_out")["test_in"], **ret}
 
     # Evaluate SWAD
     if swad:
@@ -526,6 +559,14 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
         ret["SWAD"] = results["test_in"]
         ret["SWAD (inD)"] = results[in_key]
+        if is_dicm:
+            ret["SWAD (test_out)"] = results["test_out"]
+            selection["swad"] = {
+                "criterion": "source validation LossValley", "start_step": start,
+                "end_step": end, "n_averaged": int(swad_algorithm.n_averaged.item()),
+                "reported_test_in": results["test_in"],
+                "reported_test_out": results["test_out"],
+            }
 
         # with torch.no_grad():
         #     embedding_train = []
@@ -575,7 +616,12 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         #     np.save("vis/pacs_swad_y_test.npy", y_test)
         #     exit()
 
+    if is_dicm:
+        with open(args.out_dir / f"selection_{testenv_name}.json", "w") as f:
+            json.dump(selection, f, indent=2, default=json_handler)
+
     for k, acc in ret.items():
         logger.info(f"{k} = {acc:.3%}")
 
     return ret, records
+

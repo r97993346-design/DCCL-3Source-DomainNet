@@ -18,6 +18,7 @@ from domainbed.lib.writers import get_writer
 from domainbed.lib.logger import Logger
 from domainbed.trainer import train
 from domainbed.lib.cl_hparams import setup_alg_hparams
+from domainbed.lib.dicm_hparams import finalize_dicm_hparams
 
 def main():
     parser = argparse.ArgumentParser(description="Domain generalization")
@@ -87,6 +88,13 @@ def main():
     keys = [open(key, encoding="utf8") for key in keys]
     hparams = Config(*keys, default=hparams)
     hparams.argv_update(left_argv)
+
+    if args.algorithm == "DICM":
+        finalize_dicm_hparams(hparams, args, sys.argv[1:])
+        # Configuration review needs neither CUDA, datasets nor output folders.
+        if args.show:
+            print(hparams.dumps())
+            return
 
     # setup debug
     if args.debug:
@@ -208,3 +216,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

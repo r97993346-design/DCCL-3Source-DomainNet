@@ -94,6 +94,20 @@ def _hparams(algorithm, dataset, random_state):
         # cutmix_prob is set to 1.0 for ImageNet and 0.5 for CIFAR100 in the original paper.
         hparams["cutmix_prob"] = (1.0, 1.0)
 
+    if algorithm == "DICM":
+        # Fixed, explicit starting points; not an implicit HPO search space.
+        dicm_defaults = {
+            "dicm_ablation": "A4", "dicm_rank": 8, "dicm_beta": 1.0,
+            "dicm_isr_weight": 0.05, "dicm_aug_weight": 0.25,
+            "dicm_dom_weight": 0.75, "dicm_proto_momentum": 0.95,
+            "dicm_min_domain_samples": 8, "dicm_min_domain_updates": 3,
+            "dicm_min_valid_domains": 0,  # 0 means all source domains.
+            "dicm_min_delta_norm": 1e-4,
+            "dicm_basis_lr": 0.0,  # 0 inherits backbone lr; basis decay is 0.
+            "dicm_basis_seed": -1,  # Private generator seeded by torch.initial_seed().
+        }
+        hparams.update({key: (value, value) for key, value in dicm_defaults.items()})
+
     return hparams
 
 
@@ -105,3 +119,4 @@ def default_hparams(algorithm, dataset):
 def random_hparams(algorithm, dataset, seed):
     random_state = np.random.RandomState(seed)
     return {a: c for a, (b, c) in _hparams(algorithm, dataset, random_state).items()}
+
