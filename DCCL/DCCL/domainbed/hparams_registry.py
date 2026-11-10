@@ -63,6 +63,9 @@ def _hparams(algorithm, dataset, random_state):
         # Selecting the PICCL algorithm must enable it.  An explicit
         # `--use_piccl false` remains available for the exact DCCL ablation.
         hparams["use_piccl"] = (True, True)
+        # mediator: original v6; guide_contrast: train-only causal SupCon;
+        # replace_gt: train-only causal SupCon while removing DCCL GT/VAE.
+        hparams["piccl_guidance_mode"] = ("mediator", "mediator")
         # Fixed ablation defaults must be registered so sconf accepts command-line
         # overrides; these are not added to the random HPO search space.
         hparams["piccl_use_residual_gate"] = (False, False)
