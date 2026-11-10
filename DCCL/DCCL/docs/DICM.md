@@ -103,8 +103,10 @@ python -u train_all.py pacs_dicm_A4 configs/dicm_pacs.yaml \
 ```
 
 不传 test_envs 时沿用原程序的 0→1→2→3 顺序。没有自动启动训练队列。
-原程序将请求 5000 步换算为循环 step=0..5000，最多 5001 次更新；
-step=0 在第一次优化后评估，原 SWAD 仍可能提前停止。
+当前默认 `--step_count_mode exact`：steps=5000 表示最多 5000 次更新（step=0..4999），
+不再按 checkpoint_freq 截断或多加一步。step=0 在第一次优化后评估，末次更新也会评估，
+SWAD 仍可能提前停止。复现旧换算时显式使用 `--step_count_mode legacy`，
+此时最大更新数仍为 floor(steps/checkpoint_freq)*checkpoint_freq+1。
 本分支改为逐目标域重置 seed；需要使用下述 A0 重新建立匹配基线。
 
 ## 逐目标域独立复现与 A0
@@ -119,13 +121,15 @@ DataLoader 与模型创建。Python、NumPy、PyTorch CPU / CUDA 均以 `args.se
 每组仍重新创建模型、优化器、B、EMA 和 SWAD，不加载上一组参数。
 `trial_seed` 与原来的划分算法不变；每次 selection JSON 记录 seed、trial_seed、
 seed_policy=per_target、deterministic、算法、消融编号和源域 split hash。
+同时记录 requested_steps、max_updates、actual_updates、checkpoint_freq、
+step_count_mode、evaluation_rng 和 num_workers；step 字段保留从 0 开始的原口径。
 
 A0 直接使用未改动的 `domainbed/algorithms/algorithms.py::DCCL`，保留 CE(z)、
 SupCon(z,z_aug)、PreCL(z,z0) 和原始 GT；没有 DICM、B 或原型模块。
 新增 `configs/dccl_pacs_a0.yaml`，与 A4 共用 lr=5e-5、batch=32、任务权重和温度，
 GT 使用原 PACS 有效权重 0.01。不要把 A0 配置与 dicm_pacs.yaml 叠加。
 本分支 A0 / A1–A5 都用源域验证选 IID 与 SWAD，均不计算 Oracle 选模汇总。
-这保持原 DCCL 的模型 / 损失，同时显式更换随机种子粒度和报告协议；旧 A0 日志
+这保持原 DCCL 的模型 / 损失，同时显式更换随机种子粒度、参数覆盖、步数口径和报告协议；旧 A0 日志
 继续保留，不能充当新规则下已复现的基线。
 
 先只检查 A0 配置：
@@ -150,12 +154,30 @@ CUDA_VISIBLE_DEVICES=0 SEED=0 TRIAL_SEED=0 STEPS=300 CHECKPOINT_FREQ=100 \
 ```
 
 不传 test_envs 时，每组运行四个目标域；可传 `--test_envs 3` 只补跑 Sketch。
+支持 `--test_envs 3 0` 等子集 / 自定义顺序，汇总表只显示实际目标域，并按实际顺序标注。
+目标域编号重复或越界会报错。
 `PYTHON=/path/to/python` 可指定解释器。新分支默认就按目标域重置，无需额外开关。
 脚本仅在手动调用时启动；实现与检查过程不运行真实训练。
 
 相同目标域仅改变总步数时，在学习率、checkpoint_freq、数据与环境相同的条件下，
-公共更新前缀应一致。改变评估频率可能改变 RNG 消耗与 SWAD 行为；固定种子本身
-不保证 GPU 所有算子逐位确定，也不保证跨软件 / 硬件一致或短长跑的最终 SWAD 一致。
+公共更新前缀应一致。默认仍使用共享训练 / 评估 RNG，保留原 DCCL 行为；
+改变评估频率仍可能改变 RNG 消耗与 SWAD 行为。
+
+专门对比不同 check 时，可对所有对照统一加 `--isolate_eval_rng`。
+`Evaluator.evaluate` 会在评估前后保存 / 恢复 Python、NumPy、PyTorch CPU 和已初始化
+CUDA 设备的 RNG，即使评估抛异常也恢复；`--prebuild_loader` 的评估加载器创建也纳入隔离。
+这阻止评估次数改变训练随机序列，不会消除 checkpoint 候选和 SWAD 区间的差异。
+它不是默认开启的改动，也不是 GPU 所有算子逐位确定或跨软件 / 硬件一致的保证。
+
+新增 `--num_workers 2` 同时控制每个训练 / 评估加载器；省略时保留数据集默认值。
+FastDataLoader 不再忽略此值；`--num_workers 0` 在主进程加载，适合排查问题。
+预览步数、RNG 与 workers 的示例：
+
+```bash
+STEPS=50 CHECKPOINT_FREQ=100 bash scripts/run_pacs_a0_a5.sh --show --num_workers 2
+# 统一隔离评估随机状态后预览（不启动训练）
+STEPS=300 CHECKPOINT_FREQ=100 bash scripts/run_pacs_a0_a5.sh --show --isolate_eval_rng
+```
 
 配置 / sconf 可覆盖 dicm_* 参数，例如：
 
@@ -164,9 +186,10 @@ python train_all.py review configs/dicm_pacs.yaml --algorithm DICM --show \
   --dicm_aug_weight 0.5 --dicm_dom_weight 0.5 --dicm_basis_lr 0.0001
 ```
 
-DICM 专门修复了已知 argparse 核心选项未回填的问题：显式 `--l`、`--l_layer`、
+A0 / DICM 均修复了 argparse 核心选项未回填的问题：显式 `--l`、`--l_layer`、
 `--t`、`--t_pre`、`--n_layer` 在 YAML 后生效。未显式传入的 argparse 默认值不会
-覆盖数据集 / YAML 配置。原始 DCCL 的配置解析行为不变。
+覆盖数据集 / YAML 配置。A0 的显式 `--l_d` 也会生效。A0 若手动关闭 GT、SupCon
+或 PreCL，selection 中标为 DCCL-custom，不能当成标准 A0。
 A1–A4 的 l_d 必须为 0；非零值会报错。只有显式选择 A5 才恢复 GT。
 A5 使用 `dicm_gt_weight` 配置 GT，日志中的 `l_d` 同步为有效值，也接受显式
 `--l_d` 覆盖。默认继承原 DCCL 的数据集 / 骨干权重：PACS=0.01、VLCS=0.05、
@@ -241,7 +264,7 @@ GT 另记录 `gt_enabled`、`gt_weight`、`reg_loss`、`weighted_gt_loss`、
 ## 验证与证据边界
 
 ```bash
-python -m pytest tests/test_dicm.py -q
+python -m pytest tests/test_dicm.py tests/test_training_protocol.py -q
 ```
 
 测试使用小张量 / 模拟编码器，以及随机权重 ResNet-50 的推理检查，不下载预训练
@@ -255,6 +278,12 @@ GT 权重解析和方差优化器状态恢复。
 运行时的数据集随机起点、初始模型状态、批次、每步损失与梯度诊断、选模结果；
 也比较短长预算的公共训练前缀。这些是 CPU 合约验证，不是 PACS 性能实验或
 GPU 逐位复现的证据。
+
+入口回归另覆盖：单目标 / 子集 / 乱序汇总，A0 与 A4 / A5 的核心 CLI 覆盖，
+精确 / legacy 步数预算，预算小于评估间隔时的末步评估，非法参数，以及真实
+DataLoader 的 workers 传递和评估 RNG 隔离。共享 RNG 默认路径保留单独测试。
+宿主禁止 IPC sockets 时，实际多 worker 烟雾测试会跳过；workers 参数转发与
+num_workers=0 的真实加载测试仍运行。GPU 复现和真实 PACS 训练需在训练环境验证。
 
 本分支实现了待验证方法，没有新 PACS 性能结果。Q 是差分响应子空间估计，
 不能仅凭代码或覆盖率声称已识别真实因果因素，也不能保证超越原始 DCCL。

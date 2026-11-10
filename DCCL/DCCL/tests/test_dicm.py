@@ -449,7 +449,7 @@ def test_source_selection_ignores_targets_and_keeps_first_tie():
     assert select_source_iid([{"step": 3, "train_out": 0.9}])["step"] == 3
 
 
-def test_cli_core_overrides_are_effective_for_dicm_only():
+def test_cli_core_overrides_and_dicm_preset_guards():
     args = Namespace(l=0.4, l_layer=0.3, l_d=0.0, t=0.15, t_pre=0.25, n_layer=2)
     resolved = finalize_dicm_hparams(hparams(), args, ["--l", "0.4", "--l_layer=0.3", "--t", "0.15", "--n_layer", "2"])
     assert resolved["l"] == 0.4 and resolved["l_layer"] == 0.3
@@ -649,7 +649,7 @@ def trainer_harness(monkeypatch, tmp_path):
         def __getattr__(self, name):
             return lambda *args, **kwargs: None
 
-    def run(mode, target=1, steps=3, seed=0):
+    def run(mode, target=1, steps=3, seed=0, checkpoint_freq=1, isolate_eval_rng=False, prebuild_loader=False):
         algorithm = "DCCL" if mode == "A0" else "DICM"
         hp = hparams(mode if mode != "A0" else "A4")
         if mode == "A0":
@@ -659,10 +659,10 @@ def trainer_harness(monkeypatch, tmp_path):
                   indomain_test=False, test_batchsize=4)
         out_dir = tmp_path / f"job_{len(created)}"
         out_dir.mkdir()
-        args = Namespace(algorithm=algorithm, prebuild_loader=False, trial_seed=0, seed=seed,
+        args = Namespace(algorithm=algorithm, prebuild_loader=prebuild_loader, trial_seed=0, seed=seed,
                          deterministic=True, out_dir=out_dir, evalmode="fast", debug=False, log=False,
-                         model_save=None, tb_freq=1)
-        result, records = trainer.train([target], args, Config(default=hp), steps, 1, Sink(), Sink())
+                         model_save=None, tb_freq=1, isolate_eval_rng=isolate_eval_rng)
+        result, records = trainer.train([target], args, Config(default=hp), steps, checkpoint_freq, Sink(), Sink())
         name = FakeDataset.environments[target]
         selection = json.loads((out_dir / f"selection_te_{name}.json").read_text())
         return Namespace(result=result, records=records, selection=selection, model=created[-1],
@@ -709,3 +709,20 @@ def test_target_initialization_and_trajectory_ignore_prior_target_order_and_step
     # Same target, longer budget: the common updates remain identical.
     longer = trainer_harness(mode, target=3, steps=5)
     assert standalone.model.test_metrics == longer.model.test_metrics[:3]
+
+
+@pytest.mark.parametrize("mode", ["A0", "A4", "A5"])
+def test_short_budget_evaluates_last_update_without_rounding(trainer_harness, mode):
+    job = trainer_harness(mode, steps=5, checkpoint_freq=100)
+    assert len(job.model.test_metrics) == job.selection["actual_updates"] == 5
+    assert job.selection["max_updates"] == 5 and job.selection["last_step"] == 4
+    assert [row["step"] for row in job.records] == [0, 4]
+
+
+def test_isolation_covers_prebuilt_loader_construction_before_model_init(trainer_harness):
+    lazy = trainer_harness("A4", isolate_eval_rng=True)
+    prebuilt = trainer_harness("A4", isolate_eval_rng=True, prebuild_loader=True)
+    for key, value in lazy.model.test_initial_state.items():
+        torch.testing.assert_close(value, prebuilt.model.test_initial_state[key], atol=0, rtol=0)
+    assert lazy.model.test_metrics == prebuilt.model.test_metrics
+    assert lazy.selection["evaluation_rng"] == prebuilt.selection["evaluation_rng"] == "isolated"

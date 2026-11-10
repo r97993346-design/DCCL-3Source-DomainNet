@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from domainbed.lib.fast_data_loader import FastDataLoader
+from domainbed.lib.reproducibility import preserve_rng_state
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -63,7 +64,8 @@ def accuracy(algorithm, loader_kwargs, weights, **kwargs):
 
 class Evaluator:
     def __init__(
-        self, test_envs, eval_meta, n_envs, logger, evalmode="fast", debug=False, target_env=None
+        self, test_envs, eval_meta, n_envs, logger, evalmode="fast", debug=False, target_env=None,
+        isolate_rng=False,
     ):
         all_envs = list(range(n_envs))
         train_envs = sorted(set(all_envs) - set(test_envs))
@@ -74,6 +76,7 @@ class Evaluator:
         self.logger = logger
         self.evalmode = evalmode
         self.debug = debug
+        self.isolate_rng = bool(isolate_rng)
 
         if target_env is not None:
             self.set_target_env(target_env)
@@ -83,6 +86,11 @@ class Evaluator:
         self.test_envs = [target_env]
 
     def evaluate(self, algorithm, ret_losses=False):
+        # Include loader construction/iteration and all prediction calls.
+        with preserve_rng_state(self.isolate_rng):
+            return self._evaluate(algorithm, ret_losses)
+
+    def _evaluate(self, algorithm, ret_losses=False):
         n_train_envs = len(self.train_envs)
         n_test_envs = len(self.test_envs)
         assert n_test_envs == 1

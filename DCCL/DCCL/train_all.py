@@ -10,7 +10,7 @@ import torchvision
 from sconf import Config
 from prettytable import PrettyTable
 
-from domainbed.datasets import get_dataset
+from domainbed.datasets import get_dataset, datasets
 from domainbed import hparams_registry
 from domainbed.lib import misc
 from domainbed.lib.writers import get_writer
@@ -19,6 +19,7 @@ from domainbed.trainer import train
 from domainbed.lib.cl_hparams import setup_alg_hparams
 from domainbed.lib.dicm_hparams import finalize_dicm_hparams
 from domainbed.lib.reproducibility import SEED_POLICY, seed_everything
+from domainbed.lib.training_protocol import finalize_dccl_hparams, resolve_update_budget
 
 def main():
     parser = argparse.ArgumentParser(description="Domain generalization")
@@ -47,7 +48,12 @@ def main():
     parser.add_argument("--holdout_fraction", type=float, default=0.2)
     parser.add_argument("--model_save", default=None, type=int, help="Model save start step")
     parser.add_argument("--deterministic", action="store_true")
-    parser.add_argument("--tb_freq", default=10)
+    parser.add_argument("--tb_freq", type=int, default=10)
+    parser.add_argument("--num_workers", type=int, default=None, help="Workers per train/eval loader; 0 runs in the main process")
+    parser.add_argument("--step_count_mode", choices=("exact", "legacy"), default="exact",
+                        help="exact: steps is the update budget; legacy: original DCCL checkpoint rounding")
+    parser.add_argument("--isolate_eval_rng", action="store_true",
+                        help="Preserve training RNG state during evaluation; default retains shared RNG")
     parser.add_argument("--debug", action="store_true", help="Run w/ debug mode")
     parser.add_argument("--show", action="store_true", help="Show args and hparams w/o run")
     parser.add_argument(
@@ -81,6 +87,16 @@ def main():
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
     args, left_argv = parser.parse_known_args()
     args.seed_policy = SEED_POLICY
+    if args.debug:
+        args.checkpoint_freq = 5
+        args.steps = 10
+        args.name += "_debug"
+    if args.tb_freq < 1 or (args.num_workers is not None and args.num_workers < 0):
+        parser.error("tb_freq must be positive and num_workers must be nonnegative")
+    dataset_class = datasets.get_dataset_class(args.dataset)
+    args.requested_steps = dataset_class.N_STEPS if args.steps is None else args.steps
+    args.resolved_checkpoint_freq = dataset_class.CHECKPOINT_FREQ if args.checkpoint_freq is None else args.checkpoint_freq
+    args.resolved_steps = resolve_update_budget(args.requested_steps, args.resolved_checkpoint_freq, args.step_count_mode)
 
     # setup hparams
     hparams = hparams_registry.default_hparams(args.algorithm, args.dataset)
@@ -92,18 +108,16 @@ def main():
 
     if args.algorithm == "DICM":
         finalize_dicm_hparams(hparams, args, sys.argv[1:])
+    elif args.algorithm == "DCCL":
+        finalize_dccl_hparams(hparams, args, sys.argv[1:])
     # A0 configuration review also needs neither CUDA, data nor output folders.
     if args.show:
         print(f"Algorithm: {args.algorithm}")
         print(f"Seed policy: {args.seed_policy}; seed={args.seed}; trial_seed={args.trial_seed}")
+        print(f"Step count: {args.step_count_mode}; requested_steps={args.requested_steps}; max_updates={args.resolved_steps}; checkpoint_freq={args.resolved_checkpoint_freq}")
+        print(f"Evaluation RNG: {'isolated' if args.isolate_eval_rng else 'shared'}; num_workers={dataset_class.N_WORKERS if args.num_workers is None else args.num_workers}")
         print(hparams.dumps())
         return
-
-    # setup debug
-    if args.debug:
-        args.checkpoint_freq = 5
-        args.steps = 10
-        args.name += "_debug"
 
     timestamp = misc.timestamp()
     args.unique_name = f"{timestamp}_{args.name}"
@@ -158,19 +172,20 @@ def main():
         logger.nofmt(f"\tenv{i}: {env_property} (#{len(dataset[i])})")
     logger.nofmt("")
 
-    n_steps = args.steps or dataset.N_STEPS
-    checkpoint_freq = args.checkpoint_freq or dataset.CHECKPOINT_FREQ
+    n_steps = args.resolved_steps
+    checkpoint_freq = args.resolved_checkpoint_freq
     logger.info(f"n_steps = {n_steps}")
     logger.info(f"checkpoint_freq = {checkpoint_freq}")
 
-    org_n_steps = n_steps
-    n_steps = (n_steps // checkpoint_freq) * checkpoint_freq + 1
-    logger.info(f"n_steps is updated to {org_n_steps} => {n_steps} for checkpointing")
+    logger.info(f"Step count mode={args.step_count_mode}, requested={args.requested_steps}, max_updates={n_steps}")
 
     if not args.test_envs:
         args.test_envs = [[te] for te in range(len(dataset))]
     else:
         args.test_envs = [[te] for te in args.test_envs]
+    targets = [env[0] for env in args.test_envs]
+    if len(set(targets)) != len(targets) or any(te < 0 or te >= len(dataset) for te in targets):
+        raise ValueError("test_envs must be unique valid target-domain IDs")
     logger.info(f"Target test envs = {args.test_envs}")
 
     ###########################################################################
@@ -201,10 +216,9 @@ def main():
     logger.info("Algorithm: %s" % args.algorithm)
     logger.info("Dataset: %s" % args.dataset)
 
-    table = PrettyTable(["Selection"] + dataset.environments + ["Avg."])
+    table = PrettyTable(["Selection"] + [dataset.environments[te] for te in targets] + ["Avg."])
     for key, row in results.items():
-        row.append(np.mean(row))
-        row = [f"{acc:.3%}" for acc in row]
+        row = [f"{acc:.3%}" for acc in [*row, np.mean(row)]]
         
         table.add_row([key] + row)
     logger.nofmt(table)

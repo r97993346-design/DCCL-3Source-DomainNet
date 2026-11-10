@@ -1,4 +1,4 @@
-"""DICM-only configuration resolution; legacy DCCL resolution stays unchanged."""
+"""DICM preset resolution after dataset/YAML configuration."""
 
 import math
 

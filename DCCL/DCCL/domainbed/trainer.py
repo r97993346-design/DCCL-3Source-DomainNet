@@ -18,7 +18,7 @@ from domainbed.lib.query import Q
 from domainbed.lib.fast_data_loader import InfiniteDataLoader, FastDataLoader
 from domainbed import swad as swad_module
 from domainbed.lib.dicm_selection import select_source_iid
-from domainbed.lib.reproducibility import SEED_POLICY, seed_everything
+from domainbed.lib.reproducibility import SEED_POLICY, preserve_rng_state, seed_everything
 
 
 if torch.cuda.is_available():
@@ -42,6 +42,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     logger.info(f"Reset RNG for target {test_envs}: seed={args.seed}, trial_seed={args.trial_seed}, policy={SEED_POLICY}")
     is_dicm = args.algorithm == "DICM"
     source_only_selection = args.algorithm in {"DCCL", "DICM"}
+    isolate_eval_rng = bool(getattr(args, "isolate_eval_rng", False))
 
     #######################################################
     # setup dataset & loader
@@ -49,6 +50,10 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     args.real_test_envs = test_envs  # for log
     algorithm_class = algorithms.get_algorithm_class(args.algorithm)
     dataset, in_splits, out_splits = get_dataset(test_envs, args, hparams, algorithm_class)
+    requested_workers = getattr(args, "num_workers", None)
+    num_workers = dataset.N_WORKERS if requested_workers is None else requested_workers
+    if num_workers < 0:
+        raise ValueError("num_workers must be nonnegative")
     test_splits = []
 
     if hparams.indomain_test > 0.0:
@@ -127,7 +132,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             dataset=env,
             weights=env_weights,
             batch_size=batch_size,
-            num_workers=dataset.N_WORKERS,
+            num_workers=num_workers,
           # num_workers=getattr(dataset, "N_WORKERS", 4),
         )
         for (env, env_weights), batch_size in iterator.train(zip(in_splits, batch_sizes))
@@ -135,12 +140,13 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
     # setup eval loaders
     eval_loaders_kwargs = []
-    for i, (env, _) in enumerate(in_splits + out_splits + test_splits):
-        batchsize = hparams["test_batchsize"]
-        loader_kwargs = {"dataset": env, "batch_size": batchsize, "num_workers": dataset.N_WORKERS}
-        if args.prebuild_loader:
-            loader_kwargs = FastDataLoader(**loader_kwargs)
-        eval_loaders_kwargs.append(loader_kwargs)
+    with preserve_rng_state(isolate_eval_rng):
+        for i, (env, _) in enumerate(in_splits + out_splits + test_splits):
+            batchsize = hparams["test_batchsize"]
+            loader_kwargs = {"dataset": env, "batch_size": batchsize, "num_workers": num_workers}
+            if args.prebuild_loader:
+                loader_kwargs = FastDataLoader(**loader_kwargs)
+            eval_loaders_kwargs.append(loader_kwargs)
 
     eval_weights = [None for _, weights in (in_splits + out_splits + test_splits)]
     eval_loader_names = ["env{}_in".format(i) for i in range(len(in_splits))]
@@ -179,6 +185,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         evalmode=args.evalmode,
         debug=args.debug,
         target_env=target_env,
+        isolate_rng=isolate_eval_rng,
     )
 
     swad = None
@@ -321,7 +328,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         checkpoint_vals["step_time"].append(time.time() - step_start_time)
         if args.log: 
             with open("loss_analysis.txt","a+") as f:
-                f.write("step {}:".format(step)+str(step_vals["ce_loss"])+" "+str(step_vals["sup_cl_loss"])+" "+str(step_vals["pre_cl_loss"])+"\n")
+                f.write("step {}:{} {} {}\n".format(step, step_vals["ce_loss"], step_vals.get("sup_cl_loss", 0.0), step_vals.get("pre_cl_loss", 0.0)))
         if swad:
             # swad_algorithm is segment_swa for swad
             swad_algorithm.update_parameters(algorithm, step=step)
@@ -376,7 +383,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         #         np.save("vis/pacs_cl_y_test.npy", y_test)
         #         exit()
 
-        if step % checkpoint_freq == 0:
+        if step % checkpoint_freq == 0 or step == n_steps - 1:
             results = {
                 "step": step,
                 "epoch": step / steps_per_epoch,
@@ -537,7 +544,13 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             "seed": args.seed, "trial_seed": args.trial_seed,
             "seed_policy": SEED_POLICY, "deterministic": bool(getattr(args, "deterministic", False)),
             "algorithm": args.algorithm,
-            "ablation": hparams["dicm_ablation"] if is_dicm else "A0",
+            "ablation": hparams["dicm_ablation"] if is_dicm else (
+                "A0" if all(hparams[key] > 0 for key in ("l", "l_d", "l_layer")) else "DCCL-custom"),
+            "evaluation_rng": "isolated" if isolate_eval_rng else "shared",
+            "step_count_mode": getattr(args, "step_count_mode", "exact"),
+            "requested_steps": getattr(args, "requested_steps", n_steps),
+            "max_updates": n_steps, "actual_updates": step + 1,
+            "checkpoint_freq": checkpoint_freq, "num_workers": num_workers,
             "source_split_sha256": split_digest,
             "iid": {"criterion": "max train_out; first tie", "step": iid_record["step"],
                     "source_val_accuracy": iid_record["train_out"],
