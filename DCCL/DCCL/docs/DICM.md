@@ -185,6 +185,17 @@ check=100、workers=4、逐目标域重置种子。A5 的 VLCS GT 权重为原�
 0.05，不能套用 PACS 的 0.01。所有组都只用源域验证选模，不默认隔离评估 RNG。
 去掉 --show 并指定 --data_dir 后，五组依次各跑四个目标域，共 20 个泛化任务。
 
+需要包括原 DCCL A0 的 VLCS 完整六组时，使用新增脚本（保留前述五组脚本）：
+
+```bash
+OUTPUT_ROOT=train_output/dicm_vlcs_a0_a5_gpu1 \
+  bash scripts/run_vlcs_a0_a5.sh --show
+```
+
+A0 直接使用原 DCCL 类及 configs/dccl_vlcs_a0.yaml，GT 权重同 A5 均为 0.05。
+顺序为 A0→A1→A2→A3→A4→A5，每组四个目标域，共 24 个任务；其余默认参数相同。
+实际启动时去掉 --show 并传入 --data_dir，使用独立输出根目录区分旧五组任务。
+
 相同目标域仅改变总步数时，在学习率、checkpoint_freq、数据与环境相同的条件下，
 公共更新前缀应一致。默认仍使用共享训练 / 评估 RNG，保留原 DCCL 行为；
 改变评估频率仍可能改变 RNG 消耗与 SWAD 行为。
