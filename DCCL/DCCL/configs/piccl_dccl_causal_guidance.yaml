@@ -1,0 +1,24 @@
+# Causal-guided DCCL (new mode based on PICCL v6).
+# Default: training-only causal guidance for the DCCL supervised contrastive branch.
+# CE and pretrained-anchor contrast read original features; prediction also reads original features.
+# To ablate: override piccl_guidance_mode to 'mediator' or 'replace_gt'.
+use_piccl: true
+piccl_guidance_mode: guide_contrast
+piccl_rank: 16
+piccl_beta_max: 0.10
+piccl_warmup_ratio: 0.10
+piccl_ramp_ratio: 0.20
+piccl_isr_weight: 0.05
+piccl_isr_aug_weight: 0.25
+piccl_isr_dom_weight: 0.75
+piccl_orth_weight: 0.0001
+piccl_proto_momentum: 0.99
+piccl_min_delta_norm: 0.0001
+piccl_min_domain_samples: 8
+piccl_min_valid_domains: 2
+piccl_use_residual_gate: false
+piccl_use_reliable_contrast: false
+piccl_reliable_contrast_min_weight: 0.5
+piccl_reliable_contrast_gamma_max: 0.30
+piccl_reliable_contrast_warmup_ratio: 0.30
+piccl_reliable_contrast_ramp_ratio: 0.10
