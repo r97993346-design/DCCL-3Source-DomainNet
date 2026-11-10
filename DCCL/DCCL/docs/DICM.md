@@ -159,6 +159,20 @@ CUDA_VISIBLE_DEVICES=0 SEED=0 TRIAL_SEED=0 STEPS=300 CHECKPOINT_FREQ=100 \
 `PYTHON=/path/to/python` 可指定解释器。新分支默认就按目标域重置，无需额外开关。
 脚本仅在手动调用时启动；实现与检查过程不运行真实训练。
 
+可用 `--output_root /path/to/results` 改变输出根目录；程序自动追加数据集目录和
+时间戳实验目录。默认仍为 train_output。串行脚本支持同名用途的环境变量 OUTPUT_ROOT：
+
+```bash
+OUTPUT_ROOT=train_output/dicm_a0_a5_gpu0 STEPS=5000 CHECKPOINT_FREQ=100 \
+  bash scripts/run_pacs_a0_a5.sh --data_dir /path/to/data --num_workers 2
+```
+
+此例的日志、results.jsonl 和 selection 文件位于
+`DCCL/DCCL/train_output/dicm_a0_a5_gpu0/PACS/<时间戳>_pacs_A*_seed0_n5000/`；
+TensorBoard 在该 PACS 目录的 runs 子目录。可选模型权重也跟随新目录。
+相对路径按脚本切换后的 DCCL/DCCL 目录解释，绝对路径直接使用，支持带空格的路径。
+配置预览会显示目标路径但不创建目录；参数只影响新启动的进程，不会迁移正在写入的旧日志。
+
 相同目标域仅改变总步数时，在学习率、checkpoint_freq、数据与环境相同的条件下，
 公共更新前缀应一致。默认仍使用共享训练 / 评估 RNG，保留原 DCCL 行为；
 改变评估频率仍可能改变 RNG 消耗与 SWAD 行为。

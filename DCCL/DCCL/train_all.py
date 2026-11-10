@@ -26,6 +26,8 @@ def main():
     parser.add_argument("name", type=str)
     parser.add_argument("configs", nargs="*")
     parser.add_argument("--data_dir", type=str, default="datadir/")
+    parser.add_argument("--output_root", type=Path, default=Path("train_output"),
+                        help="Output root; dataset and timestamped run folders are appended")
     parser.add_argument("--dataset", type=str, default="PACS")
     parser.add_argument("--algorithm", type=str, default="DCCL")
     parser.add_argument(
@@ -86,6 +88,7 @@ def main():
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
     args, left_argv = parser.parse_known_args()
+    args.output_root = args.output_root.expanduser()
     args.seed_policy = SEED_POLICY
     if args.debug:
         args.checkpoint_freq = 5
@@ -116,6 +119,7 @@ def main():
         print(f"Seed policy: {args.seed_policy}; seed={args.seed}; trial_seed={args.trial_seed}")
         print(f"Step count: {args.step_count_mode}; requested_steps={args.requested_steps}; max_updates={args.resolved_steps}; checkpoint_freq={args.resolved_checkpoint_freq}")
         print(f"Evaluation RNG: {'isolated' if args.isolate_eval_rng else 'shared'}; num_workers={dataset_class.N_WORKERS if args.num_workers is None else args.num_workers}")
+        print(f"Output root: {args.output_root / args.dataset}")
         print(hparams.dumps())
         return
 
@@ -126,7 +130,7 @@ def main():
     args.work_dir = Path(".")
     args.data_dir = Path(args.data_dir)
 
-    args.out_root = args.work_dir / Path("train_output") / args.dataset
+    args.out_root = args.work_dir / args.output_root / args.dataset
     args.out_dir = args.out_root / args.unique_name
     args.out_dir.mkdir(exist_ok=True, parents=True)
 
