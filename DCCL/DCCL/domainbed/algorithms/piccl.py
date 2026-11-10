@@ -36,6 +36,7 @@ class PICCLForwardModel(nn.Module):
         beta,
         use_residual_gate=False,
         gate_logit=None,
+        guidance_mode="mediator",
     ):
         super().__init__()
 
@@ -51,6 +52,7 @@ class PICCLForwardModel(nn.Module):
         )
 
         self.use_residual_gate = bool(use_residual_gate)
+        self.guidance_mode = guidance_mode
         if self.use_residual_gate:
             if gate_logit is None or gate_logit.numel() != 1:
                 raise ValueError(
@@ -69,6 +71,8 @@ class PICCLForwardModel(nn.Module):
 
     def predict_embed(self, x):
         z = self.featurizer(x)
+        if self.guidance_mode in ("guide_contrast", "replace_gt"):
+            return z
         beta = self.piccl_beta.to(device=z.device, dtype=z.dtype)
 
         if float(beta.detach().item()) == 0.0:
@@ -106,6 +110,9 @@ class PICCL(DCCL):
         super().__init__(input_shape, num_classes, num_domains, hparams)
         if not self.use_piccl:
             return
+        self.piccl_guidance_mode = hparams.get("piccl_guidance_mode", "mediator")
+        if self.piccl_guidance_mode not in ("mediator", "guide_contrast", "replace_gt"):
+            raise ValueError("piccl_guidance_mode must be mediator, guide_contrast or replace_gt")
 
         for parameter in self.pre_featurizer.parameters():
             parameter.requires_grad = False
@@ -345,14 +352,14 @@ class PICCL(DCCL):
             )
             feature_x, inter_feats = self.featurizer(all_x, ret_feats=True)
             causal_x = self._project(feature_x, beta)
-            pred_x = self.classifier(causal_x)
+            pred_x = self.classifier(feature_x if self.piccl_guidance_mode != "mediator" else causal_x)
             loss = F.cross_entropy(pred_x, target_a) * lam + F.cross_entropy(
                 pred_x, target_b
             ) * (1 - lam)
         else:
             feature_x, inter_feats = self.featurizer(all_x, ret_feats=True)
             causal_x = self._project(feature_x, beta)
-            pred_x = self.classifier(causal_x)
+            pred_x = self.classifier(feature_x if self.piccl_guidance_mode != "mediator" else causal_x)
             loss = F.cross_entropy(pred_x, all_y)
         ce_loss = loss.item()
 
@@ -360,7 +367,7 @@ class PICCL(DCCL):
         causal_x_2 = self._project(feature_x_2, beta)
         if self.two_ce:
             loss = loss / 2 + F.cross_entropy(
-                self.classifier(causal_x_2), all_y
+                self.classifier(feature_x_2 if self.piccl_guidance_mode != "mediator" else causal_x_2), all_y
             ) / 2
 
         with torch.no_grad():
@@ -393,7 +400,7 @@ class PICCL(DCCL):
         )
         loss_orth = self.sensitive_subspace.orthogonality_loss()
 
-        if self.l_d:
+        if self.l_d and self.piccl_guidance_mode != "replace_gt":
             reg_loss = 0.0
             for inter_f, pre_f, mean_enc, var_enc in misc.zip_strict(
                 inter_feats,
@@ -489,7 +496,7 @@ class PICCL(DCCL):
 
         pre_cl_loss = 0.0
         if self.l_layer:
-            embed_1 = self.pre_proj_head(causal_x)
+            embed_1 = self.pre_proj_head(feature_x if self.piccl_guidance_mode != "mediator" else causal_x)
             embed_2 = self.pre_proj_head(pre_pred_x)
             view_1 = nn.functional.normalize(embed_1)
             view_2 = nn.functional.normalize(embed_2)
@@ -590,6 +597,8 @@ class PICCL(DCCL):
             "basis_norm": float(basis_stats["basis_norm"].item()),
             "has_nan_or_inf": float(not torch.isfinite(loss).item()),
             "piccl_has_nan_or_inf": float(not torch.isfinite(loss).item()),
+            "guide_contrast_mode": float(self.piccl_guidance_mode == "guide_contrast"),
+            "guide_replace_gt_mode": float(self.piccl_guidance_mode == "replace_gt"),
         }
         if self.l:
             loss_dict["sup_cl_loss"] = float(loss_sup_cl.item())
@@ -601,6 +610,8 @@ class PICCL(DCCL):
     def predict_embed(self, x):
         if not self.use_piccl:
             return super().predict_embed(x)
+        if self.piccl_guidance_mode in ("guide_contrast", "replace_gt"):
+            return self.featurizer(x)
         return self._project(self.featurizer(x), self.piccl_beta)
 
     def predict(self, x):
@@ -619,6 +630,7 @@ class PICCL(DCCL):
             self.piccl_beta,
             use_residual_gate=self.use_residual_gate,
             gate_logit=self.gate_logit if self.use_residual_gate else None,
+            guidance_mode=self.piccl_guidance_mode,
         )
 
     def clone(self):
