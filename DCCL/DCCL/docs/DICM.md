@@ -5,7 +5,8 @@
 
 本实现新增独立的 `DICM(Algorithm)`，不继承会构造 GT 的 `DCCL.__init__`。
 原始 `algorithms.py::DCCL`、数据增强、分割、采样与 SWAD LossValley 保留。
-没有加入残差门控、可靠性加权、额外 SupCon 或正交损失。
+默认 A4 删除 GT；A5 是完整 A4 加回 GT 的补充对照。没有加入残差门控、
+可靠性加权、额外 SupCon 或正交损失。
 
 ## 前向与损失
 
@@ -35,6 +36,8 @@ L_A4 = CE(classifier(E), y)
      + l * SupCon(normalize(proj_head(E)), normalize(proj_head(E_aug)), y)
      + l_layer * PreCL(normalize(pre_proj_head(E)), normalize(pre_proj_head(z0)), y)
      + 0.05 * L_ISR
+
+L_A5 = L_A4 + dicm_gt_weight * L_GT
 ```
 
 两组响应的有效权重会重新归一，只有一组可用时该组权重为 1；两组都无效时
@@ -44,6 +47,28 @@ B 没有梯度，Adam 也不会依靠已有动量移动 B。把某组权重设�
 所有学生侧任务端点均使用 E；参考侧 z0 冻结，但共享 pre_proj_head 在两侧都有梯度。
 任务损失不更新 B；ISR 不直接更新 fθ。B 仅经 ISR 的 QR 路径更新。
 单纯缩放 ISR 系数会被 Adam 的归一化大体抵消，不应当作删除强度旋钮。
+
+## A5：完整方案加 GT
+
+A5 的 CE / SupCon / PreCL 与 A4 完全相同，学生端均使用 E。GT 复用
+`domainbed/algorithms/algorithms.py::MeanEncoder`（恒等）和 `VarianceEncoder`
+（通道方差），约束骨干的原始中间层，不能把这一项写成 GT(E)。
+
+```
+L_GT = sum_k mean((h_theta_k(x_aug) - stopgrad(h_0_k(x)))² / v_k + log(v_k)) / 2
+```
+
+这里显式保留已复现 main 的实际视图配对。原始 `DCCL.update` 首次取得的
+`inter_feats` 是 `networks.ResNet.forward` 的共享 hook 列表；第二次学生前向
+会清空并填入 x_aug 的特征，因此原实际 GT 是“学生第二视图 / 参考第一视图”。
+新实现使用 tuple 固定两边容器，避免参考增强前向和 sample_d 额外视图覆盖。
+这是对现有行为的保留，并非把同视图 GT 悄悄改成跨视图。若研究同视图 GT，
+应另列实验，不能与当前 A5 混为一组。
+
+GT 额外更新 fθ 和方差参数；参考模型仍冻结，B 仍只受 ISR 更新。
+GT 不直接更新分类器或两个投影头，也不作为推理输入。GT 可能间接改变后续
+差分观测和 B 的学习轨迹，因此 A5 不能描述成已删除 GT 的替换方法。
+主论文的模块替换仍由 A4 对比 A0 / A1 验证；A5 检验 GT 的补充作用。
 
 ## 原型支持与源域编号
 
@@ -91,23 +116,38 @@ python train_all.py review configs/dicm_pacs.yaml --algorithm DICM --show \
 DICM 专门修复了已知 argparse 核心选项未回填的问题：显式 `--l`、`--l_layer`、
 `--t`、`--t_pre`、`--n_layer` 在 YAML 后生效。未显式传入的 argparse 默认值不会
 覆盖数据集 / YAML 配置。原始 DCCL 的配置解析行为不变。
-GT 的 l_d 必须为 0；DICM 对非零 l_d 报错，不会偷偷保留 GT。
+A1–A4 的 l_d 必须为 0；非零值会报错。只有显式选择 A5 才恢复 GT。
+A5 使用 `dicm_gt_weight` 配置 GT，日志中的 `l_d` 同步为有效值，也接受显式
+`--l_d` 覆盖。默认继承原 DCCL 的数据集 / 骨干权重：PACS=0.01、VLCS=0.05、
+TerraIncognita=0.05、OfficeHome ResNet=0.05 / CLIP=0.1、DomainNet=0.05。
+PACS 不采用 argparse 中未生效的默认 0.05。A5 要求 GT、SupCon、PreCL 均启用。
+
+只检查 A5 配置，不启动训练：
+
+```bash
+python train_all.py a5_review configs/dicm_pacs.yaml configs/dicm_pacs_a5.yaml \
+  --algorithm DICM --dataset PACS --show
+```
+
+也可在基础配置后用 `--dicm_ablation A5` 替代 A5 overlay。调节 GT 时使用
+`--dicm_gt_weight 0.02`；增强 / 域响应配比仍为 0.25 / 0.75，其他配置不变。
 
 ## 精确消融
 
-通过 `--dicm_ablation A1/A2/A3/A4` 选择：
+通过 `--dicm_ablation A1/A2/A3/A4/A5` 选择：
 
-| 模式 | 投影 / 原型 / ISR | CE | SupCon | PreCL |
-|---|---|---|---|---|
-| A1 | 不构造 | z | z、z⁺ | z、z0 |
-| A2 | 构造 | E | 关闭 | 关闭 |
-| A3 | 构造 | E | E、E⁺ | 关闭 |
-| A4，默认 | 构造 | E | E、E⁺ | E、z0 |
+| 模式 | 投影 / 原型 / ISR | CE | SupCon | PreCL | GT |
+|---|---|---|---|---|---|
+| A1 | 不构造 | z | z、z⁺ | z、z0 | 无 |
+| A2 | 构造 | E | 关闭 | 关闭 | 无 |
+| A3 | 构造 | E | E、E⁺ | 关闭 | 无 |
+| A4，默认 | 构造 | E | E、E⁺ | E、z0 | 无 |
+| A5 | 构造 | E | E、E⁺ | E、z0 | 原始中间层 |
 
-所有行均不构造 GT。A0 仍使用原来的 `--algorithm DCCL`。
+A1–A4 不构造 GT，A5 才构造。A0 仍使用原来的 `--algorithm DCCL`。
 A2 / A3 强制关闭对应项，显式传入矛盾的 CLI 权重会报错。
 A1 / A4 保留可配置的任务权重；若手动关掉某项，结果不再对应表中的标准消融定义。
-A5 门控与 A6 可靠性对比未实现，避免首版同时引入多个新机制。
+A5 已重新定义为完整方案加 GT，不再是门控实验。门控和 A6 可靠性对比尚未实现。
 
 支持原始 two_ce 与 sample_d：第二视图 CE 和额外正样本也先经过相同投影。
 首版对 TN、CutMix aug、mix、re_w、pos_mask 的非零 / True 设置明确报错，
@@ -118,10 +158,12 @@ A5 门控与 A6 可靠性对比未实现，避免首版同时引入多个新机�
 - 编码器 lr=5e-5，分类器 5e-4，两个投影头 5e-6，保留原始比例。
 - B 默认继承编码器 lr（配置中显式 5e-5），weight_decay=0。
 - B 用私有 CPU generator 正交初始化，不推进公共 RNG；seed=-1 使用当前全局初始 seed。
-- 原 DCCL 在两个头初始化之间生成 shape probe。新模型只保留相同的 CPU 随机数消耗，
-  不执行 probe forward、不构造 GT。默认 dropout=0 路径的公共初始化与 A1 等价性有单元验证。
+- A5 的 GT 参数沿用原始 10 倍编码器学习率（PACS 为 5e-4）、weight_decay=0。
+- 原 DCCL 在两个头初始化之间生成 shape probe。A1–A4 只保留相同的 CPU 随机数消耗，
+  不执行 probe forward、不构造 GT；A5 执行 probe 以构造同样的 GT。
+  默认 dropout=0 路径的公共初始化、RNG 和 beta=0 基线更新等价性有单元验证。
 - SWAD 只导出 fθ→projection→classifier；平均 raw B 后重新 QR，固定 beta 也保存在前向状态。
-  不平均 / 更新原型，不导出参考编码器或训练用头。
+  不平均 / 更新原型，不导出参考编码器、训练用头或 A5 的 GT 模块。
 - 普通预测、predict_embed、导出预测、状态恢复共用同一个投影实现。
 - 参数平均不等于投影矩阵平均；需要结合 raw B 条件数和平均模型的源域诊断判断稳定性。
 
@@ -140,6 +182,8 @@ SWAD 范围及报告指标。原始 DCCL 的历史 summary 保留不变。
 和条件数、Q 正交误差、E 改变量、绝对增强距离、敏感能量和类间散度删除比例、
 各参数梯度范数与实际学习率。诊断在 optimizer.step 之前计算，避免旧 z 配新 B。
 `ce_loss` 保留原第一视图口径；`loss_cls` 是考虑 two_ce 后实际参与优化的 CE。
+GT 另记录 `gt_enabled`、`gt_weight`、`reg_loss`、`weighted_gt_loss`、
+`gt_layer_count`、`gt_grad_norm`；不能只根据含 log 方差的 GT 原始数值判断其作用。
 
 ## 验证与证据边界
 
@@ -148,9 +192,11 @@ python -m pytest tests/test_dicm.py -q
 ```
 
 测试使用小张量 / 模拟编码器，以及随机权重 ResNet-50 的推理检查，不下载预训练
-权重、不读取 PACS、不运行真实训练实验。覆盖：无 GT 结构、任务端点、梯度隔离、
+权重、不读取 PACS、不运行真实训练实验。覆盖：A1–A4 无 GT、A5 恢复 GT、任务端点、梯度隔离、
 配比与空响应、EMA 支持与局部域编号、A1 基线等价性、状态保存、SWAD、CLI、
-源域选模及 trainer 集成。
+源域选模及 A4 / A5 trainer 集成。A5 还验证额外视图不覆盖 GT 快照、
+beta=0 且 ISR 关闭时与原 DCCL 的 GT 损失及参数更新等价、公共初始化一致、
+GT 权重解析和方差优化器状态恢复。
 
 本分支实现了待验证方法，没有新 PACS 性能结果。Q 是差分响应子空间估计，
 不能仅凭代码或覆盖率声称已识别真实因果因素，也不能保证超越原始 DCCL。

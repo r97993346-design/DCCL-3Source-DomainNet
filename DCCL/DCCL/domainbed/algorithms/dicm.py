@@ -1,7 +1,7 @@
 """DICM replaces DCCL's GT branch and feeds all student tasks through E.
 
-The original DCCL class remains intact. This class inherits Algorithm directly:
-no mean/variance encoders, shape forward probe, or GT optimizer state is built.
+The original DCCL class remains intact. A1-A4 inherit Algorithm directly and do
+not construct GT. Only the explicit A5 control restores the original GT branch.
 """
 
 import copy
@@ -13,10 +13,11 @@ from torch import nn
 from torch.nn import functional as F
 
 from domainbed import networks
+from domainbed.lib import misc
 from domainbed.lib.dicm_hparams import finalize_dicm_hparams
 from domainbed.optimizers import get_optimizer
 
-from .algorithms import Algorithm, SupConLoss
+from .algorithms import Algorithm, MeanEncoder, SupConLoss, VarianceEncoder, get_shapes
 from .dicm_components import (
     ClassDomainResidualBank,
     PairedInterventionResponseEstimator,
@@ -46,6 +47,8 @@ class DICM(Algorithm):
         super().__init__(input_shape, num_classes, num_domains, hparams)
         self.mode = hparams["dicm_ablation"]
         self.use_projection = self.mode != "A1"
+        self.use_gt = self.mode == "A5"
+        self.gt_weight = float(hparams["l_d"]) if self.use_gt else 0.0
         self.l = float(hparams["l"])
         self.l_layer = float(hparams["l_layer"])
         self.isr_weight = float(hparams["dicm_isr_weight"])
@@ -69,10 +72,17 @@ class DICM(Algorithm):
         self.classifier = nn.Sequential(nn.Linear(feature_dim, num_classes))
         self.proj_head = self._head(feature_dim, hidden_dim, int(hparams["n_layer"]))
 
-        # Original get_shapes draws a CPU dummy between the two head inits.
-        # Match that RNG consumption without running a feature probe or GT.
-        # This aligns common initial parameters for the default dropout=0 setup.
-        torch.rand(1, *input_shape)
+        if self.use_gt:
+            shapes = get_shapes(self.pre_featurizer, input_shape)
+            if not shapes:
+                raise ValueError("A5 GT requires hooked intermediate backbone features")
+            self.mean_encoders = nn.ModuleList([MeanEncoder(shape) for shape in shapes])
+            self.var_encoders = nn.ModuleList([VarianceEncoder(shape) for shape in shapes])
+            self.pre_featurizer.clear_features()
+        else:
+            # Match DCCL's dummy RNG draw without constructing/executing GT.
+            # This aligns common initial parameters for default dropout=0.
+            torch.rand(1, *input_shape)
         self.pre_proj_head = self._head(feature_dim, hidden_dim, int(hparams["n_layer"]))
         self.supcon_loss = SupConLoss(float(hparams["t"]))
         self.supcon_loss_pre = SupConLoss(float(hparams["t_pre"]))
@@ -116,6 +126,10 @@ class DICM(Algorithm):
         ]
         if self.l:
             groups.append({"params": self.proj_head.parameters(), "lr": lr / 10, "weight_decay": wd})
+        if self.use_gt:
+            # MeanEncoder is currently parameter-free; variance uses original 10x lr.
+            gt_parameters = list(self.mean_encoders.parameters()) + list(self.var_encoders.parameters())
+            groups.append({"params": gt_parameters, "lr": lr * 10, "weight_decay": 0.0})
         if self.l_layer:
             # Original DCCL does not assign weight decay to this group.
             groups.append({"params": self.pre_proj_head.parameters(), "lr": lr / 10, "weight_decay": 0.0})
@@ -159,6 +173,20 @@ class DICM(Algorithm):
     def _stable(self, features, q):
         return self.projection(features, q=q) if self.use_projection else features
 
+    def _gt_loss(self, student_features, reference_features):
+        if not self.use_gt:
+            raise RuntimeError("GT exists only in A5")
+        if not student_features or not reference_features:
+            raise ValueError("A5 GT needs nonempty intermediate feature snapshots")
+        loss = student_features[0].new_zeros(())
+        for student, reference, mean_encoder, variance_encoder in misc.zip_strict(
+                student_features, reference_features, self.mean_encoders, self.var_encoders):
+            if student.shape != reference.shape:
+                raise ValueError("GT student/reference intermediate shapes must match")
+            mean, variance = mean_encoder(student), variance_encoder(student)
+            loss = loss + ((mean - reference.detach()).square() / variance + variance.log()).mean() / 2.0
+        return loss
+
     @staticmethod
     def _gradient_norm(parameters):
         gradients = [p.grad.detach().float().norm() for p in parameters if p.grad is not None]
@@ -178,9 +206,21 @@ class DICM(Algorithm):
         # Keep the default DCCL per-update NumPy RNG consumption (aug=0).
         np.random.rand(1)
         z = self.featurizer(all_x)
-        z_aug = self.featurizer(all_x_aug)
+        gt_student = gt_reference = None
+        if self.use_gt:
+            # main's shared hook list makes GT read the SECOND student view.
+            # Preserve that actual baseline pairing explicitly, without aliasing.
+            z_aug, gt_student = self.featurizer(all_x_aug, ret_feats=True)
+            gt_student = tuple(gt_student)
+        else:
+            z_aug = self.featurizer(all_x_aug)
         with torch.no_grad():
-            z_ref = self.pre_featurizer(all_x)
+            if self.use_gt:
+                z_ref, gt_reference = self.pre_featurizer(all_x, ret_feats=True)
+                # Freeze this FIRST-reference-view container before PIRE's next call.
+                gt_reference = tuple(gt_reference)
+            else:
+                z_ref = self.pre_featurizer(all_x)
             z_aug_ref = self.pre_featurizer(all_x_aug) if self.use_projection else None
 
         zero = z.new_zeros(())
@@ -224,8 +264,12 @@ class DICM(Algorithm):
             pre_cl = self.supcon_loss_pre(torch.stack([view, reference_view], dim=1), all_y)
 
         task_loss = ce + self.l * sup_cl + self.l_layer * pre_cl
+        reg_loss = self._gt_loss(gt_student, gt_reference) if self.use_gt else zero
+        weighted_gt = self.gt_weight * reg_loss
         weighted_isr = self.isr_weight * loss_isr
         loss = task_loss
+        if self.use_gt:
+            loss = loss + weighted_gt
         if self.use_projection and self.isr_weight > 0 and (aw > 0 or dw > 0):
             loss = loss + weighted_isr
         if not torch.isfinite(loss):
@@ -239,7 +283,10 @@ class DICM(Algorithm):
                 "loss": float(loss.item()), "ce_loss": float(first_ce.item()),
                 "loss_cls": float(ce.item()), "sup_cl_loss": float(sup_cl.item()),
                 "pre_cl_loss": float(pre_cl.item()), "task_loss": float(task_loss.item()),
-                "reg_loss": 0.0, "gt_enabled": 0.0,
+                "reg_loss": float(reg_loss.item()), "gt_enabled": float(self.use_gt),
+                "gt_weight": self.gt_weight, "weighted_gt_loss": float(weighted_gt.item()),
+                "gt_layer_count": float(len(self.mean_encoders)) if self.use_gt else 0.0,
+                "gt_grad_norm": self._gradient_norm(self.var_encoders.parameters()) if self.use_gt else 0.0,
                 "loss_isr": float(loss_isr.item()), "loss_isr_aug": float(loss_aug.item()),
                 "loss_isr_dom": float(loss_dom.item()), "weighted_loss_isr": float(weighted_isr.item()),
                 "isr_aug_weight_effective": aw, "isr_dom_weight_effective": dw,

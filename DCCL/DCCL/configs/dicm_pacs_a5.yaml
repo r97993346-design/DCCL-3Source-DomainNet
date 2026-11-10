@@ -1,0 +1,3 @@
+# Apply after configs/dicm_pacs.yaml: A5 changes only GT, keeping the full A4 path.
+dicm_ablation: A5
+dicm_gt_weight: 0.01

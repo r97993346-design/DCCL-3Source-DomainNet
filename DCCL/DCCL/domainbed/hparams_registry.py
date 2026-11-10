@@ -99,6 +99,7 @@ def _hparams(algorithm, dataset, random_state):
         dicm_defaults = {
             "dicm_ablation": "A4", "dicm_rank": 8, "dicm_beta": 1.0,
             "dicm_isr_weight": 0.05, "dicm_aug_weight": 0.25,
+            "dicm_gt_weight": 0.01 if dataset == "PACS" else 0.05,
             "dicm_dom_weight": 0.75, "dicm_proto_momentum": 0.95,
             "dicm_min_domain_samples": 8, "dicm_min_domain_updates": 3,
             "dicm_min_valid_domains": 0,  # 0 means all source domains.

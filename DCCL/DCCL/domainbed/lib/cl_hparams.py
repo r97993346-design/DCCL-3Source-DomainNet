@@ -62,5 +62,8 @@ def setup_alg_hparams(hparams, args):
     hparams["start_epoch"] = args.start_epoch
     hparams["log"] = args.log
     if getattr(args, "algorithm", None) == "DICM":
+        # A5 can restore the effective dataset/model-specific DCCL coefficient.
+        # YAML/explicit CLI overrides are applied later; A1-A4 still use l_d=0.
+        hparams["dicm_gt_weight"] = hparams["l_d"]
         hparams["l_d"] = 0.0
     return hparams

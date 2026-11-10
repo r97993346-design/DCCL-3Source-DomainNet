@@ -210,6 +210,100 @@ def test_no_gt_identity_control_matches_original_initialization_rng_and_update()
             torch.testing.assert_close(value, getattr(model, name).state_dict()[key], atol=1e-7, rtol=1e-6)
 
 
+def test_a5_preserves_a4_common_initialization_rng_and_original_gt_optimizer():
+    torch.manual_seed(31)
+    a4 = DICM((6,), 3, 2, hparams())
+    expected_rng = torch.random.get_rng_state()
+    torch.manual_seed(31)
+    a5 = DICM((6,), 3, 2, hparams("A5"))
+    assert torch.equal(expected_rng, torch.random.get_rng_state())
+    for name in ("featurizer", "classifier", "proj_head", "pre_proj_head", "projection"):
+        for key, value in getattr(a4, name).state_dict().items():
+            torch.testing.assert_close(value, getattr(a5, name).state_dict()[key], atol=0, rtol=0)
+    assert len(a5.mean_encoders) == len(a5.var_encoders) == 1
+    assert a5.gt_weight == a5.hparams["l_d"] == 0.01
+    gt_ids = {id(p) for p in a5.var_encoders.parameters()}
+    groups = [g for g in a5.optimizer.param_groups if gt_ids & {id(p) for p in g["params"]}]
+    assert len(groups) == 1 and groups[0]["lr"] == pytest.approx(10 * a5.hparams["lr"])
+    assert groups[0]["weight_decay"] == 0
+    optimized_ids = {id(p) for g in a5.optimizer.param_groups for p in g["params"]}
+    assert not optimized_ids & {id(p) for p in a5.pre_featurizer.parameters()}
+
+
+def test_a5_identity_control_matches_original_gt_loss_gradients_and_update():
+    hp = finalize_dicm_hparams(hparams("A5", dicm_beta=0, dicm_isr_weight=0))
+    torch.manual_seed(37)
+    legacy = DCCL((6,), 3, 2, hp)
+    legacy.re_w = False
+    expected_rng = torch.random.get_rng_state()
+    torch.manual_seed(37)
+    model = DICM((6,), 3, 2, hp)
+    assert torch.equal(expected_rng, torch.random.get_rng_state())
+    x, y, aug = batches()
+    np.random.seed(37)
+    expected = legacy.update(x, y, x_2=aug)
+    np.random.seed(37)
+    actual = model.update(x, y, x_2=aug)
+    # Legacy does not log GT separately; recover it from its four-term total.
+    legacy_gt = (expected["loss"] - expected["ce_loss"] - hp["l"] * expected["sup_cl_loss"]
+                 - hp["l_layer"] * expected["pre_cl_loss"]) / hp["l_d"]
+    assert actual["reg_loss"] == pytest.approx(legacy_gt, abs=2e-4)
+    assert actual["loss"] == pytest.approx(expected["loss"], abs=1e-6)
+    for name in ("featurizer", "classifier", "proj_head", "pre_proj_head", "var_encoders"):
+        for key, value in getattr(legacy, name).state_dict().items():
+            torch.testing.assert_close(value, getattr(model, name).state_dict()[key], atol=1e-7, rtol=1e-6)
+    assert model.projection.subspace.basis.grad is None
+
+
+def test_a5_tasks_use_e_and_gt_keeps_snapshots_across_reference_and_extra_views():
+    model = DICM((6,), 3, 2, hparams("A5", sample_d=True))
+    x, y, aug = batches()
+    extra = [v.flip(0) + 3 for v in x]
+    with torch.no_grad():
+        z = model.featurizer(torch.cat(x))
+        z_aug = model.featurizer(torch.cat(aug))
+        ref = model.pre_featurizer(torch.cat(x))
+        expected_e, expected_aug = model.projection(z), model.projection(z_aug)
+        expected_extra = model.projection(model.featurizer(torch.cat(extra)))
+        variance = model.var_encoders[0](z_aug[:, :, None, None])
+        expected_gt = ((z_aug[:, :, None, None] - ref[:, :, None, None]).square() / variance
+                       + variance.log()).mean().item() / 2
+    received = {"ce": [], "sc": [], "pre": []}
+    handles = [head.register_forward_pre_hook(lambda module, inp, name=name: received[name].append(inp[0].detach().clone()))
+               for name, head in [("ce", model.classifier), ("sc", model.proj_head), ("pre", model.pre_proj_head)]]
+    before_variance = model.var_encoders[0].b.detach().clone()
+    result = model.update(x, y, x_2=aug, x_2_d=extra, step=0)
+    for handle in handles:
+        handle.remove()
+    torch.testing.assert_close(received["ce"][0], expected_e)
+    assert len(received["sc"]) == 3 and len(received["pre"]) == 2
+    for actual, expected in zip(received["sc"], (expected_aug, expected_e, expected_extra)):
+        torch.testing.assert_close(actual, expected)
+    torch.testing.assert_close(received["pre"][0], expected_e)
+    torch.testing.assert_close(received["pre"][1], ref)
+    assert result["reg_loss"] == pytest.approx(expected_gt, abs=1e-6)
+    assert result["loss"] == pytest.approx(result["task_loss"] + result["weighted_gt_loss"]
+                                            + result["weighted_loss_isr"], abs=1e-6)
+    assert result["gt_enabled"] == result["gt_layer_count"] == 1
+    assert result["gt_grad_norm"] > 0 and result["backbone_grad_norm"] > 0
+    assert not torch.equal(model.var_encoders[0].b, before_variance)
+    assert all(p.grad is None for p in model.pre_featurizer.parameters())
+    # Identical initial encoders give no valid differential response; GT cannot train B.
+    assert result["valid_aug_response_count"] == result["valid_dom_response_count"] == 0
+    assert model.projection.subspace.basis.grad is None
+
+
+def test_a5_gt_has_only_student_intermediate_and_variance_gradients():
+    model = DICM((6,), 3, 2, hparams("A5"))
+    student = torch.randn(4, 12, 1, 1, requires_grad=True)
+    reference = torch.randn_like(student, requires_grad=True)
+    model._gt_loss((student,), (reference,)).backward()
+    assert student.grad is not None and student.grad.norm() > 0
+    assert model.var_encoders[0].b.grad is not None
+    assert reference.grad is None and model.projection.subspace.basis.grad is None
+    assert all(p.grad is None for p in model.classifier.parameters())
+
+
 def test_private_basis_init_preserves_global_rng_and_beta_zero_matches_a1():
     torch.manual_seed(41)
     identity = DICM((6,), 3, 2, hparams("A1"))
@@ -234,8 +328,9 @@ def test_b_stays_frozen_when_isr_disabled_but_encoder_and_tasks_train():
     assert metrics["backbone_grad_norm"] > 0
 
 
-def test_forward_export_state_restore_and_swad_use_the_identical_projection():
-    model = DICM((6,), 3, 2, hparams())
+@pytest.mark.parametrize("mode", ["A4", "A5"])
+def test_forward_export_state_restore_and_swad_use_the_identical_projection(mode):
+    model = DICM((6,), 3, 2, hparams(mode))
     x, y, aug = batches()
     for step in range(3):
         metrics = model.update(x, y, x_2=aug, step=step)
@@ -249,7 +344,7 @@ def test_forward_export_state_restore_and_swad_use_the_identical_projection():
         torch.testing.assert_close(output, model.get_forward_model().predict(x[0]))
     for key, value in bank_before.items():
         torch.testing.assert_close(value, model.residual_bank.state_dict()[key])
-    restored = DICM((6,), 3, 2, hparams()).eval()
+    restored = DICM((6,), 3, 2, hparams(mode)).eval()
     restored.load_state_dict(model.state_dict())
     torch.testing.assert_close(output, restored.predict(x[0]))
     averaged = swa_utils.AveragedModel(model)
@@ -264,7 +359,8 @@ def test_forward_export_state_restore_and_swad_use_the_identical_projection():
     torch.testing.assert_close(avg_projection.subspace.basis, (first_basis + second_basis) / 2)
     torch.testing.assert_close(averaged.predict(x[0]), averaged.module.predict(x[0]))
     torch.testing.assert_close(averaged.predict_embed(x[0]), avg_projection(averaged.module.network[0](x[0])))
-    assert not any("residual_bank" in name or "pre_featurizer" in name for name in averaged.state_dict())
+    assert not any(any(part in name for part in ("residual_bank", "pre_featurizer", "encoders"))
+                   for name in averaged.state_dict())
     assert avg_projection.beta.item() == 1
 
 
@@ -285,8 +381,9 @@ def test_missing_observations_skip_existing_adam_momentum_on_basis():
     torch.testing.assert_close(model.optimizer.state[basis]["step"], before_step)
 
 
-def test_clone_after_update_rebinds_optimizer_to_copied_parameters():
-    model = DICM((6,), 3, 2, hparams())
+@pytest.mark.parametrize("mode", ["A4", "A5"])
+def test_clone_after_update_rebinds_optimizer_to_copied_parameters(mode):
+    model = DICM((6,), 3, 2, hparams(mode))
     x, y, aug = batches()
     model.update(x, y, x_2=aug)
     cloned = model.clone().eval()
@@ -295,6 +392,12 @@ def test_clone_after_update_rebinds_optimizer_to_copied_parameters():
     assert cloned.featurizer.linear.weight.data_ptr() != model.featurizer.linear.weight.data_ptr()
     owned = {id(p) for p in cloned.parameters()}
     assert all(id(p) in owned for group in cloned.optimizer.param_groups for p in group["params"])
+    if mode == "A5":
+        copied_variance, original_variance = cloned.var_encoders[0].b, model.var_encoders[0].b
+        assert copied_variance.data_ptr() != original_variance.data_ptr()
+        assert copied_variance in cloned.optimizer.state
+        torch.testing.assert_close(cloned.optimizer.state[copied_variance]["exp_avg"],
+                                   model.optimizer.state[original_variance]["exp_avg"])
 
 
 def test_two_ce_and_extra_positive_also_use_projected_features():
@@ -304,9 +407,10 @@ def test_two_ce_and_extra_positive_also_use_projected_features():
     assert result["sup_cl_loss"] != 0 and result["loss_cls"] > 0
 
 
-def test_real_resnet50_inference_without_pretrained_download_or_training(monkeypatch):
+@pytest.mark.parametrize("mode", ["A4", "A5"])
+def test_real_resnet50_inference_without_pretrained_download_or_training(monkeypatch, mode):
     monkeypatch.setattr(networks, "Featurizer", REAL_FEATURIZER)
-    model = DICM((3, 224, 224), 3, 2, hparams(pretrained=False, dicm_rank=8)).eval()
+    model = DICM((3, 224, 224), 3, 2, hparams(mode, pretrained=False, dicm_rank=8)).eval()
     # ResNet's global pooling accepts this small synthetic image size as well.
     x = torch.randn(1, 3, 64, 64)
     with torch.no_grad():
@@ -339,6 +443,26 @@ def test_cli_core_overrides_are_effective_for_dicm_only():
         finalize_dicm_hparams(hparams("A3"), args, ["--l_layer", "0.3"])
 
 
+def test_a5_gt_cli_alias_and_config_are_idempotent_and_scoped_to_a5():
+    args = Namespace(l_d=0.03)
+    resolved = finalize_dicm_hparams(hparams("A5"), args, ["--l_d", "0.03"])
+    assert resolved["l_d"] == resolved["dicm_gt_weight"] == 0.03
+    assert finalize_dicm_hparams(dict(resolved)) == resolved
+    with pytest.raises(ValueError, match="A1-A4 remove GT"):
+        finalize_dicm_hparams(hparams(), args, ["--l_d", "0.03"])
+    with pytest.raises(ValueError, match="set GT with dicm_gt_weight"):
+        finalize_dicm_hparams(hparams("A5", l_d=0.2))
+
+
+@pytest.mark.parametrize("overrides", [
+    {"dicm_gt_weight": 0}, {"dicm_gt_weight": -0.1}, {"dicm_gt_weight": float("nan")},
+    {"l": 0}, {"l_layer": 0},
+])
+def test_a5_rejects_disabled_or_invalid_full_model_components(overrides):
+    with pytest.raises(ValueError, match="A5"):
+        DICM((6,), 3, 2, hparams("A5", **overrides))
+
+
 @pytest.mark.parametrize("key,value", [("TN", True), ("aug", 0.2), ("re_w", True), ("l_d", 0.01)])
 def test_unsupported_paths_fail_before_silently_bypassing_dicm(key, value):
     with pytest.raises(ValueError):
@@ -354,6 +478,21 @@ def test_legacy_dataset_defaults_remain_unchanged_and_dicm_gt_is_zero():
     args.algorithm = "DICM"
     current = setup_alg_hparams(hparams_registry.default_hparams("DICM", "PACS"), args)
     assert current["l_d"] == 0 and current["l"] == legacy["l"]
+    assert current["dicm_gt_weight"] == legacy["l_d"]
+
+
+@pytest.mark.parametrize("dataset,backbone,expected", [
+    ("PACS", "resnet50", 0.01), ("VLCS", "resnet50", 0.05),
+    ("OfficeHome", "clip_vit-b16", 0.1),
+])
+def test_a5_restores_effective_dataset_and_backbone_gt_defaults(dataset, backbone, expected):
+    args = Namespace(dataset=dataset, algorithm="DICM", model=backbone, sup=True,
+                     two_ce=False, sample_d=False, re_w=False, pos_mask=False,
+                     mix=0, aug=0, label_ratio=1, TN=False, lamda=5, start_epoch=1000, log=False)
+    hp = setup_alg_hparams(hparams_registry.default_hparams("DICM", dataset), args)
+    hp["dicm_ablation"] = "A5"
+    resolved = finalize_dicm_hparams(hp)
+    assert resolved["l_d"] == resolved["dicm_gt_weight"] == expected
 
 
 def test_show_reviews_dicm_without_cuda_dataset_or_output_creation(monkeypatch, capsys):
@@ -367,7 +506,27 @@ def test_show_reviews_dicm_without_cuda_dataset_or_output_creation(monkeypatch, 
     assert "dicm_beta: 1.0" in output and "l: 0.4" in output and "l_d: 0.0" in output
 
 
-def test_trainer_source_only_selection_swad_and_split_manifest(monkeypatch, tmp_path):
+@pytest.mark.parametrize("options,expected", [
+    (["configs/dicm_pacs_a5.yaml"], 0.01),
+    (["--dicm_ablation", "A5"], 0.01),
+    (["--dicm_ablation", "A5", "--dicm_gt_weight", "0.02"], 0.02),
+    (["--dicm_ablation", "A5", "--l_d", "0.03"], 0.03),
+])
+def test_show_resolves_a5_gt_overlay_and_cli_without_running_training(monkeypatch, capsys, options, expected):
+    import train_all
+    monkeypatch.setattr("sys.argv", ["train_all.py", "a5_review", "configs/dicm_pacs.yaml",
+                                    *options, "--algorithm", "DICM", "--show"])
+    monkeypatch.setattr(train_all, "get_dataset", lambda *a, **k: pytest.fail("--show accessed data"))
+    monkeypatch.setattr(train_all, "get_writer", lambda *a, **k: pytest.fail("--show created outputs"))
+    train_all.main()
+    output = capsys.readouterr().out
+    assert "dicm_ablation: A5" in output
+    assert f"dicm_gt_weight: {expected}" in output and f"l_d: {expected}" in output
+    assert "dicm_aug_weight: 0.25" in output and "dicm_dom_weight: 0.75" in output
+
+
+@pytest.mark.parametrize("mode", ["A4", "A5"])
+def test_trainer_source_only_selection_swad_and_split_manifest(monkeypatch, tmp_path, mode):
     from domainbed import trainer
     # Legacy LossValley returns .cuda(); intercept only this device handoff.
     # Its real averaging, source-val logic, and the DICM export remain exercised.
@@ -427,7 +586,7 @@ def test_trainer_source_only_selection_swad_and_split_manifest(monkeypatch, tmp_
         def __getattr__(self, name):
             return lambda *args, **kwargs: None
 
-    hp = hparams()
+    hp = hparams(mode)
     hp.update(swad="LossValley", swad_kwargs={"n_converge": 1, "n_tolerance": 1, "tolerance_ratio": 0.3},
               indomain_test=False, test_batchsize=4)
     args = Namespace(algorithm="DICM", prebuild_loader=False, trial_seed=0, seed=0,
