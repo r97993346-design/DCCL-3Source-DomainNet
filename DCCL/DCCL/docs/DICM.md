@@ -1,7 +1,8 @@
 # DICM：以差分干预分解替换 DCCL 的 GT
 
 基础：远程 main 的 ea200b976dbd348ab8844e5d4377f90e24134c87。
-分支：feature/dicm-gt-replacement-20261110。
+当前分支：feature/dicm-per-target-seed-a0-20261110。
+基于 feature/dicm-gt-replacement-20261110 的 921493d；父分支保留旧训练入口。
 
 本实现新增独立的 `DICM(Algorithm)`，不继承会构造 GT 的 `DCCL.__init__`。
 原始 `algorithms.py::DCCL`、数据增强、分割、采样与 SWAD LossValley 保留。
@@ -104,7 +105,57 @@ python -u train_all.py pacs_dicm_A4 configs/dicm_pacs.yaml \
 不传 test_envs 时沿用原程序的 0→1→2→3 顺序。没有自动启动训练队列。
 原程序将请求 5000 步换算为循环 step=0..5000，最多 5001 次更新；
 step=0 在第一次优化后评估，原 SWAD 仍可能提前停止。
-保留原始“目标域循环外设置 seed”的规则；若另改逐目标重置 seed，须匹配重跑 A0。
+本分支改为逐目标域重置 seed；需要使用下述 A0 重新建立匹配基线。
+
+## 逐目标域独立复现与 A0
+
+`domainbed/trainer.py::train` 在每次任务的最开始调用
+`domainbed/lib/reproducibility.py::seed_everything`，早于数据集、采样器、
+DataLoader 与模型创建。Python、NumPy、PyTorch CPU / CUDA 均以 `args.seed`
+重新开始；cuDNN deterministic / benchmark 沿用 `--deterministic` 的控制。
+目标域编号和之前的任务长度不参与种子计算。一组内三源共同更新，正常推进 RNG。
+
+因此 seed=0 时，PACS 的 A / C / P / S 四组都会在各自开始前重置为 0。
+每组仍重新创建模型、优化器、B、EMA 和 SWAD，不加载上一组参数。
+`trial_seed` 与原来的划分算法不变；每次 selection JSON 记录 seed、trial_seed、
+seed_policy=per_target、deterministic、算法、消融编号和源域 split hash。
+
+A0 直接使用未改动的 `domainbed/algorithms/algorithms.py::DCCL`，保留 CE(z)、
+SupCon(z,z_aug)、PreCL(z,z0) 和原始 GT；没有 DICM、B 或原型模块。
+新增 `configs/dccl_pacs_a0.yaml`，与 A4 共用 lr=5e-5、batch=32、任务权重和温度，
+GT 使用原 PACS 有效权重 0.01。不要把 A0 配置与 dicm_pacs.yaml 叠加。
+本分支 A0 / A1–A5 都用源域验证选 IID 与 SWAD，均不计算 Oracle 选模汇总。
+这保持原 DCCL 的模型 / 损失，同时显式更换随机种子粒度和报告协议；旧 A0 日志
+继续保留，不能充当新规则下已复现的基线。
+
+先只检查 A0 配置：
+
+```bash
+python train_all.py a0_review configs/dccl_pacs_a0.yaml \
+  --algorithm DCCL --dataset PACS --show
+```
+
+配套串行脚本会使用同一 seed、trial_seed、步数、评估频率和骨干依次准备 A0–A5。
+先审阅全部六组（不会创建训练输出或加载数据）：
+
+```bash
+STEPS=300 CHECKPOINT_FREQ=100 bash scripts/run_pacs_a0_a5.sh --show
+```
+
+后续手动启动的示例，本次实现没有执行：
+
+```bash
+CUDA_VISIBLE_DEVICES=0 SEED=0 TRIAL_SEED=0 STEPS=300 CHECKPOINT_FREQ=100 \
+  bash scripts/run_pacs_a0_a5.sh --data_dir /path/to/data
+```
+
+不传 test_envs 时，每组运行四个目标域；可传 `--test_envs 3` 只补跑 Sketch。
+`PYTHON=/path/to/python` 可指定解释器。新分支默认就按目标域重置，无需额外开关。
+脚本仅在手动调用时启动；实现与检查过程不运行真实训练。
+
+相同目标域仅改变总步数时，在学习率、checkpoint_freq、数据与环境相同的条件下，
+公共更新前缀应一致。改变评估频率可能改变 RNG 消耗与 SWAD 行为；固定种子本身
+不保证 GPU 所有算子逐位确定，也不保证跨软件 / 硬件一致或短长跑的最终 SWAD 一致。
 
 配置 / sconf 可覆盖 dicm_* 参数，例如：
 
@@ -138,13 +189,15 @@ python train_all.py a5_review configs/dicm_pacs.yaml configs/dicm_pacs_a5.yaml \
 
 | 模式 | 投影 / 原型 / ISR | CE | SupCon | PreCL | GT |
 |---|---|---|---|---|---|
+| A0，algorithm=DCCL | 原 DCCL，无 DICM | z | z、z⁺ | z、z0 | 原始中间层 |
 | A1 | 不构造 | z | z、z⁺ | z、z0 | 无 |
 | A2 | 构造 | E | 关闭 | 关闭 | 无 |
 | A3 | 构造 | E | E、E⁺ | 关闭 | 无 |
 | A4，默认 | 构造 | E | E、E⁺ | E、z0 | 无 |
 | A5 | 构造 | E | E、E⁺ | E、z0 | 原始中间层 |
 
-A1–A4 不构造 GT，A5 才构造。A0 仍使用原来的 `--algorithm DCCL`。
+A1–A4 不构造 GT，A0 / A5 构造。A0 使用 `--algorithm DCCL` 配合 A0 专用配置，
+不属于 `--dicm_ablation` 的可选值。
 A2 / A3 强制关闭对应项，显式传入矛盾的 CLI 权重会报错。
 A1 / A4 保留可配置的任务权重；若手动关掉某项，结果不再对应表中的标准消融定义。
 A5 已重新定义为完整方案加 GT，不再是门控实验。门控和 A6 可靠性对比尚未实现。
@@ -169,14 +222,14 @@ A5 已重新定义为完整方案加 GT，不再是门控实验。门控和 A6 �
 
 ## 评估与日志
 
-DICM 的 IID 仅依据 source train_out，平局保持第一个最大值。SWAD 使用原始源域
-验证 LossValley。DICM 不计算 / 返回 oracle 选模结果。
+A0 / DICM 的 IID 仅依据 source train_out，平局保持第一个最大值。SWAD 使用原始源域
+验证 LossValley。两者均不计算 / 返回 oracle 选模结果。
 
 为兼容原复现，iid / SWAD / last 仍表示 test_in；另有明确的
 `iid (test_out)`、`SWAD (test_out)`、`last (test_out)`。
 它们都是选定模型的报告字段，不能再反向用于调参。
 每目标额外保存 selection_te_*.json，包含源域 split hash、选中步、源域准则、
-SWAD 范围及报告指标。原始 DCCL 的历史 summary 保留不变。
+SWAD 范围及报告指标。原始 DCCL 的历史 summary 留在父分支，本分支不沿用 Oracle 行。
 
 新增训练指标包含两类覆盖 / 有效数量 / 实际配比、原型支持与年龄、raw B 最小奇异值
 和条件数、Q 正交误差、E 改变量、绝对增强距离、敏感能量和类间散度删除比例、
@@ -194,9 +247,14 @@ python -m pytest tests/test_dicm.py -q
 测试使用小张量 / 模拟编码器，以及随机权重 ResNet-50 的推理检查，不下载预训练
 权重、不读取 PACS、不运行真实训练实验。覆盖：A1–A4 无 GT、A5 恢复 GT、任务端点、梯度隔离、
 配比与空响应、EMA 支持与局部域编号、A1 基线等价性、状态保存、SWAD、CLI、
-源域选模及 A4 / A5 trainer 集成。A5 还验证额外视图不覆盖 GT 快照、
+源域选模及 A0 / A4 / A5 trainer 集成。A5 还验证额外视图不覆盖 GT 快照、
 beta=0 且 ISR 关闭时与原 DCCL 的 GT 损失及参数更新等价、公共初始化一致、
 GT 权重解析和方差优化器状态恢复。
+
+新增 A0–A5 的四域合成数据测试：比较同一目标独立运行、前置不同域 / 不同步数后
+运行时的数据集随机起点、初始模型状态、批次、每步损失与梯度诊断、选模结果；
+也比较短长预算的公共训练前缀。这些是 CPU 合约验证，不是 PACS 性能实验或
+GPU 逐位复现的证据。
 
 本分支实现了待验证方法，没有新 PACS 性能结果。Q 是差分响应子空间估计，
 不能仅凭代码或覆盖率声称已识别真实因果因素，也不能保证超越原始 DCCL。

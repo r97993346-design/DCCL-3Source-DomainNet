@@ -1,0 +1,11 @@
+# A0: original DCCL class and four original losses, under the new per-target seed
+# and source-only selection protocol. Do not combine this with dicm_pacs.yaml.
+lr: 0.00005
+weight_decay: 0.0
+batch_size: 32
+l: 1.0
+l_layer: 1.0
+l_d: 0.01
+t: 0.1
+t_pre: 0.2
+n_layer: 1

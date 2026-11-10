@@ -2,6 +2,7 @@
 
 import copy
 import json
+import random
 from argparse import Namespace
 
 import numpy as np
@@ -21,6 +22,7 @@ from domainbed.lib import swa_utils
 from domainbed.lib.cl_hparams import setup_alg_hparams
 from domainbed.lib.dicm_hparams import finalize_dicm_hparams
 from domainbed.lib.dicm_selection import select_source_iid
+from domainbed.lib.reproducibility import seed_everything
 
 REAL_FEATURIZER = networks.Featurizer
 
@@ -72,6 +74,20 @@ def batches():
     aug = [v + 0.2 * torch.randn(4, 6, generator=generator) for v in x]
     labels = [torch.tensor([0, 1, 2, 0]) for _ in x]
     return x, labels, aug
+
+
+def test_seed_reset_restores_python_numpy_torch_and_cudnn_policy():
+    seed_everything(23, deterministic=True)
+    expected = random.random(), np.random.rand(), torch.rand(5)
+    random.random()
+    np.random.rand(100)
+    torch.rand(100)
+    seed_everything(23, deterministic=True)
+    assert random.random() == expected[0] and np.random.rand() == expected[1]
+    torch.testing.assert_close(torch.rand(5), expected[2], atol=0, rtol=0)
+    assert torch.backends.cudnn.deterministic and not torch.backends.cudnn.benchmark
+    seed_everything(23, deterministic=False)
+    assert not torch.backends.cudnn.deterministic and torch.backends.cudnn.benchmark
 
 
 def test_pire_uses_matching_reference_difference_without_encoder_gradient():
@@ -525,8 +541,23 @@ def test_show_resolves_a5_gt_overlay_and_cli_without_running_training(monkeypatc
     assert "dicm_aug_weight: 0.25" in output and "dicm_dom_weight: 0.75" in output
 
 
-@pytest.mark.parametrize("mode", ["A4", "A5"])
-def test_trainer_source_only_selection_swad_and_split_manifest(monkeypatch, tmp_path, mode):
+def test_a0_config_reviews_original_four_loss_baseline_without_data_or_gpu(monkeypatch, capsys):
+    import train_all
+    monkeypatch.setattr("sys.argv", ["train_all.py", "a0_review", "configs/dccl_pacs_a0.yaml",
+                                    "--algorithm", "DCCL", "--show"])
+    monkeypatch.setattr(train_all, "get_dataset", lambda *a, **k: pytest.fail("A0 review accessed data"))
+    monkeypatch.setattr(train_all, "get_writer", lambda *a, **k: pytest.fail("A0 review created outputs"))
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: pytest.fail("A0 review checked GPU"))
+    train_all.main()
+    output = capsys.readouterr().out
+    assert "Algorithm: DCCL" in output and "Seed policy: per_target; seed=0; trial_seed=0" in output
+    assert "l_d: 0.01" in output and "l: 1.0" in output and "l_layer: 1.0" in output
+    assert "dicm_" not in output
+
+
+@pytest.fixture
+def trainer_harness(monkeypatch, tmp_path):
+    """Real algorithms/trainer/SWAD on four synthetic domains; no PACS access."""
     from domainbed import trainer
     # Legacy LossValley returns .cuda(); intercept only this device handoff.
     # Its real averaging, source-val logic, and the DICM export remain exercised.
@@ -542,23 +573,55 @@ def test_trainer_source_only_selection_swad_and_split_manifest(monkeypatch, tmp_
 
     class FakeDataset:
         input_shape, num_classes, N_WORKERS = (6,), 3, 0
-        environments = ["A", "C", "P"]
+        environments = ["A", "C", "P", "S"]
 
         def __len__(self):
-            return 3
+            return 4
 
-    splits = [(FakeSplit(i), None) for i in range(3)]
-    monkeypatch.setattr(trainer, "get_dataset", lambda *a, **k: (FakeDataset(), splits, splits))
+    dataset_draws = []
+    splits = [(FakeSplit(i), None) for i in range(4)]
+
+    def get_dataset(*args, **kwargs):
+        # Verify that even dataset construction starts from reset RNGs.
+        dataset_draws.append((random.random(), np.random.rand(), torch.rand(3)))
+        return FakeDataset(), splits, splits
+
+    monkeypatch.setattr(trainer, "get_dataset", get_dataset)
+
+    created = []
+    get_algorithm_class = trainer.algorithms.get_algorithm_class
+
+    def recording_class(name):
+        original = get_algorithm_class(name)
+
+        class RecordedAlgorithm(original):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.test_initial_state = copy.deepcopy(self.state_dict())
+                self.test_metrics = []
+                self.test_batches = []
+                created.append(self)
+
+            def update(self, x, y, **kwargs):
+                self.test_batches.append(torch.cat([*x, *kwargs["x_2"]]).clone())
+                result = super().update(x, y, **kwargs)
+                self.test_metrics.append(dict(result))
+                return result
+
+        return RecordedAlgorithm
+
+    monkeypatch.setattr(trainer.algorithms, "get_algorithm_class", recording_class)
 
     class Loader:
         def __init__(self, dataset, **kwargs):
             self.env = dataset.env
 
         def __iter__(self):
-            # Tensor fixtures only, with no RNG, files or real dataset access.
-            x = torch.arange(24).reshape(4, 6).float() / 24 + self.env / 10
             while True:
-                yield {"x": x, "x_2": x + 0.1, "y": torch.tensor([0, 1, 2, 0]),
+                # Consume all three RNGs each step to expose task-length coupling.
+                x = torch.randn(4, 6) + self.env / 10 + random.random() / 10
+                aug = x + torch.randn_like(x) / 10 + np.random.rand() / 10
+                yield {"x": x, "x_2": aug, "y": torch.tensor([0, 1, 2, 0]),
                        "d": torch.full((4,), self.env)}
 
     monkeypatch.setattr(trainer, "InfiniteDataLoader", Loader)
@@ -586,18 +649,63 @@ def test_trainer_source_only_selection_swad_and_split_manifest(monkeypatch, tmp_
         def __getattr__(self, name):
             return lambda *args, **kwargs: None
 
-    hp = hparams(mode)
-    hp.update(swad="LossValley", swad_kwargs={"n_converge": 1, "n_tolerance": 1, "tolerance_ratio": 0.3},
-              indomain_test=False, test_batchsize=4)
-    args = Namespace(algorithm="DICM", prebuild_loader=False, trial_seed=0, seed=0,
-                     out_dir=tmp_path, evalmode="fast", debug=False, log=False,
-                     model_save=None, tb_freq=1)
-    result, records = trainer.train([1], args, Config(default=hp), 3, 1, Sink(), Sink())
+    def run(mode, target=1, steps=3, seed=0):
+        algorithm = "DCCL" if mode == "A0" else "DICM"
+        hp = hparams(mode if mode != "A0" else "A4")
+        if mode == "A0":
+            hp = {k: v for k, v in hp.items() if not k.startswith("dicm_")}
+            hp["l_d"] = 0.01
+        hp.update(swad="LossValley", swad_kwargs={"n_converge": 1, "n_tolerance": 1, "tolerance_ratio": 0.3},
+                  indomain_test=False, test_batchsize=4)
+        out_dir = tmp_path / f"job_{len(created)}"
+        out_dir.mkdir()
+        args = Namespace(algorithm=algorithm, prebuild_loader=False, trial_seed=0, seed=seed,
+                         deterministic=True, out_dir=out_dir, evalmode="fast", debug=False, log=False,
+                         model_save=None, tb_freq=1)
+        result, records = trainer.train([target], args, Config(default=hp), steps, 1, Sink(), Sink())
+        name = FakeDataset.environments[target]
+        selection = json.loads((out_dir / f"selection_te_{name}.json").read_text())
+        return Namespace(result=result, records=records, selection=selection, model=created[-1],
+                         dataset_draw=dataset_draws[-1])
+
+    return run
+
+
+@pytest.mark.parametrize("mode", ["A0", "A4", "A5"])
+def test_trainer_source_only_selection_swad_and_split_manifest(trainer_harness, mode):
+    job = trainer_harness(mode)
+    result, records, selection = job.result, job.records, job.selection
     assert "oracle" not in result
     assert result["iid"] == 0.2 and result["iid (test_out)"] == 0.1
     assert result["SWAD"] == 0.3 and result["SWAD (test_out)"] == 0.4
-    selection = json.loads((tmp_path / "selection_te_C.json").read_text())
-    assert selection["iid"]["step"] == 1 and selection["source_envs"] == [0, 2]
+    assert selection["iid"]["step"] == 1 and selection["source_envs"] == [0, 2, 3]
     assert len(selection["source_split_sha256"]) == 64
     assert selection["swad"]["criterion"] == "source validation LossValley"
+    assert selection["seed_policy"] == "per_target" and selection["seed"] == 0
+    assert selection["deterministic"] and selection["ablation"] == mode
+    assert selection["algorithm"] == ("DCCL" if mode == "A0" else "DICM")
     assert len(records) == 3
+
+
+@pytest.mark.parametrize("mode", ["A0", "A1", "A2", "A3", "A4", "A5"])
+def test_target_initialization_and_trajectory_ignore_prior_target_order_and_steps(trainer_harness, mode):
+    standalone = trainer_harness(mode, target=3, steps=3)
+    trainer_harness(mode, target=0, steps=3)
+    after_short = trainer_harness(mode, target=3, steps=3)
+    trainer_harness(mode, target=2, steps=5)
+    trainer_harness(mode, target=1, steps=4)
+    after_long = trainer_harness(mode, target=3, steps=3)
+    for repeated in (after_short, after_long):
+        assert standalone.dataset_draw[:2] == repeated.dataset_draw[:2]
+        torch.testing.assert_close(standalone.dataset_draw[2], repeated.dataset_draw[2], atol=0, rtol=0)
+        for key, value in standalone.model.test_initial_state.items():
+            torch.testing.assert_close(value, repeated.model.test_initial_state[key], atol=0, rtol=0)
+        for expected, actual in zip(standalone.model.test_batches, repeated.model.test_batches):
+            torch.testing.assert_close(actual, expected, atol=0, rtol=0)
+        assert standalone.model.test_metrics == repeated.model.test_metrics
+        assert standalone.selection == repeated.selection and standalone.result == repeated.result
+        if mode in {"A4", "A5"}:
+            assert not standalone.model.test_initial_state["residual_bank.initialized"].any()
+    # Same target, longer budget: the common updates remain identical.
+    longer = trainer_harness(mode, target=3, steps=5)
+    assert standalone.model.test_metrics == longer.model.test_metrics[:3]

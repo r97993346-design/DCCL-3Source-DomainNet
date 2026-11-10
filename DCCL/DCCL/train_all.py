@@ -1,6 +1,5 @@
 import argparse
 import collections
-import random
 import sys
 from pathlib import Path
 
@@ -19,6 +18,7 @@ from domainbed.lib.logger import Logger
 from domainbed.trainer import train
 from domainbed.lib.cl_hparams import setup_alg_hparams
 from domainbed.lib.dicm_hparams import finalize_dicm_hparams
+from domainbed.lib.reproducibility import SEED_POLICY, seed_everything
 
 def main():
     parser = argparse.ArgumentParser(description="Domain generalization")
@@ -80,6 +80,7 @@ def main():
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
     args, left_argv = parser.parse_known_args()
+    args.seed_policy = SEED_POLICY
 
     # setup hparams
     hparams = hparams_registry.default_hparams(args.algorithm, args.dataset)
@@ -91,10 +92,12 @@ def main():
 
     if args.algorithm == "DICM":
         finalize_dicm_hparams(hparams, args, sys.argv[1:])
-        # Configuration review needs neither CUDA, datasets nor output folders.
-        if args.show:
-            print(hparams.dumps())
-            return
+    # A0 configuration review also needs neither CUDA, data nor output folders.
+    if args.show:
+        print(f"Algorithm: {args.algorithm}")
+        print(f"Seed policy: {args.seed_policy}; seed={args.seed}; trial_seed={args.trial_seed}")
+        print(hparams.dumps())
+        return
 
     # setup debug
     if args.debug:
@@ -140,15 +143,8 @@ def main():
     for line in hparams.dumps().split("\n"):
         logger.nofmt("\t" + line)
 
-    if args.show:
-        exit()
-
-    # seed
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.backends.cudnn.deterministic = args.deterministic
-    torch.backends.cudnn.benchmark = not args.deterministic
+    # Seed metadata setup too; trainer.train resets again before EACH target.
+    seed_everything(args.seed, args.deterministic)
 
     # Dummy datasets for logging information.
     # Real dataset will be re-assigned in train function.

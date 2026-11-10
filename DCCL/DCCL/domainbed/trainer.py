@@ -18,6 +18,7 @@ from domainbed.lib.query import Q
 from domainbed.lib.fast_data_loader import InfiniteDataLoader, FastDataLoader
 from domainbed import swad as swad_module
 from domainbed.lib.dicm_selection import select_source_iid
+from domainbed.lib.reproducibility import SEED_POLICY, seed_everything
 
 
 if torch.cuda.is_available():
@@ -33,9 +34,14 @@ def json_handler(v):
 
 
 def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, target_env=None):
-
+    # Reset before dataset constructors, sampler/worker seeds and model init.
+    # The seed does not depend on target order, target ID or previous step counts.
+    seed_everything(args.seed, getattr(args, "deterministic", False))
+    args.seed_policy = SEED_POLICY
     logger.info("")
+    logger.info(f"Reset RNG for target {test_envs}: seed={args.seed}, trial_seed={args.trial_seed}, policy={SEED_POLICY}")
     is_dicm = args.algorithm == "DICM"
+    source_only_selection = args.algorithm in {"DCCL", "DICM"}
 
     #######################################################
     # setup dataset & loader
@@ -82,6 +88,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     train_envs = sorted(set(range(n_envs)) - set(test_envs))
     if is_dicm:
         hparams["dicm_source_envs"] = train_envs
+    if source_only_selection:
         split_keys = {
             str(env_id): {
                 "in": list(in_splits[env_id][0].keys),
@@ -92,8 +99,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         split_digest = hashlib.sha256(
             json.dumps(split_keys, sort_keys=True).encode("utf-8")
         ).hexdigest()
-        logger.info(f"DICM local source IDs -> global IDs: {list(enumerate(train_envs))}")
-        logger.info(f"DICM source split SHA256: {split_digest}")
+        logger.info(f"{args.algorithm} local source IDs -> global IDs: {list(enumerate(train_envs))}")
+        logger.info(f"{args.algorithm} source split SHA256: {split_digest}")
     iterator = misc.SplitIterator(test_envs)
     batch_sizes = np.full([n_envs], hparams["batch_size"], dtype=int)
 
@@ -503,7 +510,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # find best
     logger.info("---")
     records = Q(records)
-    iid_record = select_source_iid(records) if is_dicm else records.argmax("train_out")
+    iid_record = select_source_iid(records) if source_only_selection else records.argmax("train_out")
     iid_best = iid_record["test_in"]
     last = records[-1]["test_in"]
 
@@ -522,12 +529,15 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         "last (inD)": last_indomain,
         "iid (inD)": iid_best_indomain,
     }
-    if is_dicm:
+    if source_only_selection:
         ret["iid (test_out)"] = iid_record["test_out"]
         ret["last (test_out)"] = records[-1]["test_out"]
         selection = {
             "test_envs": list(test_envs), "source_envs": train_envs,
             "seed": args.seed, "trial_seed": args.trial_seed,
+            "seed_policy": SEED_POLICY, "deterministic": bool(getattr(args, "deterministic", False)),
+            "algorithm": args.algorithm,
+            "ablation": hparams["dicm_ablation"] if is_dicm else "A0",
             "source_split_sha256": split_digest,
             "iid": {"criterion": "max train_out; first tie", "step": iid_record["step"],
                     "source_val_accuracy": iid_record["train_out"],
@@ -535,9 +545,9 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
                     "reported_test_out": iid_record["test_out"]},
             "last_step": records[-1]["step"],
         }
-        logger.info(f"DICM source-selected IID checkpoint: step {iid_record['step']}")
+        logger.info(f"{args.algorithm} source-selected IID checkpoint: step {iid_record['step']}")
     else:
-        # Preserve the legacy DCCL summary, including its historical oracle row.
+        # Other legacy algorithms retain their historical reporting behavior.
         ret = {"oracle": records.argmax("test_out")["test_in"], **ret}
 
     # Evaluate SWAD
@@ -559,7 +569,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
         ret["SWAD"] = results["test_in"]
         ret["SWAD (inD)"] = results[in_key]
-        if is_dicm:
+        if source_only_selection:
             ret["SWAD (test_out)"] = results["test_out"]
             selection["swad"] = {
                 "criterion": "source validation LossValley", "start_step": start,
@@ -616,7 +626,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         #     np.save("vis/pacs_swad_y_test.npy", y_test)
         #     exit()
 
-    if is_dicm:
+    if source_only_selection:
         with open(args.out_dir / f"selection_{testenv_name}.json", "w") as f:
             json.dump(selection, f, indent=2, default=json_handler)
 
