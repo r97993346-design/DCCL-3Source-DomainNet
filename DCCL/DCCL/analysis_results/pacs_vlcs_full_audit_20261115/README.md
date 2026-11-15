@@ -104,3 +104,15 @@ cannot reproduce the training trajectory or estimate the resulting SWAD.
 Raw export uses an allowlist of experiment text files. Model weights, data, cache, binary artifacts and files matching credential patterns are excluded.
 
 The VLCS baseline has a launch-queue code_commit.txt and a preserved YAML blob from that exact commit under its raw launch_commit_yaml directory. Logged overrides still determine the effective constraint and coefficients. The PACS baseline has no verified launch revision.
+
+### Configured and observed coefficients
+
+The observed_*_min / observed_*_max columns summarize values emitted by recorded
+checkpoints. They describe the recorded steps and leave other steps unknown.
+The contrastive_weight_recorded_setting column preserves the configured option.
+For PACS_candidate2 that option is 0.25, while cipt_causal_contrastive_weight
+and observed contrastive_weight_eff are both 0.1. VLCS baseline has 0.1 for
+all three. Use observed contrastive_weight_eff for the applied loss coefficient.
+
+Among standard four-target complete runs, 97 PACS and 26 VLCS results have a
+results file modification date on or after 2026-11-10 in Asia/Shanghai.
