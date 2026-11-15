@@ -1,0 +1,11 @@
+{
+  "lr": 0.0001,
+  "steps": 300,
+  "check": 25,
+  "rd": 0.0,
+  "contrastive": 0.0,
+  "s_uniform": 1.0,
+  "ind": 0.1,
+  "teacher_mix": 0.25,
+  "warmup": 0
+}

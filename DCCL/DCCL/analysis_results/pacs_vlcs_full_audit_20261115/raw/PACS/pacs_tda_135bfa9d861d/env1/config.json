@@ -1,0 +1,70 @@
+{
+  "dataset": "PACS",
+  "data_dir": "/home/hooasia/lgg/data/repro_dccl_data",
+  "clip_path": "/home/hooasia/.cache/clip/ViT-B-16.pt",
+  "backbone": "ViT-B/16",
+  "test_envs": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "holdout_fraction": 0.2,
+  "seed": 0,
+  "trial_seed": 0,
+  "epochs": 30,
+  "batch_size": 64,
+  "eval_batch_size": 128,
+  "lr": 5e-05,
+  "weight_decay": 0.0,
+  "beta": 4.0,
+  "gamma": 5.0,
+  "k": 4,
+  "n_ctx": 16,
+  "num_heads": 8,
+  "num_workers": 4,
+  "eval_num_workers": 0,
+  "model_variant": "consistent",
+  "no_swad": false,
+  "swad_n_converge": 3,
+  "swad_n_tolerance": 6,
+  "swad_tolerance_ratio": 0.3,
+  "eval_every": 1,
+  "checkpoint_freq": 0,
+  "output_root": "train_output/ablation/cipt_tda_iid_swad_lr5e5",
+  "overwrite": false,
+  "summarize_only": false,
+  "test_env": 1,
+  "environment": "cartoon",
+  "upstream_commit": "a805d878acc7d79778d1ec1c1e4d73ba6aff334b",
+  "split": "DCCL domainbed.datasets.get_dataset",
+  "source_validation_reduction": "domain_macro_mean",
+  "iid_selection": "max_source_validation_accuracy_earliest_tie",
+  "swad_selection": "LossValley_source_validation_CE",
+  "swad_average_frequency": "every_optimizer_step",
+  "inference": "TDA",
+  "primary_target_metric": "target_out",
+  "classes": [
+    "dog",
+    "elephant",
+    "giraffe",
+    "guitar",
+    "horse",
+    "house",
+    "person"
+  ],
+  "sizes": {
+    "source_train": {
+      "art_painting": 1639,
+      "photo": 1336,
+      "sketch": 3144
+    },
+    "source_val": {
+      "art_painting": 409,
+      "photo": 334,
+      "sketch": 785
+    },
+    "target_in": 1876,
+    "target_out": 468
+  }
+}

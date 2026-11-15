@@ -1,0 +1,368 @@
+{
+  "schema_version": 1,
+  "dataset": "PACS",
+  "model_variant": "consistent",
+  "seed": 0,
+  "trial_seed": 0,
+  "primary_target_metric": "target_out",
+  "targets": [
+    {
+      "target": "art_painting",
+      "test_env": 0,
+      "model_variant": "consistent",
+      "primary_target_metric": "target_out",
+      "selections": {
+        "iid": {
+          "selection": "iid",
+          "epoch": 13,
+          "step": 1300,
+          "source_val": 0.9865488957845646,
+          "source_val_loss": 0.04946523359775659,
+          "source_val_per_domain": {
+            "cartoon": {
+              "accuracy": 0.9978632478632479,
+              "loss": 0.01084828223937597,
+              "num_samples": 468
+            },
+            "photo": {
+              "accuracy": 1.0,
+              "loss": 0.0010628883844007275,
+              "num_samples": 334
+            },
+            "sketch": {
+              "accuracy": 0.9617834394904459,
+              "loss": 0.13648453016949308,
+              "num_samples": 785
+            }
+          },
+          "target_out": 0.9779951100244498,
+          "target_in": 0.9743746186699207,
+          "target_metrics": {
+            "target_out": {
+              "accuracy": 0.9779951100244498,
+              "loss": 0.08402815249846442,
+              "num_samples": 409
+            },
+            "target_in": {
+              "accuracy": 0.9743746186699207,
+              "loss": 0.09059237139191549,
+              "num_samples": 1639
+            }
+          }
+        },
+        "last": {
+          "selection": "last",
+          "epoch": 30,
+          "step": 3000,
+          "source_val": 0.9849873881721015,
+          "source_val_loss": 0.0455397597129229,
+          "source_val_per_domain": {
+            "cartoon": {
+              "accuracy": 0.9957264957264957,
+              "loss": 0.008925409398527227,
+              "num_samples": 468
+            },
+            "photo": {
+              "accuracy": 1.0,
+              "loss": 0.0009512126133470478,
+              "num_samples": 334
+            },
+            "sketch": {
+              "accuracy": 0.9592356687898089,
+              "loss": 0.12674265712689442,
+              "num_samples": 785
+            }
+          },
+          "target_out": 0.9779951100244498,
+          "target_in": 0.9725442342892008,
+          "target_metrics": {
+            "target_out": {
+              "accuracy": 0.9779951100244498,
+              "loss": 0.08939677261927309,
+              "num_samples": 409
+            },
+            "target_in": {
+              "accuracy": 0.9725442342892008,
+              "loss": 0.09267054744578485,
+              "num_samples": 1639
+            }
+          }
+        },
+        "SWAD": {
+          "selection": "SWAD",
+          "status": "loss_valley",
+          "start_step": 201,
+          "end_step": 3000,
+          "n_averaged": 29,
+          "converge_step": 400,
+          "dead_valley": false,
+          "loss_threshold": 0.082703947586781,
+          "source_val": 0.9856996388843523,
+          "source_val_loss": 0.048244052100724306,
+          "source_val_per_domain": {
+            "cartoon": {
+              "accuracy": 0.9978632478632479,
+              "loss": 0.010847100972110389,
+              "num_samples": 468
+            },
+            "photo": {
+              "accuracy": 1.0,
+              "loss": 0.001147072829172283,
+              "num_samples": 334
+            },
+            "sketch": {
+              "accuracy": 0.9592356687898089,
+              "loss": 0.13273798250089025,
+              "num_samples": 785
+            }
+          },
+          "target_out": 0.9779951100244498,
+          "target_in": 0.9737644905430141,
+          "target_metrics": {
+            "target_out": {
+              "accuracy": 0.9779951100244498,
+              "loss": 0.08147414367472922,
+              "num_samples": 409
+            },
+            "target_in": {
+              "accuracy": 0.9737644905430141,
+              "loss": 0.0865371121074311,
+              "num_samples": 1639
+            }
+          }
+        }
+      },
+      "swad": {
+        "status": "loss_valley",
+        "start_step": 201,
+        "end_step": 3000,
+        "n_averaged": 29,
+        "converge_step": 400,
+        "dead_valley": false,
+        "loss_threshold": 0.082703947586781
+      }
+    },
+    {
+      "target": "cartoon",
+      "test_env": 1,
+      "model_variant": "consistent",
+      "primary_target_metric": "target_out",
+      "selections": {
+        "iid": {
+          "selection": "iid",
+          "epoch": 19,
+          "step": 1824,
+          "source_val": 0.984391530271648,
+          "source_val_loss": 0.051968858576336006,
+          "source_val_per_domain": {
+            "art_painting": {
+              "accuracy": 0.9926650366748166,
+              "loss": 0.019509932049037775,
+              "num_samples": 409
+            },
+            "photo": {
+              "accuracy": 1.0,
+              "loss": 0.0012963445979856446,
+              "num_samples": 334
+            },
+            "sketch": {
+              "accuracy": 0.9605095541401274,
+              "loss": 0.1351002990819846,
+              "num_samples": 785
+            }
+          },
+          "target_out": 0.9957264957264957,
+          "target_in": 0.9888059701492538,
+          "target_metrics": {
+            "target_out": {
+              "accuracy": 0.9957264957264957,
+              "loss": 0.02488224870628781,
+              "num_samples": 468
+            },
+            "target_in": {
+              "accuracy": 0.9888059701492538,
+              "loss": 0.043074549833086256,
+              "num_samples": 1876
+            }
+          }
+        },
+        "last": {
+          "selection": "last",
+          "epoch": 30,
+          "step": 2880,
+          "source_val": 0.9827272774464153,
+          "source_val_loss": 0.05023077470382198,
+          "source_val_per_domain": {
+            "art_painting": {
+              "accuracy": 0.9902200488997555,
+              "loss": 0.023058464147223384,
+              "num_samples": 409
+            },
+            "photo": {
+              "accuracy": 1.0,
+              "loss": 0.000986286444578342,
+              "num_samples": 334
+            },
+            "sketch": {
+              "accuracy": 0.9579617834394905,
+              "loss": 0.1266475735196642,
+              "num_samples": 785
+            }
+          },
+          "target_out": 0.9978632478632479,
+          "target_in": 0.9888059701492538,
+          "target_metrics": {
+            "target_out": {
+              "accuracy": 0.9978632478632479,
+              "loss": 0.02134452085209708,
+              "num_samples": 468
+            },
+            "target_in": {
+              "accuracy": 0.9888059701492538,
+              "loss": 0.04056081916096368,
+              "num_samples": 1876
+            }
+          }
+        },
+        "SWAD": {
+          "selection": "SWAD",
+          "status": "loss_valley",
+          "start_step": 385,
+          "end_step": 2880,
+          "n_averaged": 27,
+          "converge_step": 672,
+          "dead_valley": false,
+          "loss_threshold": 0.08234909902841003,
+          "source_val": 0.9827272774464153,
+          "source_val_loss": 0.05161926487834544,
+          "source_val_per_domain": {
+            "art_painting": {
+              "accuracy": 0.9902200488997555,
+              "loss": 0.0242397541494489,
+              "num_samples": 409
+            },
+            "photo": {
+              "accuracy": 1.0,
+              "loss": 0.0012229221488187414,
+              "num_samples": 334
+            },
+            "sketch": {
+              "accuracy": 0.9579617834394905,
+              "loss": 0.12939511833676867,
+              "num_samples": 785
+            }
+          },
+          "target_out": 0.9957264957264957,
+          "target_in": 0.988272921108742,
+          "target_metrics": {
+            "target_out": {
+              "accuracy": 0.9957264957264957,
+              "loss": 0.024164138505092032,
+              "num_samples": 468
+            },
+            "target_in": {
+              "accuracy": 0.988272921108742,
+              "loss": 0.03927842576874853,
+              "num_samples": 1876
+            }
+          }
+        }
+      },
+      "swad": {
+        "status": "loss_valley",
+        "start_step": 385,
+        "end_step": 2880,
+        "n_averaged": 27,
+        "converge_step": 672,
+        "dead_valley": false,
+        "loss_threshold": 0.08234909902841003
+      }
+    }
+  ],
+  "tables": {
+    "target_out": {
+      "columns": [
+        "Selection",
+        "art_painting",
+        "cartoon",
+        "Avg."
+      ],
+      "rows": [
+        [
+          "iid",
+          0.9779951100244498,
+          0.9957264957264957,
+          0.9868608028754728
+        ],
+        [
+          "last",
+          0.9779951100244498,
+          0.9978632478632479,
+          0.9879291789438489
+        ],
+        [
+          "SWAD",
+          0.9779951100244498,
+          0.9957264957264957,
+          0.9868608028754728
+        ]
+      ]
+    },
+    "target_in": {
+      "columns": [
+        "Selection",
+        "art_painting",
+        "cartoon",
+        "Avg."
+      ],
+      "rows": [
+        [
+          "iid",
+          0.9743746186699207,
+          0.9888059701492538,
+          0.9815902944095872
+        ],
+        [
+          "last",
+          0.9725442342892008,
+          0.9888059701492538,
+          0.9806751022192273
+        ],
+        [
+          "SWAD",
+          0.9737644905430141,
+          0.988272921108742,
+          0.981018705825878
+        ]
+      ]
+    },
+    "source_val": {
+      "columns": [
+        "Selection",
+        "art_painting",
+        "cartoon",
+        "Avg."
+      ],
+      "rows": [
+        [
+          "iid",
+          0.9865488957845646,
+          0.984391530271648,
+          0.9854702130281063
+        ],
+        [
+          "last",
+          0.9849873881721015,
+          0.9827272774464153,
+          0.9838573328092584
+        ],
+        [
+          "SWAD",
+          0.9856996388843523,
+          0.9827272774464153,
+          0.9842134581653839
+        ]
+      ]
+    }
+  }
+}

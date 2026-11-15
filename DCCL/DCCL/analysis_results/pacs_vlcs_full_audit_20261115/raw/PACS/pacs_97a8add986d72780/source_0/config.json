@@ -1,0 +1,13 @@
+{
+  "lr": 4e-05,
+  "steps": 300,
+  "check": 100,
+  "rd": 0.5,
+  "contrastive": 0.2,
+  "s_uniform": 1.0,
+  "ind": 0.1,
+  "warmup": 25,
+  "temperature": 0.15,
+  "schedule": "constant",
+  "constraint": "center_mse"
+}

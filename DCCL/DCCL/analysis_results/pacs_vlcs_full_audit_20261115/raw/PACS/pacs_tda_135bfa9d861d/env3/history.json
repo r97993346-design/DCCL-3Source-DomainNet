@@ -1,0 +1,902 @@
+[
+  {
+    "step": 76,
+    "epoch": 1.0,
+    "epoch_index": 1,
+    "lr": 4.9863047384206835e-05,
+    "train_out": 0.9911602723960892,
+    "tr_outloss": 0.0799460475825475,
+    "source_val": 0.9911602723960892,
+    "source_val_pooled": 0.990916597853014,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9828850855745721,
+        "loss": 0.12560667910027912,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9935897435897436,
+        "loss": 0.07751289595905532,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 0.9970059880239521,
+        "loss": 0.03671856768830808,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 76,
+    "iid_best_source_val": 0.9911602723960892,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 152,
+    "epoch": 2.0,
+    "epoch_index": 2,
+    "lr": 4.9453690018345144e-05,
+    "train_out": 0.9920555311753355,
+    "tr_outloss": 0.0341012955452936,
+    "source_val": 0.9920555311753355,
+    "source_val_pooled": 0.9917423616845582,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.980440097799511,
+        "loss": 0.06028208522749996,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9957264957264957,
+        "loss": 0.030707733753399972,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.01131406765498087,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 152,
+    "iid_best_source_val": 0.9920555311753355,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 228,
+    "epoch": 3.0,
+    "epoch_index": 3,
+    "lr": 4.877641290737884e-05,
+    "train_out": 0.9928705271003558,
+    "tr_outloss": 0.02709683343571051,
+    "source_val": 0.9928705271003558,
+    "source_val_pooled": 0.9925681255161024,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9828850855745721,
+        "loss": 0.052610382547005466,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9957264957264957,
+        "loss": 0.02237284285390479,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0063072749062212646,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 228,
+    "iid_best_source_val": 0.9928705271003558,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 304,
+    "epoch": 4.0,
+    "epoch_index": 4,
+    "lr": 4.7838636441065016e-05,
+    "train_out": 0.994397773737627,
+    "tr_outloss": 0.022970055553171147,
+    "source_val": 0.994397773737627,
+    "source_val_pooled": 0.9942196531791907,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9853300733496333,
+        "loss": 0.048118472062871044,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9978632478632479,
+        "loss": 0.017506094824554574,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0032855997720878283,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 304,
+    "iid_best_source_val": 0.994397773737627,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 380,
+    "epoch": 5.0,
+    "epoch_index": 5,
+    "lr": 4.665063509461097e-05,
+    "train_out": 0.9936855230253764,
+    "tr_outloss": 0.022455636819957797,
+    "source_val": 0.9936855230253764,
+    "source_val_pooled": 0.9933938893476466,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9853300733496333,
+        "loss": 0.05008292023301999,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9957264957264957,
+        "loss": 0.01560867609631302,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0016753141305403795,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 304,
+    "iid_best_source_val": 0.994397773737627,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 456,
+    "epoch": 6.0,
+    "epoch_index": 6,
+    "lr": 4.522542485937369e-05,
+    "train_out": 0.994397773737627,
+    "tr_outloss": 0.018562818714011522,
+    "source_val": 0.994397773737627,
+    "source_val_pooled": 0.9942196531791907,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9853300733496333,
+        "loss": 0.041704680415412324,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9978632478632479,
+        "loss": 0.012383524678711198,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0016002510479110443,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 304,
+    "iid_best_source_val": 0.994397773737627,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 532,
+    "epoch": 7.0,
+    "epoch_index": 7,
+    "lr": 4.357862063693486e-05,
+    "train_out": 0.9952127696626474,
+    "tr_outloss": 0.01526655761142655,
+    "source_val": 0.9952127696626474,
+    "source_val_pooled": 0.9950454170107349,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9877750611246944,
+        "loss": 0.0342802439058031,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9978632478632479,
+        "loss": 0.010204602574181354,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0013148263542951937,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 532,
+    "iid_best_source_val": 0.9952127696626474,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 608,
+    "epoch": 8.0,
+    "epoch_index": 8,
+    "lr": 4.172826515897146e-05,
+    "train_out": 0.9928705271003558,
+    "tr_outloss": 0.01803464584070803,
+    "source_val": 0.9928705271003558,
+    "source_val_pooled": 0.9925681255161024,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9828850855745721,
+        "loss": 0.041933911809274214,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9957264957264957,
+        "loss": 0.011303478262872778,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0008665474499770981,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 532,
+    "iid_best_source_val": 0.9952127696626474,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 684,
+    "epoch": 9.0,
+    "epoch_index": 9,
+    "lr": 3.969463130731183e-05,
+    "train_out": 0.9945005189503967,
+    "tr_outloss": 0.013193442287896115,
+    "source_val": 0.9945005189503967,
+    "source_val_pooled": 0.9942196531791907,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9877750611246944,
+        "loss": 0.03157716628828958,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9957264957264957,
+        "loss": 0.00747295325765243,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.000530207317746328,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 532,
+    "iid_best_source_val": 0.9952127696626474,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 760,
+    "epoch": 10.0,
+    "epoch_index": 10,
+    "lr": 3.7500000000000003e-05,
+    "train_out": 0.9935827778126066,
+    "tr_outloss": 0.01740642228921255,
+    "source_val": 0.9935827778126066,
+    "source_val_pooled": 0.9933938893476466,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9828850855745721,
+        "loss": 0.042305746404932294,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9978632478632479,
+        "loss": 0.009523903202806782,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0003896172598985855,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 532,
+    "iid_best_source_val": 0.9952127696626474,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 836,
+    "epoch": 11.0,
+    "epoch_index": 11,
+    "lr": 3.516841607689502e-05,
+    "train_out": 0.9960277655876677,
+    "tr_outloss": 0.010802929858598166,
+    "source_val": 0.9960277655876677,
+    "source_val_pooled": 0.9958711808422791,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.025925866858737684,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9978632478632479,
+        "loss": 0.006114673315205126,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00036824940185168546,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 836,
+    "iid_best_source_val": 0.9960277655876677,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 912,
+    "epoch": 12.0,
+    "epoch_index": 12,
+    "lr": 3.272542485937369e-05,
+    "train_out": 0.995315514875417,
+    "tr_outloss": 0.010814396114988035,
+    "source_val": 0.995315514875417,
+    "source_val_pooled": 0.9950454170107349,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.026178317895946993,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9957264957264957,
+        "loss": 0.00597498142439076,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0002898890246263521,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 836,
+    "iid_best_source_val": 0.9960277655876677,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 988,
+    "epoch": 13.0,
+    "epoch_index": 13,
+    "lr": 3.0197792270443985e-05,
+    "train_out": 0.995315514875417,
+    "tr_outloss": 0.00993565300939751,
+    "source_val": 0.995315514875417,
+    "source_val_pooled": 0.9950454170107349,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.023422966859232827,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9957264957264957,
+        "loss": 0.006102531861800414,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0002814603071592882,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 836,
+    "iid_best_source_val": 0.9960277655876677,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1064,
+    "epoch": 14.0,
+    "epoch_index": 14,
+    "lr": 2.7613211581691344e-05,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.011283007912006803,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.02891408334415597,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.004730443096059,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00020449729580543713,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1140,
+    "epoch": 15.0,
+    "epoch_index": 15,
+    "lr": 2.500000000000001e-05,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.010440430471214077,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.026808918273864283,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.004334215472778703,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0001781576669992444,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1216,
+    "epoch": 16.0,
+    "epoch_index": 16,
+    "lr": 2.2386788418308672e-05,
+    "train_out": 0.9960277655876677,
+    "tr_outloss": 0.009399612674691771,
+    "source_val": 0.9960277655876677,
+    "source_val_pooled": 0.9958711808422791,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.02341260387582709,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 0.9978632478632479,
+        "loss": 0.004571497440338135,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0002147367079100923,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1292,
+    "epoch": 17.0,
+    "epoch_index": 17,
+    "lr": 1.9802207729556017e-05,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009880528631861415,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.025233475102025168,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.004249206274493128,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00015890451906594688,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1368,
+    "epoch": 18.0,
+    "epoch_index": 18,
+    "lr": 1.7274575140626318e-05,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.010221374120689176,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.02580492119566699,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.004694658721614088,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00016454244478644725,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1444,
+    "epoch": 19.0,
+    "epoch_index": 19,
+    "lr": 1.4831583923105e-05,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009666588283180816,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.02477588732260072,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.004071336804737902,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00015254072220382577,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1520,
+    "epoch": 20.0,
+    "epoch_index": 20,
+    "lr": 1.2500000000000007e-05,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009611188490413654,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.02472272691200772,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.003984567255545885,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0001262713036873562,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1596,
+    "epoch": 21.0,
+    "epoch_index": 21,
+    "lr": 1.0305368692688176e-05,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009153078890847906,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.02356436610572532,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.0037660493841792783,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0001288211826391206,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1672,
+    "epoch": 22.0,
+    "epoch_index": 22,
+    "lr": 8.271734841028555e-06,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009196742229365826,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.023747420053437242,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.0037140707907258957,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0001287358439343418,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1748,
+    "epoch": 23.0,
+    "epoch_index": 23,
+    "lr": 6.421379363065152e-06,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009176835849919298,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.023685453805735467,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.0037241147862922433,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00012093895773018548,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1824,
+    "epoch": 24.0,
+    "epoch_index": 24,
+    "lr": 4.774575140626318e-06,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009451193064752944,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.024512912134223214,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.0037239880149817876,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00011667904505383469,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1900,
+    "epoch": 25.0,
+    "epoch_index": 25,
+    "lr": 3.349364905389034e-06,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009452842618604079,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.024558707117615382,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.0036868276950131115,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00011299304318374503,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1976,
+    "epoch": 26.0,
+    "epoch_index": 26,
+    "lr": 2.1613635589349765e-06,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009510242675667226,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.02478296547094337,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.0036387178632948133,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00010904469276348988,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2052,
+    "epoch": 27.0,
+    "epoch_index": 27,
+    "lr": 1.223587092621162e-06,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009407977629348974,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.02445224954229768,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.0036608025463473084,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.0001108807994019307,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2128,
+    "epoch": 28.0,
+    "epoch_index": 28,
+    "lr": 5.46309981654858e-07,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.0094150123769155,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.024480216207397158,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.0036545986484768046,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00011022227487253572,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2204,
+    "epoch": 29.0,
+    "epoch_index": 29,
+    "lr": 1.3695261579316502e-07,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009413885147972671,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.024488929708085243,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.0036431127188042696,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00010961301702849879,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2280,
+    "epoch": 30.0,
+    "epoch_index": 30,
+    "lr": 0.0,
+    "train_out": 0.9967400162999184,
+    "tr_outloss": 0.009414798271169004,
+    "source_val": 0.9967400162999184,
+    "source_val_pooled": 0.9966969446738233,
+    "source_val_per_domain": {
+      "art_painting": {
+        "accuracy": 0.9902200488997555,
+        "loss": 0.024499042691722112,
+        "num_samples": 409
+      },
+      "cartoon": {
+        "accuracy": 1.0,
+        "loss": 0.003635379262905345,
+        "num_samples": 468
+      },
+      "photo": {
+        "accuracy": 1.0,
+        "loss": 0.00010997285887955905,
+        "num_samples": 334
+      }
+    },
+    "iid_best_step": 1064,
+    "iid_best_source_val": 0.9967400162999184,
+    "swad_dead_valley": false
+  }
+]

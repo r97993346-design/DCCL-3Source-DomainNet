@@ -1,0 +1,902 @@
+[
+  {
+    "step": 94,
+    "epoch": 1.0,
+    "epoch_index": 1,
+    "lr": 4.9863047384206835e-05,
+    "train_out": 0.8988909813768572,
+    "tr_outloss": 0.31021764541878677,
+    "source_val": 0.8988909813768572,
+    "source_val_pooled": 0.8817998656816656,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.03209356537134824,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.800376647834275,
+        "loss": 0.5709409372505719,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8962962962962963,
+        "loss": 0.3276184336344401,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 94,
+    "iid_best_source_val": 0.8988909813768572,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 188,
+    "epoch": 2.0,
+    "epoch_index": 2,
+    "lr": 4.9453690018345144e-05,
+    "train_out": 0.8914417242100857,
+    "tr_outloss": 0.3136773912685317,
+    "source_val": 0.8914417242100857,
+    "source_val_pooled": 0.8723975822699799,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.007100831862052001,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.7928436911487758,
+        "loss": 0.5864141503745328,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8814814814814815,
+        "loss": 0.3475171915690104,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 94,
+    "iid_best_source_val": 0.8988909813768572,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 282,
+    "epoch": 3.0,
+    "epoch_index": 3,
+    "lr": 4.877641290737884e-05,
+    "train_out": 0.9036032642812303,
+    "tr_outloss": 0.26562408671568316,
+    "source_val": 0.9036032642812303,
+    "source_val_pooled": 0.8878441907320349,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.007306174549534127,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8041431261770244,
+        "loss": 0.5108099298064094,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9066666666666666,
+        "loss": 0.2787561557911061,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 282,
+    "iid_best_source_val": 0.9036032642812303,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 376,
+    "epoch": 4.0,
+    "epoch_index": 4,
+    "lr": 4.7838636441065016e-05,
+    "train_out": 0.8924377484829463,
+    "tr_outloss": 0.2952455142990558,
+    "source_val": 0.8924377484829463,
+    "source_val_pooled": 0.8757555406312961,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.009686644422713102,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.7721280602636534,
+        "loss": 0.5863233995527422,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9051851851851852,
+        "loss": 0.28972649892171226,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 282,
+    "iid_best_source_val": 0.9036032642812303,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 470,
+    "epoch": 5.0,
+    "epoch_index": 5,
+    "lr": 4.665063509461097e-05,
+    "train_out": 0.9022557020297133,
+    "tr_outloss": 0.26514645001959297,
+    "source_val": 0.9022557020297133,
+    "source_val_pooled": 0.8858294157152451,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.004134877726383007,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8060263653483992,
+        "loss": 0.5161996444515364,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9007407407407407,
+        "loss": 0.2751048278808594,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 282,
+    "iid_best_source_val": 0.9036032642812303,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 564,
+    "epoch": 6.0,
+    "epoch_index": 6,
+    "lr": 4.522542485937369e-05,
+    "train_out": 0.9056622724419334,
+    "tr_outloss": 0.2631374067930304,
+    "source_val": 0.9056622724419334,
+    "source_val_pooled": 0.8891873740765615,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.003570107446963711,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8192090395480226,
+        "loss": 0.5114167405611603,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8977777777777778,
+        "loss": 0.27442537237096715,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 564,
+    "iid_best_source_val": 0.9056622724419334,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 658,
+    "epoch": 7.0,
+    "epoch_index": 7,
+    "lr": 4.357862063693486e-05,
+    "train_out": 0.9027495291902072,
+    "tr_outloss": 0.2681647082610908,
+    "source_val": 0.9027495291902072,
+    "source_val_pooled": 0.8865010073875084,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.004577914943964658,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8060263653483992,
+        "loss": 0.5251152367241638,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9022222222222223,
+        "loss": 0.27480097311514395,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 564,
+    "iid_best_source_val": 0.9056622724419334,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 752,
+    "epoch": 8.0,
+    "epoch_index": 8,
+    "lr": 4.172826515897146e-05,
+    "train_out": 0.9038292529817954,
+    "tr_outloss": 0.2705067060851491,
+    "source_val": 0.9038292529817954,
+    "source_val_pooled": 0.8885157824042982,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.005095121927901629,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.800376647834275,
+        "loss": 0.5441482493657401,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9111111111111111,
+        "loss": 0.26227674696180553,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 564,
+    "iid_best_source_val": 0.9056622724419334,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 846,
+    "epoch": 9.0,
+    "epoch_index": 9,
+    "lr": 3.969463130731183e-05,
+    "train_out": 0.9065160075329567,
+    "tr_outloss": 0.2657905092585202,
+    "source_val": 0.9065160075329567,
+    "source_val_pooled": 0.890530557421088,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.00227974252544949,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8173258003766478,
+        "loss": 0.5095665409964582,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9022222222222223,
+        "loss": 0.28552524425365305,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 846,
+    "iid_best_source_val": 0.9065160075329567,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 940,
+    "epoch": 10.0,
+    "epoch_index": 10,
+    "lr": 3.7500000000000003e-05,
+    "train_out": 0.9068759154634861,
+    "tr_outloss": 0.2648302374754404,
+    "source_val": 0.9068759154634861,
+    "source_val_pooled": 0.8912021490933513,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0029814799082574068,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.815442561205273,
+        "loss": 0.5120052123922861,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9051851851851852,
+        "loss": 0.27950402012577763,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 940,
+    "iid_best_source_val": 0.9068759154634861,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1034,
+    "epoch": 11.0,
+    "epoch_index": 11,
+    "lr": 3.516841607689502e-05,
+    "train_out": 0.9036869637999582,
+    "tr_outloss": 0.26774489814594443,
+    "source_val": 0.9036869637999582,
+    "source_val_pooled": 0.8865010073875084,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0025296154770960656,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8192090395480226,
+        "loss": 0.5232603383827569,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8918518518518519,
+        "loss": 0.2774447405779803,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 940,
+    "iid_best_source_val": 0.9068759154634861,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1128,
+    "epoch": 12.0,
+    "epoch_index": 12,
+    "lr": 3.272542485937369e-05,
+    "train_out": 0.9011341284787613,
+    "tr_outloss": 0.2713916108598408,
+    "source_val": 0.9011341284787613,
+    "source_val_pooled": 0.8844862323707186,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0039648850162121935,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8041431261770244,
+        "loss": 0.5336869692398329,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8992592592592593,
+        "loss": 0.2765229783234773,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 940,
+    "iid_best_source_val": 0.9068759154634861,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1222,
+    "epoch": 13.0,
+    "epoch_index": 13,
+    "lr": 3.0197792270443985e-05,
+    "train_out": 0.9056622724419334,
+    "tr_outloss": 0.2682313091421255,
+    "source_val": 0.9056622724419334,
+    "source_val_pooled": 0.8891873740765615,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.001850599943011894,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8192090395480226,
+        "loss": 0.5176304899815561,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8977777777777778,
+        "loss": 0.2852128375018084,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 940,
+    "iid_best_source_val": 0.9068759154634861,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1316,
+    "epoch": 14.0,
+    "epoch_index": 14,
+    "lr": 2.7613211581691344e-05,
+    "train_out": 0.9060221803724628,
+    "tr_outloss": 0.266157160301783,
+    "source_val": 0.9060221803724628,
+    "source_val_pooled": 0.8898589657488247,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.00189177348367317,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8173258003766478,
+        "loss": 0.5117919260948167,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9007407407407407,
+        "loss": 0.2847877813268591,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 940,
+    "iid_best_source_val": 0.9068759154634861,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1410,
+    "epoch": 15.0,
+    "epoch_index": 15,
+    "lr": 2.500000000000001e-05,
+    "train_out": 0.9045406988909814,
+    "tr_outloss": 0.2718112423077663,
+    "source_val": 0.9045406988909814,
+    "source_val_pooled": 0.8878441907320349,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.002167536584206268,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8173258003766478,
+        "loss": 0.5291803839516505,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8962962962962963,
+        "loss": 0.28408580638744213,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 940,
+    "iid_best_source_val": 0.9068759154634861,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1504,
+    "epoch": 16.0,
+    "epoch_index": 16,
+    "lr": 2.2386788418308672e-05,
+    "train_out": 0.897769407825905,
+    "tr_outloss": 0.27931394931678777,
+    "source_val": 0.897769407825905,
+    "source_val_pooled": 0.880456682337139,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0031722191944981632,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.7984934086629002,
+        "loss": 0.5505619102952171,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8948148148148148,
+        "loss": 0.28420771846064813,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 940,
+    "iid_best_source_val": 0.9068759154634861,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1598,
+    "epoch": 17.0,
+    "epoch_index": 17,
+    "lr": 1.9802207729556017e-05,
+    "train_out": 0.9047666875915463,
+    "tr_outloss": 0.27060590032655035,
+    "source_val": 0.9047666875915463,
+    "source_val_pooled": 0.8885157824042982,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.002390845306875849,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8135593220338984,
+        "loss": 0.5243153563102535,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9007407407407407,
+        "loss": 0.2851114993625217,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 940,
+    "iid_best_source_val": 0.9068759154634861,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1692,
+    "epoch": 18.0,
+    "epoch_index": 18,
+    "lr": 1.7274575140626318e-05,
+    "train_out": 0.9049006068215107,
+    "tr_outloss": 0.2703886022034874,
+    "source_val": 0.9049006068215107,
+    "source_val_pooled": 0.8885157824042982,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0021029945081198595,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.815442561205273,
+        "loss": 0.5255983746882437,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8992592592592593,
+        "loss": 0.28346443741409866,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 940,
+    "iid_best_source_val": 0.9068759154634861,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1786,
+    "epoch": 19.0,
+    "epoch_index": 19,
+    "lr": 1.4831583923105e-05,
+    "train_out": 0.9072776731533794,
+    "tr_outloss": 0.27485008190685517,
+    "source_val": 0.9072776731533794,
+    "source_val_pooled": 0.8912021490933513,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0017868653597974946,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8210922787193974,
+        "loss": 0.524109165996257,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9007407407407407,
+        "loss": 0.298654214364511,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1880,
+    "epoch": 20.0,
+    "epoch_index": 20,
+    "lr": 1.2500000000000007e-05,
+    "train_out": 0.9040468717304876,
+    "tr_outloss": 0.274148050602588,
+    "source_val": 0.9040468717304876,
+    "source_val_pooled": 0.8871725990597716,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0018073074361671408,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8173258003766478,
+        "loss": 0.5298935096367156,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8948148148148148,
+        "loss": 0.29074333473488134,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 1974,
+    "epoch": 21.0,
+    "epoch_index": 21,
+    "lr": 1.0305368692688176e-05,
+    "train_out": 0.9036451140405943,
+    "tr_outloss": 0.27414068690349125,
+    "source_val": 0.9036451140405943,
+    "source_val_pooled": 0.8871725990597716,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0015957953191161577,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8116760828625236,
+        "loss": 0.5267442821782861,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8992592592592593,
+        "loss": 0.2940819832130715,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2068,
+    "epoch": 22.0,
+    "epoch_index": 22,
+    "lr": 8.271734841028555e-06,
+    "train_out": 0.9039129525005231,
+    "tr_outloss": 0.27568215934232293,
+    "source_val": 0.9039129525005231,
+    "source_val_pooled": 0.8871725990597716,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0020193011226797273,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.815442561205273,
+        "loss": 0.5325424837302802,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8962962962962963,
+        "loss": 0.292484693174009,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2162,
+    "epoch": 23.0,
+    "epoch_index": 23,
+    "lr": 6.421379363065152e-06,
+    "train_out": 0.8991588198367859,
+    "tr_outloss": 0.2809218354341292,
+    "source_val": 0.8991588198367859,
+    "source_val_pooled": 0.8817998656816656,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0017169862195796765,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8041431261770244,
+        "loss": 0.5426125544388191,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8933333333333333,
+        "loss": 0.2984359656439887,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2256,
+    "epoch": 24.0,
+    "epoch_index": 24,
+    "lr": 4.774575140626318e-06,
+    "train_out": 0.9044067796610169,
+    "tr_outloss": 0.2761839895050716,
+    "source_val": 0.9044067796610169,
+    "source_val_pooled": 0.8878441907320349,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0017405804839024696,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.815442561205273,
+        "loss": 0.532964200847791,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8977777777777778,
+        "loss": 0.29384718718352143,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2350,
+    "epoch": 25.0,
+    "epoch_index": 25,
+    "lr": 3.349364905389034e-06,
+    "train_out": 0.9045406988909814,
+    "tr_outloss": 0.2768847523455312,
+    "source_val": 0.9045406988909814,
+    "source_val_pooled": 0.8878441907320349,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0015938430629644292,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8173258003766478,
+        "loss": 0.5327919988757922,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8962962962962963,
+        "loss": 0.2962684150978371,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2444,
+    "epoch": 26.0,
+    "epoch_index": 26,
+    "lr": 2.1613635589349765e-06,
+    "train_out": 0.9020297133291484,
+    "tr_outloss": 0.27565269446456825,
+    "source_val": 0.9020297133291484,
+    "source_val_pooled": 0.8851578240429818,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.001870982612190314,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8097928436911488,
+        "loss": 0.5326199495635239,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8962962962962963,
+        "loss": 0.29246715121799044,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2538,
+    "epoch": 27.0,
+    "epoch_index": 27,
+    "lr": 1.223587092621162e-06,
+    "train_out": 0.9032852061100649,
+    "tr_outloss": 0.2770240115359392,
+    "source_val": 0.9032852061100649,
+    "source_val_pooled": 0.8865010073875084,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0016351546565656527,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8135593220338984,
+        "loss": 0.533281453360721,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8962962962962963,
+        "loss": 0.29615542659053096,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2632,
+    "epoch": 28.0,
+    "epoch_index": 28,
+    "lr": 5.46309981654858e-07,
+    "train_out": 0.905528353211969,
+    "tr_outloss": 0.27581775816855825,
+    "source_val": 0.905528353211969,
+    "source_val_pooled": 0.8891873740765615,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0016898757682672237,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8173258003766478,
+        "loss": 0.531092448872137,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.8992592592592593,
+        "loss": 0.29467094986527054,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2726,
+    "epoch": 29.0,
+    "epoch_index": 29,
+    "lr": 1.3695261579316502e-07,
+    "train_out": 0.906649926762921,
+    "tr_outloss": 0.27587263458171724,
+    "source_val": 0.906649926762921,
+    "source_val_pooled": 0.890530557421088,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.001685283229070923,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8192090395480226,
+        "loss": 0.5314148886729095,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9007407407407407,
+        "loss": 0.2945177318431713,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  },
+  {
+    "step": 2820,
+    "epoch": 30.0,
+    "epoch_index": 30,
+    "lr": 0.0,
+    "train_out": 0.906649926762921,
+    "tr_outloss": 0.2758903528024603,
+    "source_val": 0.906649926762921,
+    "source_val_pooled": 0.890530557421088,
+    "source_val_per_domain": {
+      "CALTECH": {
+        "accuracy": 1.0,
+        "loss": 0.0016981288198342171,
+        "num_samples": 283
+      },
+      "LABELME": {
+        "accuracy": 0.8192090395480226,
+        "loss": 0.5316479134245332,
+        "num_samples": 531
+      },
+      "PASCAL": {
+        "accuracy": 0.9007407407407407,
+        "loss": 0.2943250161630136,
+        "num_samples": 675
+      }
+    },
+    "iid_best_step": 1786,
+    "iid_best_source_val": 0.9072776731533794,
+    "swad_dead_valley": false
+  }
+]

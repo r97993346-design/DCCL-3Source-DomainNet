@@ -1,0 +1,136 @@
+{
+  "target": "cartoon",
+  "test_env": 1,
+  "model_variant": "consistent",
+  "primary_target_metric": "target_out",
+  "selections": {
+    "iid": {
+      "selection": "iid",
+      "epoch": 19,
+      "step": 1824,
+      "source_val": 0.984391530271648,
+      "source_val_loss": 0.051968858576336006,
+      "source_val_per_domain": {
+        "art_painting": {
+          "accuracy": 0.9926650366748166,
+          "loss": 0.019509932049037775,
+          "num_samples": 409
+        },
+        "photo": {
+          "accuracy": 1.0,
+          "loss": 0.0012963445979856446,
+          "num_samples": 334
+        },
+        "sketch": {
+          "accuracy": 0.9605095541401274,
+          "loss": 0.1351002990819846,
+          "num_samples": 785
+        }
+      },
+      "target_out": 0.9957264957264957,
+      "target_in": 0.9888059701492538,
+      "target_metrics": {
+        "target_out": {
+          "accuracy": 0.9957264957264957,
+          "loss": 0.02488224870628781,
+          "num_samples": 468
+        },
+        "target_in": {
+          "accuracy": 0.9888059701492538,
+          "loss": 0.043074549833086256,
+          "num_samples": 1876
+        }
+      }
+    },
+    "last": {
+      "selection": "last",
+      "epoch": 30,
+      "step": 2880,
+      "source_val": 0.9827272774464153,
+      "source_val_loss": 0.05023077470382198,
+      "source_val_per_domain": {
+        "art_painting": {
+          "accuracy": 0.9902200488997555,
+          "loss": 0.023058464147223384,
+          "num_samples": 409
+        },
+        "photo": {
+          "accuracy": 1.0,
+          "loss": 0.000986286444578342,
+          "num_samples": 334
+        },
+        "sketch": {
+          "accuracy": 0.9579617834394905,
+          "loss": 0.1266475735196642,
+          "num_samples": 785
+        }
+      },
+      "target_out": 0.9978632478632479,
+      "target_in": 0.9888059701492538,
+      "target_metrics": {
+        "target_out": {
+          "accuracy": 0.9978632478632479,
+          "loss": 0.02134452085209708,
+          "num_samples": 468
+        },
+        "target_in": {
+          "accuracy": 0.9888059701492538,
+          "loss": 0.04056081916096368,
+          "num_samples": 1876
+        }
+      }
+    },
+    "SWAD": {
+      "selection": "SWAD",
+      "status": "loss_valley",
+      "start_step": 385,
+      "end_step": 2880,
+      "n_averaged": 27,
+      "converge_step": 672,
+      "dead_valley": false,
+      "loss_threshold": 0.08234909902841003,
+      "source_val": 0.9827272774464153,
+      "source_val_loss": 0.05161926487834544,
+      "source_val_per_domain": {
+        "art_painting": {
+          "accuracy": 0.9902200488997555,
+          "loss": 0.0242397541494489,
+          "num_samples": 409
+        },
+        "photo": {
+          "accuracy": 1.0,
+          "loss": 0.0012229221488187414,
+          "num_samples": 334
+        },
+        "sketch": {
+          "accuracy": 0.9579617834394905,
+          "loss": 0.12939511833676867,
+          "num_samples": 785
+        }
+      },
+      "target_out": 0.9957264957264957,
+      "target_in": 0.988272921108742,
+      "target_metrics": {
+        "target_out": {
+          "accuracy": 0.9957264957264957,
+          "loss": 0.024164138505092032,
+          "num_samples": 468
+        },
+        "target_in": {
+          "accuracy": 0.988272921108742,
+          "loss": 0.03927842576874853,
+          "num_samples": 1876
+        }
+      }
+    }
+  },
+  "swad": {
+    "status": "loss_valley",
+    "start_step": 385,
+    "end_step": 2880,
+    "n_averaged": 27,
+    "converge_step": 672,
+    "dead_valley": false,
+    "loss_threshold": 0.08234909902841003
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "lr": 5e-05,
+  "steps": 400,
+  "check": 25,
+  "rd": 1.0,
+  "contrastive": 0.1,
+  "s_uniform": 1.0,
+  "ind": 0.1,
+  "warmup": 50,
+  "temperature": 0.1,
+  "schedule": "cosine",
+  "constraint": "relative_distance"
+}

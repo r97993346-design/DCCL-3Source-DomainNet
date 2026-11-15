@@ -1,0 +1,156 @@
+[37m[36mINFO[0m[0m 08/26 15:56:41 | Command :: train_all.py pacs_b5c1_prompt_diversity --dataset PACS --algorithm CIPTDCCL --data_dir /home/hooasia/lgg/data/repro_dccl_data --deterministic --trial_seed 0 --seed 0 --checkpoint_freq 100 --cipt_clip_path /home/hooasia/.cache/clip/ViT-B-16.pt --cipt_beta 4 --cipt_gamma 5 --cipt_k 4 --cipt_prompt_length 16 --cipt_prompt_init a photo of a --cipt_template_mode b5c --cipt_prompt_selection diversity --cipt_causal_contrastive_weight 1 --cipt_contrastive_warmup_steps 500 --output_root train_output/PACS_prompt_diversity
+Environment:
+	Python: 3.10.20
+	PyTorch: 2.5.1+cu121
+	Torchvision: 0.20.1+cu121
+	CUDA: 12.1
+	CUDNN: 90100
+	NumPy: 2.2.6
+	PIL: 12.0.0
+Args:
+	TN: False
+	algorithm: CIPTDCCL
+	aug: 0
+	checkpoint_freq: 100
+	cipt_beta: 4.0
+	cipt_clip_backbone: ViT-B/16
+	cipt_clip_path: /home/hooasia/.cache/clip/ViT-B-16.pt
+	cipt_contrastive_weight: 1.0
+	cipt_debug_shapes: False
+	cipt_enabled: True
+	cipt_gamma: 5.0
+	cipt_k: 4
+	cipt_prompt_init: a photo of a
+	cipt_prompt_length: 16
+	cipt_tda_heads: 1
+	configs: []
+	data_dir: /home/hooasia/lgg/data/repro_dccl_data
+	dataset: PACS
+	debug: False
+	deterministic: True
+	domainnet_auto_source_count: 3
+	erm_baseline: weak
+	evalmode: fast
+	holdout_fraction: 0.2
+	l: 1
+	l_d: None
+	l_layer: None
+	label_ratio: 1.0
+	lamda: 5
+	log: False
+	mix: 0
+	model: resnet50
+	model_save: None
+	n_layer: 1
+	name: pacs_b5c1_prompt_diversity
+	out_dir: train_output/PACS_prompt_diversity/PACS/260826_15-56-41_pacs_b5c1_prompt_diversity
+	out_root: train_output/PACS_prompt_diversity/PACS
+	output_root: train_output/PACS_prompt_diversity
+	pos_mask: False
+	prebuild_loader: False
+	re_w: False
+	sample_d: False
+	seed: 0
+	show: False
+	source_envs: None
+	start_epoch: 1000
+	steps: None
+	sup: True
+	t: 0.1
+	t_pre: 0.2
+	target_env: None
+	tb_freq: 10
+	test_envs: None
+	trial_seed: 0
+	two_ce: False
+	unique_name: 260826_15-56-41_pacs_b5c1_prompt_diversity
+	weak_erm: False
+	work_dir: .
+HParams:
+	data_augmentation: True
+	val_augment: False
+	resnet18: False
+	resnet_dropout: 0.0
+	class_balanced: False
+	optimizer: adam
+	cipt_enabled: True
+	cipt_clip_backbone: ViT-B/16
+	cipt_clip_path: /home/hooasia/.cache/clip/ViT-B-16.pt
+	cipt_beta: 4.0
+	cipt_gamma: 5.0
+	cipt_k: 4
+	cipt_prompt_length: 16
+	cipt_prompt_init: a photo of a
+	[36mcipt_template_mode: b5c
+	[0mcipt_tda_heads: 1
+	cipt_contrastive_weight: 1.0
+	cipt_debug_shapes: False
+	freeze_bn: True
+	pretrained: True
+	lr: 5e-05
+	batch_size: 32
+	weight_decay: 0.0
+	t: 0.1
+	t_pre: 0.2
+	l: 1
+	l_d: 0.01
+	l_layer: 1
+	n_layer: 1
+	sup: True
+	two_ce: False
+	sample_d: False
+	re_w: False
+	pos_mask: False
+	mix: 0
+	aug: 0
+	model: resnet50
+	label_ratio: 1.0
+	TN: False
+	lamda: 5
+	start_epoch: 1000
+	log: False
+	swad: LossValley
+	swad_kwargs: 
+	  n_converge: 3
+	  n_tolerance: 6
+	  tolerance_ratio: 0.3
+	test_batchsize: 128
+	indomain_test: False
+	cipt_pure: False
+	[36mcipt_prompt_selection: diversity
+	[0m[36mcipt_causal_contrastive_weight: 1
+	[0m[36mcipt_contrastive_warmup_steps: 500[0m
+Dataset:
+	[PACS] #envs=4, #classes=7
+	env0: art_painting (#2048)
+	env1: cartoon (#2344)
+	env2: photo (#1670)
+	env3: sketch (#3929)
+
+[37m[36mINFO[0m[0m 08/26 15:56:46 | n_steps = 5001
+[37m[36mINFO[0m[0m 08/26 15:56:46 | checkpoint_freq = 100
+[37m[36mINFO[0m[0m 08/26 15:56:46 | n_steps is updated to 5001 => 5001 for checkpointing
+[37m[36mINFO[0m[0m 08/26 15:56:46 | Target test envs = [[0], [1], [2], [3]]
+[37m[36mINFO[0m[0m 08/26 15:56:46 | 
+[37m[36mINFO[0m[0m 08/26 15:56:50 | Testenv name escaping te_art_painting -> te_art_painting
+[37m[36mINFO[0m[0m 08/26 15:56:50 | Test envs = [0], name = te_art_painting
+[37m[36mINFO[0m[0m 08/26 15:56:50 | Batch sizes for each domain: [0, 32, 32, 32] (total=96)
+[37m[36mINFO[0m[0m 08/26 15:56:50 | steps-per-epoch for each domain: 58.62, 41.75, 98.25 -> min = 41.75
+[37m[36mINFO[0m[0m 08/26 15:57:11 | # of params = 151206401
+[37m[36mINFO[0m[0m 08/26 15:57:33 | test_in     test_out    train_in    train_out   tr_outloss  env0_in     env0_out    env1_out    env2_out    env3_out    step        epoch       total_loss  cipt_base_  cipt_cls_l  cipt_de_lo  cipt_de_or  cipt_de_au  cipt_ind_l  causal_con  dccl_contr  contrastiv  pre_cl_los  reg_loss    mean_e_nor  mean_e_aug  mean_e_aug  mean_s_nor  mean_es_co  step_time   eval_time  
+[37m[36mINFO[0m[0m 08/26 15:57:33 | 0.097621    0.097800    0.000000    0.192614    1.997307    0.097621    0.097800    0.151709    0.149701    0.276433    0           0.000000    10.864702   10.855219   2.086059    2.191416    2.191416    0.000000    0.000700    0.000000    4.741604    0.002000    0.000000    0.000000    6.475749    6.467718    0.936278    6.610312    -0.023554   1.135464    20.426200  
+[37m[36mINFO[0m[0m 08/26 15:59:08 | 0.926174    0.941320    0.000000    0.974796    0.095339    0.926174    0.941320    0.995726    1.000000    0.928662    100         2.395210    3.413313    2.946784    0.544628    0.599953    0.599953    0.000000    0.000469    0.000000    4.574422    0.103000    0.000000    0.000000    6.282210    6.290512    0.926990    6.958693    -0.006739   0.575140    22.892035  
+[37m[36mINFO[0m[0m 08/26 16:00:41 | 0.950580    0.955990    0.000000    0.981590    0.066965    0.950580    0.955990    0.995726    1.000000    0.949045    200         4.790419    1.778370    0.448252    0.070362    0.094054    0.094054    0.000000    0.000335    0.000000    4.399254    0.303000    0.000000    0.000000    5.975347    5.995604    0.922259    7.520224    -0.000884   0.568398    23.192932  
+[37m[36mINFO[0m[0m 08/26 16:02:20 | 0.963392    0.970660    0.000000    0.981166    0.060256    0.963392    0.970660    0.995726    1.000000    0.947771    300         7.185629    2.455245    0.328181    0.056050    0.067667    0.067667    0.000000    0.000292    0.000000    4.235140    0.503000    0.000000    0.000000    5.861458    5.885237    0.921322    7.765695    -0.000635   0.594867    25.765188  
+[37m[36mINFO[0m[0m 08/26 16:04:08 | 0.964613    0.965770    0.000000    0.982015    0.058923    0.964613    0.965770    0.995726    1.000000    0.950318    400         9.580838    3.110172    0.260007    0.046668    0.053009    0.053009    0.000000    0.000260    0.000000    4.057656    0.703000    0.000000    0.000000    5.809475    5.832396    0.921051    7.914338    0.000072    0.583489    35.947985  
+[37m[36mINFO[0m[0m 08/26 16:05:49 | 0.966443    0.973105    0.000000    0.982864    0.055051    0.966443    0.973105    0.995726    1.000000    0.952866    500         11.976048   3.826025    0.266168    0.050179    0.053705    0.053705    0.000000    0.000234    0.000000    3.944111    0.902980    0.000000    0.000000    5.814909    5.824086    0.922215    8.007721    0.000130    0.587149    29.743041  
+[37m[36mINFO[0m[0m 08/26 16:07:30 | 0.971934    0.977995    0.000000    0.984426    0.054491    0.971934    0.977995    0.997863    1.000000    0.955414    600         14.371257   4.046317    0.196967    0.036865    0.039765    0.039765    0.000000    0.000209    0.000000    3.849350    1.000000    0.000000    0.000000    5.885043    5.889701    0.924170    8.099389    -0.000002   0.605957    26.789402  
+[37m[36mINFO[0m[0m 08/26 16:09:14 | 0.972544    0.977995    0.000000    0.986124    0.049698    0.972544    0.977995    0.997863    1.000000    0.960510    700         16.766467   4.010871    0.214208    0.041119    0.043033    0.043033    0.000000    0.000191    0.000000    3.796664    1.000000    0.000000    0.000000    5.994036    5.995620    0.927891    8.176319    0.000128    0.595204    31.598205  
+[37m[36mINFO[0m[0m 08/26 16:10:52 | 0.971934    0.980440    0.000000    0.983152    0.052050    0.971934    0.980440    0.997863    1.000000    0.951592    800         19.161677   3.961138    0.201685    0.038875    0.040482    0.040482    0.000000    0.000177    0.000000    3.759453    1.000000    0.000000    0.000000    6.082025    6.081629    0.930548    8.224853    -0.000442   0.583367    26.656929  
+[37m[36mINFO[0m[0m 08/26 16:14:06 | 0.971324    0.977995    0.000000    0.981453    0.056424    0.971324    0.977995    0.997863    1.000000    0.946497    900         21.556886   3.891518    0.180388    0.035018    0.036139    0.036139    0.000000    0.000163    0.000000    3.711130    1.000000    0.000000    0.000000    6.186479    6.187201    0.933590    8.273525    0.000039    0.571076    123.348134 
+[37m[36mINFO[0m[0m 08/26 16:15:52 | 0.974375    0.982885    0.000000    0.986549    0.051528    0.974375    0.982885    0.997863    1.000000    0.961783    1000        23.952096   3.875272    0.168609    0.032606    0.033810    0.033810    0.000000    0.000152    0.000000    3.706663    1.000000    0.000000    0.000000    6.279105    6.279408    0.934677    8.314953    -0.000267   0.634110    33.717504  
+[37m[36mINFO[0m[0m 08/26 16:17:01 | 0.975595    0.980440    0.000000    0.981878    0.049407    0.975595    0.980440    0.997863    1.000000    0.947771    1100        26.347305   3.849536    0.160304    0.030993    0.032141    0.032141    0.000000    0.000149    0.000000    3.689232    1.000000    0.000000    0.000000    6.358688    6.360611    0.936850    8.358157    -0.000032   0.369346    25.304111  
+[37m[36mINFO[0m[0m 08/26 16:18:12 | 0.973154    0.980440    0.000000    0.985700    0.045429    0.973154    0.980440    0.997863    1.000000    0.959236    1200        28.742515   3.837774    0.168684    0.032740    0.033816    0.033816    0.000000    0.000136    0.000000    3.669090    1.000000    0.000000    0.000000    6.466366    6.464156    0.939110    8.400549    0.000213    0.387435    25.267032  
+[37m[36mINFO[0m[0m 08/26 16:19:38 | 0.974375    0.982885    0.000000    0.985700    0.050358    0.974375    0.982885    0.997863    1.000000    0.959236    1300        31.137725   3.808459    0.151908    0.029631    0.030410    0.030410    0.000000    0.000127    0.000000    3.656551    1.000000    0.000000    0.000000    6.543419    6.532242    0.941070    8.445782    -0.000227   0.452812    30.532310  
+[37m[36mINFO[0m[0m 08/26 16:21:38 | 0.973764    0.980440    0.000000    0.985275    0.044572    0.973764    0.980440    0.997863    1.000000    0.957962    1400        33.532934   3.767445    0.133958    0.025267    0.027022    0.027022    0.000000    0.000121    0.000000    3.633487    1.000000    0.000000    0.000000    6.599647    6.595436    0.942390    8.504545    0.000052    0.691600    29.888476  
+[37m[36mINFO[0m[0m 08/26 16:23:56 | 0.970714    0.982885    0.000000    0.984426    0.044393    0.970714    0.982885    0.997863    1.000000    0.955414    1500        35.928144   3.735817    0.114639    0.022365    0.022927    0.022927    0.000000    0.000113    0.000000    3.621178    1.000000    0.000000    0.000000    6.662810    6.660063    0.944289    8.546613    -0.000214   0.810553    31.502119  

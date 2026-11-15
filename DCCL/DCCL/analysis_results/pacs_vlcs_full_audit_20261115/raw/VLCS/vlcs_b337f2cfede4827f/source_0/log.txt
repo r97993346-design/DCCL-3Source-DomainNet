@@ -1,0 +1,171 @@
+[37m[36mINFO[0m[0m 09/28 20:45:28 | Command :: train_all.py vlcs_01_b5b_no_con_random_swad --dataset VLCS --algorithm CIPTDCCL --data_dir /home/hooasia/lgg/data/repro_dccl_data --output_root train_output/ablation/main6 --deterministic --trial_seed 0 --seed 0 --checkpoint_freq 100 --aug 0 --cipt_clip_path /home/hooasia/.cache/clip/ViT-B-16.pt --cipt_beta 4 --cipt_gamma 5 --cipt_k 4 --cipt_prompt_length 16 --cipt_prompt_init a photo of a --cipt_template_mode b5b --cipt_tda_heads 1 --lr 5e-5 --cipt_use_de true --cipt_use_ind true --cipt_use_tda true --cipt_use_contrastive false --cipt_pure false --cipt_selector_mode random --swad LossValley
+Environment:
+	Python: 3.10.20
+	PyTorch: 2.5.1+cu121
+	Torchvision: 0.20.1+cu121
+	CUDA: 12.1
+	CUDNN: 90100
+	NumPy: 2.2.6
+	PIL: 12.0.0
+Args:
+	TN: False
+	algorithm: CIPTDCCL
+	aug: 0.0
+	checkpoint_freq: 100
+	cipt_beta: 4.0
+	cipt_clip_backbone: ViT-B/16
+	cipt_clip_path: /home/hooasia/.cache/clip/ViT-B-16.pt
+	cipt_contrastive_weight: 1.0
+	cipt_debug_shapes: False
+	cipt_decomposition_mode: dual_linear
+	cipt_enabled: True
+	cipt_gamma: 5.0
+	cipt_independence_mode: cosine
+	cipt_k: 4
+	cipt_mask_hard: False
+	cipt_mask_hidden_dim: 128
+	cipt_mask_sparsity_weight: 0.0
+	cipt_mask_temperature: 1.0
+	cipt_prompt_init: a photo of a
+	cipt_prompt_length: 16
+	cipt_selector_candidates: 8
+	cipt_selector_mode: random
+	cipt_tda_heads: 1
+	configs: []
+	data_dir: /home/hooasia/lgg/data/repro_dccl_data
+	dataset: VLCS
+	debug: False
+	deterministic: True
+	domainnet_auto_source_count: 3
+	erm_baseline: weak
+	evalmode: fast
+	holdout_fraction: 0.2
+	l: 1
+	l_d: None
+	l_layer: None
+	label_ratio: 1.0
+	lamda: 5
+	log: False
+	mix: 0
+	model: resnet50
+	model_save: None
+	n_layer: 1
+	name: vlcs_01_b5b_no_con_random_swad
+	out_dir: train_output/ablation/main6/VLCS/260928_20-45-28_vlcs_01_b5b_no_con_random_swad
+	out_root: train_output/ablation/main6/VLCS
+	output_root: train_output/ablation/main6
+	pos_mask: False
+	prebuild_loader: False
+	re_w: False
+	sample_d: False
+	seed: 0
+	show: False
+	source_envs: None
+	start_epoch: 1000
+	steps: None
+	sup: True
+	t: 0.1
+	t_pre: 0.2
+	target_env: None
+	tb_freq: 10
+	test_envs: None
+	trial_seed: 0
+	two_ce: False
+	unique_name: 260928_20-45-28_vlcs_01_b5b_no_con_random_swad
+	weak_erm: False
+	work_dir: .
+HParams:
+	data_augmentation: True
+	val_augment: False
+	resnet18: False
+	resnet_dropout: 0.0
+	class_balanced: False
+	optimizer: adam
+	cipt_enabled: True
+	cipt_clip_backbone: ViT-B/16
+	cipt_clip_path: /home/hooasia/.cache/clip/ViT-B-16.pt
+	cipt_beta: 4.0
+	cipt_gamma: 5.0
+	cipt_decomposition_mode: dual_linear
+	cipt_independence_mode: cosine
+	cipt_mask_hidden_dim: 128
+	cipt_mask_temperature: 1.0
+	cipt_mask_hard: False
+	cipt_mask_sparsity_weight: 0.0
+	cipt_k: 4
+	cipt_prompt_length: 16
+	cipt_prompt_init: a photo of a
+	[36mcipt_template_mode: b5b
+	[0mcipt_neutral_subject: subject
+	cipt_tda_heads: 1
+	cipt_selector_mode: random
+	cipt_selector_candidates: 8
+	cipt_contrastive_weight: 1.0
+	cipt_contrastive_temperature: 0.1
+	cipt_contrastive_type: neighbor_retention
+	cipt_neighbor_k: 5
+	cipt_neighbor_alpha: 0.5
+	cipt_neighbor_diagnostics: False
+	cipt_use_aug_view: False
+	cipt_debug_shapes: False
+	freeze_bn: True
+	pretrained: True
+	[36mlr: 5e-05
+	[0mbatch_size: 32
+	weight_decay: 0.0
+	t: 0.1
+	t_pre: 0.2
+	l: 1
+	l_d: 0.05
+	l_layer: 1
+	n_layer: 1
+	sup: True
+	two_ce: False
+	sample_d: False
+	re_w: False
+	pos_mask: False
+	mix: 0
+	aug: 0.0
+	model: resnet50
+	label_ratio: 1.0
+	TN: False
+	lamda: 5
+	start_epoch: 1000
+	log: False
+	[36mswad: LossValley
+	[0mswad_kwargs: 
+	  n_converge: 3
+	  n_tolerance: 6
+	  tolerance_ratio: 0.3
+	test_batchsize: 128
+	indomain_test: False
+	[36mcipt_pure: False
+	[0m[36mcipt_use_de: True
+	[0m[36mcipt_use_ind: True
+	[0m[36mcipt_use_tda: True
+	[0m[36mcipt_use_contrastive: False
+	[0mcipt_causal_contrastive_weight: 1.0
+	cipt_contrastive_warmup_steps: 500
+Dataset:
+	[VLCS] #envs=4, #classes=5
+	env0: CALTECH (#1415)
+	env1: LABELME (#2656)
+	env2: PASCAL (#3376)
+	env3: SUN (#3282)
+
+[37m[36mINFO[0m[0m 09/28 20:49:38 | n_steps = 5001
+[37m[36mINFO[0m[0m 09/28 20:49:38 | checkpoint_freq = 100
+[37m[36mINFO[0m[0m 09/28 20:49:38 | n_steps is updated to 5001 => 5001 for checkpointing
+[37m[36mINFO[0m[0m 09/28 20:49:38 | Target test envs = [[0], [1], [2], [3]]
+[37m[36mINFO[0m[0m 09/28 20:49:38 | 
+[37m[36mINFO[0m[0m 09/28 20:50:56 | Testenv name escaping te_CALTECH -> te_CALTECH
+[37m[36mINFO[0m[0m 09/28 20:50:56 | Test envs = [0], name = te_CALTECH
+[37m[36mINFO[0m[0m 09/28 20:50:56 | Batch sizes for each domain: [0, 32, 32, 32] (total=96)
+[37m[36mINFO[0m[0m 09/28 20:50:56 | steps-per-epoch for each domain: 66.41, 84.41, 82.06 -> min = 66.41
+[37m[36mINFO[0m[0m 09/28 20:51:28 | # of params = 151206401
+[37m[36mINFO[0m[0m 09/28 20:52:55 | test_in     test_out    train_in    train_out   tr_outloss  env0_in     env0_out    env1_out    env2_out    env3_out    step        epoch       nbr_check   nbr_pur_v   nbr_pur_e   nbr_gap     nbr_cover   nbr_drop    nbr_wmean   nbr_wmax    prompt_sel  prompt_cou  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  total_loss  cipt_base_  cipt_cls_l  cipt_de_lo  cipt_de_or  cipt_de_au  cipt_ind_l  cipt_mask_  cipt_mask_  cipt_mask_  cipt_mask_  cipt_mask_  cipt_mask_  causal_con  dccl_contr  contrastiv  contrastiv  pre_cl_los  reg_loss    mean_e_nor  mean_s_nor  mean_es_co  ablation_d  ablation_i  ablation_t  ablation_c  step_time   eval_time  
+[37m[36mINFO[0m[0m 09/28 20:52:55 | 0.997350    0.996466    0.000000    0.553227    1.085389    0.997350    0.996466    0.365348    0.785185    0.509146    0           0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    0.000000    4.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    9.425375    9.425375    1.185055    1.435080    1.435080    0.000000    0.500000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    1.000000    1.000000    1.000000    1.000000    0.000000    0.588157    85.916022  
+[37m[36mINFO[0m[0m 09/28 20:54:06 | 0.412544    0.388693    0.000000    0.538499    1.232873    0.412544    0.388693    0.474576    0.555556    0.585366    100         1.505882    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    0.000000    4.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    5.292047    5.292047    0.210286    0.693056    0.693056    0.000000    0.461907    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.995157    1.025326    0.960602    1.000000    1.000000    1.000000    0.000000    0.294709    31.851564  
+[37m[36mINFO[0m[0m 09/28 20:55:20 | 0.387809    0.367491    0.000000    0.533532    2.427885    0.387809    0.367491    0.474576    0.543704    0.582317    200         3.011765    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    0.000000    4.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    3.280262    3.280262    0.017532    0.448533    0.448533    0.000000    0.293719    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000859    1.120167    0.753209    1.000000    1.000000    1.000000    0.000000    0.319073    32.963054  
+[37m[36mINFO[0m[0m 09/28 20:57:22 | 0.387809    0.367491    0.000000    0.535296    2.598234    0.387809    0.367491    0.478343    0.543704    0.583841    300         4.517647    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    0.000000    4.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.128909    2.128909    0.005881    0.414881    0.414881    0.000000    0.092701    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.057973    1.264914    0.386389    1.000000    1.000000    1.000000    0.000000    0.302881    79.133545  
+[37m[36mINFO[0m[0m 09/28 21:00:11 | 0.387809    0.367491    0.000000    0.536298    2.795357    0.387809    0.367491    0.478343    0.545185    0.585366    400         6.023529    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    0.000000    4.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.733772    1.733772    0.001911    0.394191    0.394191    0.000000    0.031019    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.107009    1.366482    0.176800    1.000000    1.000000    1.000000    0.000000    0.879884    70.380602  

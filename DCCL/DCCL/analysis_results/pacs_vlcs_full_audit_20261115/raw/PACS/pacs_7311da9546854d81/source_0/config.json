@@ -1,0 +1,21 @@
+{
+  "steps": 300,
+  "check": 100,
+  "lr": 5e-05,
+  "schedule": "constant",
+  "constraint": "relative_distance",
+  "rd": 1,
+  "s_uniform": 1,
+  "ind": 0.1,
+  "temperature": 0.1,
+  "teacher_mix": 0.25,
+  "teacher_temperature": 0.2,
+  "teacher_topk": 0,
+  "neighbor_k": 5,
+  "neighbor_alpha": 0.5,
+  "id": "P1",
+  "method": "neighbor_retention",
+  "contrastive": 0.25,
+  "warmup": 0,
+  "swad": false
+}

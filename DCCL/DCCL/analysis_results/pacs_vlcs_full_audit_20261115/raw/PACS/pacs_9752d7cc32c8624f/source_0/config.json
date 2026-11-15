@@ -1,0 +1,10 @@
+{
+  "cipt_env_constraint": "relative_distance",
+  "cipt_contrastive_type": "supcon",
+  "lr": "4e-5",
+  "cipt_s_uniform_weight": "0.5",
+  "cipt_env_loss_weight": "0.25",
+  "cipt_causal_contrastive_weight": "0.025",
+  "cipt_gamma": "0",
+  "cipt_e_cls_weight": "1"
+}

@@ -1,0 +1,12 @@
+{
+  "created": "2026-11-14T15:11:51+08:00",
+  "branch": "feature/cipt-per-target-seed-20261102",
+  "head": "960b7aeeeea7be875a265b9ee34a0d391850c26e",
+  "provenance": "existing experiment snapshot with corrected SWAD/trainer/summary copied from active working tree",
+  "fixed_files_sha256": {
+    "domainbed/swad.py": "e18957bafc793dc9b34c242d52ca4bae4afc97370b02470e660bd3b3bfd852c2",
+    "domainbed/trainer.py": "492ae99bd16632f4f4eae8e517749dede4e319b6014ac079981dc9fd79eb1671",
+    "train_all.py": "92e131a014b57862f6c6af8d91754841e86e27f0480e1f5b6e07417dee4f4dd6"
+  },
+  "plan": "PACS and VLCS sequential four-target-domain single-seed comparison"
+}

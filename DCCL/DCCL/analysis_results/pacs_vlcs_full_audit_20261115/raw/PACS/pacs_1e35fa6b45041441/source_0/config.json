@@ -1,0 +1,9 @@
+{
+  "lr": 0.0001,
+  "steps": 300,
+  "check": 25,
+  "rd": 0.5,
+  "contrastive": 0.1,
+  "s_uniform": 0.5,
+  "ind": 0.0
+}

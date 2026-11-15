@@ -1,0 +1,165 @@
+{
+  "source_snapshot": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_best_anchor_swadfix_20261114_151151/code",
+  "reference_queue": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_best_anchor_swadfix_20261114_151151",
+  "method": "neighbor_retention",
+  "swad_kwargs": {
+    "n_converge": 2,
+    "n_tolerance": 4,
+    "tolerance_ratio": 0.3
+  },
+  "swad_sha256": "e18957bafc793dc9b34c242d52ca4bae4afc97370b02470e660bd3b3bfd852c2",
+  "branch": "feature/cipt-per-target-seed-20261102",
+  "seed": 0,
+  "trial_seed": 0,
+  "max_parallel_followups": 1,
+  "minimum_ram_gib": 10.0,
+  "minimum_free_gpu_mib": 6144,
+  "datasets": {
+    "PACS": {
+      "check25": {
+        "lr": 4e-05,
+        "steps": 400,
+        "check": 25,
+        "rd": 0.5,
+        "contrastive": 0.1,
+        "s_uniform": 1.0,
+        "ind": 0.1,
+        "warmup": 0,
+        "temperature": 0.1,
+        "schedule": "constant",
+        "constraint": "center_mse"
+      },
+      "check50": {
+        "lr": 4e-05,
+        "steps": 400,
+        "check": 50,
+        "rd": 0.5,
+        "contrastive": 0.1,
+        "s_uniform": 1.0,
+        "ind": 0.1,
+        "warmup": 0,
+        "temperature": 0.1,
+        "schedule": "constant",
+        "constraint": "center_mse"
+      },
+      "previous_budget": {
+        "lr": 4e-05,
+        "steps": 300,
+        "check": 100,
+        "rd": 0.5,
+        "contrastive": 0.1,
+        "s_uniform": 1.0,
+        "ind": 0.1,
+        "warmup": 0,
+        "temperature": 0.1,
+        "schedule": "constant",
+        "constraint": "center_mse"
+      },
+      "gpu": 0,
+      "goal": 97.0
+    },
+    "VLCS": {
+      "check25": {
+        "lr": 5e-05,
+        "steps": 500,
+        "check": 25,
+        "rd": 1.0,
+        "contrastive": 0.1,
+        "s_uniform": 1.0,
+        "ind": 0.5,
+        "warmup": 0,
+        "temperature": 0.1,
+        "schedule": "constant",
+        "constraint": "relative_distance"
+      },
+      "check50": {
+        "lr": 5e-05,
+        "steps": 500,
+        "check": 50,
+        "rd": 1.0,
+        "contrastive": 0.1,
+        "s_uniform": 1.0,
+        "ind": 0.5,
+        "warmup": 0,
+        "temperature": 0.1,
+        "schedule": "constant",
+        "constraint": "relative_distance"
+      },
+      "previous_budget": {
+        "lr": 5e-05,
+        "steps": 400,
+        "check": 100,
+        "rd": 1.0,
+        "contrastive": 0.1,
+        "s_uniform": 1.0,
+        "ind": 0.5,
+        "warmup": 0,
+        "temperature": 0.1,
+        "schedule": "constant",
+        "constraint": "relative_distance"
+      },
+      "gpu": 1,
+      "goal": 84.0
+    }
+  },
+  "variations": [
+    [
+      "contrastive",
+      [
+        0.05,
+        0.1,
+        0.2,
+        0.25
+      ]
+    ],
+    [
+      "temperature",
+      [
+        0.07,
+        0.1,
+        0.15,
+        0.2
+      ]
+    ],
+    [
+      "lr",
+      [
+        4e-05,
+        5e-05,
+        6e-05,
+        3e-05
+      ]
+    ],
+    [
+      "warmup",
+      [
+        0,
+        25,
+        50
+      ]
+    ],
+    [
+      "schedule",
+      [
+        "constant",
+        "cosine"
+      ]
+    ],
+    [
+      "constraint",
+      [
+        "relative_distance",
+        "center_mse"
+      ]
+    ],
+    [
+      "rd",
+      [
+        0.5,
+        0.75,
+        1.0,
+        1.5
+      ]
+    ]
+  ]
+}

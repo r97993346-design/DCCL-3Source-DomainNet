@@ -1,0 +1,174 @@
+{
+  "branch": "feature/cipt-per-target-seed-20261102",
+  "head": "960b7aeeeea7be875a265b9ee34a0d391850c26e",
+  "snapshot": "/home/hooasia/lgg/projects/cipt_seed_fix/DCCL/DCCL/train_output/ablation/cipt_best_anchor_swadfix_20261114_151151/code",
+  "swad": "LossValley",
+  "swad_kwargs": {
+    "n_converge": 2,
+    "n_tolerance": 4,
+    "tolerance_ratio": 0.3
+  },
+  "method": "clip_guided_cross_domain",
+  "seed": 0,
+  "trial_seed": 0,
+  "weights": [
+    0.0,
+    0.05,
+    0.1,
+    0.25
+  ],
+  "refinement": [
+    [
+      "temperature",
+      [
+        0.07,
+        0.1,
+        0.2
+      ]
+    ],
+    [
+      "lr",
+      [
+        4e-05,
+        5e-05,
+        6e-05
+      ]
+    ]
+  ],
+  "additional_search": [
+    [
+      "contrastive",
+      [
+        0.05,
+        0.1,
+        0.25
+      ]
+    ],
+    [
+      "temperature",
+      [
+        0.07,
+        0.1,
+        0.2
+      ]
+    ],
+    [
+      "lr",
+      [
+        4e-05,
+        5e-05,
+        6e-05
+      ]
+    ],
+    [
+      "schedule",
+      [
+        "constant",
+        "cosine"
+      ]
+    ],
+    [
+      "warmup",
+      [
+        0,
+        50
+      ]
+    ],
+    [
+      "teacher_mix",
+      [
+        0.25,
+        0.5
+      ]
+    ],
+    [
+      "teacher_temperature",
+      [
+        0.1,
+        0.2,
+        0.3
+      ]
+    ]
+  ],
+  "datasets": {
+    "PACS": {
+      "gpu": 0,
+      "target": 97.0,
+      "first_run": {
+        "steps": 400,
+        "check": 50,
+        "lr": 5e-05,
+        "schedule": "constant",
+        "constraint": "relative_distance",
+        "rd": 1.0,
+        "s_uniform": 1.0,
+        "ind": 0.1,
+        "contrastive": 0.0,
+        "temperature": 0.1,
+        "warmup": 0,
+        "teacher_mix": 0.25,
+        "teacher_temperature": 0.2,
+        "teacher_topk": 0
+      },
+      "fallback": {
+        "steps": 300,
+        "check": 100,
+        "lr": 5e-05,
+        "schedule": "constant",
+        "constraint": "relative_distance",
+        "rd": 1.0,
+        "s_uniform": 1.0,
+        "ind": 0.1,
+        "contrastive": 0.0,
+        "temperature": 0.1,
+        "warmup": 0,
+        "teacher_mix": 0.25,
+        "teacher_temperature": 0.2,
+        "teacher_topk": 0
+      }
+    },
+    "VLCS": {
+      "gpu": 1,
+      "target": 84.0,
+      "first_run": {
+        "steps": 500,
+        "check": 50,
+        "lr": 5e-05,
+        "schedule": "constant",
+        "constraint": "relative_distance",
+        "rd": 1.0,
+        "s_uniform": 1.0,
+        "ind": 0.5,
+        "contrastive": 0.0,
+        "temperature": 0.1,
+        "warmup": 0,
+        "teacher_mix": 0.25,
+        "teacher_temperature": 0.2,
+        "teacher_topk": 0
+      },
+      "fallback": {
+        "steps": 400,
+        "check": 100,
+        "lr": 5e-05,
+        "schedule": "constant",
+        "constraint": "relative_distance",
+        "rd": 1.0,
+        "s_uniform": 1.0,
+        "ind": 0.5,
+        "contrastive": 0.0,
+        "temperature": 0.1,
+        "warmup": 0,
+        "teacher_mix": 0.25,
+        "teacher_temperature": 0.2,
+        "teacher_topk": 0
+      }
+    }
+  },
+  "swad_files_sha256": {
+    "domainbed/swad.py": "e18957bafc793dc9b34c242d52ca4bae4afc97370b02470e660bd3b3bfd852c2",
+    "domainbed/trainer.py": "492ae99bd16632f4f4eae8e517749dede4e319b6014ac079981dc9fd79eb1671",
+    "train_all.py": "92e131a014b57862f6c6af8d91754841e86e27f0480e1f5b6e07417dee4f4dd6"
+  },
+  "minimum_ram_gib": 10.0,
+  "minimum_free_gpu_mib": 6144
+}

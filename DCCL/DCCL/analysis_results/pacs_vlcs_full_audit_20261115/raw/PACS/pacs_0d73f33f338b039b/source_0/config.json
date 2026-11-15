@@ -1,0 +1,12 @@
+{
+  "lr": 0.0001,
+  "steps": 300,
+  "check": 25,
+  "rd": 0.5,
+  "contrastive": 0.0,
+  "s_uniform": 1.0,
+  "ind": 0.0,
+  "teacher_mix": 0.25,
+  "warmup": 0,
+  "feature_transform": "linear"
+}

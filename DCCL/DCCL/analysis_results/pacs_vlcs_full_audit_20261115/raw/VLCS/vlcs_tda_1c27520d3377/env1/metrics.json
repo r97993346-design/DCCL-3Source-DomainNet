@@ -1,0 +1,136 @@
+{
+  "target": "LABELME",
+  "test_env": 1,
+  "model_variant": "consistent",
+  "primary_target_metric": "target_out",
+  "selections": {
+    "iid": {
+      "selection": "iid",
+      "epoch": 4,
+      "step": 404,
+      "source_val": 0.9290974104185487,
+      "source_val_loss": 0.2233258901800965,
+      "source_val_per_domain": {
+        "CALTECH": {
+          "accuracy": 1.0,
+          "loss": 0.0057593073577425925,
+          "num_samples": 283
+        },
+        "PASCAL": {
+          "accuracy": 0.922962962962963,
+          "loss": 0.2496636058666088,
+          "num_samples": 675
+        },
+        "SUN": {
+          "accuracy": 0.864329268292683,
+          "loss": 0.41455475731593805,
+          "num_samples": 656
+        }
+      },
+      "target_out": 0.6346516007532956,
+      "target_in": 0.6428235294117647,
+      "target_metrics": {
+        "target_out": {
+          "accuracy": 0.6346516007532956,
+          "loss": 1.3113254881174552,
+          "num_samples": 531
+        },
+        "target_in": {
+          "accuracy": 0.6428235294117647,
+          "loss": 1.3233875337488512,
+          "num_samples": 2125
+        }
+      }
+    },
+    "last": {
+      "selection": "last",
+      "epoch": 30,
+      "step": 3030,
+      "source_val": 0.917985799223913,
+      "source_val_loss": 0.24618742193773557,
+      "source_val_per_domain": {
+        "CALTECH": {
+          "accuracy": 0.9964664310954063,
+          "loss": 0.007696399728474685,
+          "num_samples": 283
+        },
+        "PASCAL": {
+          "accuracy": 0.8992592592592593,
+          "loss": 0.28320911831325957,
+          "num_samples": 675
+        },
+        "SUN": {
+          "accuracy": 0.8582317073170732,
+          "loss": 0.44765674777147246,
+          "num_samples": 656
+        }
+      },
+      "target_out": 0.647834274952919,
+      "target_in": 0.6569411764705883,
+      "target_metrics": {
+        "target_out": {
+          "accuracy": 0.647834274952919,
+          "loss": 1.7708697848849826,
+          "num_samples": 531
+        },
+        "target_in": {
+          "accuracy": 0.6569411764705883,
+          "loss": 1.8423696181353402,
+          "num_samples": 2125
+        }
+      }
+    },
+    "SWAD": {
+      "selection": "SWAD",
+      "status": "loss_valley",
+      "start_step": 405,
+      "end_step": 3030,
+      "n_averaged": 27,
+      "converge_step": 707,
+      "dead_valley": false,
+      "loss_threshold": 0.2799059016359849,
+      "source_val": 0.9224731524307783,
+      "source_val_loss": 0.2267076486428076,
+      "source_val_per_domain": {
+        "CALTECH": {
+          "accuracy": 0.9964664310954063,
+          "loss": 0.006235197186470032,
+          "num_samples": 283
+        },
+        "PASCAL": {
+          "accuracy": 0.9081481481481481,
+          "loss": 0.26194350913718895,
+          "num_samples": 675
+        },
+        "SUN": {
+          "accuracy": 0.8628048780487805,
+          "loss": 0.4119442396047639,
+          "num_samples": 656
+        }
+      },
+      "target_out": 0.655367231638418,
+      "target_in": 0.6578823529411765,
+      "target_metrics": {
+        "target_out": {
+          "accuracy": 0.655367231638418,
+          "loss": 1.60596707446427,
+          "num_samples": 531
+        },
+        "target_in": {
+          "accuracy": 0.6578823529411765,
+          "loss": 1.6583404433306526,
+          "num_samples": 2125
+        }
+      }
+    }
+  },
+  "swad": {
+    "status": "loss_valley",
+    "start_step": 405,
+    "end_step": 3030,
+    "n_averaged": 27,
+    "converge_step": 707,
+    "dead_valley": false,
+    "loss_threshold": 0.2799059016359849
+  }
+}
