@@ -1,0 +1,562 @@
+{
+  "P00": {
+    "disposition": "trained",
+    "folds": {
+      "Art": {
+        "iid_step": 300,
+        "iid_test_in": 0.9816961561928005,
+        "iid_test_out": 0.9828850855745721,
+        "source_validation": 0.9798918467708275,
+        "swad_test_in": 0.980476,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Cartoon": {
+        "iid_step": 300,
+        "iid_test_in": 0.990405117270789,
+        "iid_test_out": 0.9935897435897436,
+        "source_validation": 0.9764263726452067,
+        "swad_test_in": 0.989872,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Photo": {
+        "iid_step": 300,
+        "iid_test_in": 0.999251497005988,
+        "iid_test_out": 1.0,
+        "source_validation": 0.9745772427705992,
+        "swad_test_in": 0.997006,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Sketch": {
+        "iid_step": 100,
+        "iid_test_in": 0.9071246819338422,
+        "iid_test_out": 0.913375796178344,
+        "source_validation": 0.9929732723131255,
+        "swad_test_in": 0.902354,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      }
+    },
+    "results_jsonl": "P00/PACS/261115_23-40-10_P00/results.jsonl",
+    "log": "P00/PACS/261115_23-40-10_P00/log.txt",
+    "console": "P00/console.log"
+  },
+  "P01": {
+    "disposition": "trained",
+    "folds": {
+      "Art": {
+        "iid_step": 300,
+        "iid_test_in": 0.9816961561928005,
+        "iid_test_out": 0.980440097799511,
+        "source_validation": 0.9807411036710398,
+        "swad_test_in": 0.980476,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Cartoon": {
+        "iid_step": 300,
+        "iid_test_in": 0.990405117270789,
+        "iid_test_out": 0.9935897435897436,
+        "source_validation": 0.9760017441951006,
+        "swad_test_in": 0.989339,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Photo": {
+        "iid_step": 300,
+        "iid_test_in": 0.999251497005988,
+        "iid_test_out": 1.0,
+        "source_validation": 0.9746115037457912,
+        "swad_test_in": 0.997754,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Sketch": {
+        "iid_step": 200,
+        "iid_test_in": 0.9020356234096693,
+        "iid_test_out": 0.9121019108280255,
+        "source_validation": 0.992870527100356,
+        "swad_test_in": 0.901081,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      }
+    },
+    "results_jsonl": "P01/PACS/261116_00-00-52_P01/results.jsonl",
+    "log": "P01/PACS/261116_00-00-52_P01/log.txt",
+    "console": "P01/console.log"
+  },
+  "P02": {
+    "disposition": "trained",
+    "folds": {
+      "Art": {
+        "iid_step": 300,
+        "iid_test_in": 0.9816961561928005,
+        "iid_test_out": 0.9828850855745721,
+        "source_validation": 0.9798918467708275,
+        "swad_test_in": 0.980476,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Cartoon": {
+        "iid_step": 200,
+        "iid_test_in": 0.988272921108742,
+        "iid_test_out": 0.9914529914529915,
+        "source_validation": 0.9755771157449944,
+        "swad_test_in": 0.988806,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Photo": {
+        "iid_step": 300,
+        "iid_test_in": 0.9977544910179641,
+        "iid_test_out": 1.0,
+        "source_validation": 0.974152614320493,
+        "swad_test_in": 0.997754,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Sketch": {
+        "iid_step": 200,
+        "iid_test_in": 0.9055343511450382,
+        "iid_test_out": 0.913375796178344,
+        "source_validation": 0.992870527100356,
+        "swad_test_in": 0.903944,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      }
+    },
+    "results_jsonl": "P02/PACS/261116_00-21-11_P02/results.jsonl",
+    "log": "P02/PACS/261116_00-21-11_P02/log.txt",
+    "console": "P02/console.log"
+  },
+  "P03": {
+    "disposition": "trained",
+    "folds": {
+      "Art": {
+        "iid_step": 300,
+        "iid_test_in": 0.9810860280658938,
+        "iid_test_out": 0.9828850855745721,
+        "source_validation": 0.9798918467708275,
+        "swad_test_in": 0.978646,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Cartoon": {
+        "iid_step": 300,
+        "iid_test_in": 0.9888059701492538,
+        "iid_test_out": 0.9935897435897436,
+        "source_validation": 0.9747963807951661,
+        "swad_test_in": 0.988806,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Photo": {
+        "iid_step": 300,
+        "iid_test_in": 0.9977544910179641,
+        "iid_test_out": 1.0,
+        "source_validation": 0.974152614320493,
+        "swad_test_in": 0.997754,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Sketch": {
+        "iid_step": 200,
+        "iid_test_in": 0.9061704834605598,
+        "iid_test_out": 0.913375796178344,
+        "source_validation": 0.992870527100356,
+        "swad_test_in": 0.903626,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      }
+    },
+    "results_jsonl": "P03/PACS/261116_00-40-26_P03/results.jsonl",
+    "log": "P03/PACS/261116_00-40-26_P03/log.txt",
+    "console": "P03/console.log"
+  },
+  "P04": {
+    "disposition": "trained",
+    "folds": {
+      "Art": {
+        "iid_step": 300,
+        "iid_test_in": 0.9816961561928005,
+        "iid_test_out": 0.9828850855745721,
+        "source_validation": 0.9803164752209337,
+        "swad_test_in": 0.979866,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Cartoon": {
+        "iid_step": 300,
+        "iid_test_in": 0.9898720682302772,
+        "iid_test_out": 0.9935897435897436,
+        "source_validation": 0.9764606336203987,
+        "swad_test_in": 0.989872,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Photo": {
+        "iid_step": 300,
+        "iid_test_in": 0.999251497005988,
+        "iid_test_out": 1.0,
+        "source_validation": 0.9745772427705992,
+        "swad_test_in": 0.997006,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Sketch": {
+        "iid_step": 300,
+        "iid_test_in": 0.9017175572519084,
+        "iid_test_out": 0.910828025477707,
+        "source_validation": 0.992870527100356,
+        "swad_test_in": 0.902354,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      }
+    },
+    "results_jsonl": "P04/PACS/261116_01-00-24_P04/results.jsonl",
+    "log": "P04/PACS/261116_01-00-24_P04/log.txt",
+    "console": "P04/console.log"
+  },
+  "P05": {
+    "disposition": "trained",
+    "folds": {
+      "Art": {
+        "iid_step": 300,
+        "iid_test_in": 0.9810860280658938,
+        "iid_test_out": 0.980440097799511,
+        "source_validation": 0.9803164752209337,
+        "swad_test_in": 0.980476,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Cartoon": {
+        "iid_step": 300,
+        "iid_test_in": 0.9909381663113006,
+        "iid_test_out": 0.9935897435897436,
+        "source_validation": 0.9764263726452067,
+        "swad_test_in": 0.988806,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Photo": {
+        "iid_step": 300,
+        "iid_test_in": 0.999251497005988,
+        "iid_test_out": 1.0,
+        "source_validation": 0.9737622468455789,
+        "swad_test_in": 0.997754,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Sketch": {
+        "iid_step": 100,
+        "iid_test_in": 0.9071246819338422,
+        "iid_test_out": 0.9146496815286624,
+        "source_validation": 0.9929732723131255,
+        "swad_test_in": 0.90299,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      }
+    },
+    "results_jsonl": "P05/PACS/261116_01-20-03_P05/results.jsonl",
+    "log": "P05/PACS/261116_01-20-03_P05/log.txt",
+    "console": "P05/console.log"
+  },
+  "P06": {
+    "disposition": "trained",
+    "folds": {
+      "Art": {
+        "iid_step": 300,
+        "iid_test_in": 0.9816961561928005,
+        "iid_test_out": 0.980440097799511,
+        "source_validation": 0.9803164752209337,
+        "swad_test_in": 0.979866,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Cartoon": {
+        "iid_step": 300,
+        "iid_test_in": 0.9909381663113006,
+        "iid_test_out": 0.9935897435897436,
+        "source_validation": 0.9768510010953129,
+        "swad_test_in": 0.989872,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Photo": {
+        "iid_step": 300,
+        "iid_test_in": 0.999251497005988,
+        "iid_test_out": 1.0,
+        "source_validation": 0.9750018712207054,
+        "swad_test_in": 0.997006,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Sketch": {
+        "iid_step": 100,
+        "iid_test_in": 0.9077608142493638,
+        "iid_test_out": 0.913375796178344,
+        "source_validation": 0.9929732723131255,
+        "swad_test_in": 0.902672,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      }
+    },
+    "results_jsonl": "P06/PACS/261116_01-39-41_P06/results.jsonl",
+    "log": "P06/PACS/261116_01-39-41_P06/log.txt",
+    "console": "P06/console.log"
+  },
+  "P07": {
+    "disposition": "trained",
+    "folds": {
+      "Art": {
+        "iid_step": 300,
+        "iid_test_in": 0.9816961561928005,
+        "iid_test_out": 0.980440097799511,
+        "source_validation": 0.9798918467708275,
+        "swad_test_in": 0.980476,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Cartoon": {
+        "iid_step": 300,
+        "iid_test_in": 0.990405117270789,
+        "iid_test_out": 0.9935897435897436,
+        "source_validation": 0.9764263726452067,
+        "swad_test_in": 0.989339,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Photo": {
+        "iid_step": 300,
+        "iid_test_in": 0.999251497005988,
+        "iid_test_out": 1.0,
+        "source_validation": 0.9745772427705992,
+        "swad_test_in": 0.997006,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Sketch": {
+        "iid_step": 100,
+        "iid_test_in": 0.9071246819338422,
+        "iid_test_out": 0.913375796178344,
+        "source_validation": 0.9929732723131255,
+        "swad_test_in": 0.902354,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      }
+    },
+    "results_jsonl": "P07/PACS/261116_01-53-14_P07/results.jsonl",
+    "log": "P07/PACS/261116_01-53-14_P07/log.txt",
+    "console": "P07/console.log"
+  },
+  "P08": {
+    "disposition": "trained",
+    "folds": {
+      "Art": {
+        "iid_step": 300,
+        "iid_test_in": 0.9816961561928005,
+        "iid_test_out": 0.980440097799511,
+        "source_validation": 0.9794672183207214,
+        "swad_test_in": 0.979256,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Cartoon": {
+        "iid_step": 300,
+        "iid_test_in": 0.9909381663113006,
+        "iid_test_out": 0.9935897435897436,
+        "source_validation": 0.9747963807951661,
+        "swad_test_in": 0.989339,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Photo": {
+        "iid_step": 300,
+        "iid_test_in": 0.999251497005988,
+        "iid_test_out": 1.0,
+        "source_validation": 0.9729472509205586,
+        "swad_test_in": 0.997006,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Sketch": {
+        "iid_step": 300,
+        "iid_test_in": 0.9033078880407125,
+        "iid_test_out": 0.9121019108280255,
+        "source_validation": 0.992870527100356,
+        "swad_test_in": 0.903308,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      }
+    },
+    "results_jsonl": "P08/PACS/261116_02-13-24_P08/results.jsonl",
+    "log": "P08/PACS/261116_02-13-24_P08/log.txt",
+    "console": "P08/console.log"
+  },
+  "P09": {
+    "disposition": "trained",
+    "folds": {
+      "Art": {
+        "iid_step": 300,
+        "iid_test_in": 0.9810860280658938,
+        "iid_test_out": 0.9828850855745721,
+        "source_validation": 0.9807411036710398,
+        "swad_test_in": 0.981086,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Cartoon": {
+        "iid_step": 300,
+        "iid_test_in": 0.990405117270789,
+        "iid_test_out": 0.9935897435897436,
+        "source_validation": 0.9764263726452067,
+        "swad_test_in": 0.989339,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Photo": {
+        "iid_step": 300,
+        "iid_test_in": 0.999251497005988,
+        "iid_test_out": 1.0,
+        "source_validation": 0.9750018712207054,
+        "swad_test_in": 0.998503,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      },
+      "Sketch": {
+        "iid_step": 100,
+        "iid_test_in": 0.9068066157760815,
+        "iid_test_out": 0.913375796178344,
+        "source_validation": 0.9929732723131255,
+        "swad_test_in": 0.901718,
+        "swad_start": 201,
+        "swad_end": 300,
+        "swad_averaged_segments": 100,
+        "swad_fallback": true,
+        "swad_converged": false
+      }
+    },
+    "results_jsonl": "P09/PACS/261116_02-32-52_P09/results.jsonl",
+    "log": "P09/PACS/261116_02-32-52_P09/log.txt",
+    "console": "P09/console.log"
+  }
+}
