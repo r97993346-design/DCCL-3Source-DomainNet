@@ -2,7 +2,6 @@ import collections
 import json
 import time
 import copy
-import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -17,8 +16,6 @@ from domainbed.lib import swa_utils
 from domainbed.lib.query import Q
 from domainbed.lib.fast_data_loader import InfiniteDataLoader, FastDataLoader
 from domainbed import swad as swad_module
-from domainbed.lib.dicm_selection import select_source_iid
-from domainbed.lib.reproducibility import SEED_POLICY, preserve_rng_state, seed_everything
 
 
 if torch.cuda.is_available():
@@ -34,15 +31,8 @@ def json_handler(v):
 
 
 def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, target_env=None):
-    # Reset before dataset constructors, sampler/worker seeds and model init.
-    # The seed does not depend on target order, target ID or previous step counts.
-    seed_everything(args.seed, getattr(args, "deterministic", False))
-    args.seed_policy = SEED_POLICY
+
     logger.info("")
-    logger.info(f"Reset RNG for target {test_envs}: seed={args.seed}, trial_seed={args.trial_seed}, policy={SEED_POLICY}")
-    is_dicm = args.algorithm == "DICM"
-    source_only_selection = args.algorithm in {"DCCL", "DICM"}
-    isolate_eval_rng = bool(getattr(args, "isolate_eval_rng", False))
 
     #######################################################
     # setup dataset & loader
@@ -50,10 +40,6 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     args.real_test_envs = test_envs  # for log
     algorithm_class = algorithms.get_algorithm_class(args.algorithm)
     dataset, in_splits, out_splits = get_dataset(test_envs, args, hparams, algorithm_class)
-    requested_workers = getattr(args, "num_workers", None)
-    num_workers = dataset.N_WORKERS if requested_workers is None else requested_workers
-    if num_workers < 0:
-        raise ValueError("num_workers must be nonnegative")
     test_splits = []
 
     if hparams.indomain_test > 0.0:
@@ -91,21 +77,6 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
     n_envs = len(dataset)
     train_envs = sorted(set(range(n_envs)) - set(test_envs))
-    if is_dicm:
-        hparams["dicm_source_envs"] = train_envs
-    if source_only_selection:
-        split_keys = {
-            str(env_id): {
-                "in": list(in_splits[env_id][0].keys),
-                "out": list(out_splits[env_id][0].keys),
-            }
-            for env_id in train_envs
-        }
-        split_digest = hashlib.sha256(
-            json.dumps(split_keys, sort_keys=True).encode("utf-8")
-        ).hexdigest()
-        logger.info(f"{args.algorithm} local source IDs -> global IDs: {list(enumerate(train_envs))}")
-        logger.info(f"{args.algorithm} source split SHA256: {split_digest}")
     iterator = misc.SplitIterator(test_envs)
     batch_sizes = np.full([n_envs], hparams["batch_size"], dtype=int)
 
@@ -132,7 +103,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             dataset=env,
             weights=env_weights,
             batch_size=batch_size,
-            num_workers=num_workers,
+            num_workers=dataset.N_WORKERS,
           # num_workers=getattr(dataset, "N_WORKERS", 4),
         )
         for (env, env_weights), batch_size in iterator.train(zip(in_splits, batch_sizes))
@@ -140,13 +111,12 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
     # setup eval loaders
     eval_loaders_kwargs = []
-    with preserve_rng_state(isolate_eval_rng):
-        for i, (env, _) in enumerate(in_splits + out_splits + test_splits):
-            batchsize = hparams["test_batchsize"]
-            loader_kwargs = {"dataset": env, "batch_size": batchsize, "num_workers": num_workers}
-            if args.prebuild_loader:
-                loader_kwargs = FastDataLoader(**loader_kwargs)
-            eval_loaders_kwargs.append(loader_kwargs)
+    for i, (env, _) in enumerate(in_splits + out_splits + test_splits):
+        batchsize = hparams["test_batchsize"]
+        loader_kwargs = {"dataset": env, "batch_size": batchsize, "num_workers": dataset.N_WORKERS}
+        if args.prebuild_loader:
+            loader_kwargs = FastDataLoader(**loader_kwargs)
+        eval_loaders_kwargs.append(loader_kwargs)
 
     eval_weights = [None for _, weights in (in_splits + out_splits + test_splits)]
     eval_loader_names = ["env{}_in".format(i) for i in range(len(in_splits))]
@@ -185,7 +155,6 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         evalmode=args.evalmode,
         debug=args.debug,
         target_env=target_env,
-        isolate_rng=isolate_eval_rng,
     )
 
     swad = None
@@ -328,7 +297,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         checkpoint_vals["step_time"].append(time.time() - step_start_time)
         if args.log: 
             with open("loss_analysis.txt","a+") as f:
-                f.write("step {}:{} {} {}\n".format(step, step_vals["ce_loss"], step_vals.get("sup_cl_loss", 0.0), step_vals.get("pre_cl_loss", 0.0)))
+                f.write("step {}:".format(step)+str(step_vals["ce_loss"])+" "+str(step_vals["sup_cl_loss"])+" "+str(step_vals["pre_cl_loss"])+"\n")
         if swad:
             # swad_algorithm is segment_swa for swad
             swad_algorithm.update_parameters(algorithm, step=step)
@@ -383,7 +352,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         #         np.save("vis/pacs_cl_y_test.npy", y_test)
         #         exit()
 
-        if step % checkpoint_freq == 0 or step == n_steps - 1:
+        if step % checkpoint_freq == 0:
             results = {
                 "step": step,
                 "epoch": step / steps_per_epoch,
@@ -439,7 +408,12 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
                 }
                 algorithm.cuda()
                 if not args.debug:
-                    torch.save(save_dict, path)
+                    saved_path = path
+                    suffix = 1
+                    while saved_path.exists():
+                        saved_path = path.with_stem(f"{path.stem}-{suffix}")
+                        suffix += 1
+                    torch.save(save_dict, saved_path)
                 else:
                     logger.debug("DEBUG Mode -> no save (org path: %s)" % path)
 
@@ -517,8 +491,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # find best
     logger.info("---")
     records = Q(records)
-    iid_record = select_source_iid(records) if source_only_selection else records.argmax("train_out")
-    iid_best = iid_record["test_in"]
+    oracle_best = records.argmax("test_out")["test_in"]
+    iid_best = records.argmax("train_out")["test_in"]
     last = records[-1]["test_in"]
 
     if hparams.indomain_test:
@@ -531,37 +505,12 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     last_indomain = records[-1][in_key]
 
     ret = {
+        "oracle": oracle_best,
         "iid": iid_best,
         "last": last,
         "last (inD)": last_indomain,
         "iid (inD)": iid_best_indomain,
     }
-    if source_only_selection:
-        ret["iid (test_out)"] = iid_record["test_out"]
-        ret["last (test_out)"] = records[-1]["test_out"]
-        selection = {
-            "test_envs": list(test_envs), "source_envs": train_envs,
-            "seed": args.seed, "trial_seed": args.trial_seed,
-            "seed_policy": SEED_POLICY, "deterministic": bool(getattr(args, "deterministic", False)),
-            "algorithm": args.algorithm,
-            "ablation": hparams["dicm_ablation"] if is_dicm else (
-                "A0" if all(hparams[key] > 0 for key in ("l", "l_d", "l_layer")) else "DCCL-custom"),
-            "evaluation_rng": "isolated" if isolate_eval_rng else "shared",
-            "step_count_mode": getattr(args, "step_count_mode", "exact"),
-            "requested_steps": getattr(args, "requested_steps", n_steps),
-            "max_updates": n_steps, "actual_updates": step + 1,
-            "checkpoint_freq": checkpoint_freq, "num_workers": num_workers,
-            "source_split_sha256": split_digest,
-            "iid": {"criterion": "max train_out; first tie", "step": iid_record["step"],
-                    "source_val_accuracy": iid_record["train_out"],
-                    "reported_test_in": iid_record["test_in"],
-                    "reported_test_out": iid_record["test_out"]},
-            "last_step": records[-1]["step"],
-        }
-        logger.info(f"{args.algorithm} source-selected IID checkpoint: step {iid_record['step']}")
-    else:
-        # Other legacy algorithms retain their historical reporting behavior.
-        ret = {"oracle": records.argmax("test_out")["test_in"], **ret}
 
     # Evaluate SWAD
     if swad:
@@ -576,20 +525,15 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         results = {**summaries, **accuracies}
         start = swad_algorithm.start_step
         end = swad_algorithm.end_step
+        from experiment_archive import record_swad
+
+        record_swad(results, start, end, swad_algorithm.n_averaged)
         step_str = f" [{start}-{end}]  (N={swad_algorithm.n_averaged})"
         row = misc.to_row([results[key] for key in results_keys if key in results]) + step_str
         logger.info(row)
 
         ret["SWAD"] = results["test_in"]
         ret["SWAD (inD)"] = results[in_key]
-        if source_only_selection:
-            ret["SWAD (test_out)"] = results["test_out"]
-            selection["swad"] = {
-                "criterion": "source validation LossValley", "start_step": start,
-                "end_step": end, "n_averaged": int(swad_algorithm.n_averaged.item()),
-                "reported_test_in": results["test_in"],
-                "reported_test_out": results["test_out"],
-            }
 
         # with torch.no_grad():
         #     embedding_train = []
@@ -639,12 +583,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         #     np.save("vis/pacs_swad_y_test.npy", y_test)
         #     exit()
 
-    if source_only_selection:
-        with open(args.out_dir / f"selection_{testenv_name}.json", "w") as f:
-            json.dump(selection, f, indent=2, default=json_handler)
-
     for k, acc in ret.items():
         logger.info(f"{k} = {acc:.3%}")
 
     return ret, records
-

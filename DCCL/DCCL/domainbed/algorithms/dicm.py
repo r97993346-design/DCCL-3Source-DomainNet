@@ -22,20 +22,33 @@ from .dicm_components import (
     ClassDomainResidualBank,
     PairedInterventionResponseEstimator,
     StableFeatureProjection,
+    reliable_positive_mask,
 )
 
 
 class DICMForwardModel(nn.Module):
     """Exactly the inference path; SWAD averages its raw B before fresh QR."""
-    def __init__(self, network):
+    def __init__(self, network, reference=None):
         super().__init__()
         self.network = network
+        self.reference = reference
+
+    def train(self, mode=True):
+        super().train(mode)
+        if self.reference is not None:
+            self.reference.eval()
+        return self
 
     def predict_embed(self, x):
-        return self.network[1](self.network[0](x))
+        z = self.network[0](x)
+        if self.reference is None:
+            return self.network[1](z)
+        with torch.no_grad():
+            reference = self.reference(x)
+        return self.network[1](z, reference=reference)
 
     def predict(self, x):
-        return self.network(x)
+        return self.network[2](self.predict_embed(x))
 
     def forward(self, x):
         return self.predict(x)
@@ -48,6 +61,7 @@ class DICM(Algorithm):
         self.mode = hparams["dicm_ablation"]
         self.use_projection = self.mode != "A1"
         self.use_gt = self.mode == "A5"
+        self.use_residual = self.use_projection and hparams.get("dicm_residual_projection", False)
         self.gt_weight = float(hparams["l_d"]) if self.use_gt else 0.0
         self.l = float(hparams["l"])
         self.l_layer = float(hparams["l_layer"])
@@ -170,8 +184,19 @@ class DICM(Algorithm):
             loss = loss + dw * dom
         return loss, aug, dom, n_aug, n_dom, aw, dw
 
-    def _stable(self, features, q):
-        return self.projection(features, q=q) if self.use_projection else features
+    def _stable(self, features, q, reference=None):
+        if not self.use_projection:
+            return features
+        return self.projection(features, q=q, reference=reference if self.use_residual else None)
+
+    def _reliable_contrast_gamma(self, step):
+        maximum = self.hparams["dicm_reliable_contrast_gamma_max"]
+        warmup = self.hparams["dicm_reliable_contrast_warmup_steps"]
+        if not maximum or step < warmup:
+            return 0.0
+        ramp = self.hparams["dicm_reliable_contrast_ramp_steps"]
+        progress = min((step - warmup) / ramp, 1.0) if ramp else 1.0
+        return maximum * progress
 
     def _gt_loss(self, student_features, reference_features):
         if not self.use_gt:
@@ -236,7 +261,8 @@ class DICM(Algorithm):
             delta_dom = self.residual_bank.domain_responses()
             loss_isr, loss_aug, loss_dom, n_aug, n_dom, aw, dw = self._isr_loss(delta_aug, delta_dom, q)
 
-        e, e_aug = self._stable(z, q), self._stable(z_aug, q)
+        e = self._stable(z, q, z_ref)
+        e_aug = self._stable(z_aug, q, z_aug_ref)
         logits = self.classifier(e)
         first_ce = F.cross_entropy(logits, all_y)
         ce = first_ce
@@ -244,15 +270,28 @@ class DICM(Algorithm):
             ce = 0.5 * (ce + F.cross_entropy(self.classifier(e_aug), all_y))
 
         sup_cl = zero
+        gamma = self._reliable_contrast_gamma(step)
+        pair_weights = None
         if self.l:
             # Preserve original head call order and view-major SupCon ordering.
             view_aug = F.normalize(self.proj_head(e_aug), dim=1)
             view = F.normalize(self.proj_head(e), dim=1)
             features = torch.stack([view, view_aug], dim=1)
             if self.sample_d:
-                z_extra = self.featurizer(torch.cat(kwargs["x_2_d"]))
-                extra = F.normalize(self.proj_head(self._stable(z_extra, q)), dim=1)
+                extra_x = torch.cat(kwargs["x_2_d"])
+                z_extra = self.featurizer(extra_x)
+                with torch.no_grad():
+                    extra_ref = self.pre_featurizer(extra_x) if self.use_residual else None
+                extra = F.normalize(self.proj_head(self._stable(z_extra, q, extra_ref)), dim=1)
                 sup_cl = self.supcon_loss(features, all_y, add_pos=torch.cat([extra, extra]))
+            elif gamma > 0:
+                mask, pair_weights = reliable_positive_mask(
+                    z, q, all_y, domains, gamma,
+                    self.hparams["dicm_reliable_contrast_min_reliability"],
+                )
+                # SupCon repeats the sample mask in view-major order and removes
+                # the diagonal. The softmax denominator still uses all non-self views.
+                sup_cl = self.supcon_loss(features, mask=mask)
             else:
                 sup_cl = self.supcon_loss(features, all_y)
 
@@ -306,6 +345,13 @@ class DICM(Algorithm):
                 "pre_proj_grad_norm": self._gradient_norm(self.pre_proj_head.parameters()),
                 "has_nan_or_inf": 0.0,
             }
+            if self.hparams["dicm_reliable_contrast_gamma_max"] > 0:
+                count = pair_weights.numel() if pair_weights is not None else 0
+                metrics.update({
+                    "reliable_contrast_gamma": gamma,
+                    "reliable_contrast_pair_count": float(count),
+                    "reliable_contrast_weight_mean": pair_weights.mean().item() if count else 1.0,
+                })
             if self.use_projection:
                 metrics.update(self.projection.subspace.diagnostics(q))
                 sensitive = self.projection.subspace.project(z.detach(), q=q)
@@ -321,6 +367,7 @@ class DICM(Algorithm):
                 class_sensitive = self.projection.subspace.project(centers, q=q)
                 class_energy = (counts[present] * centers.square().sum(1)).sum().clamp_min(1e-12)
                 metrics.update({
+                    "residual_norm": float((z - z_ref).norm(dim=1).mean().item()),
                     "dicm_beta": float(self.projection.beta.item()),
                     "sensitive_energy_ratio": float((sensitive.float().square().sum(1) / energy).mean().item()),
                     "isr_aug_capture": 1.0 - float(loss_aug.item()) if n_aug else 0.0,
@@ -344,13 +391,14 @@ class DICM(Algorithm):
         return metrics
 
     def predict_embed(self, x):
-        return self.projection(self.featurizer(x))
+        return self.get_forward_model().predict_embed(x)
 
     def predict(self, x):
-        return self.network(x)
+        return self.get_forward_model().predict(x)
 
     def get_forward_model(self):
-        return DICMForwardModel(self.network)
+        reference = self.pre_featurizer if self.use_residual else None
+        return DICMForwardModel(self.network, reference)
 
     def clone(self):
         # Hook containers may hold non-leaf tensors after a training forward.

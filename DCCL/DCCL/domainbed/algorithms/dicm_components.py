@@ -153,12 +153,38 @@ class StableFeatureProjection(nn.Module):
         self.subspace = InterventionSensitiveSubspace(feature_dim, rank, seed)
         self.register_buffer("beta", torch.tensor(float(beta)))
 
-    def decompose(self, z, q=None):
-        sensitive = self.subspace.project(z, q=q, detach_basis=True)
+    def decompose(self, z, q=None, reference=None):
+        residual = z if reference is None else z - reference.detach()
+        sensitive = self.subspace.project(residual, q=q, detach_basis=True)
         stable = z - self.beta.to(z.dtype) * sensitive
         return stable, sensitive
 
-    def forward(self, z, q=None):
+    def forward(self, z, q=None, reference=None):
         if self.beta.item() == 0:
             return z
-        return self.decompose(z, q=q)[0]
+        return self.decompose(z, q=q, reference=reference)[0]
+
+
+@torch.no_grad()
+def reliable_positive_mask(z, q, labels, domains, gamma, min_reliability):
+    """Return the sample-level SupCon mask and weights for cross-source positives."""
+    same_class = labels[:, None].eq(labels[None, :])
+    cross_source = domains[:, None].ne(domains[None, :])
+    mask = same_class.float()
+    first, second = (same_class & cross_source).nonzero(as_tuple=True)
+    if first.numel() == 0:
+        return mask, mask.new_empty(0)
+
+    with torch.autocast(device_type=z.device.type, enabled=False):
+        z = z.detach().float()
+        delta = z[first] - z[second]
+        energy = delta.square().sum(dim=1)
+        # Q has orthonormal columns, so ||Proj_Q(delta)||^2 == ||delta @ Q||^2.
+        sensitive_energy = (delta @ q.detach().float()).square().sum(dim=1)
+        reliability = 1.0 - sensitive_energy / energy.clamp_min(1e-12)
+        reliability = reliability.clamp(min_reliability, 1.0)
+        # Near-duplicates have no meaningful discrepancy to downweight.
+        reliability = torch.where(energy < 1e-12, 1.0, reliability)
+        weights = 1.0 - gamma * (1.0 - reliability)
+    mask[first, second] = weights
+    return mask, weights

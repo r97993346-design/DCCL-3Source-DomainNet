@@ -1,0 +1,5 @@
+# Optional overlay for reliability-weighted DICM SupCon.
+dicm_reliable_contrast_gamma_max: 0.3
+dicm_reliable_contrast_min_reliability: 0.5
+dicm_reliable_contrast_warmup_steps: 300
+dicm_reliable_contrast_ramp_steps: 200

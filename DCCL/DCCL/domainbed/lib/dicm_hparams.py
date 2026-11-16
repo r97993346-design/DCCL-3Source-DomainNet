@@ -4,6 +4,12 @@ import math
 
 
 CORE_OVERRIDES = ("l", "l_layer", "t", "t_pre", "n_layer")
+RELIABLE_CONTRAST_DEFAULTS = {
+    "dicm_reliable_contrast_gamma_max": 0.0,
+    "dicm_reliable_contrast_min_reliability": 0.5,
+    "dicm_reliable_contrast_warmup_steps": 300,
+    "dicm_reliable_contrast_ramp_steps": 200,
+}
 
 
 def finalize_dicm_hparams(hparams, args=None, argv=()):
@@ -67,4 +73,21 @@ def finalize_dicm_hparams(hparams, args=None, argv=()):
     for key in ("TN", "re_w", "pos_mask", "aug", "mix"):
         if hparams.get(key, False):
             raise ValueError("DICM first version requires " + key + "=0/False")
+    for key, default in RELIABLE_CONTRAST_DEFAULTS.items():
+        hparams[key] = hparams.get(key, default)
+    gamma = float(hparams["dicm_reliable_contrast_gamma_max"])
+    if not 0 <= gamma <= 1:
+        raise ValueError("dicm_reliable_contrast_gamma_max must be in [0,1]")
+    hparams["dicm_reliable_contrast_gamma_max"] = gamma
+    floor = float(hparams["dicm_reliable_contrast_min_reliability"])
+    if not 0 < floor <= 1:
+        raise ValueError("dicm_reliable_contrast_min_reliability must be in (0,1]")
+    hparams["dicm_reliable_contrast_min_reliability"] = floor
+    for key in ("dicm_reliable_contrast_warmup_steps", "dicm_reliable_contrast_ramp_steps"):
+        steps = float(hparams[key])
+        if not steps.is_integer() or steps < 0:
+            raise ValueError(key + " must be a nonnegative integer")
+        hparams[key] = int(steps)
+    if gamma > 0 and (mode == "A1" or hparams["l"] == 0 or hparams.get("sample_d", False)):
+        raise ValueError("DICM reliable contrast requires a subspace, SupCon, and sample_d=False")
     return hparams

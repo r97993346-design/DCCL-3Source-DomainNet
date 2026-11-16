@@ -1,7 +1,6 @@
 """CPU-only contracts using a tiny encoder; no images or pretrained downloads."""
 
 import copy
-import json
 import random
 from argparse import Namespace
 
@@ -12,17 +11,15 @@ from torch import nn
 from sconf import Config
 
 from domainbed import hparams_registry, networks
-from domainbed.algorithms.algorithms import DCCL
+from domainbed.algorithms.algorithms import DCCL, SupConLoss
 from domainbed.algorithms.dicm import DICM
 from domainbed.algorithms.dicm_components import (
     ClassDomainResidualBank, InterventionSensitiveSubspace,
-    PairedInterventionResponseEstimator, StableFeatureProjection,
+    PairedInterventionResponseEstimator, StableFeatureProjection, reliable_positive_mask,
 )
 from domainbed.lib import swa_utils
 from domainbed.lib.cl_hparams import setup_alg_hparams
 from domainbed.lib.dicm_hparams import finalize_dicm_hparams
-from domainbed.lib.dicm_selection import select_source_iid
-from domainbed.lib.reproducibility import seed_everything
 
 REAL_FEATURIZER = networks.Featurizer
 
@@ -76,20 +73,6 @@ def batches():
     return x, labels, aug
 
 
-def test_seed_reset_restores_python_numpy_torch_and_cudnn_policy():
-    seed_everything(23, deterministic=True)
-    expected = random.random(), np.random.rand(), torch.rand(5)
-    random.random()
-    np.random.rand(100)
-    torch.rand(100)
-    seed_everything(23, deterministic=True)
-    assert random.random() == expected[0] and np.random.rand() == expected[1]
-    torch.testing.assert_close(torch.rand(5), expected[2], atol=0, rtol=0)
-    assert torch.backends.cudnn.deterministic and not torch.backends.cudnn.benchmark
-    seed_everything(23, deterministic=False)
-    assert not torch.backends.cudnn.deterministic and torch.backends.cudnn.benchmark
-
-
 def test_pire_uses_matching_reference_difference_without_encoder_gradient():
     z = torch.randn(5, 12, requires_grad=True)
     aug = z + 2
@@ -132,6 +115,68 @@ def test_qr_and_coverage_remain_fp32_under_autocast():
     assert q.dtype == torch.float32 and loss.dtype == torch.float32
     loss.backward()
     assert torch.isfinite(subspace.basis.grad).all()
+
+
+def test_reliable_mask_downweights_only_sensitive_cross_source_positives():
+    z = torch.tensor([[0., 0.], [2., 0.], [0., 2.], [1., 0.],
+                      [0., 0.], [1., 2.], [3., 0.]], requires_grad=True)
+    q = torch.tensor([[1.], [0.]], requires_grad=True)
+    labels = torch.tensor([0, 0, 0, 0, 0, 0, 1])
+    domains = torch.tensor([0, 1, 1, 0, 1, 1, 1])
+    with torch.autocast("cpu", dtype=torch.bfloat16):
+        mask, weights = reliable_positive_mask(z, q, labels, domains, 0.3, 0.5)
+    # Sensitive, orthogonal, same-source, duplicate, mixed, and different class.
+    torch.testing.assert_close(mask[0], torch.tensor([1., .85, 1., 1., 1., .94, 0.]))
+    torch.testing.assert_close(mask, mask.T)
+    assert mask.dtype == torch.float32 and not mask.requires_grad and not weights.requires_grad
+    assert weights.numel() == 16
+    uniform, no_pairs = reliable_positive_mask(z, q, labels, torch.zeros_like(domains), 0.3, 0.5)
+    torch.testing.assert_close(uniform, labels[:, None].eq(labels[None, :]).float())
+    assert no_pairs.numel() == 0
+
+
+def test_supcon_weighted_mask_uses_view_major_pairs_and_keeps_softmax_candidates():
+    generator = torch.Generator().manual_seed(8)
+    features = torch.nn.functional.normalize(torch.randn(3, 2, 4, generator=generator), dim=-1)
+    features.requires_grad_()
+    labels = torch.tensor([0, 0, 1])
+    mask = torch.tensor([[1., .85, 0.], [.85, 1., 0.], [0., 0., 1.]])
+    loss = SupConLoss(0.1)
+    actual = loss(features, mask=mask)
+    views = features.transpose(0, 1).reshape(6, 4)
+    scores = views @ views.T / 0.1
+    self_pairs = torch.eye(6, dtype=torch.bool)
+    log_prob = scores - torch.logsumexp(scores.masked_fill(self_pairs, -torch.inf), dim=1, keepdim=True)
+    sample_ids = torch.tensor([0, 1, 2, 0, 1, 2])
+    pair_weights = mask[sample_ids[:, None], sample_ids].masked_fill(self_pairs, 0)
+    expected = -((pair_weights * log_prob).sum(1) / pair_weights.sum(1)).mean()
+    torch.testing.assert_close(actual, expected)
+    actual_grad, = torch.autograd.grad(actual, features, retain_graph=True)
+    expected_grad, = torch.autograd.grad(expected, features, retain_graph=True)
+    torch.testing.assert_close(actual_grad, expected_grad)
+    uniform = labels[:, None].eq(labels[None, :]).float()
+    torch.testing.assert_close(loss(features, labels), loss(features, mask=uniform), atol=0, rtol=0)
+
+
+def test_dicm_reliability_warmup_matches_equal_weight_and_keeps_basis_detached():
+    settings = dict(dicm_isr_weight=0, dicm_residual_projection=True)
+    control = DICM((6,), 3, 2, hparams(**settings))
+    weighted = DICM((6,), 3, 2, hparams(**settings, dicm_reliable_contrast_gamma_max=0.3))
+    weighted.load_state_dict(control.state_dict())
+    x, labels, aug = batches()
+    plain = control.update(x, labels, x_2=aug, step=300)
+    warmup = weighted.update(x, labels, x_2=aug, step=300)
+    assert warmup["reliable_contrast_gamma"] == 0
+    assert warmup["reliable_contrast_pair_count"] == 0
+    assert warmup["sup_cl_loss"] == plain["sup_cl_loss"]
+    for name, value in control.state_dict().items():
+        torch.testing.assert_close(value, weighted.state_dict()[name], atol=0, rtol=0)
+    ramp = weighted.update(x, labels, x_2=aug, step=400)
+    assert ramp["reliable_contrast_gamma"] == pytest.approx(0.15)
+    assert ramp["reliable_contrast_pair_count"] == 12
+    assert 0.925 - 1e-6 <= ramp["reliable_contrast_weight_mean"] < 1
+    assert weighted.projection.subspace.basis.grad is None
+    assert weighted._reliable_contrast_gamma(500) == pytest.approx(0.3)
 
 
 def test_isr_balances_group_means_instead_of_observation_counts():
@@ -439,16 +484,6 @@ def test_real_resnet50_inference_without_pretrained_download_or_training(monkeyp
     assert not model.residual_bank.initialized.any()
 
 
-def test_source_selection_ignores_targets_and_keeps_first_tie():
-    records = [
-        {"step": 0, "train_out": 0.6, "test_in": 1.0, "test_out": 1.0},
-        {"step": 100, "train_out": 0.8, "test_in": 0.1, "test_out": 0.1},
-        {"step": 200, "train_out": 0.8, "test_in": 0.99, "test_out": 0.99},
-    ]
-    assert select_source_iid(records)["step"] == 100
-    assert select_source_iid([{"step": 3, "train_out": 0.9}])["step"] == 3
-
-
 def test_cli_core_overrides_and_dicm_preset_guards():
     args = Namespace(l=0.4, l_layer=0.3, l_d=0.0, t=0.15, t_pre=0.25, n_layer=2)
     resolved = finalize_dicm_hparams(hparams(), args, ["--l", "0.4", "--l_layer=0.3", "--t", "0.15", "--n_layer", "2"])
@@ -514,19 +549,18 @@ def test_a5_restores_effective_dataset_and_backbone_gt_defaults(dataset, backbon
 def test_show_reviews_dicm_without_cuda_dataset_or_output_creation(monkeypatch, capsys):
     import train_all
     monkeypatch.setattr("sys.argv", ["train_all.py", "review", "configs/dicm_pacs.yaml",
-                                    "--algorithm", "DICM", "--show", "--l", "0.4"])
+                                    "--algorithm", "DICM", "--show"])
     monkeypatch.setattr(train_all, "get_dataset", lambda *a, **k: pytest.fail("--show accessed data"))
     monkeypatch.setattr(train_all, "get_writer", lambda *a, **k: pytest.fail("--show created outputs"))
     train_all.main()
     output = capsys.readouterr().out
-    assert "dicm_beta: 1.0" in output and "l: 0.4" in output and "l_d: 0.0" in output
+    assert "dicm_beta: 1.0" in output and "l: 1" in output and "l_d: 0.0" in output
 
 
 @pytest.mark.parametrize("options,expected", [
     (["configs/dicm_pacs_a5.yaml"], 0.01),
     (["--dicm_ablation", "A5"], 0.01),
     (["--dicm_ablation", "A5", "--dicm_gt_weight", "0.02"], 0.02),
-    (["--dicm_ablation", "A5", "--l_d", "0.03"], 0.03),
 ])
 def test_show_resolves_a5_gt_overlay_and_cli_without_running_training(monkeypatch, capsys, options, expected):
     import train_all
@@ -543,15 +577,15 @@ def test_show_resolves_a5_gt_overlay_and_cli_without_running_training(monkeypatc
 
 def test_a0_config_reviews_original_four_loss_baseline_without_data_or_gpu(monkeypatch, capsys):
     import train_all
-    monkeypatch.setattr("sys.argv", ["train_all.py", "a0_review", "configs/dccl_pacs_a0.yaml",
+    monkeypatch.setattr("sys.argv", ["train_all.py", "a0_review",
                                     "--algorithm", "DCCL", "--show"])
     monkeypatch.setattr(train_all, "get_dataset", lambda *a, **k: pytest.fail("A0 review accessed data"))
     monkeypatch.setattr(train_all, "get_writer", lambda *a, **k: pytest.fail("A0 review created outputs"))
     monkeypatch.setattr(torch.cuda, "is_available", lambda: pytest.fail("A0 review checked GPU"))
     train_all.main()
     output = capsys.readouterr().out
-    assert "Algorithm: DCCL" in output and "Seed policy: per_target; seed=0; trial_seed=0" in output
-    assert "l_d: 0.01" in output and "l: 1.0" in output and "l_layer: 1.0" in output
+    assert "Algorithm: DCCL" in output and "Seed policy: per_run; seed=0; trial_seed=0" in output
+    assert "l_d: 0.01" in output and "l: 1" in output and "l_layer: 1" in output
     assert "dicm_" not in output
 
 
@@ -582,7 +616,7 @@ def trainer_harness(monkeypatch, tmp_path):
     splits = [(FakeSplit(i), None) for i in range(4)]
 
     def get_dataset(*args, **kwargs):
-        # Verify that even dataset construction starts from reset RNGs.
+        # Capture RNG state progression at dataset construction.
         dataset_draws.append((random.random(), np.random.rand(), torch.rand(3)))
         return FakeDataset(), splits, splits
 
@@ -649,7 +683,7 @@ def trainer_harness(monkeypatch, tmp_path):
         def __getattr__(self, name):
             return lambda *args, **kwargs: None
 
-    def run(mode, target=1, steps=3, seed=0, checkpoint_freq=1, isolate_eval_rng=False, prebuild_loader=False):
+    def run(mode, target=1, steps=3, checkpoint_freq=1):
         algorithm = "DCCL" if mode == "A0" else "DICM"
         hp = hparams(mode if mode != "A0" else "A4")
         if mode == "A0":
@@ -659,70 +693,36 @@ def trainer_harness(monkeypatch, tmp_path):
                   indomain_test=False, test_batchsize=4)
         out_dir = tmp_path / f"job_{len(created)}"
         out_dir.mkdir()
-        args = Namespace(algorithm=algorithm, prebuild_loader=prebuild_loader, trial_seed=0, seed=seed,
+        args = Namespace(algorithm=algorithm, prebuild_loader=False, trial_seed=0, seed=0,
                          deterministic=True, out_dir=out_dir, evalmode="fast", debug=False, log=False,
-                         model_save=None, tb_freq=1, isolate_eval_rng=isolate_eval_rng)
+                         model_save=None, tb_freq=1)
         result, records = trainer.train([target], args, Config(default=hp), steps, checkpoint_freq, Sink(), Sink())
-        name = FakeDataset.environments[target]
-        selection = json.loads((out_dir / f"selection_te_{name}.json").read_text())
-        return Namespace(result=result, records=records, selection=selection, model=created[-1],
+        return Namespace(result=result, records=list(records), model=created[-1],
                          dataset_draw=dataset_draws[-1])
 
     return run
 
 
 @pytest.mark.parametrize("mode", ["A0", "A4", "A5"])
-def test_trainer_source_only_selection_swad_and_split_manifest(trainer_harness, mode):
-    job = trainer_harness(mode)
-    result, records, selection = job.result, job.records, job.selection
-    assert "oracle" not in result
-    assert result["iid"] == 0.2 and result["iid (test_out)"] == 0.1
-    assert result["SWAD"] == 0.3 and result["SWAD (test_out)"] == 0.4
-    assert selection["iid"]["step"] == 1 and selection["source_envs"] == [0, 2, 3]
-    assert len(selection["source_split_sha256"]) == 64
-    assert selection["swad"]["criterion"] == "source validation LossValley"
-    assert selection["seed_policy"] == "per_target" and selection["seed"] == 0
-    assert selection["deterministic"] and selection["ablation"] == mode
-    assert selection["algorithm"] == ("DCCL" if mode == "A0" else "DICM")
-    assert len(records) == 3
+def test_trainer_uses_original_checkpoint_and_selection_rules(trainer_harness, mode):
+    job = trainer_harness(mode, steps=3)
+    assert job.result["oracle"] == 0.99
+    assert job.result["iid"] == 0.2
+    assert job.result["SWAD"] == 0.3
+    assert [record["step"] for record in job.records] == [0, 1, 2]
 
-
-@pytest.mark.parametrize("mode", ["A0", "A1", "A2", "A3", "A4", "A5"])
-def test_target_initialization_and_trajectory_ignore_prior_target_order_and_steps(trainer_harness, mode):
-    standalone = trainer_harness(mode, target=3, steps=3)
-    trainer_harness(mode, target=0, steps=3)
-    after_short = trainer_harness(mode, target=3, steps=3)
-    trainer_harness(mode, target=2, steps=5)
-    trainer_harness(mode, target=1, steps=4)
-    after_long = trainer_harness(mode, target=3, steps=3)
-    for repeated in (after_short, after_long):
-        assert standalone.dataset_draw[:2] == repeated.dataset_draw[:2]
-        torch.testing.assert_close(standalone.dataset_draw[2], repeated.dataset_draw[2], atol=0, rtol=0)
-        for key, value in standalone.model.test_initial_state.items():
-            torch.testing.assert_close(value, repeated.model.test_initial_state[key], atol=0, rtol=0)
-        for expected, actual in zip(standalone.model.test_batches, repeated.model.test_batches):
-            torch.testing.assert_close(actual, expected, atol=0, rtol=0)
-        assert standalone.model.test_metrics == repeated.model.test_metrics
-        assert standalone.selection == repeated.selection and standalone.result == repeated.result
-        if mode in {"A4", "A5"}:
-            assert not standalone.model.test_initial_state["residual_bank.initialized"].any()
-    # Same target, longer budget: the common updates remain identical.
-    longer = trainer_harness(mode, target=3, steps=5)
-    assert standalone.model.test_metrics == longer.model.test_metrics[:3]
+    sparse = trainer_harness(mode, steps=5, checkpoint_freq=3)
+    assert len(sparse.model.test_metrics) == 5
+    assert [record["step"] for record in sparse.records] == [0, 3]
 
 
 @pytest.mark.parametrize("mode", ["A0", "A4", "A5"])
-def test_short_budget_evaluates_last_update_without_rounding(trainer_harness, mode):
-    job = trainer_harness(mode, steps=5, checkpoint_freq=100)
-    assert len(job.model.test_metrics) == job.selection["actual_updates"] == 5
-    assert job.selection["max_updates"] == 5 and job.selection["last_step"] == 4
-    assert [row["step"] for row in job.records] == [0, 4]
-
-
-def test_isolation_covers_prebuilt_loader_construction_before_model_init(trainer_harness):
-    lazy = trainer_harness("A4", isolate_eval_rng=True)
-    prebuilt = trainer_harness("A4", isolate_eval_rng=True, prebuild_loader=True)
-    for key, value in lazy.model.test_initial_state.items():
-        torch.testing.assert_close(value, prebuilt.model.test_initial_state[key], atol=0, rtol=0)
-    assert lazy.model.test_metrics == prebuilt.model.test_metrics
-    assert lazy.selection["evaluation_rng"] == prebuilt.selection["evaluation_rng"] == "isolated"
+def test_trainer_keeps_rng_state_between_targets(trainer_harness, mode):
+    random.seed(0)
+    np.random.seed(0)
+    torch.manual_seed(0)
+    first = trainer_harness(mode, target=0)
+    second = trainer_harness(mode, target=1)
+    assert first.dataset_draw[:2] != second.dataset_draw[:2]
+    assert not torch.equal(first.dataset_draw[2], second.dataset_draw[2])
+    assert not torch.equal(first.model.test_batches[0], second.model.test_batches[0])

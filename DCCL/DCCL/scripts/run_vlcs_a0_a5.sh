@@ -13,16 +13,16 @@ RUN_OUTPUT_ROOT="${OUTPUT_ROOT:-train_output}"
 for mode in A0 A1 A2 A3 A4 A5; do
   if [[ "$mode" == A0 ]]; then
     algorithm=DCCL
-    config=configs/dccl_vlcs_a0.yaml
+    configs=()
     options=()
   else
     algorithm=DICM
-    config=configs/dicm_vlcs.yaml
+    configs=(configs/dicm_vlcs.yaml)
     options=(--dicm_ablation "$mode")
   fi
-  "$PYTHON_BIN" -u train_all.py "vlcs_${mode}_seed${RUN_SEED}_n${RUN_STEPS}" "$config" \
+  "$PYTHON_BIN" -u train_all.py "vlcs_${mode}_seed${RUN_SEED}_n${RUN_STEPS}" "${configs[@]}" \
     --algorithm "$algorithm" --dataset VLCS --model resnet50 "${options[@]}" \
     --seed "$RUN_SEED" --trial_seed "$SPLIT_SEED" --deterministic \
-    --steps "$RUN_STEPS" --checkpoint_freq "$EVAL_FREQ" --num_workers "${NUM_WORKERS:-4}" \
+    --steps "$RUN_STEPS" --checkpoint_freq "$EVAL_FREQ" \
     --output_root "$RUN_OUTPUT_ROOT" "$@"
 done

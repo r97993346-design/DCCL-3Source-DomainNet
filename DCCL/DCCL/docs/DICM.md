@@ -2,12 +2,12 @@
 
 基础：远程 main 的 ea200b976dbd348ab8844e5d4377f90e24134c87。
 当前分支：feature/dicm-per-target-seed-a0-20261110。
-基于 feature/dicm-gt-replacement-20261110 的 921493d；父分支保留旧训练入口。
+训练协议沿用原始 DCCL。
 
 本实现新增独立的 `DICM(Algorithm)`，不继承会构造 GT 的 `DCCL.__init__`。
 原始 `algorithms.py::DCCL`、数据增强、分割、采样与 SWAD LossValley 保留。
-默认 A4 删除 GT；A5 是完整 A4 加回 GT 的补充对照。没有加入残差门控、
-可靠性加权、额外 SupCon 或正交损失。
+默认 A4 删除 GT，A5 是完整 A4 加回 GT 的补充对照。两者默认使用等权 SupCon，
+可选择启用跨域同类正样本对加权。
 
 ## 前向与损失
 
@@ -69,7 +69,28 @@ L_GT = sum_k mean((h_theta_k(x_aug) - stopgrad(h_0_k(x)))² / v_k + log(v_k)) / 
 GT 额外更新 fθ 和方差参数；参考模型仍冻结，B 仍只受 ISR 更新。
 GT 不直接更新分类器或两个投影头，也不作为推理输入。GT 可能间接改变后续
 差分观测和 B 的学习轨迹，因此 A5 不能描述成已删除 GT 的替换方法。
-主论文的模块替换仍由 A4 对比 A0 / A1 验证；A5 检验 GT 的补充作用。
+在完整 DCCL 上添加模块用 A5 对比 A0；A4 检验移除 GT 后的效果。
+
+## 可选的跨域正样本对加权
+
+用第一视图投影前的学生特征 `z` 计算同类、不同源域样本的差异
+`delta_ij = z_i - z_j`。用当前的正交基 Q 衡量差异中的敏感能量：
+
+```text
+r_ij = clamp(1 - ||delta_ij @ Q||² / max(||delta_ij||², 1e-12), min_reliability, 1)
+w_ij = 1 - gamma(step) * (1 - r_ij)
+```
+
+差异范数小于 1e-6 的样本对取权重 1。权重停止梯度。同域同类和同一样本的两视图
+取权重 1。用同一张样本级权重矩阵加权现有两视图 SupCon 的正样本平均，每个锚点
+除以自己的正样本权重之和。SupCon 的相似度仍在投影后的 E/E_aug 上计算，
+softmax 分母仍使用所有非自身视图。CE、PreCL 和 ISR 的计算公式保持原样。
+
+加载 `configs/dicm_reliable_contrast.yaml` 启用，默认在第 300 步开始渐增，
+第 500 步达到 gamma=0.3，有效跨域正对权重介于 0.85 和 1 之间。
+`--dicm_reliable_contrast_gamma_max 0` 使用原等权路径，可作为配对对照。
+该选项要求启用子空间和 SupCon，使用 `sample_d=False`。训练日志记录有效
+gamma、当前计算的跨域同类有向样本对数量及其平均权重；预热时数量为 0、均值为 1。
 
 ## 原型支持与源域编号
 
@@ -81,167 +102,22 @@ GT 不直接更新分类器或两个投影头，也不作为推理输入。GT �
   trainer 打印局部到全局编号的映射，held-out 不会进入更新。
 - predict / predict_embed / SWAD 前向均不写原型，不需要标签、域标签、参考模型或增强视图。
 
-## 使用方式
+## 使用方式与训练协议
 
-从仓库的 `DCCL/DCCL` 目录运行。需要 PyTorch >=2.0；验证环境为
-PyTorch 2.5.1、torchvision 0.20.1。保留现有已能运行 DCCL 的其余依赖。
+从仓库的 `DCCL/DCCL` 目录运行。A0 使用原 DCCL 默认配置，A5 继承相同的数据集超参数、任务损失和 GT 权重，只增加 DICM 投影与 ISR。
 
-先只审阅配置，此命令不加载数据、不创建训练输出，也不要求 CUDA：
+原始入口在每个进程启动时以 `--seed` 设置一次 Python、NumPy 和 PyTorch 随机状态，默认 0。目标域按顺序共享随机序列。每域仍重新创建数据加载器、模型和优化器。按作者公开示例做三次重复时，`--seed` 保持 0，分别使用 `--trial_seed 0/1/2`。该参数控制数据划分。
 
-```bash
-python train_all.py dicm_review configs/dicm_pacs.yaml \
-  --algorithm DICM --dataset PACS --show
-```
-
-以下是后续手动训练示例，本次实现过程没有执行此命令：
+训练预算沿用 `floor(steps / checkpoint_freq) * checkpoint_freq + 1`，SWAD 可提前停止。评估与训练共享随机状态，加载器沿用原实现。可用 `--show` 预览实际配置。
 
 ```bash
-python -u train_all.py pacs_dicm_A4 configs/dicm_pacs.yaml \
-  --algorithm DICM --dataset PACS --model resnet50 \
-  --data_dir /path/to/data --steps 5000 --checkpoint_freq 100 \
-  --seed 0 --trial_seed 0 --deterministic
+python train_all.py pacs_A0 --dataset PACS --algorithm DCCL --deterministic --trial_seed 0 --checkpoint_freq 100 --show
+python train_all.py pacs_A5 configs/dicm_pacs.yaml configs/dicm_pacs_a5.yaml --dataset PACS --algorithm DICM --deterministic --trial_seed 0 --checkpoint_freq 100 --show
 ```
 
-不传 test_envs 时沿用原程序的 0→1→2→3 顺序。没有自动启动训练队列。
-当前默认 `--step_count_mode exact`：steps=5000 表示最多 5000 次更新（step=0..4999），
-不再按 checkpoint_freq 截断或多加一步。step=0 在第一次优化后评估，末次更新也会评估，
-SWAD 仍可能提前停止。复现旧换算时显式使用 `--step_count_mode legacy`，
-此时最大更新数仍为 floor(steps/checkpoint_freq)*checkpoint_freq+1。
-本分支改为逐目标域重置 seed；需要使用下述 A0 重新建立匹配基线。
+实际训练时去掉 `--show` 并传入 `--data_dir`。VLCS A5 使用 `configs/dicm_vlcs.yaml` 并传入 `--dicm_ablation A5`。公共超参数沿用原入口的解析顺序，需要覆盖时对两组传入相同的 YAML。可通过 `--output_root` 指定独立结果目录。现有逐目标域重置种子的旧结果与本协议分别记录。
 
-## 逐目标域独立复现与 A0
-
-`domainbed/trainer.py::train` 在每次任务的最开始调用
-`domainbed/lib/reproducibility.py::seed_everything`，早于数据集、采样器、
-DataLoader 与模型创建。Python、NumPy、PyTorch CPU / CUDA 均以 `args.seed`
-重新开始；cuDNN deterministic / benchmark 沿用 `--deterministic` 的控制。
-目标域编号和之前的任务长度不参与种子计算。一组内三源共同更新，正常推进 RNG。
-
-因此 seed=0 时，PACS 的 A / C / P / S 四组都会在各自开始前重置为 0。
-每组仍重新创建模型、优化器、B、EMA 和 SWAD，不加载上一组参数。
-`trial_seed` 与原来的划分算法不变；每次 selection JSON 记录 seed、trial_seed、
-seed_policy=per_target、deterministic、算法、消融编号和源域 split hash。
-同时记录 requested_steps、max_updates、actual_updates、checkpoint_freq、
-step_count_mode、evaluation_rng 和 num_workers；step 字段保留从 0 开始的原口径。
-
-A0 直接使用未改动的 `domainbed/algorithms/algorithms.py::DCCL`，保留 CE(z)、
-SupCon(z,z_aug)、PreCL(z,z0) 和原始 GT；没有 DICM、B 或原型模块。
-新增 `configs/dccl_pacs_a0.yaml`，与 A4 共用 lr=5e-5、batch=32、任务权重和温度，
-GT 使用原 PACS 有效权重 0.01。不要把 A0 配置与 dicm_pacs.yaml 叠加。
-本分支 A0 / A1–A5 都用源域验证选 IID 与 SWAD，均不计算 Oracle 选模汇总。
-这保持原 DCCL 的模型 / 损失，同时显式更换随机种子粒度、参数覆盖、步数口径和报告协议；旧 A0 日志
-继续保留，不能充当新规则下已复现的基线。
-
-先只检查 A0 配置：
-
-```bash
-python train_all.py a0_review configs/dccl_pacs_a0.yaml \
-  --algorithm DCCL --dataset PACS --show
-```
-
-配套串行脚本会使用同一 seed、trial_seed、步数、评估频率和骨干依次准备 A0–A5。
-先审阅全部六组（不会创建训练输出或加载数据）：
-
-```bash
-STEPS=300 CHECKPOINT_FREQ=100 bash scripts/run_pacs_a0_a5.sh --show
-```
-
-后续手动启动的示例，本次实现没有执行：
-
-```bash
-CUDA_VISIBLE_DEVICES=0 SEED=0 TRIAL_SEED=0 STEPS=300 CHECKPOINT_FREQ=100 \
-  bash scripts/run_pacs_a0_a5.sh --data_dir /path/to/data
-```
-
-不传 test_envs 时，每组运行四个目标域；可传 `--test_envs 3` 只补跑 Sketch。
-支持 `--test_envs 3 0` 等子集 / 自定义顺序，汇总表只显示实际目标域，并按实际顺序标注。
-目标域编号重复或越界会报错。
-`PYTHON=/path/to/python` 可指定解释器。新分支默认就按目标域重置，无需额外开关。
-脚本仅在手动调用时启动；实现与检查过程不运行真实训练。
-
-可用 `--output_root /path/to/results` 改变输出根目录；程序自动追加数据集目录和
-时间戳实验目录。默认仍为 train_output。串行脚本支持同名用途的环境变量 OUTPUT_ROOT：
-
-```bash
-OUTPUT_ROOT=train_output/dicm_a0_a5_gpu0 STEPS=5000 CHECKPOINT_FREQ=100 \
-  bash scripts/run_pacs_a0_a5.sh --data_dir /path/to/data --num_workers 2
-```
-
-此例的日志、results.jsonl 和 selection 文件位于
-`DCCL/DCCL/train_output/dicm_a0_a5_gpu0/PACS/<时间戳>_pacs_A*_seed0_n5000/`；
-TensorBoard 在该 PACS 目录的 runs 子目录。可选模型权重也跟随新目录。
-相对路径按脚本切换后的 DCCL/DCCL 目录解释，绝对路径直接使用，支持带空格的路径。
-配置预览会显示目标路径但不创建目录；参数只影响新启动的进程，不会迁移正在写入的旧日志。
-
-VLCS 的五组 A1–A5（不含 A0）使用独立配置和脚本：
-
-```bash
-OUTPUT_ROOT=train_output/dicm_vlcs_a1_a5_gpu1 \
-  bash scripts/run_vlcs_a1_a5.sh --show
-```
-
-默认 ResNet-50、seed=0、trial_seed=0、每域 batch=32、lr=5e-5、最多 5000 次更新、
-check=100、workers=4、逐目标域重置种子。A5 的 VLCS GT 权重为原数据集配置的
-0.05，不能套用 PACS 的 0.01。所有组都只用源域验证选模，不默认隔离评估 RNG。
-去掉 --show 并指定 --data_dir 后，五组依次各跑四个目标域，共 20 个泛化任务。
-
-需要包括原 DCCL A0 的 VLCS 完整六组时，使用新增脚本（保留前述五组脚本）：
-
-```bash
-OUTPUT_ROOT=train_output/dicm_vlcs_a0_a5_gpu1 \
-  bash scripts/run_vlcs_a0_a5.sh --show
-```
-
-A0 直接使用原 DCCL 类及 configs/dccl_vlcs_a0.yaml，GT 权重同 A5 均为 0.05。
-顺序为 A0→A1→A2→A3→A4→A5，每组四个目标域，共 24 个任务；其余默认参数相同。
-实际启动时去掉 --show 并传入 --data_dir，使用独立输出根目录区分旧五组任务。
-
-相同目标域仅改变总步数时，在学习率、checkpoint_freq、数据与环境相同的条件下，
-公共更新前缀应一致。默认仍使用共享训练 / 评估 RNG，保留原 DCCL 行为；
-改变评估频率仍可能改变 RNG 消耗与 SWAD 行为。
-
-专门对比不同 check 时，可对所有对照统一加 `--isolate_eval_rng`。
-`Evaluator.evaluate` 会在评估前后保存 / 恢复 Python、NumPy、PyTorch CPU 和已初始化
-CUDA 设备的 RNG，即使评估抛异常也恢复；`--prebuild_loader` 的评估加载器创建也纳入隔离。
-这阻止评估次数改变训练随机序列，不会消除 checkpoint 候选和 SWAD 区间的差异。
-它不是默认开启的改动，也不是 GPU 所有算子逐位确定或跨软件 / 硬件一致的保证。
-
-新增 `--num_workers 2` 同时控制每个训练 / 评估加载器；省略时保留数据集默认值。
-FastDataLoader 不再忽略此值；`--num_workers 0` 在主进程加载，适合排查问题。
-预览步数、RNG 与 workers 的示例：
-
-```bash
-STEPS=50 CHECKPOINT_FREQ=100 bash scripts/run_pacs_a0_a5.sh --show --num_workers 2
-# 统一隔离评估随机状态后预览（不启动训练）
-STEPS=300 CHECKPOINT_FREQ=100 bash scripts/run_pacs_a0_a5.sh --show --isolate_eval_rng
-```
-
-配置 / sconf 可覆盖 dicm_* 参数，例如：
-
-```bash
-python train_all.py review configs/dicm_pacs.yaml --algorithm DICM --show \
-  --dicm_aug_weight 0.5 --dicm_dom_weight 0.5 --dicm_basis_lr 0.0001
-```
-
-A0 / DICM 均修复了 argparse 核心选项未回填的问题：显式 `--l`、`--l_layer`、
-`--t`、`--t_pre`、`--n_layer` 在 YAML 后生效。未显式传入的 argparse 默认值不会
-覆盖数据集 / YAML 配置。A0 的显式 `--l_d` 也会生效。A0 若手动关闭 GT、SupCon
-或 PreCL，selection 中标为 DCCL-custom，不能当成标准 A0。
-A1–A4 的 l_d 必须为 0；非零值会报错。只有显式选择 A5 才恢复 GT。
-A5 使用 `dicm_gt_weight` 配置 GT，日志中的 `l_d` 同步为有效值，也接受显式
-`--l_d` 覆盖。默认继承原 DCCL 的数据集 / 骨干权重：PACS=0.01、VLCS=0.05、
-TerraIncognita=0.05、OfficeHome ResNet=0.05 / CLIP=0.1、DomainNet=0.05。
-PACS 不采用 argparse 中未生效的默认 0.05。A5 要求 GT、SupCon、PreCL 均启用。
-
-只检查 A5 配置，不启动训练：
-
-```bash
-python train_all.py a5_review configs/dicm_pacs.yaml configs/dicm_pacs_a5.yaml \
-  --algorithm DICM --dataset PACS --show
-```
-
-也可在基础配置后用 `--dicm_ablation A5` 替代 A5 overlay。调节 GT 时使用
-`--dicm_gt_weight 0.02`；增强 / 域响应配比仍为 0.25 / 0.75，其他配置不变。
+配套 PACS/VLCS 脚本每组启动一个独立进程，默认使用 seed=0、trial_seed=0、steps=5000、checkpoint_freq=100。可用 `TRIAL_SEED` 指定重复编号。脚本的 `--show` 仅预览配置。
 
 ## 精确消融
 
@@ -256,11 +132,10 @@ python train_all.py a5_review configs/dicm_pacs.yaml configs/dicm_pacs_a5.yaml \
 | A4，默认 | 构造 | E | E、E⁺ | E、z0 | 无 |
 | A5 | 构造 | E | E、E⁺ | E、z0 | 原始中间层 |
 
-A1–A4 不构造 GT，A0 / A5 构造。A0 使用 `--algorithm DCCL` 配合 A0 专用配置，
-不属于 `--dicm_ablation` 的可选值。
+A1–A4 不构造 GT，A0 / A5 构造。A0 使用 `--algorithm DCCL` 和原 DCCL 默认配置。
 A2 / A3 强制关闭对应项，显式传入矛盾的 CLI 权重会报错。
 A1 / A4 保留可配置的任务权重；若手动关掉某项，结果不再对应表中的标准消融定义。
-A5 已重新定义为完整方案加 GT，不再是门控实验。门控和 A6 可靠性对比尚未实现。
+A5 是完整方案加 GT。可靠性加权是独立选项，使用时沿用原有 A3/A4/A5 模式。
 
 支持原始 two_ce 与 sample_d：第二视图 CE 和额外正样本也先经过相同投影。
 首版对 TN、CutMix aug、mix、re_w、pos_mask 的非零 / True 设置明确报错，
@@ -282,45 +157,14 @@ A5 已重新定义为完整方案加 GT，不再是门控实验。门控和 A6 �
 
 ## 评估与日志
 
-A0 / DICM 的 IID 仅依据 source train_out，平局保持第一个最大值。SWAD 使用原始源域
-验证 LossValley。两者均不计算 / 返回 oracle 选模结果。
+沿用原 DCCL 汇总。IID 按源域验证准确率选模，SWAD 按源域验证 LossValley 选平均区间，两项均报告目标域 test_in。Oracle 行按目标域 test_out 选 checkpoint，供对照原程序输出。模块比较采用源域选出的 IID 或 SWAD。
 
-为兼容原复现，iid / SWAD / last 仍表示 test_in；另有明确的
-`iid (test_out)`、`SWAD (test_out)`、`last (test_out)`。
-它们都是选定模型的报告字段，不能再反向用于调参。
-每目标额外保存 selection_te_*.json，包含源域 split hash、选中步、源域准则、
-SWAD 范围及报告指标。原始 DCCL 的历史 summary 留在父分支，本分支不沿用 Oracle 行。
+DICM 额外记录两类响应的覆盖率和有效数量、原型支持与年龄、基矩阵条件数、投影改变量、增强距离、类间散度投影比例和梯度范数。
 
-新增训练指标包含两类覆盖 / 有效数量 / 实际配比、原型支持与年龄、raw B 最小奇异值
-和条件数、Q 正交误差、E 改变量、绝对增强距离、敏感能量和类间散度删除比例、
-各参数梯度范数与实际学习率。诊断在 optimizer.step 之前计算，避免旧 z 配新 B。
-`ce_loss` 保留原第一视图口径；`loss_cls` 是考虑 two_ce 后实际参与优化的 CE。
-GT 另记录 `gt_enabled`、`gt_weight`、`reg_loss`、`weighted_gt_loss`、
-`gt_layer_count`、`gt_grad_norm`；不能只根据含 log 方差的 GT 原始数值判断其作用。
-
-## 验证与证据边界
+## 验证
 
 ```bash
-python -m pytest tests/test_dicm.py tests/test_training_protocol.py -q
+python -m pytest tests/test_dicm.py -q
 ```
 
-测试使用小张量 / 模拟编码器，以及随机权重 ResNet-50 的推理检查，不下载预训练
-权重、不读取 PACS、不运行真实训练实验。覆盖：A1–A4 无 GT、A5 恢复 GT、任务端点、梯度隔离、
-配比与空响应、EMA 支持与局部域编号、A1 基线等价性、状态保存、SWAD、CLI、
-源域选模及 A0 / A4 / A5 trainer 集成。A5 还验证额外视图不覆盖 GT 快照、
-beta=0 且 ISR 关闭时与原 DCCL 的 GT 损失及参数更新等价、公共初始化一致、
-GT 权重解析和方差优化器状态恢复。
-
-新增 A0–A5 的四域合成数据测试：比较同一目标独立运行、前置不同域 / 不同步数后
-运行时的数据集随机起点、初始模型状态、批次、每步损失与梯度诊断、选模结果；
-也比较短长预算的公共训练前缀。这些是 CPU 合约验证，不是 PACS 性能实验或
-GPU 逐位复现的证据。
-
-入口回归另覆盖：单目标 / 子集 / 乱序汇总，A0 与 A4 / A5 的核心 CLI 覆盖，
-精确 / legacy 步数预算，预算小于评估间隔时的末步评估，非法参数，以及真实
-DataLoader 的 workers 传递和评估 RNG 隔离。共享 RNG 默认路径保留单独测试。
-宿主禁止 IPC sockets 时，实际多 worker 烟雾测试会跳过；workers 参数转发与
-num_workers=0 的真实加载测试仍运行。GPU 复现和真实 PACS 训练需在训练环境验证。
-
-本分支实现了待验证方法，没有新 PACS 性能结果。Q 是差分响应子空间估计，
-不能仅凭代码或覆盖率声称已识别真实因果因素，也不能保证超越原始 DCCL。
+测试涵盖 DICM 梯度、A5 与基线的身份投影等价性、SWAD 推理路径、配置预览，以及合成任务上的原训练协议。真实数据集的性能需在同协议下重新测量。

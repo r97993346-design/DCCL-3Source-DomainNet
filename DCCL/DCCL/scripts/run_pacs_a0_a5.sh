@@ -13,14 +13,14 @@ RUN_OUTPUT_ROOT="${OUTPUT_ROOT:-train_output}"
 for mode in A0 A1 A2 A3 A4 A5; do
   if [[ "$mode" == A0 ]]; then
     algorithm=DCCL
-    config=configs/dccl_pacs_a0.yaml
+    configs=()
     options=()
   else
     algorithm=DICM
-    config=configs/dicm_pacs.yaml
+    configs=(configs/dicm_pacs.yaml)
     options=(--dicm_ablation "$mode")
   fi
-  "$PYTHON_BIN" -u train_all.py "pacs_${mode}_seed${RUN_SEED}_n${RUN_STEPS}" "$config" \
+  "$PYTHON_BIN" -u train_all.py "pacs_${mode}_seed${RUN_SEED}_n${RUN_STEPS}" "${configs[@]}" \
     --algorithm "$algorithm" --dataset PACS --model resnet50 \
     --seed "$RUN_SEED" --trial_seed "$SPLIT_SEED" --deterministic \
     --output_root "$RUN_OUTPUT_ROOT" \

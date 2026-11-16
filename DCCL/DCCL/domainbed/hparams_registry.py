@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from domainbed.lib.dicm_hparams import RELIABLE_CONTRAST_DEFAULTS
+
 
 def _hparams(algorithm, dataset, random_state):
     """
@@ -97,6 +99,7 @@ def _hparams(algorithm, dataset, random_state):
     if algorithm == "DICM":
         # Fixed, explicit starting points; not an implicit HPO search space.
         dicm_defaults = {
+            "dicm_residual_projection": False,
             "dicm_ablation": "A4", "dicm_rank": 8, "dicm_beta": 1.0,
             "dicm_isr_weight": 0.05, "dicm_aug_weight": 0.25,
             "dicm_gt_weight": 0.01 if dataset == "PACS" else 0.05,
@@ -106,6 +109,7 @@ def _hparams(algorithm, dataset, random_state):
             "dicm_min_delta_norm": 1e-4,
             "dicm_basis_lr": 0.0,  # 0 inherits backbone lr; basis decay is 0.
             "dicm_basis_seed": -1,  # Private generator seeded by torch.initial_seed().
+            **RELIABLE_CONTRAST_DEFAULTS,
         }
         hparams.update({key: (value, value) for key, value in dicm_defaults.items()})
 
