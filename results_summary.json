@@ -1,0 +1,626 @@
+{
+  "V01": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 400,
+        "iid_test_in": 0.9982332155477032,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.8540897166975436,
+        "swad_test_in": 0.998233,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6272941176470588,
+        "iid_test_out": 0.6214689265536724,
+        "source_validation": 0.9306074977416441,
+        "swad_test_in": 0.652235,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 250,
+        "iid_test_in": 0.8789337282487968,
+        "iid_test_out": 0.8933333333333333,
+        "source_validation": 0.8836324697992742,
+        "swad_test_in": 0.875231,
+        "swad_start": 151,
+        "swad_end": 400,
+        "swad_averaged_segments": 8,
+        "swad_fallback": false
+      },
+      "VOC2007": {
+        "iid_step": 350,
+        "iid_test_in": 0.7916984006092918,
+        "iid_test_out": 0.7987804878048781,
+        "source_validation": 0.9074115923833439,
+        "swad_test_in": 0.786748,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V01/VLCS/261115_23-32-04_V01/results.jsonl",
+    "log": "V01/VLCS/261115_23-32-04_V01/log.txt",
+    "console": "V01/console.log"
+  },
+  "V02": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 400,
+        "iid_test_in": 0.9982332155477032,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.8540897166975436,
+        "swad_test_in": 0.998233,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6268235294117647,
+        "iid_test_out": 0.6195856873822976,
+        "source_validation": 0.9321318879855465,
+        "swad_test_in": 0.651765,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 300,
+        "iid_test_in": 0.8730099962976675,
+        "iid_test_out": 0.8755555555555555,
+        "source_validation": 0.8837817509531027,
+        "swad_test_in": 0.871899,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "VOC2007": {
+        "iid_step": 300,
+        "iid_test_in": 0.7772277227722773,
+        "iid_test_out": 0.7896341463414634,
+        "source_validation": 0.9056622724419334,
+        "swad_test_in": 0.787129,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V02/VLCS/261116_00-47-15_V02/results.jsonl",
+    "log": "V02/VLCS/261116_00-47-15_V02/log.txt",
+    "console": "V02/console.log"
+  },
+  "V03": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 400,
+        "iid_test_in": 0.9982332155477032,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.8547174630880019,
+        "swad_test_in": 0.998233,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6268235294117647,
+        "iid_test_out": 0.6195856873822976,
+        "source_validation": 0.9311156278229449,
+        "swad_test_in": 0.651765,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 250,
+        "iid_test_in": 0.87782302850796,
+        "iid_test_out": 0.8918518518518519,
+        "source_validation": 0.8847683462710333,
+        "swad_test_in": 0.874861,
+        "swad_start": 151,
+        "swad_end": 400,
+        "swad_averaged_segments": 8,
+        "swad_fallback": false
+      },
+      "VOC2007": {
+        "iid_step": 350,
+        "iid_test_in": 0.7932216298552932,
+        "iid_test_out": 0.8003048780487805,
+        "source_validation": 0.9067838459928856,
+        "swad_test_in": 0.786748,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V03/VLCS/261116_02-00-27_V03/results.jsonl",
+    "log": "V03/VLCS/261116_02-00-27_V03/log.txt",
+    "console": "V03/console.log"
+  },
+  "V04": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 400,
+        "iid_test_in": 0.9991166077738516,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.8577090318925789,
+        "swad_test_in": 0.999117,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6282352941176471,
+        "iid_test_out": 0.623352165725047,
+        "source_validation": 0.9305788919000302,
+        "swad_test_in": 0.652706,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 250,
+        "iid_test_in": 0.8759718622732321,
+        "iid_test_out": 0.8933333333333333,
+        "source_validation": 0.8847683462710333,
+        "swad_test_in": 0.871899,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "VOC2007": {
+        "iid_step": 300,
+        "iid_test_in": 0.7791317593297792,
+        "iid_test_out": 0.7896341463414634,
+        "source_validation": 0.90691776522285,
+        "swad_test_in": 0.786748,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V04/VLCS/261116_03-11-41_V04/results.jsonl",
+    "log": "V04/VLCS/261116_03-11-41_V04/log.txt",
+    "console": "V04/console.log"
+  },
+  "V05": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 400,
+        "iid_test_in": 0.9982332155477032,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.8548227764763523,
+        "swad_test_in": 0.998233,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6235294117647059,
+        "iid_test_out": 0.6139359698681732,
+        "source_validation": 0.9316237579042457,
+        "swad_test_in": 0.651765,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 300,
+        "iid_test_in": 0.8730099962976675,
+        "iid_test_out": 0.88,
+        "source_validation": 0.8837817509531027,
+        "swad_test_in": 0.871899,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "VOC2007": {
+        "iid_step": 300,
+        "iid_test_in": 0.7764661081492764,
+        "iid_test_out": 0.7926829268292683,
+        "source_validation": 0.9065160075329567,
+        "swad_test_in": 0.786748,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V05/VLCS/261116_04-16-54_V05/results.jsonl",
+    "log": "V05/VLCS/261116_04-16-54_V05/log.txt",
+    "console": "V05/console.log"
+  },
+  "V06": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 400,
+        "iid_test_in": 0.9982332155477032,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.854703160167195,
+        "swad_test_in": 0.998233,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6263529411764706,
+        "iid_test_out": 0.6214689265536724,
+        "source_validation": 0.9321318879855465,
+        "swad_test_in": 0.652235,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 250,
+        "iid_test_in": 0.8770825620140689,
+        "iid_test_out": 0.8888888888888888,
+        "source_validation": 0.884140599880575,
+        "swad_test_in": 0.871529,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "VOC2007": {
+        "iid_step": 350,
+        "iid_test_in": 0.7943640517897944,
+        "iid_test_out": 0.7987804878048781,
+        "source_validation": 0.9064239380623562,
+        "swad_test_in": 0.789033,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V06/VLCS/261116_05-22-27_V06/results.jsonl",
+    "log": "V06/VLCS/261116_05-22-27_V06/log.txt",
+    "console": "V06/console.log"
+  },
+  "V07": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 400,
+        "iid_test_in": 0.9982332155477032,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.8559729558689184,
+        "swad_test_in": 0.998233,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6258823529411764,
+        "iid_test_out": 0.6177024482109228,
+        "source_validation": 0.9316237579042457,
+        "swad_test_in": 0.651765,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 300,
+        "iid_test_in": 0.8733802295446131,
+        "iid_test_out": 0.8785185185185185,
+        "source_validation": 0.8837817509531027,
+        "swad_test_in": 0.871159,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "VOC2007": {
+        "iid_step": 300,
+        "iid_test_in": 0.7772277227722773,
+        "iid_test_out": 0.7896341463414634,
+        "source_validation": 0.9066499267629211,
+        "swad_test_in": 0.786748,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V07/VLCS/261116_06-28-07_V07/results.jsonl",
+    "log": "V07/VLCS/261116_06-28-07_V07/log.txt",
+    "console": "V07/console.log"
+  },
+  "V08": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 400,
+        "iid_test_in": 0.9982332155477032,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.8547174630880019,
+        "swad_test_in": 0.998233,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6268235294117647,
+        "iid_test_out": 0.6177024482109228,
+        "source_validation": 0.9306361035832581,
+        "swad_test_in": 0.650353,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 250,
+        "iid_test_in": 0.8767123287671232,
+        "iid_test_out": 0.8888888888888888,
+        "source_validation": 0.8853960926614916,
+        "swad_test_in": 0.87264,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "VOC2007": {
+        "iid_step": 300,
+        "iid_test_in": 0.7764661081492764,
+        "iid_test_out": 0.7896341463414634,
+        "source_validation": 0.9072776731533794,
+        "swad_test_in": 0.786367,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V08/VLCS/261116_07-35-06_V08/results.jsonl",
+    "log": "V08/VLCS/261116_07-35-06_V08/log.txt",
+    "console": "V08/console.log"
+  },
+  "V09": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 400,
+        "iid_test_in": 0.9991166077738516,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.8542093330067011,
+        "swad_test_in": 0.999117,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6282352941176471,
+        "iid_test_out": 0.6252354048964218,
+        "source_validation": 0.9321175850647395,
+        "swad_test_in": 0.652235,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 250,
+        "iid_test_in": 0.8763420955201777,
+        "iid_test_out": 0.8918518518518519,
+        "source_validation": 0.8835128534901168,
+        "swad_test_in": 0.874861,
+        "swad_start": 151,
+        "swad_end": 400,
+        "swad_averaged_segments": 8,
+        "swad_fallback": false
+      },
+      "VOC2007": {
+        "iid_step": 300,
+        "iid_test_in": 0.781035795887281,
+        "iid_test_out": 0.7926829268292683,
+        "source_validation": 0.9056622724419334,
+        "swad_test_in": 0.786748,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V09/VLCS/261116_08-36-44_V09/results.jsonl",
+    "log": "V09/VLCS/261116_08-36-44_V09/log.txt",
+    "console": "V09/console.log"
+  },
+  "V10": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 400,
+        "iid_test_in": 0.9982332155477032,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.8550773710185313,
+        "swad_test_in": 0.998233,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6268235294117647,
+        "iid_test_out": 0.6195856873822976,
+        "source_validation": 0.9301136705811501,
+        "swad_test_in": 0.650353,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 250,
+        "iid_test_in": 0.8770825620140689,
+        "iid_test_out": 0.8933333333333333,
+        "source_validation": 0.8843798324988899,
+        "swad_test_in": 0.87227,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "VOC2007": {
+        "iid_step": 350,
+        "iid_test_in": 0.7920792079207921,
+        "iid_test_out": 0.7957317073170732,
+        "source_validation": 0.9085331659342958,
+        "swad_test_in": 0.785986,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V10/VLCS/261116_09-38-47_V10/results.jsonl",
+    "log": "V10/VLCS/261116_09-38-47_V10/log.txt",
+    "console": "V10/console.log"
+  },
+  "V11": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 400,
+        "iid_test_in": 0.9982332155477032,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.8548513823179662,
+        "swad_test_in": 0.998233,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6287058823529412,
+        "iid_test_out": 0.6252354048964218,
+        "source_validation": 0.9315951520626318,
+        "swad_test_in": 0.653647,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 250,
+        "iid_test_in": 0.8781932617549056,
+        "iid_test_out": 0.8948148148148148,
+        "source_validation": 0.8847683462710333,
+        "swad_test_in": 0.874491,
+        "swad_start": 151,
+        "swad_end": 400,
+        "swad_averaged_segments": 8,
+        "swad_fallback": false
+      },
+      "VOC2007": {
+        "iid_step": 350,
+        "iid_test_in": 0.7939832444782939,
+        "iid_test_out": 0.7972560975609756,
+        "source_validation": 0.9067838459928856,
+        "swad_test_in": 0.785986,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V11/VLCS/261116_10-40-27_V11/results.jsonl",
+    "log": "V11/VLCS/261116_10-40-27_V11/log.txt",
+    "console": "V11/console.log"
+  },
+  "V12": {
+    "disposition": "trained",
+    "folds": {
+      "Caltech101": {
+        "iid_step": 200,
+        "iid_test_in": 0.9982332155477032,
+        "iid_test_out": 0.9964664310954063,
+        "source_validation": 0.8541807271650871,
+        "swad_test_in": 0.998233,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "LabelMe": {
+        "iid_step": 300,
+        "iid_test_in": 0.6277647058823529,
+        "iid_test_out": 0.623352165725047,
+        "source_validation": 0.9311013249021378,
+        "swad_test_in": 0.652235,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "SUN09": {
+        "iid_step": 250,
+        "iid_test_in": 0.8781932617549056,
+        "iid_test_out": 0.8918518518518519,
+        "source_validation": 0.883004723408816,
+        "swad_test_in": 0.870789,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      },
+      "VOC2007": {
+        "iid_step": 350,
+        "iid_test_in": 0.7924600152322925,
+        "iid_test_out": 0.7987804878048781,
+        "source_validation": 0.9074115923833439,
+        "swad_test_in": 0.786748,
+        "swad_start": 351,
+        "swad_end": 400,
+        "swad_averaged_segments": 50,
+        "swad_fallback": true
+      }
+    },
+    "results_jsonl": "V12/VLCS/261116_11-46-27_V12/results.jsonl",
+    "log": "V12/VLCS/261116_11-46-27_V12/log.txt",
+    "console": "V12/console.log"
+  }
+}
