@@ -92,8 +92,12 @@ def validate_stage(stage, hparams, parent):
         raise ValueError("Stage 0 requires A1, l=0, l_layer=0 and no parent")
     if stage == 1 and (mode not in ("A1", "A2", "A4") or l != 0 or pre != 0 or not parent):
         raise ValueError("Stage 1 requires a parent, no GT and no contrastive losses")
-    if stage == 2 and (mode != "A4" or not parent or (l, pre) not in ((0, 0), (1, 0), (0, 1), (1, 1))):
-        raise ValueError("Stage 2 requires A4, a parent and contrastive coefficients of zero or one")
+    if stage == 2:
+        allowed = {"A4": ((0, 0), (1, 0), (0, 1), (1, 1)), "A5": ((0, 0), (1, 1))}
+        if not parent or (l, pre) not in allowed.get(mode, ()):
+            raise ValueError("Stage 2 requires a parent and a valid A4 or A5 contrastive pair")
+        if mode == "A5" and not hparams.get("dicm_stage2_gt", False):
+            raise ValueError("Stage 2 A5 requires explicitly enabled GT transfer")
 
 
 def load_parent(path, stage, algorithm, identity, hparams):
@@ -110,7 +114,8 @@ def load_parent(path, stage, algorithm, identity, hparams):
                            "dicm_min_valid_domains", "dicm_min_delta_norm", "dicm_isr_weight",
                            "dicm_aug_weight", "dicm_dom_weight", "dicm_basis_lr", "lr",
                            "weight_decay", "optimizer", "t", "t_pre"]
-        if old["dicm_ablation"] not in ("A2", "A4"):
+        if old["dicm_ablation"] not in ("A2", "A4") or (
+                hparams["dicm_ablation"] == "A5" and (old["l"] or old["l_layer"])):
             raise ValueError("Stage 2 requires a pure DICM parent")
     for key in invariant_keys:
         if old.get(key) != hparams.get(key):
@@ -123,6 +128,12 @@ def load_parent(path, stage, algorithm, identity, hparams):
             part = {key[len(prefix):]: value for key, value in state.items()
                     if key.startswith(prefix)}
             module.load_state_dict(part, strict=True)
+    elif hparams["dicm_ablation"] == "A5":
+        initial = algorithm.state_dict()
+        new_keys = {key for key in initial if key.startswith(("mean_encoders.", "var_encoders."))}
+        if not new_keys or state.keys() != initial.keys() - new_keys:
+            raise ValueError("Stage 2 A5 parent must match every shared model and EMA key")
+        algorithm.load_state_dict({**state, **{key: initial[key] for key in new_keys}}, strict=True)
     else:
         algorithm.load_state_dict(state, strict=True)
     return int(parent["cumulative_updates"]), hashlib.sha256(Path(path).read_bytes()).hexdigest()

@@ -96,6 +96,8 @@ def main():
     hparams = Config(*keys, default=hparams)
     hparams.argv_update(left_argv)
     if args.algorithm == "DICM":
+        if args.stage == 2 and str(hparams["dicm_ablation"]).upper() == "A5":
+            hparams["dicm_stage2_gt"] = True
         finalize_dicm_hparams(hparams)
 
     if args.stage is not None:

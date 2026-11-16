@@ -766,3 +766,42 @@ def test_stagewise_training_chain_and_four_branches(tmp_path):
     for name in snapshots[0]:
         for other in snapshots[1:]:
             torch.testing.assert_close(snapshots[0][name], other[name])
+
+
+@pytest.mark.parametrize("gt_weight", [0.01, 0.05])
+def test_stage_two_gt_transfers_shared_weights_and_ema_and_matches_initial_gt(tmp_path, gt_weight):
+    from domainbed.lib import stagewise
+
+    identity = {"dataset": "PACS", "test_envs": [0], "split_sha256": "same"}
+    x, y, aug = batches()
+    base = DICM((6,), 3, 2, hparams("A4", l=0., l_layer=0., dicm_residual_projection=True))
+    base.update(x, y, x_2=aug, step=1)
+    path = tmp_path / "stage1_best.pth"
+    stagewise.save(path, base, base.hparams, None, identity, 1, 1, 2, None, None, None, 0.8)
+    gt_initial = None
+    for contrast in (0., 1.):
+        torch.manual_seed(0)
+        child = DICM((6,), 3, 2, hparams("A5", l=contrast, l_layer=contrast,
+                     dicm_residual_projection=True, dicm_stage2_gt=True, dicm_gt_weight=gt_weight))
+        stagewise.validate_stage(2, child.hparams, path)
+        assert stagewise.load_parent(path, 2, child, identity, child.hparams)[0] == 2
+        for key, value in base.state_dict().items():
+            torch.testing.assert_close(child.state_dict()[key], value)
+        initial = {key: value.clone() for key, value in child.state_dict().items()
+                   if key.startswith(("mean_encoders.", "var_encoders."))}
+        assert initial and not child.optimizer.state
+        if gt_initial is not None:
+            for key in initial:
+                torch.testing.assert_close(initial[key], gt_initial[key], rtol=0, atol=0)
+        gt_initial = initial
+        for step in (2, 3):
+            metrics = child.update(x, y, x_2=aug, step=step)
+            assert np.isfinite(metrics["reg_loss"]) and metrics["gt_grad_norm"] > 0
+            assert metrics["weighted_gt_loss"] == pytest.approx(gt_weight * metrics["reg_loss"])
+            assert metrics["supcon_enabled"] == metrics["precl_enabled"] == contrast
+
+    broken = torch.load(path, weights_only=False)
+    del broken["model"]["classifier.0.weight"]
+    torch.save(broken, path)
+    with pytest.raises(ValueError, match="every shared"):
+        stagewise.load_parent(path, 2, child, identity, child.hparams)
