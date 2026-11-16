@@ -1,0 +1,5 @@
+dicm_ablation: A4
+dicm_residual_projection: true
+l: 0.0
+l_layer: 0.0
+dicm_reliable_contrast_gamma_max: 0.0

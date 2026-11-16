@@ -81,6 +81,11 @@ def main():
     parser.add_argument("--lamda", type=float, default=5, help="Weight coefficient for Transform Network sparsity loss")
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
+    parser.add_argument("--stage", type=int, choices=[0, 1, 2], default=None)
+    parser.add_argument("--stage_parent", type=Path, default=None)
+    parser.add_argument("--stage_resume", type=Path, default=None,
+                        help="Restore model, optimizer, RNG and SWAD; DataLoader stream is not exact")
+    parser.add_argument("--stage_save_steps", type=int, nargs="*", default=None)
     args, left_argv = parser.parse_known_args()
 
     # setup hparams
@@ -93,6 +98,17 @@ def main():
     if args.algorithm == "DICM":
         finalize_dicm_hparams(hparams)
 
+    if args.stage is not None:
+        from domainbed.lib.stagewise import validate_stage
+        if args.algorithm != "DICM" or not args.test_envs or len(args.test_envs) != 1:
+            raise ValueError("Stagewise training requires DICM and exactly one held-out --test_envs")
+        if not args.steps or not args.checkpoint_freq:
+            raise ValueError("Stagewise training requires explicit --steps and --checkpoint_freq")
+        if args.stage_resume is not None and args.stage_parent is not None:
+            raise ValueError("Specify a stage parent or a stage resume, not both")
+        parent = args.stage_parent or (args.stage_resume if args.stage else None)
+        validate_stage(args.stage, hparams, parent)
+
     # setup debug
     if args.debug:
         args.checkpoint_freq = 5
@@ -103,7 +119,7 @@ def main():
         dataset_class = datasets.get_dataset_class(args.dataset)
         requested_steps = args.steps or dataset_class.N_STEPS
         checkpoint_freq = args.checkpoint_freq or dataset_class.CHECKPOINT_FREQ
-        max_updates = (requested_steps // checkpoint_freq) * checkpoint_freq + 1
+        max_updates = requested_steps if args.stage is not None else (requested_steps // checkpoint_freq) * checkpoint_freq + 1
         print(f"Algorithm: {args.algorithm}")
         print(f"Seed policy: per_run; seed={args.seed}; trial_seed={args.trial_seed}")
         print(f"Requested steps={requested_steps}; max_updates={max_updates}; checkpoint_freq={checkpoint_freq}")
@@ -173,7 +189,7 @@ def main():
     logger.info(f"checkpoint_freq = {checkpoint_freq}")
 
     org_n_steps = n_steps
-    n_steps = (n_steps // checkpoint_freq) * checkpoint_freq + 1
+    n_steps = n_steps if args.stage is not None else (n_steps // checkpoint_freq) * checkpoint_freq + 1
     logger.info(f"n_steps is updated to {org_n_steps} => {n_steps} for checkpointing")
 
     if not args.test_envs:

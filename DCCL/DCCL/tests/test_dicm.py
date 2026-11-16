@@ -726,3 +726,43 @@ def test_trainer_keeps_rng_state_between_targets(trainer_harness, mode):
     assert first.dataset_draw[:2] != second.dataset_draw[:2]
     assert not torch.equal(first.dataset_draw[2], second.dataset_draw[2])
     assert not torch.equal(first.model.test_batches[0], second.model.test_batches[0])
+
+
+def test_stagewise_training_chain_and_four_branches(tmp_path):
+    from domainbed.lib import stagewise
+
+    identity = {"dataset": "PACS", "test_envs": [0], "split_sha256": "test"}
+    x, y, aug = batches()
+    hp0 = hparams("A1", l=0.0, l_layer=0.0, dicm_residual_projection=True)
+    model0 = DICM((6,), 3, 2, hp0)
+    model0.train()
+    ce = model0.update(x, y, x_2=aug, step=0)
+    assert not model0.use_projection and not model0.use_gt
+    assert ce["sup_cl_loss"] == ce["pre_cl_loss"] == ce["loss_isr"] == 0
+    p0 = tmp_path / "ce.pth"
+    stagewise.save(p0, model0, model0.hparams, None, identity, 0, 1, 1, None, None, None, 0.5)
+
+    hp1 = hparams("A4", l=0.0, l_layer=0.0, dicm_residual_projection=True)
+    model1 = DICM((6,), 3, 2, hp1)
+    stagewise.load_parent(p0, 1, model1, identity, model1.hparams)
+    torch.testing.assert_close(model0.featurizer.linear.weight, model1.featurizer.linear.weight)
+    torch.testing.assert_close(model0.classifier[0].weight, model1.classifier[0].weight)
+    metrics = model1.update(x, y, x_2=aug, step=1)
+    assert metrics["backbone_grad_norm"] > 0 and metrics["basis_grad_norm"] > 0
+    assert model1.residual_bank.counts.sum() > 0
+    p1 = tmp_path / "dicm.pth"
+    stagewise.save(p1, model1, model1.hparams, None, identity, 1, 1, 2, "parent", None, None, 0.6)
+    snapshots = []
+    for l, pre in [(0., 0.), (1., 0.), (0., 1.), (1., 1.)]:
+        hp2 = hparams("A4", l=l, l_layer=pre, dicm_residual_projection=True)
+        model2 = DICM((6,), 3, 2, hp2)
+        stagewise.load_parent(p1, 2, model2, identity, model2.hparams)
+        snapshots.append(copy.deepcopy(model2.state_dict()))
+        assert torch.equal(model1.residual_bank.counts, model2.residual_bank.counts)
+        values = model2.update(x, y, x_2=aug, step=2)
+        assert values["backbone_grad_norm"] > 0
+        assert values["proj_grad_norm"] > 0 if l else values["proj_grad_norm"] == 0
+        assert values["pre_proj_grad_norm"] > 0 if pre else values["pre_proj_grad_norm"] == 0
+    for name in snapshots[0]:
+        for other in snapshots[1:]:
+            torch.testing.assert_close(snapshots[0][name], other[name])

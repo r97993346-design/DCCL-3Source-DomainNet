@@ -75,6 +75,16 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     testenv_name = testenv_name.replace(".", "")
     logger.info(f"Test envs = {test_envs}, name = {testenv_name}")
 
+    stage = getattr(args, "stage", None)
+    stage_identity = None
+    stage_parent_hash = None
+    stage_offset = 0
+    stage_best_score = float("-inf")
+    if stage is not None:
+        from domainbed.lib import stagewise
+        stage_identity = stagewise.split_identity(dataset, in_splits, out_splits, args, test_envs)
+        stage_provenance = stagewise.source_provenance()
+
     n_envs = len(dataset)
     train_envs = sorted(set(range(n_envs)) - set(test_envs))
     iterator = misc.SplitIterator(test_envs)
@@ -136,8 +146,12 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     )
     num_class = dataset.num_classes
     algorithm.to(device)
+    if stage is not None and stage > 0 and args.stage_resume is None:
+        stage_offset, stage_parent_hash = stagewise.load_parent(
+            args.stage_parent, stage, algorithm, stage_identity, hparams)
+        logger.info("Stage %d initialized from %s at cumulative updates %d",
+                    stage, args.stage_parent, stage_offset)
 
-    
     n_params = sum([p.numel() for p in algorithm.parameters()])
     logger.info("# of params = %d" % n_params)
 
@@ -163,8 +177,22 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         swad_cls = getattr(swad_module, hparams["swad"])
         swad = swad_cls(evaluator, **hparams.swad_kwargs)
 
+    stage_start = 0
+    restored_records = []
+    if stage is not None and args.stage_resume is not None:
+        saved, swad_algorithm = stagewise.resume(
+            args.stage_resume, stage, stage_identity, hparams, algorithm, swad)
+        stage_start = int(saved["stage_updates"])
+        if stage_start >= n_steps:
+            raise ValueError("Resume checkpoint already reached the requested stage budget")
+        stage_offset = int(saved["cumulative_updates"]) - stage_start
+        stage_parent_hash = saved["parent_sha256"]
+        stage_best_score = saved["best_source_val_accuracy"]
+        restored_records = saved["records"]
+        logger.warning("Restored training and SWAD state; multi-worker DataLoader stream is not exact")
+
     last_results_keys = None
-    records = []
+    records = restored_records
     epochs_path = args.out_dir / "results.jsonl"
     algorithm.re_w = False
     # Visualize
@@ -215,7 +243,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     #     np.save("vis/pacs_y_train.npy", y_train)
     #     np.save("vis/pacs_y_test.npy", y_test)
 
-    for step in range(n_steps):
+    for step in range(stage_start, n_steps):
 
         # weight calculation
 
@@ -290,7 +318,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             key: [tensor.to(device) for tensor in tensorlist] for key, tensorlist in batches.items()
         }
 
-        inputs = {**batches, "step": step}
+        inputs = {**batches, "step": step + stage_offset}
         step_vals = algorithm.update(**inputs)
         for key, val in step_vals.items():
             checkpoint_vals[key].append(val)
@@ -298,7 +326,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         if args.log: 
             with open("loss_analysis.txt","a+") as f:
                 f.write("step {}:".format(step)+str(step_vals["ce_loss"])+" "+str(step_vals["sup_cl_loss"])+" "+str(step_vals["pre_cl_loss"])+"\n")
-        if swad:
+        if swad and (stage is None or not swad.dead_valley):
             # swad_algorithm is segment_swa for swad
             swad_algorithm.update_parameters(algorithm, step=step)
 
@@ -352,7 +380,9 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         #         np.save("vis/pacs_cl_y_test.npy", y_test)
         #         exit()
 
-        if step % checkpoint_freq == 0:
+        evaluate_now = (step % checkpoint_freq == 0 if stage is None
+                        else (step + 1) % checkpoint_freq == 0 or step + 1 == n_steps)
+        if evaluate_now:
             results = {
                 "step": step,
                 "epoch": step / steps_per_epoch,
@@ -364,6 +394,10 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             eval_start_time = time.time()
             accuracies, summaries = evaluator.evaluate(algorithm)
             results["eval_time"] = time.time() - eval_start_time
+
+            if stage is not None:
+                results["stage_updates"] = step + 1
+                results["cumulative_updates"] = stage_offset + step + 1
 
             # results = (epochs, loss, step, step_time)
             results_keys = list(summaries.keys()) + sorted(accuracies.keys()) + list(results.keys())
@@ -424,15 +458,43 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
                     row = misc.to_row([results[key] for key in results_keys if key in results])
                     logger.info(row + step_str)
 
+                was_dead = bool(getattr(swad, "dead_valley", False))
                 swad.update_and_evaluate(
                     swad_algorithm, results["train_out"], results["tr_outloss"], prt_results_fn
                 )
 
                 if hasattr(swad, "dead_valley") and swad.dead_valley:
-                    logger.info("SWAD valley is dead -> early stop !")
-                    break
+                    if not was_dead:
+                        swad.stage_first_dead_step = step + 1
+                        logger.info("SWAD valley is dead at stage update %d%s", step + 1,
+                                    " -> early stop !" if stage is None else " -> stage continues")
+                    if stage is None:
+                        break
 
-                swad_algorithm = swa_utils.AveragedModel(algorithm)  # reset
+                if stage is None or not swad.dead_valley:
+                    swad_algorithm = swa_utils.AveragedModel(algorithm)  # reset
+
+            if stage is not None:
+                updates = step + 1
+                if args.stage_save_steps is None:
+                    points = ([500, 1200] if args.dataset == "PACS" else [300, 700]) if stage == 0 else []
+                else:
+                    points = args.stage_save_steps
+                ckpt = args.out_dir / "stage_checkpoints"
+                prefix = "target_" + "_".join(map(str, test_envs))
+                if results["train_out"] > stage_best_score:
+                    stage_best_score = results["train_out"]
+                    stagewise.save(ckpt / (prefix + "_best.pth"), algorithm, hparams, args,
+                                   stage_identity, stage, updates, stage_offset + updates,
+                                   stage_parent_hash, swad, swad_algorithm, stage_best_score, records,
+                                   stage_provenance)
+                if updates in points or updates == n_steps:
+                    stagewise.save(ckpt / (prefix + "_step_" + str(updates) + ".pth"),
+                                   algorithm, hparams, args, stage_identity, stage, updates,
+                                   stage_offset + updates, stage_parent_hash, swad,
+                                   swad_algorithm, stage_best_score, records, stage_provenance)
+                logger.info("Stage %d updates %d cumulative %d source_best %.6f",
+                            stage, updates, stage_offset + updates, stage_best_score)
 
         if step % args.tb_freq == 0:
             # add step values only for tb log
