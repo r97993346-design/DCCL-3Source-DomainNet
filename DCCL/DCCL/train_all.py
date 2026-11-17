@@ -98,6 +98,8 @@ def main():
     if args.algorithm == "DICM":
         if args.stage == 2 and str(hparams["dicm_ablation"]).upper() == "A5":
             hparams["dicm_stage2_gt"] = True
+        elif "dicm_stage2_gt" in hparams:
+            hparams["dicm_stage2_gt"] = False
         finalize_dicm_hparams(hparams)
 
     if args.stage is not None:
@@ -109,7 +111,7 @@ def main():
         if args.stage_resume is not None and args.stage_parent is not None:
             raise ValueError("Specify a stage parent or a stage resume, not both")
         parent = args.stage_parent or (args.stage_resume if args.stage else None)
-        validate_stage(args.stage, hparams, parent)
+        validate_stage(args.stage, hparams, parent, dataset=args.dataset)
 
     # setup debug
     if args.debug:

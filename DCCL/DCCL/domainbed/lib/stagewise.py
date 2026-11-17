@@ -84,7 +84,13 @@ def pack_swad(swad, segment):
             "n_tolerance": swad.n_tolerance, "tolerance_ratio": swad.tolerance_ratio}
 
 
-def validate_stage(stage, hparams, parent):
+STAGE2_SUPCON_WEIGHTS = (0.0, 0.1, 0.25, 0.5, 1.0)
+STAGE2_PRECL_WEIGHTS = (0.0, 0.5, 1.0, 2.0)
+STAGE2_GT_WEIGHTS = {"PACS": (0.0, 0.005, 0.01, 0.02),
+                     "VLCS": (0.0, 0.025, 0.05, 0.1)}
+
+
+def validate_stage(stage, hparams, parent, dataset=None):
     if hparams.get("dicm_reliable_contrast_gamma_max", 0):
         raise ValueError("Stagewise experiments require equal-weight contrastive learning")
     mode, l, pre = hparams["dicm_ablation"], hparams["l"], hparams["l_layer"]
@@ -93,11 +99,17 @@ def validate_stage(stage, hparams, parent):
     if stage == 1 and (mode not in ("A1", "A2", "A4") or l != 0 or pre != 0 or not parent):
         raise ValueError("Stage 1 requires a parent, no GT and no contrastive losses")
     if stage == 2:
-        allowed = {"A4": ((0, 0), (1, 0), (0, 1), (1, 1)), "A5": ((0, 0), (1, 1))}
-        if not parent or (l, pre) not in allowed.get(mode, ()):
-            raise ValueError("Stage 2 requires a parent and a valid A4 or A5 contrastive pair")
-        if mode == "A5" and not hparams.get("dicm_stage2_gt", False):
-            raise ValueError("Stage 2 A5 requires explicitly enabled GT transfer")
+        if mode not in ("A4", "A5") or not parent:
+            raise ValueError("Stage 2 requires A4 or A5 and a parent checkpoint")
+        if l not in STAGE2_SUPCON_WEIGHTS or pre not in STAGE2_PRECL_WEIGHTS:
+            raise ValueError("Invalid Stage 2 SupCon or PreCL weight")
+        if mode == "A5":
+            weight = float(hparams.get("dicm_gt_weight", 0))
+            if (not hparams.get("dicm_stage2_gt", False) or not 0 < weight < float("inf")
+                    or weight != float(hparams.get("l_d", 0))):
+                raise ValueError("Stage 2 A5 requires explicitly enabled GT with matching positive weights")
+            if dataset in STAGE2_GT_WEIGHTS and weight not in STAGE2_GT_WEIGHTS[dataset]:
+                raise ValueError(f"Invalid Stage 2 GT weight for {dataset}")
 
 
 def load_parent(path, stage, algorithm, identity, hparams):

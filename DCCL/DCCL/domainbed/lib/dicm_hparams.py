@@ -59,8 +59,8 @@ def finalize_dicm_hparams(hparams, args=None, argv=()):
         if not math.isfinite(value) or value < 0:
             raise ValueError(key + " must be finite and nonnegative")
         hparams[key] = value
-    paired_gt_only = hparams.get("dicm_stage2_gt", False) and hparams["l"] == hparams["l_layer"] == 0
-    if mode == "A5" and not paired_gt_only and (hparams["l"] <= 0 or hparams["l_layer"] <= 0):
+    stage2_gt = hparams.get("dicm_stage2_gt", False)
+    if mode == "A5" and not stage2_gt and (hparams["l"] <= 0 or hparams["l_layer"] <= 0):
         raise ValueError("A5 is the full model plus GT; SupCon and PreCL must both be enabled")
     if mode != "A1" and float(hparams["dicm_aug_weight"]) + float(hparams["dicm_dom_weight"]) <= 0:
         raise ValueError("At least one ISR observation weight must be positive")

@@ -76,6 +76,14 @@ def test_stage_validation():
     stagewise.validate_stage(0, base, None)
     stagewise.validate_stage(1, params(), "parent")
     stagewise.validate_stage(2, {**params(), "l": 1}, "parent")
+    stagewise.validate_stage(2, {**params(), "l": 0.1, "l_layer": 2}, "parent")
+    gt = {**params("A5"), "dicm_stage2_gt": True, "l": 0.25, "l_layer": 0.0,
+          "l_d": 0.005, "dicm_gt_weight": 0.005}
+    stagewise.validate_stage(2, gt, "parent", dataset="PACS")
+    with pytest.raises(ValueError, match="GT weight for VLCS"):
+        stagewise.validate_stage(2, gt, "parent", dataset="VLCS")
+    with pytest.raises(ValueError, match="SupCon or PreCL"):
+        stagewise.validate_stage(2, {**gt, "l_layer": 0.25}, "parent")
     with pytest.raises(ValueError):
         stagewise.validate_stage(0, {**base, "l": 1}, None)
     with pytest.raises(ValueError):

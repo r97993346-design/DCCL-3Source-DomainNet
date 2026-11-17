@@ -779,9 +779,9 @@ def test_stage_two_gt_transfers_shared_weights_and_ema_and_matches_initial_gt(tm
     path = tmp_path / "stage1_best.pth"
     stagewise.save(path, base, base.hparams, None, identity, 1, 1, 2, None, None, None, 0.8)
     gt_initial = None
-    for contrast in (0., 1.):
+    for supcon, precl in ((0., 0.), (1., 1.), (0.1, 0.), (0., 2.), (0.25, 0.5)):
         torch.manual_seed(0)
-        child = DICM((6,), 3, 2, hparams("A5", l=contrast, l_layer=contrast,
+        child = DICM((6,), 3, 2, hparams("A5", l=supcon, l_layer=precl,
                      dicm_residual_projection=True, dicm_stage2_gt=True, dicm_gt_weight=gt_weight))
         stagewise.validate_stage(2, child.hparams, path)
         assert stagewise.load_parent(path, 2, child, identity, child.hparams)[0] == 2
@@ -798,7 +798,8 @@ def test_stage_two_gt_transfers_shared_weights_and_ema_and_matches_initial_gt(tm
             metrics = child.update(x, y, x_2=aug, step=step)
             assert np.isfinite(metrics["reg_loss"]) and metrics["gt_grad_norm"] > 0
             assert metrics["weighted_gt_loss"] == pytest.approx(gt_weight * metrics["reg_loss"])
-            assert metrics["supcon_enabled"] == metrics["precl_enabled"] == contrast
+            assert metrics["supcon_enabled"] == bool(supcon)
+            assert metrics["precl_enabled"] == bool(precl)
 
     broken = torch.load(path, weights_only=False)
     del broken["model"]["classifier.0.weight"]
