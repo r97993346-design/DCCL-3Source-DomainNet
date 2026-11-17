@@ -127,6 +127,8 @@ def fold_result(dataset, target, fold, manifest, expected_code):
     return {
         "target": target, "domain": DOMAINS[dataset][target],
         "iid": iid, "swad": target_score, "best_source_validation": source_score,
+        "swad_source_validation": float(swad["metrics"]["train_out"]),
+        "resolved_hparams": h,
         "source_best_step": fold["iid_checkpoint"]["step"],
         "converged": swad["converged"], "fallback": not swad["converged"],
         "dead_valley": swad["dead_valley"], "converge_step": swad["converge_step"],
@@ -319,8 +321,11 @@ def loop(dataset, gpu):
             for target in range(4):
                 validate_code(commit)
                 fold = get_fold(dataset, target, trial, params, commit, gpu, run_root)
+                if folds and fold["resolved_hparams"] != folds[0]["resolved_hparams"]:
+                    raise ValueError("The four folds used different resolved hyperparameters")
                 folds.append(fold)
                 trial.set_user_attr("folds", folds)
+                trial.set_user_attr("resolved_hparams", fold["resolved_hparams"])
             value, reason = objective_value(folds)
             mean_iid = sum(row["iid"] for row in folds) / 4
             payload = {

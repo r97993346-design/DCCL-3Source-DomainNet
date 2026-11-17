@@ -24,7 +24,7 @@ def make_fold(target=0, converged=True):
                             "converge_step": 99 if converged else None,
                             "first_dead_update": 700 if converged else None,
                             "stop_update": 700, "start": 100, "end": 499,
-                            "count": 4, "metrics": {"test_in": score}},
+                            "count": 4, "metrics": {"test_in": score, "train_out": 0.88}},
     }
     manifest = {"dataset": "VLCS", "code": {"commit": "abc"},
                 "evaluation_protocol": "oracle-guided HPO", "run_id": "f" * 32}
