@@ -81,6 +81,7 @@ def main():
     parser.add_argument("--lamda", type=float, default=5, help="Weight coefficient for Transform Network sparsity loss")
     parser.add_argument("--start_epoch", type=int, default=1000, help="Starting epoch for certain operations")
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
+    parser.add_argument("--oracle_guided_hpo", action="store_true")
     parser.add_argument("--stage", type=int, choices=[0, 1, 2], default=None)
     parser.add_argument("--stage_parent", type=Path, default=None)
     parser.add_argument("--stage_resume", type=Path, default=None,

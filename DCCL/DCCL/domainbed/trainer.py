@@ -155,6 +155,15 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     n_params = sum([p.numel() for p in algorithm.parameters()])
     logger.info("# of params = %d" % n_params)
 
+    scheduler_mode = hparams.get("lr_schedule", "fixed")
+    if scheduler_mode not in ("fixed", "cosine"):
+        raise ValueError("lr_schedule must be fixed or cosine")
+    if scheduler_mode == "cosine" and stage is not None:
+        raise ValueError("Cosine scheduling is only supported for end-to-end training")
+    scheduler = None
+    if scheduler_mode == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(algorithm.optimizer, T_max=n_steps)
+
     train_minibatches_iterator = zip(*train_loaders)
     checkpoint_vals = collections.defaultdict(lambda: [])
 
@@ -320,6 +329,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
         inputs = {**batches, "step": step + stage_offset}
         step_vals = algorithm.update(**inputs)
+        if scheduler is not None:
+            scheduler.step()
         for key, val in step_vals.items():
             checkpoint_vals[key].append(val)
         checkpoint_vals["step_time"].append(time.time() - step_start_time)
@@ -589,7 +600,13 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         end = swad_algorithm.end_step
         from experiment_archive import record_swad
 
-        record_swad(results, start, end, swad_algorithm.n_averaged)
+        record_swad(
+            results, start, end, swad_algorithm.n_averaged,
+            converged=swad.is_converged, dead_valley=swad.dead_valley,
+            converge_step=swad.converge_step,
+            first_dead_update=getattr(swad, "stage_first_dead_step", None),
+            stop_update=int(records[-1]["step"]) + 1,
+        )
         step_str = f" [{start}-{end}]  (N={swad_algorithm.n_averaged})"
         row = misc.to_row([results[key] for key in results_keys if key in results]) + step_str
         logger.info(row)

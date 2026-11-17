@@ -121,7 +121,11 @@ class DICM(Algorithm):
             # A1 constructs no intervention parameters or prototype state.
             self.projection = nn.Identity()
         self.network = nn.Sequential(self.featurizer, self.projection, self.classifier)
-        self.optimizer = get_optimizer(hparams["optimizer"], self._optimizer_groups())
+        optimizer_name = str(hparams["optimizer"]).lower()
+        optimizer_options = {}
+        if optimizer_name == "sgd":
+            optimizer_options["momentum"] = float(hparams.get("sgd_momentum", 0.0))
+        self.optimizer = get_optimizer(optimizer_name, self._optimizer_groups(), **optimizer_options)
 
     @staticmethod
     def _head(feature_dim, hidden_dim, layers):

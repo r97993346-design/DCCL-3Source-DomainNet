@@ -806,3 +806,13 @@ def test_stage_two_gt_transfers_shared_weights_and_ema_and_matches_initial_gt(tm
     torch.save(broken, path)
     with pytest.raises(ValueError, match="every shared"):
         stagewise.load_parent(path, 2, child, identity, child.hparams)
+
+
+def test_dicm_sgd_momentum_is_applied_to_all_optimizer_groups():
+    model = DICM((6,), 3, 2, hparams("A4", optimizer="sgd", sgd_momentum=0.87,
+                                     l_layer=0.0, dicm_reliable_contrast_gamma_max=0.5))
+    assert isinstance(model.optimizer, torch.optim.SGD)
+    assert all(group["momentum"] == 0.87 for group in model.optimizer.param_groups)
+    x, y, aug = batches()
+    metrics = model.update(x, y, x_2=aug, step=500)
+    assert metrics["reliable_contrast_gamma"] > 0 and metrics["backbone_grad_norm"] > 0

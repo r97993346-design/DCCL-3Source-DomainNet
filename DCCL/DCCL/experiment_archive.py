@@ -33,10 +33,10 @@ RUNTIME_ARGS = {"name", "unique_name", "out_dir", "out_root", "data_dir", "gpu",
 _SWAD_CAPTURE = ContextVar("experiment_swad_capture", default=None)
 
 
-def record_swad(results, start, end, count):
+def record_swad(results, start, end, count, **status):
     capture = _SWAD_CAPTURE.get()
     if capture is not None:
-        capture.update(metrics=dict(results), start=start, end=end, count=count)
+        capture.update(metrics=dict(results), start=start, end=end, count=count, **status)
 
 
 def git(directory, *args):
@@ -143,6 +143,8 @@ class Experiment:
             ])).encode())
             manifest = {
                 "run_id": run_id, "project": self.project,
+                "evaluation_protocol": ("oracle-guided HPO" if
+                                        getattr(self.args, "oracle_guided_hpo", False) else None),
                 "completed_utc": datetime.now(timezone.utc).isoformat(),
                 "dataset": self.args.dataset, "algorithm": self.args.algorithm,
                 "seed": getattr(self.args, "seed", None), "code": self.provenance,
@@ -181,7 +183,9 @@ def history_row(manifest, fold, duplicate_of):
         "code_commit": manifest["code"]["commit"],
         "fingerprint": manifest["fingerprint"],
         "target": ",".join(fold["target"]), "duplicate_of": duplicate_of,
-        "IID": selection.get("iid"), "SWAD": selection.get("SWAD"),
+        "IID": selection.get("iid"),
+        "SWAD": (selection.get("SWAD") if
+                 (fold.get("swad_evaluation") or {}).get("converged") is not False else ""),
         **{key: fold["iid_checkpoint"][key] for key in METRICS},
     }
 
