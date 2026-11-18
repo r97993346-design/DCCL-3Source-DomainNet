@@ -20,7 +20,7 @@ import experiment_archive as archive
 
 ROOT = Path("/home/hooasia/lgg/projects/dicm-reliability-paired-20261118")
 DATA = Path("/home/hooasia/lgg/data/repro_dccl_data")
-SOURCE = "2a2d73ead2bfd72ec1da49d345668e5eb3200595"
+SOURCE = subprocess.check_output(["git", "-C", str(PROJECT), "rev-parse", "HEAD"], text=True).strip()
 HIST = Path("/home/hooasia/lgg/projects/repro_dccl_3domain/DCCL/DCCL/train_output/dicm_residual_seed0_20261112")
 RUNS = {"PACS": "261113_11-23-29_PACS_full_06", "VLCS": "261113_20-16-13_VLCS_domain_precl_20"}
 DOMAINS = {"PACS": ("art_painting", "cartoon", "photo", "sketch"),
