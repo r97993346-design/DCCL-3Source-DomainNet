@@ -213,6 +213,11 @@ class DICM(Algorithm):
         return loss
 
     @staticmethod
+    def _gradient_norm_from_values(gradients):
+        values = [value.detach().float().norm() for value in gradients if value is not None]
+        return float(torch.stack(values).norm().item()) if values else 0.0
+
+    @staticmethod
     def _gradient_norm(parameters):
         gradients = [p.grad.detach().float().norm() for p in parameters if p.grad is not None]
         return float(torch.stack(gradients).norm().item()) if gradients else 0.0
@@ -295,6 +300,46 @@ class DICM(Algorithm):
             else:
                 sup_cl = self.supcon_loss(features, all_y)
 
+        diagnostic_values = {}
+        diagnose = self.hparams.get("dicm_rcl_diagnostics", False) and step % 100 == 0
+        if diagnose and self.l:
+            if self.sample_d:
+                raise ValueError("RCL diagnostics require standard paired views")
+            if pair_weights is None:
+                _, pair_weights = reliable_positive_mask(
+                    z, q, all_y, domains, gamma,
+                    self.hparams["dicm_reliable_contrast_min_reliability"],
+                )
+            plain_sup_cl = self.supcon_loss(features, all_y)
+            parameters = tuple(p for p in self.featurizer.parameters() if p.requires_grad)
+            weighted_grads = torch.autograd.grad(self.l * sup_cl, parameters, retain_graph=True, allow_unused=True)
+            plain_grads = torch.autograd.grad(self.l * plain_sup_cl, parameters, retain_graph=True, allow_unused=True)
+            differences = [(a - b).detach().float() for a, b in zip(weighted_grads, plain_grads)
+                           if a is not None and b is not None]
+            wn = self._gradient_norm_from_values(weighted_grads)
+            pn = self._gradient_norm_from_values(plain_grads)
+            dn = self._gradient_norm_from_values(differences)
+            dot = sum((a.detach().float() * b.detach().float()).sum().item()
+                      for a, b in zip(weighted_grads, plain_grads) if a is not None and b is not None)
+            count = pair_weights.numel()
+            quantiles = torch.quantile(pair_weights.float(), torch.tensor([0.1, 0.5, 0.9], device=pair_weights.device)) if count else z.new_zeros(3)
+            diagnostic_values = {
+                "rcl_pair_count": float(count),
+                "rcl_weight_mean": float(pair_weights.mean().item()) if count else 0.0,
+                "rcl_weight_std": float(pair_weights.float().std(unbiased=False).item()) if count else 0.0,
+                "rcl_weight_q10": float(quantiles[0].item()),
+                "rcl_weight_q50": float(quantiles[1].item()),
+                "rcl_weight_q90": float(quantiles[2].item()),
+                "rcl_weight_below_099": float((pair_weights < .99).float().mean().item()) if count else 0.0,
+                "rcl_weight_below_095": float((pair_weights < .95).float().mean().item()) if count else 0.0,
+                "rcl_weight_below_090": float((pair_weights < .90).float().mean().item()) if count else 0.0,
+                "rcl_plain_loss": float(plain_sup_cl.detach().item()),
+                "rcl_loss_difference": float((sup_cl - plain_sup_cl).detach().item()),
+                "rcl_backbone_gradient_norm": wn, "plain_backbone_gradient_norm": pn,
+                "rcl_gradient_difference_norm": dn,
+                "rcl_plain_gradient_cosine": dot / (wn * pn) if wn and pn else 0.0,
+            }
+
         pre_cl = zero
         if self.l_layer:
             view = F.normalize(self.pre_proj_head(e), dim=1)
@@ -345,6 +390,7 @@ class DICM(Algorithm):
                 "pre_proj_grad_norm": self._gradient_norm(self.pre_proj_head.parameters()),
                 "has_nan_or_inf": 0.0,
             }
+            metrics.update(diagnostic_values)
             if self.hparams["dicm_reliable_contrast_gamma_max"] > 0:
                 count = pair_weights.numel() if pair_weights is not None else 0
                 metrics.update({

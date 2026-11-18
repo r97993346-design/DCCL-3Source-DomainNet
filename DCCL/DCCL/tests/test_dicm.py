@@ -806,3 +806,27 @@ def test_stage_two_gt_transfers_shared_weights_and_ema_and_matches_initial_gt(tm
     torch.save(broken, path)
     with pytest.raises(ValueError, match="every shared"):
         stagewise.load_parent(path, 2, child, identity, child.hparams)
+
+
+@pytest.mark.parametrize("gamma", [0., 0.5, 1.0])
+def test_rcl_diagnostics_do_not_change_optimization(gamma):
+    hp = hparams("A4", l_layer=1., dicm_residual_projection=True,
+                 dicm_reliable_contrast_gamma_max=gamma,
+                 dicm_reliable_contrast_warmup_steps=0,
+                 dicm_reliable_contrast_ramp_steps=0)
+    torch.manual_seed(19)
+    ordinary = DICM((6,), 3, 2, hp)
+    torch.manual_seed(19)
+    monitored = DICM((6,), 3, 2, {**hp, "dicm_rcl_diagnostics": True})
+    x, y, aug = batches()
+    expected = ordinary.update(x, y, x_2=aug, step=100)
+    result = monitored.update(x, y, x_2=aug, step=100)
+    for k, value in ordinary.state_dict().items():
+        torch.testing.assert_close(value, monitored.state_dict()[k], rtol=1e-5, atol=1e-6)
+    assert result["loss"] == pytest.approx(expected["loss"])
+    assert result["rcl_pair_count"] > 0
+    assert 0 <= result["rcl_weight_below_099"] <= 1
+    if gamma == 0:
+        assert result["rcl_weight_mean"] == pytest.approx(1.)
+        assert result["rcl_gradient_difference_norm"] == pytest.approx(0.)
+        assert result["rcl_loss_difference"] == pytest.approx(0.)

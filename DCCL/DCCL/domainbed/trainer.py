@@ -589,7 +589,11 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         end = swad_algorithm.end_step
         from experiment_archive import record_swad
 
-        record_swad(results, start, end, swad_algorithm.n_averaged)
+        record_swad(results, start, end, swad_algorithm.n_averaged,
+                    converged=swad.is_converged, dead_valley=swad.dead_valley,
+                    converge_step=swad.converge_step,
+                    first_dead_update=getattr(swad, "stage_first_dead_step", None),
+                    stop_update=int(records[-1]["step"]) + 1)
         step_str = f" [{start}-{end}]  (N={swad_algorithm.n_averaged})"
         row = misc.to_row([results[key] for key in results_keys if key in results]) + step_str
         logger.info(row)
