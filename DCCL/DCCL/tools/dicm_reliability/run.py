@@ -212,7 +212,13 @@ def get_fold(dataset, group, target, gpu):
               "dead_valley": swad["dead_valley"], "converge_step": swad["converge_step"],
               "stop_update": swad["stop_update"], "window": [swad["start"], swad["end"]],
               "run_id": manifest["run_id"], "diagnostics": diagnostics}
-    archive.publish(box)
+    while True:
+        try:
+            archive.publish(box)
+            break
+        except (OSError, subprocess.SubprocessError) as error:
+            say(f"{name}: archive temporarily unavailable ({type(error).__name__}); retry in 60 seconds")
+            time.sleep(60)
     return result
 
 
