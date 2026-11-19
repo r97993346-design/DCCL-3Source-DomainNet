@@ -830,3 +830,20 @@ def test_rcl_diagnostics_do_not_change_optimization(gamma):
         assert result["rcl_weight_mean"] == pytest.approx(1.)
         assert result["rcl_gradient_difference_norm"] == pytest.approx(0.)
         assert result["rcl_loss_difference"] == pytest.approx(0.)
+
+
+def test_random_frozen_basis_stays_fixed_and_beta_zero_is_identity():
+    x, y, aug = batches()
+    hp = hparams("A4", l_layer=1., dicm_residual_projection=True,
+                 dicm_freeze_basis=True, dicm_beta=.75)
+    model = DICM((6,), 3, 2, hp)
+    before = model.projection.subspace.basis.detach().clone()
+    for step in range(3):
+        metrics = model.update(x, y, x_2=aug, step=step)
+        assert metrics["basis_grad_norm"] == 0
+    torch.testing.assert_close(before, model.projection.subspace.basis)
+    hp0 = {**hp, "dicm_freeze_basis": False, "dicm_beta": 0.0}
+    identity = DICM((6,), 3, 2, hp0)
+    z = identity.featurizer(torch.cat(x))
+    ref = identity.pre_featurizer(torch.cat(x))
+    torch.testing.assert_close(identity.projection(z, reference=ref), z)

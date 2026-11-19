@@ -108,6 +108,8 @@ class DICM(Algorithm):
             self.projection = StableFeatureProjection(
                 feature_dim, int(hparams["dicm_rank"]), float(hparams["dicm_beta"]), seed,
             )
+            if hparams.get("dicm_freeze_basis", False):
+                self.projection.subspace.basis.requires_grad_(False)
             self.pire = PairedInterventionResponseEstimator()
             minimum_domains = int(hparams["dicm_min_valid_domains"]) or num_domains
             self.residual_bank = ClassDomainResidualBank(
