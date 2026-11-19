@@ -166,7 +166,10 @@ class Experiment:
                 for name, contents in sanitized.items():
                     write_new(staged / name, contents)
                 staged.rename(outbox)
-            self.logger.info("GitHub archive verified: %s", publish(outbox))
+            if getattr(self.args, "pacs_causal_checkpoints", False):
+                self.logger.info("Verified local fold bundle queued for GitHub: %s", outbox)
+            else:
+                self.logger.info("GitHub archive verified: %s", publish(outbox))
         except (OSError, ValueError, subprocess.SubprocessError) as error:
             self.logger.warning("GitHub archive incomplete (%s). Check %s",
                                 type(error).__name__, self.args.out_dir / ".github-archive")

@@ -86,7 +86,14 @@ def main():
     parser.add_argument("--stage_resume", type=Path, default=None,
                         help="Restore model, optimizer, RNG and SWAD; DataLoader stream is not exact")
     parser.add_argument("--stage_save_steps", type=int, nargs="*", default=None)
+    parser.add_argument("--pacs_causal_checkpoints", action="store_true")
+    parser.add_argument("--pacs_causal_resume", type=Path)
     args, left_argv = parser.parse_known_args()
+    if args.pacs_causal_checkpoints or args.pacs_causal_resume:
+        if (not args.pacs_causal_checkpoints or args.dataset != "PACS"
+                or args.algorithm != "DICM" or args.stage is not None
+                or args.debug or args.test_envs is None or len(args.test_envs) != 1):
+            parser.error("PACS checkpointing requires a single end-to-end DICM PACS fold")
 
     # setup hparams
     hparams = hparams_registry.default_hparams(args.algorithm, args.dataset)
@@ -139,7 +146,17 @@ def main():
 
     args.out_root = args.work_dir / args.output_root.expanduser() / args.dataset
     args.out_dir = args.out_root / args.unique_name
-    args.out_dir.mkdir(exist_ok=False, parents=True)
+    if args.pacs_causal_resume:
+        latest = args.pacs_causal_resume.resolve(strict=True)
+        if (latest.name != "latest.pth" or latest.parent.name != "checkpoints"
+                or latest.parent.parent.parent != args.out_root.resolve()
+                or not latest.parent.parent.name.endswith("_" + args.name)
+                or (latest.parent.parent / ".github-archive").exists()):
+            parser.error("Resume requires latest.pth of this incomplete PACS fold")
+        args.out_dir = latest.parent.parent
+        args.unique_name = args.out_dir.name
+    else:
+        args.out_dir.mkdir(exist_ok=False, parents=True)
 
     writer = get_writer(args.out_root / "runs" / args.unique_name)
     logger = Logger.get(args.out_dir / "log.txt")

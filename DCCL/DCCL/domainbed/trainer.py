@@ -194,6 +194,27 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     last_results_keys = None
     records = restored_records
     epochs_path = args.out_dir / "results.jsonl"
+    causal = None
+    last_source_sample = None
+    if getattr(args, "pacs_causal_checkpoints", False):
+        from domainbed.lib import causal_checkpoints, stagewise
+        identity = stagewise.split_identity(dataset, in_splits, out_splits, args, test_envs)
+        causal = causal_checkpoints.FoldCheckpoints(
+            args.out_dir / "checkpoints", identity,
+            (dataset.input_shape, dataset.num_classes, len(train_envs)),
+            hparams, algorithm, n_steps, checkpoint_freq)
+        logger.info("PACS paired split %s, initial weights %s",
+                    identity["split_sha256"], causal.metadata["initial_sha256"])
+        if args.pacs_causal_resume:
+            stage_start, records, swad_algorithm = causal.resume(
+                algorithm, swad, epochs_path, device)
+            logger.warning("Resumed PACS from update %d; DataLoader stream restarts", stage_start)
+            results_keys = list(records[-1])
+            # A previously finalized update may be replaying only final SWAD evaluation.
+            if swad.dead_valley or stage_start == n_steps:
+                stage_start = n_steps
+                last_source_sample = torch.load(causal.best, map_location="cpu",
+                                               weights_only=False)["example_input"].to(device)
     algorithm.re_w = False
     # Visualize
     # with torch.no_grad():
@@ -320,6 +341,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
         inputs = {**batches, "step": step + stage_offset}
         step_vals = algorithm.update(**inputs)
+        if causal is not None:
+            last_source_sample = batches["x"][0][:2]
         for key, val in step_vals.items():
             checkpoint_vals[key].append(val)
         checkpoint_vals["step_time"].append(time.time() - step_start_time)
@@ -469,11 +492,15 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
                         logger.info("SWAD valley is dead at stage update %d%s", step + 1,
                                     " -> early stop !" if stage is None else " -> stage continues")
                     if stage is None:
+                        if causal is not None:
+                            causal.checkpoint(algorithm, swad, None, last_source_sample, records)
                         break
 
                 if stage is None or not swad.dead_valley:
                     swad_algorithm = swa_utils.AveragedModel(algorithm)  # reset
 
+            if causal is not None:
+                causal.checkpoint(algorithm, swad, swad_algorithm, last_source_sample, records)
             if stage is not None:
                 updates = step + 1
                 if args.stage_save_steps is None:
@@ -600,6 +627,16 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
         ret["SWAD"] = results["test_in"]
         ret["SWAD (inD)"] = results[in_key]
+
+        if causal is not None:
+            metrics = dict(results, start=start, end=end,
+                           count=int(swad_algorithm.n_averaged), converged=swad.is_converged,
+                           fallback=not swad.is_converged, dead_valley=swad.dead_valley,
+                           stop_update=int(records[-1]["step"]) + 1)
+            causal.save_inference(causal.final, "swad", swad_algorithm, last_source_sample, metrics)
+            for path in (causal.best, causal.final):
+                difference = causal_checkpoints.verify_inference(path, device, algorithm_class)
+                logger.info("Reload verified for %s (maximum |logit diff| %.8g)", path.name, difference)
 
         # with torch.no_grad():
         #     embedding_train = []
