@@ -1,0 +1,143 @@
+{
+  "baseline_commit": "fd76738c28b23a0c8e92b852f7f0168ff7b8babe",
+  "baseline_original_results_sha256": "290264a6a143141830eb1940d10eda6826edc85c43fd52fc988614d38fc94f6e",
+  "long_results_path": "OfficeHome/261120_12-29-29_A1-Long/results.jsonl",
+  "hparams_and_protocol_match": true,
+  "swad": null,
+  "checkpoint_count_per_fold": 21,
+  "gradient_and_rng_proof": {
+    "Art": {
+      "fold_number": 1,
+      "weighted_gradient_l2_e_adapter": 0.1328640580177307,
+      "raw_contrastive_loss": 3.7202954292297363,
+      "contrastive_weight": 0.1,
+      "valid_anchor_fraction": 0.6458333730697632,
+      "mean_positive_count_per_valid_anchor": 1.4516128301620483,
+      "clip_frozen": true,
+      "text_context_trainable": true,
+      "optimizer": "Adam",
+      "seed": 0,
+      "trial_seed": 0
+    },
+    "Clipart": {
+      "fold_number": 2,
+      "weighted_gradient_l2_e_adapter": 0.15266722440719604,
+      "raw_contrastive_loss": 3.6559994220733643,
+      "contrastive_weight": 0.1,
+      "valid_anchor_fraction": 0.4479166865348816,
+      "mean_positive_count_per_valid_anchor": 2.0930233001708984,
+      "clip_frozen": true,
+      "text_context_trainable": true,
+      "optimizer": "Adam",
+      "seed": 0,
+      "trial_seed": 0
+    },
+    "Product": {
+      "fold_number": 3,
+      "weighted_gradient_l2_e_adapter": 0.12165942043066025,
+      "raw_contrastive_loss": 3.9082603454589844,
+      "contrastive_weight": 0.1,
+      "valid_anchor_fraction": 0.6354166865348816,
+      "mean_positive_count_per_valid_anchor": 1.6065572500228882,
+      "clip_frozen": true,
+      "text_context_trainable": true,
+      "optimizer": "Adam",
+      "seed": 0,
+      "trial_seed": 0
+    },
+    "RealWorld": {
+      "fold_number": 4,
+      "weighted_gradient_l2_e_adapter": 0.13053807616233826,
+      "raw_contrastive_loss": 3.913290023803711,
+      "contrastive_weight": 0.1,
+      "valid_anchor_fraction": 0.5416666865348816,
+      "mean_positive_count_per_valid_anchor": 1.6153846979141235,
+      "clip_frozen": true,
+      "text_context_trainable": true,
+      "optimizer": "Adam",
+      "seed": 0,
+      "trial_seed": 0
+    }
+  },
+  "common_trajectory_audit": {
+    "Art": {
+      "common_checkpoints": 12,
+      "exact_all_training_and_eval_metrics": 12,
+      "exact_aggregate_eval_metrics": 12,
+      "numeric_differences": {},
+      "other_differences": []
+    },
+    "Clipart": {
+      "common_checkpoints": 12,
+      "exact_all_training_and_eval_metrics": 12,
+      "exact_aggregate_eval_metrics": 12,
+      "numeric_differences": {},
+      "other_differences": []
+    },
+    "Product": {
+      "common_checkpoints": 12,
+      "exact_all_training_and_eval_metrics": 12,
+      "exact_aggregate_eval_metrics": 12,
+      "numeric_differences": {},
+      "other_differences": []
+    },
+    "RealWorld": {
+      "common_checkpoints": 12,
+      "exact_all_training_and_eval_metrics": 12,
+      "exact_aggregate_eval_metrics": 12,
+      "numeric_differences": {},
+      "other_differences": []
+    }
+  },
+  "post_1100_by_domain": {
+    "Art": {
+      "early_best_pct": 88.76128304776854,
+      "early_best_step": 1100,
+      "late_best_pct": 89.33264007325354,
+      "late_best_step": 1800,
+      "best_after_vs_earlier_pp": 0.5713570254849976,
+      "final_pct": 89.29479719071318,
+      "final_vs_best_pp": -0.037842882540362055,
+      "max_adjacent_change_pp": 0.4973260169923055
+    },
+    "Clipart": {
+      "early_best_pct": 92.05046802194434,
+      "early_best_step": 1100,
+      "late_best_pct": 91.95771235685103,
+      "late_best_step": 1600,
+      "best_after_vs_earlier_pp": -0.09275566509330258,
+      "final_pct": 91.76636141923144,
+      "final_vs_best_pp": -0.2841066027128969,
+      "max_adjacent_change_pp": 0.5010835628537214
+    },
+    "Product": {
+      "early_best_pct": 86.19557950839688,
+      "early_best_step": 700,
+      "late_best_pct": 86.67667916475426,
+      "late_best_step": 2000,
+      "best_after_vs_earlier_pp": 0.4810996563573866,
+      "final_pct": 86.67667916475426,
+      "final_vs_best_pp": 0.0,
+      "max_adjacent_change_pp": 0.4814503568157935
+    },
+    "RealWorld": {
+      "early_best_pct": 86.6827317327672,
+      "early_best_step": 900,
+      "late_best_pct": 87.2924466208907,
+      "late_best_step": 1900,
+      "best_after_vs_earlier_pp": 0.6097148881235137,
+      "final_pct": 87.14916103937362,
+      "final_vs_best_pp": -0.14328558151708304,
+      "max_adjacent_change_pp": 0.7101947308133072
+    }
+  },
+  "post_1100_average_diagnostics": {
+    "peak_step": 2000,
+    "peak_pct": 88.72174970351813,
+    "final_pct": 88.72174970351813,
+    "peak_to_final_drop_pp": 0.0,
+    "max_adjacent_change_pp": 0.17632145349912776,
+    "training_e_cls_loss_1100": 0.24425659714266656,
+    "training_e_cls_loss_2000": 0.16235787680372596
+  }
+}
