@@ -6,6 +6,7 @@ not construct GT. Only the explicit A5 control restores the original GT branch.
 
 import copy
 import math
+from hashlib import sha256
 
 import numpy as np
 import torch
@@ -28,16 +29,46 @@ from .dicm_components import (
 
 class DICMForwardModel(nn.Module):
     """Exactly the inference path; SWAD averages its raw B before fresh QR."""
-    def __init__(self, network, reference=None):
+    def __init__(self, network, reference=None, source_bank=None):
         super().__init__()
         self.network = network
         self.reference = reference
+        self.source_bank = source_bank
 
     def train(self, mode=True):
         super().train(mode)
         if self.reference is not None:
             self.reference.eval()
         return self
+
+    @torch.no_grad()
+    def copy_averaging_state(self, source):
+        """Keep the last included source EMA and gate state outside parameter averaging."""
+        if self.source_bank is None:
+            return
+        for current, incoming in zip(self.source_bank.buffers(), source.source_bank.buffers()):
+            current.copy_(incoming)
+        if self.network[1].gate is not None:
+            for current, incoming in zip(self.network[1].gate.buffers(), source.network[1].gate.buffers()):
+                current.copy_(incoming)
+
+    @torch.no_grad()
+    def finalize_direction_gate(self):
+        """Express the last included EMA's gate in the final averaged QR coordinates."""
+        projection = self.network[1]
+        gate = getattr(projection, "gate", None)
+        if gate is None:
+            return None
+        if gate.last_step.item() < 0:
+            from .dicm_gate import GateError
+            raise GateError("SWAD selected an interval without an active gate")
+        bank = self.source_bank
+        valid = bank.valid_mask()
+        observations = bank.prototypes[valid]
+        step = int(bank.last_update_step.max().item())
+        gate.refresh(projection.subspace.orthonormal_basis(detach=True),
+                     bank.prototypes, valid, observations, step)
+        return gate.snapshot()
 
     def predict_embed(self, x):
         z = self.network[0](x)
@@ -56,13 +87,15 @@ class DICMForwardModel(nn.Module):
 
 
 class DICM(Algorithm):
-    def __init__(self, input_shape, num_classes, num_domains, hparams):
+    def __init__(self, input_shape, num_classes, num_domains, hparams, *, paired_rng=None):
         hparams = finalize_dicm_hparams(dict(hparams))
         super().__init__(input_shape, num_classes, num_domains, hparams)
         self.mode = hparams["dicm_ablation"]
         self.use_projection = self.mode != "A1"
         self.use_gt = self.mode == "A5"
         self.use_residual = self.use_projection and hparams.get("dicm_residual_projection", False)
+        self.use_direct_difference = hparams.get("dicm_direct_difference", False)
+        self.use_direction_gate = hparams.get("dicm_direction_gate", False)
         self.use_fixed_reference = hparams.get("dicm_fixed_reference", False)
         if self.use_fixed_reference and not self.use_residual:
             raise ValueError("A fixed reference requires residual projection")
@@ -80,9 +113,18 @@ class DICM(Algorithm):
         self.re_w = False
 
         self.featurizer = networks.Featurizer(input_shape, hparams, freeze=0, pre=True)
-        self.pre_featurizer = networks.Featurizer(input_shape, hparams, freeze="all", pre=True)
-        self.pre_featurizer.requires_grad_(False)
-        self.pre_featurizer.eval()
+        self.pre_featurizer = None
+        if self.use_direct_difference:
+            if paired_rng is not None:
+                # Match historical student/head and sample RNG without constructing a second encoder.
+                current = sha256(torch.get_rng_state().numpy().tobytes()).hexdigest()
+                if current != paired_rng["before"]:
+                    raise ValueError("DirectDiff initialization CPU RNG differs from the historical fold")
+                torch.set_rng_state(torch.tensor(paired_rng["after"], dtype=torch.uint8))
+        else:
+            self.pre_featurizer = networks.Featurizer(input_shape, hparams, freeze="all", pre=True)
+            self.pre_featurizer.requires_grad_(False)
+            self.pre_featurizer.eval()
         feature_dim = self.featurizer.n_outputs
         hidden_dim = feature_dim // 4
         if hidden_dim < 1:
@@ -111,9 +153,9 @@ class DICM(Algorithm):
                 seed = torch.initial_seed()
             self.projection = StableFeatureProjection(
                 feature_dim, int(hparams["dicm_rank"]), float(hparams["dicm_beta"]), seed,
-                fixed_reference=self.use_fixed_reference,
+                fixed_reference=self.use_fixed_reference, direction_gate=self.use_direction_gate,
             )
-            self.pire = PairedInterventionResponseEstimator()
+            self.pire = None if self.use_direct_difference else PairedInterventionResponseEstimator()
             minimum_domains = int(hparams["dicm_min_valid_domains"]) or num_domains
             self.residual_bank = ClassDomainResidualBank(
                 num_classes, num_domains, feature_dim,
@@ -161,7 +203,8 @@ class DICM(Algorithm):
 
     def train(self, mode=True):
         super().train(mode)
-        self.pre_featurizer.eval()
+        if self.pre_featurizer is not None:
+            self.pre_featurizer.eval()
         return self
 
     def _domain_ids(self, minibatches):
@@ -179,7 +222,7 @@ class DICM(Algorithm):
         aw = self.aug_weight if n_aug else 0.0
         dw = self.dom_weight if n_dom else 0.0
         total_weight = aw + dw
-        if total_weight:
+        if total_weight and not self.use_direct_difference:
             aw, dw = aw / total_weight, dw / total_weight
         # Do not retain a zero-weight graph, including Adam momentum on B.
         loss = aug.new_zeros(())
@@ -249,14 +292,16 @@ class DICM(Algorithm):
             gt_student = tuple(gt_student)
         else:
             z_aug = self.featurizer(all_x_aug)
-        with torch.no_grad():
-            if self.use_gt:
-                z_ref, gt_reference = self.pre_featurizer(all_x, ret_feats=True)
-                # Freeze this FIRST-reference-view container before PIRE's next call.
-                gt_reference = tuple(gt_reference)
-            else:
-                z_ref = self.pre_featurizer(all_x)
-            z_aug_ref = self.pre_featurizer(all_x_aug) if self.use_projection else None
+        z_ref = z_aug_ref = None
+        if self.pre_featurizer is not None:
+            with torch.no_grad():
+                if self.use_gt:
+                    z_ref, gt_reference = self.pre_featurizer(all_x, ret_feats=True)
+                    # Freeze this FIRST-reference-view container before PIRE's next call.
+                    gt_reference = tuple(gt_reference)
+                else:
+                    z_ref = self.pre_featurizer(all_x)
+                z_aug_ref = self.pre_featurizer(all_x_aug) if self.use_projection else None
 
         zero = z.new_zeros(())
         q = None
@@ -266,10 +311,21 @@ class DICM(Algorithm):
         delta_aug = delta_dom = z.detach().new_empty((0, z.shape[1]))
         if self.use_projection:
             q = self.projection.subspace.orthonormal_basis()
-            delta_aug = self.pire(z, z_aug, z_ref, z_aug_ref)
-            self.residual_bank.update((z - z_ref).detach(), all_y, domains, step, self.min_norm)
+            if self.use_direct_difference:
+                delta_aug = z_aug.detach() - z.detach()
+                observations = z.detach()
+            else:
+                delta_aug = self.pire(z, z_aug, z_ref, z_aug_ref)
+                observations = (z - z_ref).detach()
+            self.residual_bank.update(observations, all_y, domains, step, self.min_norm)
             delta_dom = self.residual_bank.domain_responses()
             loss_isr, loss_aug, loss_dom, n_aug, n_dom, aw, dw = self._isr_loss(delta_aug, delta_dom, q)
+            if self.use_direction_gate:
+                warmup = self.hparams["dicm_gate_warmup"]
+                interval = self.hparams["dicm_gate_interval"]
+                if step >= warmup and (step - warmup) % interval == 0:
+                    self.projection.gate.refresh(q, self.residual_bank.prototypes,
+                                                 self.residual_bank.valid_mask(), z, step)
 
         e = self._stable(z, q, z_ref)
         e_aug = self._stable(z_aug, q, z_aug_ref)
@@ -418,7 +474,7 @@ class DICM(Algorithm):
                 class_sensitive = self.projection.subspace.project(centers, q=q)
                 class_energy = (counts[present] * centers.square().sum(1)).sum().clamp_min(1e-12)
                 metrics.update({
-                    "residual_norm": float((z - z_ref).norm(dim=1).mean().item()),
+                    "residual_norm": float(observations.norm(dim=1).mean().item()),
                     "dicm_beta": float(self.projection.beta.item()),
                     "sensitive_energy_ratio": float((sensitive.float().square().sum(1) / energy).mean().item()),
                     "isr_aug_capture": 1.0 - float(loss_aug.item()) if n_aug else 0.0,
@@ -431,9 +487,22 @@ class DICM(Algorithm):
                     "prototype_sample_count_min": float(self.residual_bank.counts[valid].min().item()) if valid.any() else 0.0,
                     "prototype_update_count_min": float(self.residual_bank.update_counts[valid].min().item()) if valid.any() else 0.0,
                     "class_between_removed_ratio": float(((counts[present] * class_sensitive.square().sum(1)).sum() / class_energy).item()),
-                    "reference_aug_distance": float((z_aug_ref - z_ref).norm(dim=1).mean().item()),
                     "basis_grad_norm": self._gradient_norm(self.projection.parameters()),
                 })
+                if self.use_direct_difference:
+                    metrics["removed_energy_over_z"] = float(
+                        ((z.detach() - e.detach()).float().square().sum() / energy.sum()).item())
+                    if self.use_direction_gate:
+                        gate = self.projection.gate
+                        metrics.update(gate_active=float(gate.last_step.item() >= 0),
+                                       gate_gain_mean=float(gate.gains.mean().item()),
+                                       gate_gain_min=float(gate.gains.min().item()),
+                                       gate_gain_max=float(gate.gains.max().item()),
+                                       gate_effective_dimension=float(gate.effective_dimension().item()),
+                                       gate_update_drift=float(gate.operator_drift.item()),
+                                       gate_relative_removal=float(gate.relative_removal.item()))
+                else:
+                    metrics["reference_aug_distance"] = float((z_aug_ref - z_ref).norm(dim=1).mean().item())
             for index, group in enumerate(self.optimizer.param_groups):
                 metrics["param_group_lr_" + str(index)] = float(group["lr"])
         if not all(math.isfinite(value) for value in metrics.values()):
@@ -449,7 +518,8 @@ class DICM(Algorithm):
 
     def get_forward_model(self):
         reference = self.pre_featurizer if self.use_residual else None
-        return DICMForwardModel(self.network, reference)
+        state = self.residual_bank if self.use_direct_difference else None
+        return DICMForwardModel(self.network, reference, state)
 
     def clone(self):
         # Hook containers may hold non-leaf tensors after a training forward.

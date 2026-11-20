@@ -85,6 +85,9 @@ class AveragedModel(Module):
                 p_swa.detach().copy_(
                     self.avg_fn(p_swa.detach(), p_model_, self.n_averaged.to(device))
                 )
+        copy_state = getattr(self.module, "copy_averaging_state", None)
+        if copy_state is not None:
+            copy_state(model)
         self.n_averaged += 1
 
         if step is not None:

@@ -91,4 +91,18 @@ def finalize_dicm_hparams(hparams, args=None, argv=()):
         hparams[key] = int(steps)
     if gamma > 0 and (mode == "A1" or hparams["l"] == 0 or hparams.get("sample_d", False)):
         raise ValueError("DICM reliable contrast requires a subspace, SupCon, and sample_d=False")
+    direct = hparams.get("dicm_direct_difference", False)
+    gate = hparams.get("dicm_direction_gate", False)
+    if not isinstance(direct, bool) or not isinstance(gate, bool):
+        raise ValueError("DirectDiff and direction-gate flags must be boolean")
+    if gate and not direct:
+        raise ValueError("Direction gating requires DirectDiff")
+    if direct:
+        if mode != "A2" or gamma or any(hparams.get(key, False) for key in (
+                "dicm_residual_projection", "dicm_fixed_reference", "two_ce", "sample_d")):
+            raise ValueError("DirectDiff requires A2, one CE, no reference, and no auxiliary tasks")
+        for key in ("dicm_gate_warmup", "dicm_gate_interval"):
+            steps = hparams.get(key)
+            if type(steps) is not int or steps < 1:
+                raise ValueError(f"{key} must be a positive integer")
     return hparams

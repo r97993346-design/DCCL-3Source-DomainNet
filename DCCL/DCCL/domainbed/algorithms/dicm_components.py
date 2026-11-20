@@ -9,6 +9,8 @@ import math
 import torch
 from torch import nn
 
+from .dicm_gate import DirectionGate
+
 
 class PairedInterventionResponseEstimator(nn.Module):
     def forward(self, z, z_aug, z_ref, z_aug_ref):
@@ -145,8 +147,9 @@ class InterventionSensitiveSubspace(nn.Module):
 
 
 class StableFeatureProjection(nn.Module):
-    """Fixed-beta projection with no LayerNorm, learned gate, or task gradient to B."""
-    def __init__(self, feature_dim, rank=8, beta=1.0, seed=0, fixed_reference=False):
+    """Low-rank stable representation; the classification loss never updates B."""
+    def __init__(self, feature_dim, rank=8, beta=1.0, seed=0, fixed_reference=False,
+                 direction_gate=False):
         super().__init__()
         if not math.isfinite(float(beta)) or not 0 <= float(beta) <= 1:
             raise ValueError("DICM beta must be in [0,1]")
@@ -154,6 +157,7 @@ class StableFeatureProjection(nn.Module):
         self.register_buffer("beta", torch.tensor(float(beta)))
         self.register_buffer("reference_mean", torch.zeros(feature_dim) if fixed_reference else None)
         self.register_buffer("reference_ready", torch.tensor(False) if fixed_reference else None)
+        self.gate = DirectionGate(feature_dim, rank) if direction_gate else None
 
     @torch.no_grad()
     def initialize_reference_mean(self, mean):
@@ -170,7 +174,11 @@ class StableFeatureProjection(nn.Module):
                 raise RuntimeError("Fixed reference has not been estimated from source data")
             reference = self.reference_mean.to(z.dtype)
         residual = z if reference is None else z - reference.detach()
-        sensitive = self.subspace.project(residual, q=q, detach_basis=True)
+        if self.gate is None:
+            sensitive = self.subspace.project(residual, q=q, detach_basis=True)
+        else:
+            q = self.subspace.orthonormal_basis(detach=True) if q is None else q
+            sensitive = self.gate.suppressible(residual, q)
         stable = z - self.beta.to(z.dtype) * sensitive
         return stable, sensitive
 

@@ -124,6 +124,9 @@ def main():
     if (args.pacs_matched_protocol or hparams.get("dicm_fixed_reference", False)) and not args.pacs_causal_checkpoints:
         parser.error("Matched PACS runs and fixed reference require --pacs_causal_checkpoints")
 
+    if hparams.get("dicm_direct_difference", False) and not args.pacs_matched_protocol:
+        parser.error("Formal DirectDiff requires a verified paired PACS initialization protocol")
+
     # setup debug
     if args.debug:
         args.checkpoint_freq = 5

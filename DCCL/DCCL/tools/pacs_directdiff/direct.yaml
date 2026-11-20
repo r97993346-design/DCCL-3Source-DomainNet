@@ -1,0 +1,5 @@
+dicm_direct_difference: true
+dicm_direction_gate: false
+dicm_residual_projection: false
+dicm_gate_warmup: 300
+dicm_gate_interval: 100

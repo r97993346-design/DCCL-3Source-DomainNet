@@ -97,7 +97,8 @@ class FoldCheckpoints:
                              initial_sha256=shared_initialization(algorithm),
                              source=stagewise.source_provenance(), budget=budget, interval=interval,
                              torch_version=str(torch.__version__),
-                             reference="frozen ImageNet-pretrained ResNet-50; state included when used")
+                             reference=(None if hparams.get("dicm_direct_difference", False)
+                                        else "frozen ImageNet-pretrained ResNet-50; state included when used"))
         self.best_row = None
 
     def save_inference(self, path, kind, model, sample, metrics, pending=None):

@@ -138,11 +138,19 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # setup algorithm (model)
     #######################################################
     hparams["total_num_domains"] = len(dataset)
+    paired_metadata = None
+    initialization = {}
+    protocol = getattr(args, "pacs_matched_protocol", None)
+    if protocol:
+        paired_metadata = json.loads(protocol.read_text(encoding="utf-8"))
+        if hparams.get("dicm_direct_difference", False):
+            initialization["paired_rng"] = paired_metadata["paired_rng"]
     algorithm = algorithm_class(
         dataset.input_shape,
         dataset.num_classes,
         len(dataset) - len(test_envs),
         hparams,
+        **initialization,
     )
     num_class = dataset.num_classes
     algorithm.to(device)
@@ -210,15 +218,14 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             hparams, algorithm, n_steps, checkpoint_freq)
         logger.info("PACS paired split %s, initial weights %s",
                     identity["split_sha256"], causal.metadata["initial_sha256"])
-        protocol = getattr(args, "pacs_matched_protocol", None)
-        if protocol:
+        if paired_metadata is not None:
             from domainbed.lib.fixed_reference import write_split_manifest
-            expected = json.loads(protocol.read_text(encoding="utf-8"))
-            if identity != expected["identity"] or causal.metadata["initial_sha256"] != expected["initial_sha256"]:
-                raise ValueError("Split or shared initialization differs from A8")
+            reference = paired_metadata.get("reference_group", "A8")
+            if identity != paired_metadata["identity"] or causal.metadata["initial_sha256"] != paired_metadata["initial_sha256"]:
+                raise ValueError(f"Split or shared initialization differs from {reference}")
             causal.metadata["sample_manifest"] = write_split_manifest(
                 args.out_dir, args, dataset, in_splits, out_splits, test_envs, identity)
-            logger.info("A8 split and initial Backbone/Classifier verified")
+            logger.info("%s split and initial Backbone/Classifier verified", reference)
         if args.pacs_causal_resume:
             stage_start, records, swad_algorithm = causal.resume(
                 algorithm, swad, epochs_path, device)
@@ -420,6 +427,15 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         evaluate_now = (step % checkpoint_freq == 0 if stage is None
                         else (step + 1) % checkpoint_freq == 0 or step + 1 == n_steps)
         if evaluate_now:
+            if getattr(algorithm, "use_direction_gate", False):
+                gate = algorithm.projection.gate
+                if gate.last_step.item() == step:
+                    directory = args.out_dir / "gate_updates"
+                    directory.mkdir(exist_ok=True)
+                    path = directory / f"{step:05d}.json"
+                    temporary = path.with_suffix(".tmp")
+                    temporary.write_text(json.dumps(gate.snapshot(), indent=2, allow_nan=False) + "\n")
+                    temporary.replace(path)
             results = {
                 "step": step,
                 "epoch": step / steps_per_epoch,
@@ -594,7 +610,6 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # find best
     logger.info("---")
     records = Q(records)
-    oracle_best = records.argmax("test_out")["test_in"]
     iid_best = records.argmax("train_out")["test_in"]
     last = records[-1]["test_in"]
 
@@ -607,17 +622,23 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     iid_best_indomain = records.argmax("train_out")[in_key]
     last_indomain = records[-1][in_key]
 
-    ret = {
-        "oracle": oracle_best,
+    ret = {}
+    if not hparams.get("dicm_direct_difference", False):
+        ret["oracle"] = records.argmax("test_out")["test_in"]
+    ret.update({
         "iid": iid_best,
         "last": last,
         "last (inD)": last_indomain,
         "iid (inD)": iid_best_indomain,
-    }
+    })
 
     # Evaluate SWAD
     if swad:
         swad_algorithm = swad.get_final_model()
+        if getattr(algorithm, "use_direction_gate", False):
+            gate = swad_algorithm.module.finalize_direction_gate()
+            (args.out_dir / "swad_gate.json").write_text(json.dumps(gate, indent=2, allow_nan=False) + "\n")
+            logger.info("SWAD gate re-expressed in averaged QR using source EMA through step %d", gate["step"])
         if hparams["freeze_bn"] is False:
             n_steps = 500 if not args.debug else 10
             logger.warning(f"Update SWAD BN statistics for {n_steps} steps ...")
