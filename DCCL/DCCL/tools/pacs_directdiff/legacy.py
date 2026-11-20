@@ -8,7 +8,7 @@ from tools.pacs_causal.features import STYLES
 from tools.pacs_causal.metrics import coverage
 from tools.pacs_directdiff.analyze import SAMPLE_COLUMNS
 from tools.pacs_directdiff.common import DOMAINS, PREVIOUS, ROOT, atomic_json, historical_fold, squared_norm
-from tools.pacs_directdiff.probes import probe_views
+from tools.pacs_directdiff.probes import PRIMARY_RIDGE, probe_views
 from tools.pacs_projection.analyze import hash_path
 
 
@@ -42,8 +42,10 @@ def load_legacy(variant):
     for i, d in enumerate(DOMAINS):
         path = ROOT / "probes" / "A16" / d / f"{variant}.json"
         if path.is_file():
-            output.append(json.loads(path.read_text()))
-            continue
+            cached = json.loads(path.read_text())
+            if str(PRIMARY_RIDGE) in cached["probes"]["z"]["class"]:
+                output.append(cached)
+                continue
         row = a16_reference(i, variant)
         path.parent.mkdir(parents=True, exist_ok=True)
         atomic_json(path, row)

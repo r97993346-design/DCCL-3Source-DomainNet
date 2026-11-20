@@ -11,7 +11,7 @@ from tools.pacs_directdiff.analyze import has_live_pane
 from tools.pacs_directdiff.common import DOMAINS, GROUPS, ROOT, VARIANTS, atomic_json, folds, historical_fold, say
 from tools.pacs_directdiff.figures import SETUPS, gate_figure, paired_tsne, performance_figure
 from tools.pacs_directdiff.legacy import load_legacy
-from tools.pacs_directdiff.probes import PRIMARY_C, SENSITIVITY_C
+from tools.pacs_directdiff.probes import PRIMARY_RIDGE, SENSITIVITY_RIDGE
 from tools.pacs_directdiff.queue import completed
 
 
@@ -72,11 +72,11 @@ def columns(values):
     return [row(values), row(["---"] * len(values))]
 
 
-def probe(result, view, task, regularization=PRIMARY_C):
+def probe(result, view, task, regularization=PRIMARY_RIDGE):
     return result["probes"][view][task][str(regularization)]["accuracy"]
 
 
-def mean_probe(results, view, task, regularization=PRIMARY_C):
+def mean_probe(results, view, task, regularization=PRIMARY_RIDGE):
     return mean(probe(r, r["actual"] if view == "actual" else view, task, regularization) for r in results)
 
 
@@ -214,7 +214,8 @@ def report(scores, diagnostics, failures):
         "## 源域表示与 Q 的独立扰动响应",
         "",
         "共享标准化参数从每折每个 checkpoint 的源域训练 z 拟合。类别探针使用源域训练与验证的固定拆分。"
-        "域探针使用同一批类别×源域平衡样本。下表用收敛的 L-BFGS，C=10。",
+        "域探针使用同一批类别×源域平衡样本。A16 探针试运行触及迭代求值上限，所有正式对照统一采用闭式线性岭回归。"
+        "下表采用岭系数 0.001，每次拟合均核验正规方程的相对残差。",
         "",
         *columns(("方案", "权重", "z 类别/域", "E 类别/域", "S 类别/域", "删除能量", "同类跨域平方距离 z/E",
                   "类间/类内 z/E", "保护后秩", "模糊 Q/剩余", "色阶 Q/剩余")),
@@ -277,14 +278,14 @@ def report(scores, diagnostics, failures):
     if len(gate) == 4:
         match = "uniform_equal_sample_energy"
         trends = {}
-        for c in (PRIMARY_C, SENSITIVITY_C):
+        for c in (PRIMARY_RIDGE, SENSITIVITY_RIDGE):
             trends[c] = {task: mean_probe(gate, "gate", task, c) - mean_probe(gate, match, task, c)
                          for task in ("class", "domain")}
         lines += ["", f"在 Gate 的同一 SWAD 权重和逐样本等删除能量下，"
-                  f"主探针的类别、域变化分别为 {delta(trends[PRIMARY_C]['class'])}、"
-                  f"{delta(trends[PRIMARY_C]['domain'])}。"
-                  f"预先固定的弱正则 C=100 得到 {delta(trends[SENSITIVITY_C]['class'])}、"
-                  f"{delta(trends[SENSITIVITY_C]['domain'])}。"]
+                  f"主探针的类别、域变化分别为 {delta(trends[PRIMARY_RIDGE]['class'])}、"
+                  f"{delta(trends[PRIMARY_RIDGE]['domain'])}。"
+                  f"弱正则岭系数 0.0001 得到 {delta(trends[SENSITIVITY_RIDGE]['class'])}、"
+                  f"{delta(trends[SENSITIVITY_RIDGE]['domain'])}。"]
         readout = min(r["probe_transport"][task]["gate"]["prediction_agreement"]
                       for r in gate for task in ("class", "domain"))
         lines += ["", f"沿门控方向的保留特征值为 1−0.75g，最小值至少 0.25，故该固定变换可逆。"
@@ -296,7 +297,7 @@ def report(scores, diagnostics, failures):
         if enough:
             source_delta = baseline["Gate"]["swad_source_validation"] - baseline["Uniform"]["swad_source_validation"]
             source_effect = all(trends[c]["class"] >= 0 and trends[c]["domain"] < 0
-                                for c in (PRIMARY_C, SENSITIVITY_C))
+                                for c in (PRIMARY_RIDGE, SENSITIVITY_RIDGE))
             lines.append(f"Gate 相对 Uniform 的源域 SWAD 验证变化为 {delta(source_delta)}。")
             if source_effect and source_delta >= 0:
                 lines.append("源域验证与两种预设正则强度下的等能量探针均支持保留门控候选，下一步可做多种子验证。")
