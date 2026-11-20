@@ -16,7 +16,7 @@ from prettytable import PrettyTable
 from domainbed.datasets import get_dataset
 from domainbed.datasets import datasets as datasets_registry
 from domainbed import hparams_registry
-from domainbed.lib import misc
+from domainbed.lib import dplclip_protocol, misc
 from domainbed.lib.writers import get_writer
 from domainbed.lib.logger import Logger
 from domainbed.trainer import train
@@ -168,7 +168,26 @@ def main():
         default="train_output",
         help="Root directory for training outputs"
     )
+    parser.add_argument("--dpl_clip_path", default="", help="Local official ViT-B/16 weights")
+    parser.add_argument("--dpl_smoke_audit", action="store_true",
+                        help="Check DPL gradients and frozen weights during the first update")
     args, left_argv = parser.parse_known_args()
+    is_dplclip = args.algorithm == "DPLCLIP"
+    if is_dplclip:
+        domains = dplclip_protocol.DOMAINS.get(args.dataset, ())
+        if not domains or not args.test_envs or len(args.test_envs) != 1 or args.test_envs[0] not in range(4):
+            parser.error("DPLCLIP requires one target index (0–3) on PACS, VLCS, OfficeHome or TerraIncognita")
+        if args.configs or left_argv or args.label_ratio != 1 or args.holdout_fraction != 0.2:
+            parser.error("DPLCLIP requires the fixed default config and the DomainBed 80/20 split")
+        if (args.debug or args.epochs is not None or args.model_save or args.log
+                or args.source_sampling == "pooled_shuffle"):
+            parser.error("DPLCLIP uses step-based, domain-balanced training and saves the best MLP")
+        args.evalmode = "all"
+        args.deterministic = True
+        args.steps = args.steps if args.steps is not None else 5001
+        args.checkpoint_freq = args.checkpoint_freq if args.checkpoint_freq is not None else 300
+        if args.steps < 1 or args.checkpoint_freq < 1:
+            parser.error("DPLCLIP steps and checkpoint frequency must be positive")
     if args.cipt_contrastive_warmup_epochs is not None:
         if args.epochs is None or args.cipt_contrastive_warmup_epochs < 0:
             parser.error("--cipt_contrastive_warmup_epochs requires --epochs and a non-negative count")
@@ -190,12 +209,16 @@ def main():
 
     # setup hparams
     hparams = hparams_registry.default_hparams(args.algorithm, args.dataset)
-    hparams = setup_alg_hparams(hparams, args)
-    keys = ["config.yaml"] + args.configs
-    keys = [open(key, encoding="utf8") for key in keys]
-    hparams = Config(*keys, default=hparams)
-    hparams.argv_update(left_argv)
-    apply_explicit_hparam_cli(parser, args, hparams, sys.argv[1:])
+    if is_dplclip:
+        hparams["dpl_clip_path"] = args.dpl_clip_path
+        hparams["dpl_smoke_audit"] = args.dpl_smoke_audit
+        hparams = Config(default=hparams)
+    else:
+        hparams = setup_alg_hparams(hparams, args)
+        keys = [open(key, encoding="utf8") for key in ["config.yaml"] + args.configs]
+        hparams = Config(*keys, default=hparams)
+        hparams.argv_update(left_argv)
+        apply_explicit_hparam_cli(parser, args, hparams, sys.argv[1:])
     if args.algorithm == "ERM" and args.weak_erm:
         hparams = apply_weak_erm_hparams(hparams)
 
@@ -213,11 +236,13 @@ def main():
     args.data_dir = Path(args.data_dir)
 
     args.out_root = Path(args.output_root) / args.dataset
+    if is_dplclip:
+        args.out_root /= domains[args.test_envs[0]]
     args.out_dir = args.out_root / args.unique_name
-    args.out_dir.mkdir(exist_ok=True, parents=True)
+    args.out_dir.mkdir(exist_ok=not is_dplclip, parents=True)
 
     writer = get_writer(args.out_root / "runs" / args.unique_name)
-    logger = Logger.get(args.out_dir / "log.txt")
+    logger = Logger.get(args.out_dir / ("train.log" if is_dplclip else "log.txt"), colorize=not is_dplclip)
     if args.debug:
         logger.setLevel("DEBUG")
     cmd = " ".join(sys.argv)
@@ -272,8 +297,11 @@ def main():
     # Real dataset will be re-assigned in train function.
     # test_envs only decide transforms. For filtered DomainNet, pass the
     # original target env id so get_dataset can remap it after filtering.
-    dummy_test_envs = [args.target_env] if domainnet_custom_split else [0]
-    dataset, _in_splits, _out_splits = get_dataset(dummy_test_envs, args, hparams)
+    if is_dplclip:
+        dataset = datasets_registry.get_dataset_class(args.dataset)(args.data_dir)
+    else:
+        dummy_test_envs = [args.target_env] if domainnet_custom_split else [0]
+        dataset, _in_splits, _out_splits = get_dataset(dummy_test_envs, args, hparams)
 
     # print dataset information
     logger.nofmt("Dataset:")
@@ -291,7 +319,8 @@ def main():
     if args.epochs is None:
         checkpoint_freq = args.checkpoint_freq or dataset.CHECKPOINT_FREQ
         org_n_steps = args.steps or dataset.N_STEPS
-        n_steps = (org_n_steps // checkpoint_freq) * checkpoint_freq + 1
+        # DPL follows the official loop: exactly N updates and a final evaluation.
+        n_steps = org_n_steps if is_dplclip else (org_n_steps // checkpoint_freq) * checkpoint_freq + 1
         logger.info(f"checkpoint_freq = {checkpoint_freq}")
         logger.info(f"n_steps is updated to {org_n_steps} => {n_steps} for checkpointing")
     else:

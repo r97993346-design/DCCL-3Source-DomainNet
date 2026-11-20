@@ -11,6 +11,10 @@ def set_transfroms(dset, data_type, hparams, algorithm_class=None):
     Args:
         data_type: ['train', 'valid', 'test', 'mnist']
     """
+    if algorithm_class is not None and algorithm_class.__name__ == "DPLCLIP":
+        dset.transforms = {"x": DBT.clip_basic}
+        dset.single_view = True
+        return
     assert hparams["data_augmentation"]
 
     is_cipt_dccl = (
@@ -90,7 +94,10 @@ def get_dataset(test_envs, args, hparams, algorithm_class=None):
         data_keys.append(keys_cur)
         keys_cur_train = keys_cur[int(len(underlying_dataset) * args.holdout_fraction):]
         for key in keys_cur_train:
-            _, y = underlying_dataset[key]
+            if algorithm_class is not None and algorithm_class.__name__ == "DPLCLIP":
+                y = underlying_dataset.targets[key]
+            else:
+                _, y = underlying_dataset[key]
             dataset_y_dict[y].append(key)
         dataset_y_dicts.append(dataset_y_dict)
         train_key = []
@@ -160,6 +167,7 @@ class _SplitDataset(torch.utils.data.Dataset):
         self.underlying_dataset = underlying_dataset
         self.keys = keys
         self.transforms = {}
+        self.single_view = False
         self.sample_d = hparams["sample_d"]
         self.mix = hparams["mix"]
         self.cipt_pure = bool(hparams.get("cipt_pure", False))
@@ -184,6 +192,9 @@ class _SplitDataset(torch.utils.data.Dataset):
         x, y = self.underlying_dataset[self.keys[key]]
         ret = {"y": y}
         ret["d"] = self.env_id
+        if self.single_view:
+            ret["x"] = self.transforms["x"](x)
+            return ret
 
         # Backward-compatible two-view path for older CIPTDCCL configurations.
         if "x" in self.transforms and "x_2" in self.transforms:

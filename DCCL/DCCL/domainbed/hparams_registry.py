@@ -156,11 +156,17 @@ def _hparams(algorithm, dataset, random_state):
 
 
 def default_hparams(algorithm, dataset):
+    if algorithm == "DPLCLIP":
+        from domainbed.lib.dplclip_protocol import DEFAULTS
+
+        return DEFAULTS.copy()
     dummy_random_state = np.random.RandomState(0)
     return {a: b for a, (b, c) in _hparams(algorithm, dataset, dummy_random_state).items()}
 
 
 def random_hparams(algorithm, dataset, seed):
+    if algorithm == "DPLCLIP":
+        raise ValueError("DPLCLIP uses the fixed official-default configuration")
     random_state = np.random.RandomState(seed)
     return {a: c for a, (b, c) in _hparams(algorithm, dataset, random_state).items()}
 

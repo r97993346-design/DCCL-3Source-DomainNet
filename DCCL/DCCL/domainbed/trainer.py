@@ -13,7 +13,7 @@ from domainbed.mmd import mmd_loss
 from domainbed.datasets import get_dataset, split_dataset
 from domainbed import algorithms
 from domainbed.evaluator import Evaluator
-from domainbed.lib import misc
+from domainbed.lib import dplclip_protocol, misc
 from domainbed.lib import swa_utils
 from domainbed.lib.query import Q
 from domainbed.lib.fast_data_loader import InfiniteDataLoader, FastDataLoader
@@ -48,6 +48,7 @@ def resolve_loader_workers(args, dataset):
 
 def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, target_env=None):
     logger.info("")
+    is_dplclip = args.algorithm == "DPLCLIP"
     source_sampling = getattr(args, "source_sampling", "domain_balanced")
     epochs = getattr(args, "epochs", None)
     warmup_epochs = getattr(args, "cipt_contrastive_warmup_epochs", None)
@@ -135,6 +136,13 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
     train_workers, eval_workers = resolve_loader_workers(args, dataset)
     logger.info("Source sampling: %s", source_sampling)
+    if is_dplclip:
+        config = dplclip_protocol.begin_fold(
+            args, hparams, dataset, in_splits, out_splits, n_steps, checkpoint_freq,
+            train_workers, eval_workers, logger,
+        )
+        best_source_val = float("-inf")
+        best_path = args.out_dir / "best_prompt_generator.pth"
     if source_sampling == "pooled_shuffle":
         pooled_dataset = torch.utils.data.ConcatDataset([in_splits[i][0] for i in train_envs])
         pooled_loader = FastDataLoader(
@@ -170,6 +178,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
                 weights=env_weights,
                 batch_size=batch_size,
                 num_workers=train_workers,
+                generator=dplclip_protocol.loader_generator(args.seed, "train", env.env_id)
+                if is_dplclip else None,
             )
             for (env, env_weights), batch_size in iterator.train(zip(in_splits, batch_sizes))
         ]
@@ -196,6 +206,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             "batch_size": batchsize,
             "num_workers": eval_workers,
         }
+        if is_dplclip:
+            loader_kwargs["generator"] = dplclip_protocol.loader_generator(args.seed, "eval", i)
         if args.prebuild_loader:
             loader_kwargs = FastDataLoader(**loader_kwargs)
         eval_loaders_kwargs.append(loader_kwargs)
@@ -229,6 +241,11 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
     n_params = sum([p.numel() for p in algorithm.parameters()])
     logger.info("# of params = %d" % n_params)
+    if is_dplclip:
+        trainable = {name: p.numel() for name, p in algorithm.named_parameters() if p.requires_grad}
+        logger.info("DPLCLIP trainable parameters (%d): %s", sum(trainable.values()), trainable)
+        config["trainable_parameters"] = trainable
+        dplclip_protocol.write_json(args.out_dir / "config.json", config)
 
     lr_scheduler = None
     if args.algorithm == "CIPTDCCL":
@@ -282,6 +299,11 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             for key, tensorlist in batches.items()
         }
 
+        if is_dplclip and step == 0:
+            for env, domains in zip(train_envs, batches["d"]):
+                assert len(domains) == hparams["batch_size"] and (domains == env).all()
+            assert len(batches["d"]) == len(train_envs) == 3
+            logger.info("Verified three independent source batches of %d", hparams["batch_size"])
         inputs = {**batches, "step": step}
         # Log the LR *used* for this optimizer update, rather than the LR set
         # for the next step. In CIPTDCCL, optimizer.step() runs in update().
@@ -317,7 +339,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             # the base model continues to the fixed training budget.
             swad_algorithm.update_parameters(algorithm, step=step)
 
-        if epoch_end or (epochs is None and step % checkpoint_freq == 0):
+        if (epoch_end or (epochs is None and step % checkpoint_freq == 0)
+                or (is_dplclip and step == n_steps - 1)):
             results = {
                 "step": step,
                 "epoch": (step + 1) // steps_per_epoch if epochs is not None else step / steps_per_epoch,
@@ -329,6 +352,14 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             eval_start_time = time.time()
             accuracies, summaries = evaluator.evaluate(algorithm)
             results["eval_time"] = time.time() - eval_start_time
+            if is_dplclip:
+                source_val = float(np.mean([accuracies[f"env{env}_out"] for env in train_envs]))
+                if not np.isclose(summaries["train_out"], source_val, rtol=0, atol=1e-12):
+                    raise RuntimeError("DomainBed train_out does not match source IID")
+                summaries["source_val"] = source_val
+                if source_val > best_source_val:
+                    best_source_val = source_val
+                    dplclip_protocol.save_best(best_path, algorithm, config, results)
 
             results_keys = (
                 list(summaries.keys()) + sorted(accuracies.keys()) + list(results.keys())
@@ -407,6 +438,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # final prediction
     logger.info("---")
     records = Q(records)
+    if is_dplclip:
+        return dplclip_protocol.finalize_fold(args, algorithm, evaluator, records, logger)
     oracle_best = records.argmax("test_out")["test_in"]
     iid_best = records.argmax("train_out")["test_in"]
     last = records[-1]["test_in"]
