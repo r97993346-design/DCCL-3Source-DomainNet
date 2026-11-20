@@ -286,6 +286,10 @@ def report(scores, diagnostics, failures):
                   f"{delta(trends[PRIMARY_RIDGE]['domain'])}。"
                   f"弱正则岭系数 0.0001 得到 {delta(trends[SENSITIVITY_RIDGE]['class'])}、"
                   f"{delta(trends[SENSITIVITY_RIDGE]['domain'])}。"]
+        fixed_head_effect = mean(r["fixed_head"]["gate"]["source_validation_top1"]
+                                 - r["fixed_head"][match]["source_validation_top1"] for r in gate)
+        lines.append(f"逐样本等能量时，固定分类头的源域验证变化为 {delta(fixed_head_effect)}。"
+                     "固定头差异在控制删除能量后仍可测得，域探针差异的方向随岭系数变化。")
         readout = min(r["probe_transport"][task]["gate"]["prediction_agreement"]
                       for r in gate for task in ("class", "domain"))
         lines += ["", f"沿门控方向的保留特征值为 1−0.75g，最小值至少 0.25，故该固定变换可逆。"
@@ -309,7 +313,7 @@ def report(scores, diagnostics, failures):
     lines += [
         "",
         "固定头测试用于隔离推理变换。端到端训练结果在目标域表中独立列出。"
-        "本轮为单种子；同一模型的可逆表示与跨模型训练效果都按各自实验对照解释。",
+        "本轮为单种子。同一模型的可逆表示与跨模型训练效果都按各自实验对照解释。",
         "",
         "![门控系数](gate_coefficients.png)" if gate else "",
         "",
