@@ -152,7 +152,7 @@ def comparison_figure(scores):
 
 def write_report(scores, analysis):
     scores_mean={g:{k:mean(r[k] for r in scores if r["group"]==g)
-                 for k in ("iid","iid_test_out","swad","swad_test_out")} for g in SETUPS}
+                 for k in ("iid","iid_test_out","swad","swad_test_out","source_best","swad_source_val")} for g in SETUPS}
     feature={g:{ck:[r for r in analysis if r["group"]==g and r["checkpoint"]==ck]
                 for ck in CHECKPOINTS} for g in SETUPS}
     summary=[
@@ -173,7 +173,8 @@ def write_report(scores, analysis):
     for g in SETUPS:
         a=scores_mean[g]
         summary += [f"{g} 的四域 IID test_in/test_out 为 **{PC(a['iid'])} / {PC(a['iid_test_out'])}**，"
-                    f"SWAD test_in/test_out 为 **{PC(a['swad'])} / {PC(a['swad_test_out'])}**。"]
+                    f"SWAD test_in/test_out 为 **{PC(a['swad'])} / {PC(a['swad_test_out'])}**。"
+                    f"源域 IID 最佳与最终模型验证准确率为 {PC(a['source_best'])} / {PC(a['swad_source_val'])}。"]
     if any(r["swad_fallback"] for r in scores):
         summary += ["","上列含回退模型的方案均值是四域最终输出的描述，不能解释为四个正常收敛 SWAD 的均值。"]
     summary += ["","![PACS 目标域配对结果](swad_comparison.png)","",
@@ -225,20 +226,37 @@ def write_report(scores, analysis):
         drift=mean(t["within_class_domain_drift_fraction_Q_env"] for t in r)
         summary.append(f"{g} 的类保护剩余空间捕获 Q 内同类跨源域中心偏移能量的 {PC(drift)}。")
     summary.append("")
-    metrics=[(g,scores_mean[g]["swad"]-scores_mean["A8"]["swad"],
-                scores_mean[g]["swad_test_out"]-scores_mean["A8"]["swad_test_out"]) for g in ("B8","A16")]
-    stable=[g for g in ("B8","A16") if mean_probe(feature[g]["swad"],"E_beta","domain") < mean_probe(feature[g]["swad"],"z","domain")
-            and all(r["swad_converged"] for r in scores if r["group"]==g)]
+    summary += [
+        "## 后续保留判断",
+        "",
+        "B8 在同一权重下执行 $E=(I-0.75P)z+0.75P\\bar z_{\\mathrm{ref}}$。"
+        "$I-0.75P$ 在 Q 内和 Q 外的特征值分别为 0.25 和 1，因此映射可逆。"
+        "线性探针的变化反映当前特征几何与有限样本读出。端到端固定参考也会经 CE 改变 Backbone，"
+        "需要结合不同模型的 z 和 E 区分训练作用与固定投影作用。",
+        "",
+    ]
+    reference=feature["A8"]["swad"]
+    reference_source=scores_mean["A8"]["swad_source_val"]
     converged={g for g in SETUPS if all(r["swad_converged"] for r in scores if r["group"]==g)}
-    both_gain=[g for g,a,b in metrics if a>0 and b>0 and {"A8",g}<=converged]
-    compatible=[g for g in stable if g in both_gain]
-    summary += ["## 后续保留判断",""]
-    if compatible:
-        summary.append(f"{'、'.join(compatible)} 同时体现四域 SWAD 两个读数的正增量和保留表示域探针下降，适合作为下一次多种子验证的候选。")
-    elif both_gain:
-        summary.append(f"{'、'.join(both_gain)} 的四域 SWAD 两个读数有改善。当前还需验证其域不变性，才能把泛化增益归因于本轮分解变化。")
+    supported=[]
+    for g in ("B8","A16"):
+        current=feature[g]["swad"]
+        delta_src=scores_mean[g]["swad_source_val"]-reference_source
+        delta_domain=mean_probe(current,"E_beta","domain")-mean_probe(reference,"E_beta","domain")
+        delta_class=mean_probe(current,"E_beta","category")-mean_probe(reference,"E_beta","category")
+        relative_to_z=mean_probe(current,"E_beta","domain")-mean_probe(current,"z","domain")
+        summary.append(f"{g} 相对 A8 的源域验证准确率、保留表示域探针、保留表示类别探针变化"
+                       f"分别为 {PP(delta_src)}、{PP(delta_domain)}、{PP(delta_class)}。")
+        if {"A8",g}<=converged and delta_src>=0 and delta_domain<0 and delta_class>=0 and relative_to_z<0:
+            supported.append(g)
+    summary.append("")
+    if supported:
+        best=max(supported,key=lambda g:scores_mean[g]["swad_source_val"])
+        summary.append(f"按源域验证，{best} 同时满足验证分类和类别探针保持、域探针下降，优先做多种子验证。")
     else:
-        summary.append("这轮单种子实验尚未观察到两个 SWAD 读数均改善的候选。优先检查环境响应、类别信号与实际删除量的混合，再决定是否改变 Q 的学习目标。")
+        summary.append("源域诊断尚未发现同时满足验证分类和类别探针保持、域探针下降的方案。"
+                       "结合类别保护后覆盖和删除能量检查 Q 的学习目标，再决定是否更改分解机制。")
+    summary.append("Cartoon、Sketch 与其余目标域的成绩仅作为最终配对结果。")
     summary += ["","全部探针和类保护只用源域。诊断反映已测扰动、线性可辨识性和该轮单种子泛化。",
                 "各模型各折的 t-SNE 由同一批源域验证图像的 z、E、S 等表示联合嵌入，比较范围是同一模型与折。",
                 "两种权重、逐折样本量、原始坐标及覆盖明细见归档。","",
