@@ -1,0 +1,25 @@
+--- a/DCCL/DCCL/domainbed/optimizers.py
++++ b/DCCL/DCCL/domainbed/optimizers.py
+@@ -1,9 +1,11 @@
+ import torch
+ 
+ 
+-def get_optimizer(name, params, **kwargs):
++def get_optimizer(name, params, *, sgd_momentum=0.0, **kwargs):
+     name = name.lower()
+     optimizers = {"adam": torch.optim.Adam, "sgd": torch.optim.SGD, "adamw": torch.optim.AdamW}
+     optim_cls = optimizers[name]
+ 
++    if name == "sgd":
++        kwargs.setdefault("momentum", sgd_momentum)
+     return optim_cls(params, **kwargs)
+--- a/DCCL/DCCL/domainbed/algorithms/cipt_env_kl.py
++++ b/DCCL/DCCL/domainbed/algorithms/cipt_env_kl.py
+@@ -249,6 +249,7 @@
+         self.optimizer = get_optimizer(
+             hparams["optimizer"], trainable,
+             lr=hparams["lr"], weight_decay=hparams["weight_decay"],
++            sgd_momentum=hparams.get("sgd_momentum", 0.0),
+         )
+         self.trainable_parameter_count = sum(p.numel() for p in trainable)
+         self.frozen_parameter_count = sum(

@@ -1,0 +1,32 @@
+{
+  "code_base": "5d8aa0f06b1c076659470cb0d4c8b93629d0e5fc",
+  "code_patch": "optimizer_momentum.patch",
+  "config_precedence": [
+    "algorithm defaults",
+    "config.yaml",
+    "config_cipt_b5b_all80_relative_distance.yaml",
+    "per-run config.yaml",
+    "explicit CLI overrides"
+  ],
+  "checkpoint_selection": "first argmax of source-domain train_out within each target fold",
+  "hyperparameter_selection": "mean source-domain train_out from four IID-selected checkpoints",
+  "reporting": "target test_in and test_out reported for the same selected checkpoint",
+  "step_convention": "DomainBed --steps 1100, checkpoint labels 0 through 1100; legacy loop updates before evaluation at step 0",
+  "design_note": "A4 combines AdamW and nonzero weight decay",
+  "dataset": "OfficeHome",
+  "domains": [
+    "Art",
+    "Clipart",
+    "Product",
+    "RealWorld"
+  ],
+  "queue_order": [
+    "A0",
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5"
+  ],
+  "gpu_admission": "GPU0 free VRAM > 10240 MiB before smoke and each experiment; existing jobs may continue"
+}
