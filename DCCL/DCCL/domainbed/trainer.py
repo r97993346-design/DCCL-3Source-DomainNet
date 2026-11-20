@@ -146,6 +146,11 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     )
     num_class = dataset.num_classes
     algorithm.to(device)
+    if getattr(algorithm, "use_fixed_reference", False) and not args.pacs_causal_resume:
+        from domainbed.lib.fixed_reference import domain_balanced_reference
+        mean, sizes = domain_balanced_reference(algorithm.pre_featurizer, in_splits, train_envs, device)
+        algorithm.projection.initialize_reference_mean(mean)
+        logger.info("Fixed reference initialized using equal source domain means. Source train sample counts %s", sizes)
     if stage is not None and stage > 0 and args.stage_resume is None:
         stage_offset, stage_parent_hash = stagewise.load_parent(
             args.stage_parent, stage, algorithm, stage_identity, hparams)
@@ -205,6 +210,15 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             hparams, algorithm, n_steps, checkpoint_freq)
         logger.info("PACS paired split %s, initial weights %s",
                     identity["split_sha256"], causal.metadata["initial_sha256"])
+        protocol = getattr(args, "pacs_matched_protocol", None)
+        if protocol:
+            from domainbed.lib.fixed_reference import write_split_manifest
+            expected = json.loads(protocol.read_text(encoding="utf-8"))
+            if identity != expected["identity"] or causal.metadata["initial_sha256"] != expected["initial_sha256"]:
+                raise ValueError("Split or shared initialization differs from A8")
+            causal.metadata["sample_manifest"] = write_split_manifest(
+                args.out_dir, args, dataset, in_splits, out_splits, test_envs, identity)
+            logger.info("A8 split and initial Backbone/Classifier verified")
         if args.pacs_causal_resume:
             stage_start, records, swad_algorithm = causal.resume(
                 algorithm, swad, epochs_path, device)

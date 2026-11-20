@@ -88,6 +88,7 @@ def main():
     parser.add_argument("--stage_save_steps", type=int, nargs="*", default=None)
     parser.add_argument("--pacs_causal_checkpoints", action="store_true")
     parser.add_argument("--pacs_causal_resume", type=Path)
+    parser.add_argument("--pacs_matched_protocol", type=Path)
     args, left_argv = parser.parse_known_args()
     if args.pacs_causal_checkpoints or args.pacs_causal_resume:
         if (not args.pacs_causal_checkpoints or args.dataset != "PACS"
@@ -119,6 +120,9 @@ def main():
             raise ValueError("Specify a stage parent or a stage resume, not both")
         parent = args.stage_parent or (args.stage_resume if args.stage else None)
         validate_stage(args.stage, hparams, parent, dataset=args.dataset)
+
+    if (args.pacs_matched_protocol or hparams.get("dicm_fixed_reference", False)) and not args.pacs_causal_checkpoints:
+        parser.error("Matched PACS runs and fixed reference require --pacs_causal_checkpoints")
 
     # setup debug
     if args.debug:

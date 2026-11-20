@@ -146,14 +146,29 @@ class InterventionSensitiveSubspace(nn.Module):
 
 class StableFeatureProjection(nn.Module):
     """Fixed-beta projection with no LayerNorm, learned gate, or task gradient to B."""
-    def __init__(self, feature_dim, rank=8, beta=1.0, seed=0):
+    def __init__(self, feature_dim, rank=8, beta=1.0, seed=0, fixed_reference=False):
         super().__init__()
         if not math.isfinite(float(beta)) or not 0 <= float(beta) <= 1:
             raise ValueError("DICM beta must be in [0,1]")
         self.subspace = InterventionSensitiveSubspace(feature_dim, rank, seed)
         self.register_buffer("beta", torch.tensor(float(beta)))
+        self.register_buffer("reference_mean", torch.zeros(feature_dim) if fixed_reference else None)
+        self.register_buffer("reference_ready", torch.tensor(False) if fixed_reference else None)
+
+    @torch.no_grad()
+    def initialize_reference_mean(self, mean):
+        if self.reference_mean is None or self.reference_ready.item():
+            raise RuntimeError("The projection does not accept a new fixed reference")
+        if mean.shape != self.reference_mean.shape or not torch.isfinite(mean).all():
+            raise ValueError("Fixed reference has the wrong shape or non-finite values")
+        self.reference_mean.copy_(mean)
+        self.reference_ready.fill_(True)
 
     def decompose(self, z, q=None, reference=None):
+        if self.reference_mean is not None:
+            if not self.reference_ready.item():
+                raise RuntimeError("Fixed reference has not been estimated from source data")
+            reference = self.reference_mean.to(z.dtype)
         residual = z if reference is None else z - reference.detach()
         sensitive = self.subspace.project(residual, q=q, detach_basis=True)
         stable = z - self.beta.to(z.dtype) * sensitive

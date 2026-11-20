@@ -41,7 +41,8 @@ class DICMForwardModel(nn.Module):
 
     def predict_embed(self, x):
         z = self.network[0](x)
-        if self.reference is None:
+        if self.reference is None or getattr(self.network[1], "reference_mean", None) is not None:
+            # Keep the frozen encoder in the SWAD checkpoint for later feature extraction.
             return self.network[1](z)
         with torch.no_grad():
             reference = self.reference(x)
@@ -62,6 +63,9 @@ class DICM(Algorithm):
         self.use_projection = self.mode != "A1"
         self.use_gt = self.mode == "A5"
         self.use_residual = self.use_projection and hparams.get("dicm_residual_projection", False)
+        self.use_fixed_reference = hparams.get("dicm_fixed_reference", False)
+        if self.use_fixed_reference and not self.use_residual:
+            raise ValueError("A fixed reference requires residual projection")
         self.gt_weight = float(hparams["l_d"]) if self.use_gt else 0.0
         self.l = float(hparams["l"])
         self.l_layer = float(hparams["l_layer"])
@@ -107,6 +111,7 @@ class DICM(Algorithm):
                 seed = torch.initial_seed()
             self.projection = StableFeatureProjection(
                 feature_dim, int(hparams["dicm_rank"]), float(hparams["dicm_beta"]), seed,
+                fixed_reference=self.use_fixed_reference,
             )
             self.pire = PairedInterventionResponseEstimator()
             minimum_domains = int(hparams["dicm_min_valid_domains"]) or num_domains
