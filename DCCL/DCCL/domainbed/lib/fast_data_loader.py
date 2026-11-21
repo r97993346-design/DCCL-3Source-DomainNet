@@ -16,15 +16,15 @@ class _InfiniteSampler(torch.utils.data.Sampler):
 
 
 class InfiniteDataLoader:
-    def __init__(self, dataset, weights, batch_size, num_workers):
+    def __init__(self, dataset, weights, batch_size, num_workers, generator=None):
         super().__init__()
 
         if weights:
             sampler = torch.utils.data.WeightedRandomSampler(
-                weights, replacement=True, num_samples=batch_size
+                weights, replacement=True, num_samples=batch_size, generator=generator
             )
         else:
-            sampler = torch.utils.data.RandomSampler(dataset, replacement=True)
+            sampler = torch.utils.data.RandomSampler(dataset, replacement=True, generator=generator)
 
         batch_sampler = torch.utils.data.BatchSampler(
             sampler, batch_size=batch_size, drop_last=True
@@ -35,6 +35,7 @@ class InfiniteDataLoader:
                 dataset,
                 num_workers=num_workers,
                 batch_sampler=_InfiniteSampler(batch_sampler),
+                generator=generator,
             )
         )
 
@@ -52,11 +53,11 @@ class FastDataLoader:
     processes at every epoch.
     """
 
-    def __init__(self, dataset, batch_size, num_workers, shuffle=False):
+    def __init__(self, dataset, batch_size, num_workers, shuffle=False, generator=None):
         super().__init__()
 
         if shuffle:
-            sampler = torch.utils.data.RandomSampler(dataset, replacement=False)
+            sampler = torch.utils.data.RandomSampler(dataset, replacement=False, generator=generator)
         else:
             sampler = torch.utils.data.SequentialSampler(dataset)
 
@@ -71,6 +72,7 @@ class FastDataLoader:
                 dataset,
                 num_workers=num_workers,
                 batch_sampler=_InfiniteSampler(batch_sampler),
+                generator=generator,
             )
         )
 

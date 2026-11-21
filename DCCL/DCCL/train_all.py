@@ -3,6 +3,7 @@ import collections
 import copy
 import itertools
 import sys
+from io import StringIO
 from pathlib import Path
 
 import numpy as np
@@ -63,7 +64,9 @@ def main():
     parser.add_argument("--hparams_seed", type=int, default=0,
                         help="DomainBed sweep hash input; keeps the configured hparams.")
     parser.add_argument("--seed", type=int, default=0,
-                        help="Legacy argument; trainer logs the actual per-fold sweep seed.")
+                        help="Training seed when --fixed_fold_seed is enabled.")
+    parser.add_argument("--fixed_fold_seed", action="store_true",
+                        help="Reset each target fold to the explicit --seed value.")
     parser.add_argument("--source_only_selection", action="store_true",
                         help="Report source-selected checkpoints without the Oracle metric.")
     training_budget = parser.add_mutually_exclusive_group()
@@ -106,7 +109,7 @@ def main():
     parser.add_argument("--show", action="store_true", help="Show args and hparams w/o run")
     parser.add_argument(
         "--evalmode",
-        default="fast",
+        choices=("fast", "all"),
         help="[fast, all]. if fast, ignore train_in datasets in evaluation time.",
     )
     parser.add_argument("--prebuild_loader", action="store_true", help="Pre-build eval loaders")
@@ -173,6 +176,18 @@ def main():
         help="Root directory for training outputs"
     )
     args, left_argv = parser.parse_known_args()
+    is_cipt = args.algorithm == "CIPTDCCL"
+    if args.evalmode is None:
+        args.evalmode = "all" if is_cipt else "fast"
+    if is_cipt:
+        args.source_only_selection = True
+        if args.epochs is None:
+            if args.steps is None:
+                args.steps = 5001
+            if args.checkpoint_freq is None:
+                args.checkpoint_freq = 300
+            if args.steps < 1 or args.checkpoint_freq < 1:
+                parser.error("CIPT requires positive steps and checkpoint_freq")
     if args.cipt_contrastive_warmup_epochs is not None:
         if args.epochs is None or args.cipt_contrastive_warmup_epochs < 0:
             parser.error("--cipt_contrastive_warmup_epochs requires --epochs and a non-negative count")
@@ -197,6 +212,9 @@ def main():
     hparams = setup_alg_hparams(hparams, args)
     keys = ["config.yaml"] + args.configs
     keys = [open(key, encoding="utf8") for key in keys]
+    if is_cipt:
+        # Apply CIPT defaults before experiment configs and CLI overrides.
+        keys.insert(1, StringIO("test_batchsize: 64\n"))
     hparams = Config(*keys, default=hparams)
     hparams.argv_update(left_argv)
     apply_explicit_hparam_cli(parser, args, hparams, sys.argv[1:])
@@ -292,9 +310,12 @@ def main():
     if args.epochs is None:
         checkpoint_freq = args.checkpoint_freq or dataset.CHECKPOINT_FREQ
         org_n_steps = args.steps or dataset.N_STEPS
-        n_steps = (org_n_steps // checkpoint_freq) * checkpoint_freq + 1
+        n_steps = org_n_steps if is_cipt else (org_n_steps // checkpoint_freq) * checkpoint_freq + 1
         logger.info(f"checkpoint_freq = {checkpoint_freq}")
-        logger.info(f"n_steps is updated to {org_n_steps} => {n_steps} for checkpointing")
+        if is_cipt:
+            logger.info("Training budget: %d updates, including evaluation at the final step", n_steps)
+        else:
+            logger.info(f"n_steps is updated to {org_n_steps} => {n_steps} for checkpointing")
     else:
         logger.info("Training budget: %d complete source epochs per target", args.epochs)
 

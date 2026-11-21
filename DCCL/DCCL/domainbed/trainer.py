@@ -4,6 +4,7 @@ import json
 import time
 import copy
 import random
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 import numpy as np
@@ -47,18 +48,39 @@ def resolve_loader_workers(args, dataset):
 
 
 def reset_training_rng(args, test_envs):
-    """Use the same training seed as an independent DomainBed sweep job."""
+    """Reset the training RNG for one independent target fold."""
     args.hparams_seed = getattr(args, "hparams_seed", 0)
-    args.seed = misc.seed_hash(
-        args.dataset, args.algorithm, list(test_envs), args.hparams_seed, args.trial_seed
-    )
+    if not getattr(args, "fixed_fold_seed", False):
+        args.seed = misc.seed_hash(
+            args.dataset, args.algorithm, list(test_envs), args.hparams_seed, args.trial_seed
+        )
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)  # Seeds both CPU and CUDA generators.
 
 
+def loader_generator(seed, split, env):
+    """Use the same per-split loader seed formula as the DPLCLIP baseline."""
+    return torch.Generator().manual_seed(misc.seed_hash(seed, "DPLCLIP", split, env))
+
+
+@contextmanager
+def preserve_training_rng():
+    """Keep evaluation in the main process from advancing the training RNG."""
+    python_state = random.getstate()
+    numpy_state = np.random.get_state()
+    devices = [torch.cuda.current_device()] if torch.cuda.is_available() else []
+    try:
+        with torch.random.fork_rng(devices=devices):
+            yield
+    finally:
+        random.setstate(python_state)
+        np.random.set_state(numpy_state)
+
+
 def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, target_env=None):
     logger.info("")
+    is_cipt = args.algorithm == "CIPTDCCL"
     source_sampling = getattr(args, "source_sampling", "domain_balanced")
     epochs = getattr(args, "epochs", None)
     warmup_epochs = getattr(args, "cipt_contrastive_warmup_epochs", None)
@@ -79,7 +101,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     args.real_test_envs = list(test_envs)
     reset_training_rng(args, args.real_test_envs)
     logger.info(
-        "DomainBed sweep RNG: test_envs=%s, seed=%d, hparams_seed=%d, trial_seed=%d",
+        "Fold RNG: strategy=%s, test_envs=%s, seed=%d, hparams_seed=%d, trial_seed=%d",
+        "fixed" if getattr(args, "fixed_fold_seed", False) else "domainbed_sweep",
         args.real_test_envs, args.seed, args.hparams_seed, args.trial_seed,
     )
 
@@ -148,6 +171,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             batch_size=sum(batch_sizes),
             num_workers=train_workers,
             shuffle=True,
+            generator=loader_generator(args.seed, "train", "pooled"),
         )
         steps_per_epoch = len(pooled_loader)
         logger.info(
@@ -176,6 +200,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
                 weights=env_weights,
                 batch_size=batch_size,
                 num_workers=train_workers,
+                generator=loader_generator(args.seed, "train", env.env_id) if is_cipt else None,
             )
             for (env, env_weights), batch_size in iterator.train(zip(in_splits, batch_sizes))
         ]
@@ -202,6 +227,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             "batch_size": batchsize,
             "num_workers": eval_workers,
         }
+        if is_cipt:
+            loader_kwargs["generator"] = loader_generator(args.seed, "eval", i)
         if args.prebuild_loader:
             loader_kwargs = FastDataLoader(**loader_kwargs)
         eval_loaders_kwargs.append(loader_kwargs)
@@ -323,7 +350,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             # the base model continues to the fixed training budget.
             swad_algorithm.update_parameters(algorithm, step=step)
 
-        if epoch_end or (epochs is None and step % checkpoint_freq == 0):
+        if (epoch_end or (epochs is None and step % checkpoint_freq == 0)
+                or (is_cipt and step == n_steps - 1)):
             results = {
                 "step": step,
                 "epoch": (step + 1) // steps_per_epoch if epochs is not None else step / steps_per_epoch,
@@ -333,7 +361,8 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
                 results[key] = np.mean(val)
 
             eval_start_time = time.time()
-            accuracies, summaries = evaluator.evaluate(algorithm)
+            with preserve_training_rng() if is_cipt else nullcontext():
+                accuracies, summaries = evaluator.evaluate(algorithm)
             results["eval_time"] = time.time() - eval_start_time
 
             results_keys = (
