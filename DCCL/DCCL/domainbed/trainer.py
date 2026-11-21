@@ -46,6 +46,17 @@ def resolve_loader_workers(args, dataset):
     return train_workers, eval_workers
 
 
+def reset_training_rng(args, test_envs):
+    """Use the same training seed as an independent DomainBed sweep job."""
+    args.hparams_seed = getattr(args, "hparams_seed", 0)
+    args.seed = misc.seed_hash(
+        args.dataset, args.algorithm, list(test_envs), args.hparams_seed, args.trial_seed
+    )
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)  # Seeds both CPU and CUDA generators.
+
+
 def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, target_env=None):
     logger.info("")
     source_sampling = getattr(args, "source_sampling", "domain_balanced")
@@ -64,22 +75,17 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         if hparams["class_balanced"]:
             raise ValueError("pooled_shuffle requires class_balanced=false")
 
-    # train_all.py runs target domains sequentially in one process. Give each
-    # training task the same explicit RNG starting point, independent of the
-    # preceding task's budget, sampling and evaluation. Keep trial_seed for
-    # dataset splits; do not derive the training seed from steps or run order.
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)  # Seeds both CPU and CUDA generators.
+    # Hash the original domain IDs before any DomainNet remapping.
+    args.real_test_envs = list(test_envs)
+    reset_training_rng(args, args.real_test_envs)
     logger.info(
-        "Reset training RNG: test_envs=%s, seed=%s, trial_seed=%s",
-        test_envs, args.seed, args.trial_seed,
+        "DomainBed sweep RNG: test_envs=%s, seed=%d, hparams_seed=%d, trial_seed=%d",
+        args.real_test_envs, args.seed, args.hparams_seed, args.trial_seed,
     )
 
     #######################################################
     # setup dataset & loader
     #######################################################
-    args.real_test_envs = test_envs  # for log
     algorithm_class = algorithms.get_algorithm_class(args.algorithm)
     dataset, in_splits, out_splits = get_dataset(test_envs, args, hparams, algorithm_class)
 
@@ -407,7 +413,6 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # final prediction
     logger.info("---")
     records = Q(records)
-    oracle_best = records.argmax("test_out")["test_in"]
     iid_best = records.argmax("train_out")["test_in"]
     last = records[-1]["test_in"]
 
@@ -420,12 +425,14 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     last_indomain = records[-1][in_key]
 
     ret = {
-        "oracle": oracle_best,
         "iid": iid_best,
         "last": last,
         "last (inD)": last_indomain,
         "iid (inD)": iid_best_indomain,
     }
+
+    if not getattr(args, "source_only_selection", False):
+        ret = {"oracle": records.argmax("test_out")["test_in"], **ret}
 
     # Evaluate SWAD.
     #

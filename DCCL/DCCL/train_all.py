@@ -2,7 +2,6 @@ import argparse
 import collections
 import copy
 import itertools
-import random
 import sys
 from pathlib import Path
 
@@ -61,7 +60,12 @@ def main():
         default=0,
         help="Trial number (used for seeding split_dataset and random_hparams).",
     )
-    parser.add_argument("--seed", type=int, default=0, help="Seed for everything else")
+    parser.add_argument("--hparams_seed", type=int, default=0,
+                        help="DomainBed sweep hash input; keeps the configured hparams.")
+    parser.add_argument("--seed", type=int, default=0,
+                        help="Legacy argument; trainer logs the actual per-fold sweep seed.")
+    parser.add_argument("--source_only_selection", action="store_true",
+                        help="Report source-selected checkpoints without the Oracle metric.")
     training_budget = parser.add_mutually_exclusive_group()
     training_budget.add_argument(
         "--steps", type=int, default=None, help="Number of steps. Default is dataset-dependent."
@@ -246,10 +250,7 @@ def main():
     if args.show:
         exit()
 
-    # seed
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    # The trainer initializes the DomainBed sweep seed before each fold.
     torch.backends.cudnn.deterministic = args.deterministic
     torch.backends.cudnn.benchmark = not args.deterministic
 
