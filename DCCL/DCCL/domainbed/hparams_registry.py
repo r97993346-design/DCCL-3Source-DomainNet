@@ -57,6 +57,10 @@ def _hparams(algorithm, dataset, random_state):
         hparams["cipt_use_aug_view"] = (False, False)
         hparams["cipt_debug_shapes"] = (False, False)
         hparams["cipt_objective"] = ("legacy", "legacy")
+        hparams["ind_mode"] = (None, None)
+        hparams["cipt_condcov_weight"] = (None, None)
+        hparams["cipt_coopood_weight"] = (None, None)
+        hparams["ind_grad_steps"] = ((), ())
         hparams["cipt_env_kl_weight"] = (0.1, 0.1)
         hparams["cipt_fused_cls_weight"] = (0.0, 0.0)
         # Direct-E official-B5b constraints; ignored by legacy/env_kl/clip_ce.

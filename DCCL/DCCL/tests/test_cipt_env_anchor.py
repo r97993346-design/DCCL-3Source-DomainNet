@@ -31,6 +31,7 @@ from test_cipt_neighbor_contrastive import ROOT, ALGORITHMS, load_file, clip_gui
 
 
 losses = load_file("anchor_losses", ALGORITHMS / "cipt_losses.py")
+ind = load_file("anchor_ind", ALGORITHMS / "cipt_ind.py")
 selector = load_file("entropy_selector", ALGORITHMS / "cipt_entropy_selector.py")
 random_selector = load_file("random_selector", ALGORITHMS / "cipt_random_selector.py")
 modules = load_file("anchor_modules", ALGORITHMS / "cipt_modules.py")
@@ -128,6 +129,11 @@ namespace = dict(
     class_prompt_logits=selector.class_prompt_logits,
     decomposition_loss_terms=losses.decomposition_loss_terms,
     independence_loss=losses.independence_loss,
+    resolve_ind_config=ind.resolve_ind_config,
+    conditional_covariance_loss=ind.conditional_covariance_loss,
+    coopood_loss=ind.coopood_loss,
+    feature_statistics=ind.feature_statistics,
+    ind_gradient_diagnostics=ind.ind_gradient_diagnostics,
     prompt_consistency_loss=losses.prompt_consistency_loss,
     relative_distance_loss=losses.relative_distance_loss,
     template_alignment_loss=losses.template_alignment_loss,

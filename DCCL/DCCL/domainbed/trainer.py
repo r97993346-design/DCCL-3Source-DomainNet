@@ -278,6 +278,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
     train_minibatches_iterator = zip(*train_loaders)
     checkpoint_vals = collections.defaultdict(lambda: [])
+    ind_grad_by_step = {}
 
     #######################################################
     # start training loop
@@ -330,6 +331,10 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
         for key, val in step_vals.items():
             checkpoint_vals[key].append(val)
+        if "ind_grad_e_cls_norm" in step_vals:
+            ind_grad_by_step[step] = {
+                key: value for key, value in step_vals.items() if key.startswith("ind_grad_")
+            }
         checkpoint_vals["step_time"].append(time.time() - step_start_time)
 
         if args.log:
@@ -378,6 +383,15 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             records.append(copy.deepcopy(results))
 
             results.update({"hparams": dict(hparams), "args": vars(args)})
+            if hasattr(algorithm, "ind_mode"):
+                results["ind_mode"] = algorithm.ind_mode
+            if "condcov_valid_classes" in checkpoint_vals:
+                results["condcov_valid_classes_per_batch"] = [
+                    int(count) for count in checkpoint_vals["condcov_valid_classes"]
+                ]
+            if ind_grad_by_step:
+                results["ind_grad_by_step"] = ind_grad_by_step
+                ind_grad_by_step = {}
             with open(epochs_path, "a") as f:
                 f.write(json.dumps(results, sort_keys=True, default=json_handler) + "\n")
 

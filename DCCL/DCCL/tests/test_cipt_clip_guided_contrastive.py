@@ -277,6 +277,8 @@ class AlgorithmIntegrationTests(unittest.TestCase):
             self.assertEqual(len(model._causal_contrastive_loss(
                 *self.route_inputs(model))), 4)
         a, b = plain.update(*fixture.batches()), guided.update(*fixture.batches())
+        self.assertEqual(a.pop("loss_clip_contrast"), 0.)
+        self.assertEqual(b.pop("loss_clip_contrast"), b["dccl_contrastive_loss"])
         self.assertEqual(a, b)
         for old, new in zip(plain.parameters(), guided.parameters()):
             torch.testing.assert_close(old, new, rtol=0, atol=0)

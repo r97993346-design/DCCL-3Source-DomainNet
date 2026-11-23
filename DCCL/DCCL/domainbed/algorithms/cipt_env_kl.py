@@ -21,6 +21,10 @@ from domainbed.algorithms.cipt_entropy_selector import (
     EntropyPromptSelector, class_prompt_logits,
 )
 from domainbed.algorithms.cipt_random_selector import RandomPromptSelector
+from domainbed.algorithms.cipt_ind import (
+    conditional_covariance_loss, coopood_loss, feature_statistics,
+    ind_gradient_diagnostics, resolve_ind_config,
+)
 from domainbed.optimizers import get_optimizer
 from domainbed.algorithms.cipt_losses import (
     classification_loss as cipt_classification_loss,
@@ -39,6 +43,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
         objective = str(hparams.get("cipt_objective", "legacy")).lower()
         if objective not in ("legacy", "env_kl", "clip_ce", "env_anchor"):
             raise ValueError("cipt_objective must be legacy, env_kl, clip_ce, or env_anchor")
+        ind_mode, ind_weight, ind_grad_steps = resolve_ind_config(hparams)
 
         if objective == "clip_ce":
             # Minimal CoOp-style baseline. Crucially, do NOT call the CIPTDCCL
@@ -81,6 +86,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
         self.objective_mode = objective
         if self.objective_mode == "legacy":
             return
+        self.ind_mode = ind_mode
+        self.ind_weight = ind_weight
+        self.ind_grad_steps = ind_grad_steps
+        self.ind_num_classes = num_classes
+        self.use_ind = ind_mode != "none"
         if self.objective_mode == "env_anchor":
             self._init_env_anchor(num_classes, hparams)
             return
@@ -153,7 +163,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.fusion_mode, self.inference_mode,
                 int(self.fusion_mode == "sigm"),
                 self.e_cls_weight, self.s_uniform_weight,
-                self.gamma if self.use_ind else 0.0,
+                self.ind_weight,
                 self.env_kl_weight, self.env_kl_active,
                 self.fused_cls_weight, self.fused_cls_active,
             )
@@ -260,7 +270,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
               "rd_anchor_mode={}, class_text_mode={}".format(
                   self.env_constraint, self.env_topk, self.env_loss_weight,
                   self.e_cls_weight, self.s_uniform_weight,
-                  self.gamma if self.use_ind else 0.0, self.env_selection,
+                  self.ind_weight, self.env_selection,
                   "frozen_CLIP_entropy" if self.env_selection == "entropy"
                   else ("per_image_random_without_replacement" if self.env_selection == "random"
                         else "all_80_without_selection"),
@@ -353,11 +363,21 @@ class CIPTDCCL(_BaseCIPTDCCL):
         else:
             loss_e = F.cross_entropy(causal_logits, labels)
             loss_s = zero
-        loss_ind = independence_loss(causal, spurious) if self.use_ind else zero
+        valid_classes = None
+        if self.ind_mode == "original":
+            loss_ind = independence_loss(causal, spurious)
+        elif self.ind_mode == "condcov":
+            loss_ind, valid_classes = conditional_covariance_loss(
+                causal, spurious, labels, self.ind_num_classes,
+            )
+        elif self.ind_mode == "coopood":
+            loss_ind = coopood_loss(causal, spurious, labels, self.ind_num_classes)
+        else:
+            loss_ind = zero
         base = (
             self.e_cls_weight * loss_e
             + self.s_uniform_weight * loss_s
-            + self.gamma * loss_ind
+            + self.ind_weight * loss_ind
         )
 
         loss_env = zero
@@ -436,6 +456,12 @@ class CIPTDCCL(_BaseCIPTDCCL):
         fused_cls_term = self.fused_cls_weight * loss_fused_cls
         base = base + fused_cls_term
         total = base + con_weight * loss_con + env_term
+        loss_rd = loss_env if anchor_mode and self.env_constraint == "relative_distance" else zero
+        grad_metrics = {}
+        if kwargs.get("step") in self.ind_grad_steps:
+            grad_metrics = ind_gradient_diagnostics(
+                causal, spurious, loss_e, loss_s, loss_rd, loss_ind, self.ind_weight,
+            )
 
         if self.debug_shapes:
             print(
@@ -453,20 +479,35 @@ class CIPTDCCL(_BaseCIPTDCCL):
         total.backward()
         self.optimizer.step()
 
+        total_value, e_value, s_value, ind_value, con_value = (
+            value.item() for value in (total, loss_e, loss_s, loss_ind, loss_con)
+        )
+        ind_metrics = feature_statistics(causal, spurious, valid_classes)
+        if self.use_ind:
+            name = "original_ind" if self.ind_mode == "original" else self.ind_mode
+            ind_metrics[f"loss_{name}"] = ind_value
         return {
             **anchor_metrics,
+            **ind_metrics,
+            **grad_metrics,
             **{name: value.item() for name, value in neighbor_stats.items()},
             **self._selector_metric_items(selector_metrics),
-            "total_loss": total.item(),
+            "total_loss": total_value,
+            "loss_total": total_value,
+            "loss_e_cls": e_value,
+            "loss_s_uniform": s_value,
+            "loss_rd": anchor_metrics.get("env_rd_loss", 0.0),
+            "loss_clip_contrast": con_value if self.contrastive_type == "clip_guided_cross_domain" else 0.0,
+            "ind_weight": self.ind_weight,
             "cipt_base_loss": base.item(),
             # Compatibility diagnostics only; DE is NOT added again to total.
-            "cipt_cls_loss": loss_e.item(),
+            "cipt_cls_loss": e_value,
             "cipt_de_loss": (loss_e + loss_s).item() if self.use_de else 0.0,
             "cipt_de_orig_loss": (loss_e + loss_s).item() if self.use_de else 0.0,
             "cipt_de_aug_loss": 0.0,
-            "cipt_ind_loss": loss_ind.item(),
+            "cipt_ind_loss": ind_value if self.ind_mode == "original" else 0.0,
             "causal_consistency_loss": loss_env.item(),
-            "dccl_contrastive_loss": loss_con.item(),
+            "dccl_contrastive_loss": con_value,
             "contrastive_weight_eff": float(con_weight),
             "contrastive_valid_anchor_fraction": valid_fraction.item(),
             "pre_cl_loss": 0.0,
@@ -487,9 +528,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "class_text_learnable_active": float(
                 anchor_mode and self.class_text_mode == "learnable"
             ),
-            "e_cls_loss": loss_e.item(),
+            "e_cls_loss": e_value,
             "fused_cls_loss": loss_fused_cls.item(),
-            "s_uni_loss": loss_s.item(),
+            "s_uni_loss": s_value,
             "env_kl_loss": loss_env.item() if not anchor_mode else 0.0,
             "e_cls_w": self.e_cls_weight,
             "fused_cls_w": self.fused_cls_weight if self.fused_cls_active else 0.0,

@@ -16,6 +16,7 @@ from prettytable import PrettyTable
 from domainbed.datasets import get_dataset
 from domainbed.datasets import datasets as datasets_registry
 from domainbed import hparams_registry
+from domainbed.algorithms.cipt_ind import IND_MODES, resolve_ind_config
 from domainbed.lib import misc
 from domainbed.lib.writers import get_writer
 from domainbed.lib.logger import Logger
@@ -152,6 +153,12 @@ def main():
     parser.add_argument("--cipt_clip_path", default="", help="Local OpenAI CLIP checkpoint (offline-safe)")
     parser.add_argument("--cipt_beta", type=float, default=4.0)
     parser.add_argument("--cipt_gamma", type=float, default=5.0)
+    parser.add_argument("--ind_mode", choices=IND_MODES,
+                        help="E/S IND objective; omitted uses the legacy CIPT switch.")
+    parser.add_argument("--cipt_condcov_weight", type=float)
+    parser.add_argument("--cipt_coopood_weight", type=float)
+    parser.add_argument("--ind_grad_steps", type=int, nargs="+",
+                        help="Zero-based updates for feature-gradient diagnostics in each target fold.")
     parser.add_argument("--cipt_k", type=int, default=4)
     parser.add_argument("--cipt_prompt_length", type=int, default=16)
     parser.add_argument("--cipt_prompt_init", default="a photo of a")
@@ -218,6 +225,11 @@ def main():
     hparams = Config(*keys, default=hparams)
     hparams.argv_update(left_argv)
     apply_explicit_hparam_cli(parser, args, hparams, sys.argv[1:])
+    if args.algorithm == "CIPTDCCL":
+        try:
+            resolve_ind_config(hparams)
+        except ValueError as error:
+            parser.error(str(error))
     if args.algorithm == "ERM" and args.weak_erm:
         hparams = apply_weak_erm_hparams(hparams)
 
