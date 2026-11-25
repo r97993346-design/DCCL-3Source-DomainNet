@@ -4,7 +4,7 @@ import optuna
 from optuna.trial import TrialState
 
 from diagnostics import learning_rate_report
-from protocol import DATASETS, INITIAL_BUDGET, MAX_NEW, SPACE, read_json, write_csv, write_json, write_text
+from protocol import DATASETS, INITIAL_BUDGET, MAX_NEW, N_JOBS, SPACE, read_json, write_csv, write_json, write_text
 
 
 def records_for(study, root):
@@ -36,7 +36,7 @@ def refresh(dataset, study, root, state, *, gpu=None, active=None, stop_reason=N
     records = records_for(study, root)
     complete, new, source_best, iid_best, reached = numbers(records, dataset)
     status = {
-        "state": state, "gpu": gpu, "active": active, "stop_reason": stop_reason,
+        "state": state, "gpu": gpu, "n_jobs": N_JOBS, "active": active, "stop_reason": stop_reason,
         "initial_new_budget": INITIAL_BUDGET, "max_new_budget": MAX_NEW,
         "current_new_budget": INITIAL_BUDGET if new < INITIAL_BUDGET or reached else MAX_NEW,
         "new_complete": new, "imported_complete": len(complete) - new,

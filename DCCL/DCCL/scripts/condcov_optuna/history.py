@@ -14,21 +14,12 @@ from protocol import (
 )
 
 
-GRID_SPECS = (
-    ("pacs_condcov_grid_search_20261124", "pacs_condcov_grid_20261124", 36),
-    ("vlcs_condcov_s_grid_20261124", "vlcs_condcov_s_grid_20261124", 48),
-    ("oh_condcov_grid_stage1_20261124", "oh_condcov_grid_stage1_20261124", 36),
-)
 DATA_VOLUME = BASE.parent
 PROJECTS = Path("/home/hooasia/lgg/projects")
 HISTORY_ROOTS = (PROJECTS, DATA_VOLUME / "lgg")
 CODE_PATHS = ("train_all.py", "domainbed", "config.yaml")
 SKIP = {".git", "__pycache__", ".venv", "venv", "node_modules", "checkpoints", "weights",
         "datasets", "dataset", "data", "wandb", "runs", "preflight"}
-
-
-def output_for_grid(folder):
-    return DATA_VOLUME / folder / "code" / "DCCL" / "DCCL" / "train_output" / folder
 
 
 def history_files():

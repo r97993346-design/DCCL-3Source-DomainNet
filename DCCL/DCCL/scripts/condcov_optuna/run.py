@@ -1,6 +1,5 @@
-"""Wait for the active grids, then run the three persistent CondCov studies."""
+"""Run one persistent, serial CondCov study per dataset on fixed GPUs."""
 
-import csv
 import fcntl
 import json
 import os
@@ -12,7 +11,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
-from queue import Empty, Queue
+from threading import Lock
 
 import optuna
 import yaml
@@ -22,7 +21,7 @@ from optuna.trial import TrialState
 import history
 from protocol import (
     BASE, BRANCH, CLIP, CODE, DATA, DATASETS, DIAG_STEPS, EVAL_STEPS, FIXED_ARGS, INITIAL_BUDGET,
-    MAX_NEW, MODEL_COMMIT, OUTPUT, SAMPLER_SEED, SPACE, command, fixed_hparams, git, hparams_for,
+    MAX_NEW, MODEL_COMMIT, N_JOBS, OUTPUT, SAMPLER_SEED, SPACE, command, fixed_hparams, git, hparams_for,
     read_json, read_rows, require, same_number, seed_for, signature, summarize, validate_fold,
     write_json, write_text,
 )
@@ -30,10 +29,16 @@ from reports import numbers, records_for, refresh
 from sampler import UniqueTPE
 
 
-MIN_FREE_MIB = 10 * 1024
+GPU_FOR_DATASET = {"PACS": 0, "VLCS": 1, "OfficeHome": 1}
+MIN_RAM_KIB = 10 * 1024 * 1024
 RESOURCE_POLL_SECONDS = 60
+RAM_ADMISSION = Lock()
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 DISTRIBUTIONS = {key: CategoricalDistribution(choices) for key, choices in SPACE.items()}
+
+
+class FailedFold(ValueError):
+    """A training attempt exhausted its retries."""
 
 
 def emit(event, **fields):
@@ -41,73 +46,18 @@ def emit(event, **fields):
     print(json.dumps(record, ensure_ascii=False), flush=True)
 
 
-def nvidia_rows(options):
-    text = subprocess.check_output(["nvidia-smi", *options, "--format=csv,noheader,nounits"],
-                                   text=True, timeout=20)
-    return [tuple(value.strip() for value in line.split(",")) for line in text.splitlines() if line.strip()]
-
-
-def active_tmux():
-    state = subprocess.run(["tmux", "list-panes", "-a", "-F", "#{session_name} #{pane_dead}"],
-                           text=True, capture_output=True)
-    return {line.split()[0] for line in state.stdout.splitlines() if line.endswith(" 0")}
-
-
-def grid_status():
-    sessions = active_tmux()
-    gpu_args = []
-    for _, pid in nvidia_rows(["--query-compute-apps=gpu_uuid,pid"]):
-        try:
-            args = (Path("/proc") / pid / "cmdline").read_bytes()
-        except OSError:
-            continue
-        gpu_args.append(args)
-    states = {}
-    for folder, lock_name, total in history.GRID_SPECS:
-        output = history.output_for_grid(folder)
-        progress = read_json(output / "progress.json")
-        lockfile = history.DATA_VOLUME / folder / f".{lock_name}.lock"
-        try:
-            with lockfile.open() as lock:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            locked = False
-        except BlockingIOError:
-            locked = True
-        gpu_busy = any(folder.encode() in args for args in gpu_args)
-        has_outputs = False
-        if progress["completed_folds"] == total:
-            with (output / "folds.csv").open(encoding="utf-8") as folds:
-                fold_rows = list(csv.DictReader(folds))
-            has_outputs = (len(fold_rows) == total and (output / "report.md").stat().st_size > 0
-                           and (output / "summary.csv").stat().st_size > 0
-                           and all((output / r["Log"]).is_file() for r in fold_rows))
-        states[folder] = {
-            "completed": progress["completed_folds"], "total": total,
-            "failure_count": len(progress.get("failed", [])), "queue_active": lock_name in sessions,
-            "lock_held": locked, "gpu_process_active": gpu_busy, "results_verified": has_outputs,
-        }
-    return states
-
-
-def wait_for_grid_completion():
-    previous = None
-    while True:
-        try:
-            states = grid_status()
-            ready = all(s["completed"] == s["total"] and s["results_verified"] and s["failure_count"] == 0
-                        and not any(s[k] for k in ("queue_active", "lock_held", "gpu_process_active"))
-                        for s in states.values())
-            snapshot = {"state": "ready" if ready else "waiting_for_grids", "grids": states}
-        except (OSError, ValueError, subprocess.SubprocessError) as error:
-            ready = False
-            snapshot = {"state": "waiting_for_grid_verification", "error": str(error)}
-        write_json(OUTPUT / "handoff.json", snapshot)
-        if snapshot != previous:
-            emit("grid_handoff", **snapshot)
-            previous = snapshot
-        if ready:
-            return
-        time.sleep(RESOURCE_POLL_SECONDS)
+def gpu_uuids():
+    # NVIDIA's physical index is used only to obtain its stable CUDA identifier.
+    text = subprocess.check_output(
+        ["nvidia-smi", "--query-gpu=index,uuid", "--format=csv,noheader"],
+        text=True, timeout=20,
+    )
+    identities = {}
+    for line in text.splitlines():
+        index, uuid = (part.strip() for part in line.split(","))
+        identities[int(index)] = uuid
+    require(set(GPU_FOR_DATASET.values()) <= identities.keys(), "assigned GPUs were not found")
+    return identities
 
 
 def environment_for(uuid):
@@ -115,28 +65,12 @@ def environment_for(uuid):
                 OMP_NUM_THREADS="2", MKL_NUM_THREADS="2", PYTHONDONTWRITEBYTECODE="1")
 
 
-def resources(index):
-    index, uuid, free = nvidia_rows(["-i", str(index), "--query-gpu=index,uuid,memory.free"])[0]
+def available_ram_kib():
     with Path("/proc/meminfo").open() as stream:
-        ram = int(next(line for line in stream if line.startswith("MemAvailable:")).split()[1]) / 1024
-    return int(index), uuid, int(free), ram
-
-
-def wait_resources(index, has_work=lambda: True):
-    announced = False
-    while has_work():
-        try:
-            i, uuid, gpu_free, ram = resources(index)
-            if i == index and gpu_free > MIN_FREE_MIB and ram > MIN_FREE_MIB:
-                return uuid
-            if not announced:
-                emit("resource_wait", gpu=index, free_mib=gpu_free, ram_mib=ram)
-        except (OSError, ValueError, subprocess.SubprocessError) as error:
-            if not announced:
-                emit("resource_query_error", gpu=index, error=str(error))
-        announced = True
-        time.sleep(RESOURCE_POLL_SECONDS)
-    return None
+        for line in stream:
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1])
+    raise ValueError("MemAvailable is missing from /proc/meminfo")
 
 
 def inspect_show(log, dataset, params):
@@ -159,11 +93,10 @@ def inspect_show(log, dataset, params):
             require(parsed == value, f"preflight mismatch {key}: got {parsed!r}, expected {value!r}")
 
 
-def preflight():
+def preflight(identities):
     dest = OUTPUT / "preflight"
     dest.mkdir(parents=True, exist_ok=True)
-    _, uuid, _, _ = resources(0)
-    env = environment_for(uuid)
+    env = environment_for(identities[0])
     for dataset in DATASETS:
         for candidate in range(3):
             params = {key: choices[candidate] for key, choices in SPACE.items()}
@@ -213,7 +146,7 @@ def import_observations(study, sampler, scanned):
                             skip_if_exists=True)
 
 
-def next_trial(study, sampler):
+def recover_trial(study):
     running = study.get_trials(deepcopy=False, states=(TrialState.RUNNING,))
     require(len(running) <= 1, "multiple active trials in one study")
     if running:
@@ -221,14 +154,17 @@ def next_trial(study, sampler):
         if set(trial.params) == set(SPACE):
             return trial.number, trial.params
         study.tell(trial.number, state=TrialState.FAIL)
+    return None
+
+
+def suggest_trial(trial, sampler):
     require(sampler.remaining, "categorical search space exhausted")
-    trial = study.ask()
     trial.set_user_attr("origin", "new")
     params = {name: trial.suggest_categorical(name, choices) for name, choices in SPACE.items()}
     require(signature(params) in sampler.remaining, "sampler proposed an already reserved trial")
     sampler.reserve(params)
     sampler.checkpoint_rng()
-    return trial.number, params
+    return params
 
 
 def read_attempt(attempt, dataset, fold, params):
@@ -252,7 +188,7 @@ def read_attempt(attempt, dataset, fold, params):
     return result
 
 
-def start_attempt(attempt, dataset, fold, trial, config, env, lock_fd):
+def start_attempt(attempt, dataset, fold, trial, config, gpu, env, lock_fd):
     attempt.mkdir()
     args = command(dataset, fold, trial, config, attempt / "raw", attempt / "optimizer.jsonl")
     output = shlex.quote(str(attempt))
@@ -265,12 +201,34 @@ def start_attempt(attempt, dataset, fold, trial, config, env, lock_fd):
     wrapper = attempt / "command.sh"
     write_text(wrapper, "\n".join(lines) + "\n")
     log = attempt / "console.log"
+    status_path = OUTPUT / dataset / "search_status.json"
+    waiting = False
     with log.open("wb") as stream:
-        subprocess.run(["bash", str(wrapper)], env=env, stdout=stream,
-                       stderr=subprocess.STDOUT, pass_fds=(lock_fd,))
+        while True:
+            # Only serialize admission. Release the lock while this fold is running.
+            with RAM_ADMISSION:
+                available = available_ram_kib()
+                if available > MIN_RAM_KIB:
+                    child = subprocess.Popen(["bash", str(wrapper)], env=env, stdout=stream,
+                                             stderr=subprocess.STDOUT, pass_fds=(lock_fd,))
+                    break
+            if not waiting:
+                state = read_json(status_path)
+                write_json(status_path, dict(state, state="waiting_for_ram",
+                                             mem_available_kib=available, min_ram_kib=MIN_RAM_KIB))
+                emit("ram_wait", dataset=dataset, gpu=gpu, trial=trial, fold=fold,
+                     mem_available_kib=available)
+                waiting = True
+            time.sleep(RESOURCE_POLL_SECONDS)
+        state = read_json(status_path)
+        write_json(status_path, dict(state, state="running", mem_available_kib=available,
+                                     min_ram_kib=MIN_RAM_KIB))
+        emit("fold_started", dataset=dataset, trial=trial, fold=fold, gpu=gpu, attempt=attempt.name,
+             seed=seed_for(dataset, fold), mem_available_kib=available, wrapper_pid=child.pid)
+        child.wait()
 
 
-def run_fold(root, dataset, fold, trial, params, gpu, lock_fd):
+def run_fold(root, dataset, fold, trial, params, gpu, env, lock_fd):
     directory = root / f"env{fold}"
     directory.mkdir(parents=True, exist_ok=True)
     attempts = sorted(directory.glob("attempt_*"))
@@ -283,10 +241,7 @@ def run_fold(root, dataset, fold, trial, params, gpu, lock_fd):
                 failures += 1
     while failures < 2:
         attempt = directory / f"attempt_{len(attempts) + 1:03d}"
-        uuid = wait_resources(gpu)
-        emit("fold_started", dataset=dataset, trial=trial, fold=fold, gpu=gpu, attempt=attempt.name,
-             seed=seed_for(dataset, fold))
-        start_attempt(attempt, dataset, fold, trial, root / "config.json", environment_for(uuid), lock_fd)
+        start_attempt(attempt, dataset, fold, trial, root / "config.json", gpu, env, lock_fd)
         try:
             return read_attempt(attempt, dataset, fold, params)
         except (KeyError, ValueError, OSError) as error:
@@ -299,10 +254,10 @@ def run_fold(root, dataset, fold, trial, params, gpu, lock_fd):
             attempts.append(attempt)
             if failures < 2:
                 time.sleep(RESOURCE_POLL_SECONDS)
-    raise ValueError(f"fold {fold} failed twice; see {attempts[-1] / 'console.log'}")
+    raise FailedFold(f"fold {fold} failed twice; see {attempts[-1] / 'console.log'}")
 
 
-def finish_trial(root, dataset, study, number, params, gpu, lock_fd):
+def finish_trial(root, dataset, study, number, params, gpu, env, lock_fd):
     trial = root / "trials" / f"trial_{number:03d}"
     trial.mkdir(parents=True, exist_ok=True)
     config = trial / "config.json"
@@ -316,8 +271,8 @@ def finish_trial(root, dataset, study, number, params, gpu, lock_fd):
         refresh(dataset, study, root, "running", gpu=gpu,
                 active={"trial_id": number, "params": params, "target": domain, "completed_folds": len(folds)})
         try:
-            value = run_fold(trial, dataset, fold, number, params, gpu, lock_fd)
-        except ValueError as error:
+            value = run_fold(trial, dataset, fold, number, params, gpu, env, lock_fd)
+        except FailedFold as error:
             error_message = str(error)
             break
         folds.append(value)
@@ -346,45 +301,47 @@ def stop_reason(dataset, study, root):
     return None
 
 
-def run_study(dataset, root, study, sampler, gpu, lock_fd):
+def run_study(dataset, root, study, sampler, gpu, uuid, lock_fd):
+    env = environment_for(uuid)
+
+    def objective(trial):
+        params = suggest_trial(trial, sampler)
+        result = finish_trial(root, dataset, study, trial.number, params, gpu, env, lock_fd)
+        if "error" in result:
+            raise FailedFold(result["error"])
+        return result["source_val"]
+
     while True:
         reason = stop_reason(dataset, study, root)
         if reason:
-            status = refresh(dataset, study, root, "stopped", stop_reason=reason)
+            status = refresh(dataset, study, root, "stopped", gpu=gpu, stop_reason=reason)
             emit("study_stopped", dataset=dataset, reason=reason, new=status["new_complete"])
             return
-        number, params = next_trial(study, sampler)
-        result = finish_trial(root, dataset, study, number, params, gpu, lock_fd)
-        if "error" in result:
-            study.tell(number, state=TrialState.FAIL)
-            emit("trial_failed", dataset=dataset, trial=number, error=result["error"])
+        pending = recover_trial(study)
+        if pending is None:
+            study.optimize(objective, n_trials=1, n_jobs=N_JOBS, catch=(FailedFold,))
         else:
-            study.tell(number, result["source_val"])
-            emit("trial_completed", dataset=dataset, trial=number, params=params,
-                 source_val=result["source_val"], iid=result["iid"], test_out=result["test_out"])
+            number, params = pending
+            result = finish_trial(root, dataset, study, number, params, gpu, env, lock_fd)
+            if "error" in result:
+                study.tell(number, state=TrialState.FAIL)
+            else:
+                study.tell(number, result["source_val"])
+        record = records_for(study, root)[-1]
+        if record["state"] == "COMPLETE":
+            emit("trial_completed", dataset=dataset, trial=record["trial_id"], params=record["params"],
+                 source_val=record["source_val"], iid=record["iid"], test_out=record["test_out"])
+        else:
+            emit("trial_failed", dataset=dataset, trial=record["trial_id"], error=record.get("error"))
         refresh(dataset, study, root, "queued", gpu=gpu)
 
 
-def schedule(studies, lock_fd):
-    jobs = Queue()
-    for dataset, (root, study, sampler) in studies.items():
-        reason = stop_reason(dataset, study, root)
-        if reason:
-            refresh(dataset, study, root, "stopped", stop_reason=reason)
-        else:
-            refresh(dataset, study, root, "queued")
-            jobs.put((dataset, root, study, sampler))
-
-    def worker(gpu):
-        while wait_resources(gpu, lambda: not jobs.empty()):
-            try:
-                dataset, root, study, sampler = jobs.get_nowait()
-            except Empty:
-                return
-            run_study(dataset, root, study, sampler, gpu, lock_fd)
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = [pool.submit(worker, gpu) for gpu in (0, 1)]
+def schedule(studies, identities, lock_fd):
+    with ThreadPoolExecutor(max_workers=len(studies)) as pool:
+        futures = []
+        for dataset, (root, study, sampler) in studies.items():
+            gpu = GPU_FOR_DATASET[dataset]
+            futures.append(pool.submit(run_study, dataset, root, study, sampler, gpu, identities[gpu], lock_fd))
         for future in futures:
             future.result()
 
@@ -404,7 +361,9 @@ def create_plan():
             "pruner": "NopPruner", "objective": "mean source validation", "direction": "maximize",
             "initial_new_budget": INITIAL_BUDGET, "max_new_budget": MAX_NEW,
             "iid_targets": {ds: info[1] for ds, info in DATASETS.items()},
-            "training_seeds": {ds: [seed_for(ds, f) for f in range(4)] for ds in DATASETS}}
+            "training_seeds": {ds: [seed_for(ds, f) for f in range(4)] for ds in DATASETS},
+            "scheduler": {"fixed_gpus": GPU_FOR_DATASET, "n_jobs_per_study": N_JOBS,
+                          "ram_min_kib_exclusive": MIN_RAM_KIB}}
     stored = OUTPUT / "plan.json"
     if stored.exists():
         require(read_json(stored) == plan, "persisted search protocol changed")
@@ -416,19 +375,23 @@ def main():
     os.chdir(CODE)
     OUTPUT.mkdir(parents=True, exist_ok=True)
     if sys.argv[1:] == ["--preflight"]:
-        preflight()
+        preflight(gpu_uuids())
         return
     require(not sys.argv[1:], "use no arguments or --preflight")
     with (BASE / ".condcov_optuna.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         create_plan()
+        identities = gpu_uuids()
+        scheduler = {"state": "ram_only_admission", "fixed_gpus": GPU_FOR_DATASET,
+                     "min_ram_kib_exclusive": MIN_RAM_KIB, "n_jobs_per_study": N_JOBS}
+        write_json(OUTPUT / "handoff.json", scheduler)
+        emit("scheduler_started", **scheduler)
         for dataset, (_, target, _) in DATASETS.items():
             state = OUTPUT / dataset / "search_status.json"
-            if not state.exists():
-                write_json(state, {"state": "waiting_for_grids", "iid_target": target,
-                                   "new_complete": 0, "imported_complete": 0})
-        wait_for_grid_completion()
-        preflight()
+            previous = read_json(state) if state.exists() else {}
+            write_json(state, dict(previous, state="initializing", iid_target=target,
+                                   gpu=GPU_FOR_DATASET[dataset], n_jobs=N_JOBS))
+        preflight(identities)
         scan = OUTPUT / "history_scan.json"
         if scan.exists():
             scanned = read_json(scan)
@@ -442,7 +405,7 @@ def main():
             study, sampler = study_for(dataset, root)
             import_observations(study, sampler, scanned[dataset])
             studies[dataset] = root, study, sampler
-        schedule(studies, lock.fileno())
+        schedule(studies, identities, lock.fileno())
         final = {dataset: read_json(root / "search_status.json") for dataset, (root, _, _) in studies.items()}
         write_json(OUTPUT / "final_status.json", final)
         emit("all_studies_stopped", studies=final)
