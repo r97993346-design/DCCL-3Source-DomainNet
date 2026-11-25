@@ -1,0 +1,18 @@
+[Unit]
+Description=CondCov Optuna queue for the lower contrastive weights
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL
+ExecStartPre=/usr/bin/mountpoint -q /media/hooasia/data
+ExecStartPre=/home/hooasia/miniconda3/envs/dccl/bin/python -B -u scripts/condcov_optuna/transition.py
+ExecStart=/home/hooasia/miniconda3/envs/dccl/bin/python -B -u scripts/condcov_optuna/run.py
+TimeoutStartSec=infinity
+Restart=on-failure
+RestartSec=60
+StandardOutput=append:/media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/queue-console.log
+StandardError=inherit
+
+[Install]
+WantedBy=default.target

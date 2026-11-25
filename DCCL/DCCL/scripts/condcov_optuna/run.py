@@ -18,6 +18,7 @@ import yaml
 from optuna.distributions import CategoricalDistribution
 from optuna.trial import TrialState
 
+import carryover
 import history
 from protocol import (
     BASE, BRANCH, CLIP, CODE, DATA, DATASETS, DIAG_STEPS, EVAL_STEPS, FIXED_ARGS, INITIAL_BUDGET,
@@ -120,16 +121,16 @@ def study_for(dataset, root):
     sampler = UniqueTPE(root / "sampler_rng.json")
     storage = optuna.storages.RDBStorage(f"sqlite:///{root / 'study.sqlite3'}",
                                         engine_kwargs={"connect_args": {"timeout": 60}})
-    study = optuna.create_study(study_name=f"{dataset}_condcov_joint_seed1", direction="maximize",
+    study = optuna.create_study(study_name=f"{dataset}_condcov_low_contrast_seed1", direction="maximize",
                                sampler=sampler, pruner=optuna.pruners.NopPruner(), storage=storage,
                                load_if_exists=True)
     return study, sampler
 
 
-def import_observations(study, sampler, scanned):
+def import_observations(study, sampler, scanned, previous):
     seen = {signature(trial.params) for trial in study.get_trials(deepcopy=False)
             if set(trial.params) == set(SPACE) and trial.user_attrs.get("origin") != "duplicate"}
-    for item in scanned["imports"]:
+    for item in [*previous["imports"], *scanned["imports"]]:
         vector = signature(item["params"])
         if vector in seen:
             continue
@@ -140,6 +141,10 @@ def import_observations(study, sampler, scanned):
         seen.add(vector)
     for vector in seen:
         sampler.reserve(dict(zip(SPACE, vector)))
+    for params in previous["pending"]:
+        if signature(params) not in seen:
+            study.enqueue_trial(params, user_attrs={"origin": "new", "carried_folds": True},
+                                skip_if_exists=True)
     reference = scanned.get("reference")
     if reference and not study.get_trials(deepcopy=False) and signature(reference["params"]) not in seen:
         study.enqueue_trial(reference["params"], user_attrs={"origin": "new", "initial_reference": True},
@@ -257,7 +262,7 @@ def run_fold(root, dataset, fold, trial, params, gpu, env, lock_fd):
     raise FailedFold(f"fold {fold} failed twice; see {attempts[-1] / 'console.log'}")
 
 
-def finish_trial(root, dataset, study, number, params, gpu, env, lock_fd):
+def finish_trial(root, dataset, study, number, params, gpu, env, lock_fd, prior_folds):
     trial = root / "trials" / f"trial_{number:03d}"
     trial.mkdir(parents=True, exist_ok=True)
     config = trial / "config.json"
@@ -271,7 +276,11 @@ def finish_trial(root, dataset, study, number, params, gpu, env, lock_fd):
         refresh(dataset, study, root, "running", gpu=gpu,
                 active={"trial_id": number, "params": params, "target": domain, "completed_folds": len(folds)})
         try:
-            value = run_fold(trial, dataset, fold, number, params, gpu, env, lock_fd)
+            value = prior_folds.get(signature(params), {}).get(fold)
+            if value is None:
+                value = run_fold(trial, dataset, fold, number, params, gpu, env, lock_fd)
+            else:
+                emit("fold_reused", dataset=dataset, trial=number, fold=fold, log=value["log"])
         except FailedFold as error:
             error_message = str(error)
             break
@@ -301,12 +310,12 @@ def stop_reason(dataset, study, root):
     return None
 
 
-def run_study(dataset, root, study, sampler, gpu, uuid, lock_fd):
+def run_study(dataset, root, study, sampler, gpu, uuid, lock_fd, prior_folds):
     env = environment_for(uuid)
 
     def objective(trial):
         params = suggest_trial(trial, sampler)
-        result = finish_trial(root, dataset, study, trial.number, params, gpu, env, lock_fd)
+        result = finish_trial(root, dataset, study, trial.number, params, gpu, env, lock_fd, prior_folds)
         if "error" in result:
             raise FailedFold(result["error"])
         return result["source_val"]
@@ -322,7 +331,7 @@ def run_study(dataset, root, study, sampler, gpu, uuid, lock_fd):
             study.optimize(objective, n_trials=1, n_jobs=N_JOBS, catch=(FailedFold,))
         else:
             number, params = pending
-            result = finish_trial(root, dataset, study, number, params, gpu, env, lock_fd)
+            result = finish_trial(root, dataset, study, number, params, gpu, env, lock_fd, prior_folds)
             if "error" in result:
                 study.tell(number, state=TrialState.FAIL)
             else:
@@ -336,12 +345,13 @@ def run_study(dataset, root, study, sampler, gpu, uuid, lock_fd):
         refresh(dataset, study, root, "queued", gpu=gpu)
 
 
-def schedule(studies, identities, lock_fd):
+def schedule(studies, identities, lock_fd, previous):
     with ThreadPoolExecutor(max_workers=len(studies)) as pool:
         futures = []
         for dataset, (root, study, sampler) in studies.items():
             gpu = GPU_FOR_DATASET[dataset]
-            futures.append(pool.submit(run_study, dataset, root, study, sampler, gpu, identities[gpu], lock_fd))
+            futures.append(pool.submit(run_study, dataset, root, study, sampler, gpu, identities[gpu],
+                                       lock_fd, previous[dataset]["folds"]))
         for future in futures:
             future.result()
 
@@ -398,14 +408,15 @@ def main():
         else:
             scanned = history.collect()
             write_json(scan, scanned)
+        previous = carryover.collect(read_attempt)
         studies = {}
         for dataset in DATASETS:
             root = OUTPUT / dataset
             root.mkdir(exist_ok=True)
             study, sampler = study_for(dataset, root)
-            import_observations(study, sampler, scanned[dataset])
+            import_observations(study, sampler, scanned[dataset], previous[dataset])
             studies[dataset] = root, study, sampler
-        schedule(studies, identities, lock.fileno())
+        schedule(studies, identities, lock.fileno(), previous)
         final = {dataset: read_json(root / "search_status.json") for dataset, (root, _, _) in studies.items()}
         write_json(OUTPUT / "final_status.json", final)
         emit("all_studies_stopped", studies=final)

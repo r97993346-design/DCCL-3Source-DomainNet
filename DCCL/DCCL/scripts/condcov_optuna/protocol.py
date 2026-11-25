@@ -16,8 +16,9 @@ import yaml
 
 CODE = Path(__file__).resolve().parents[2]
 BASE = CODE.parents[1].parent
-OUTPUT = CODE / "train_output" / "condcov_optuna_joint_20261125"
-BRANCH = "experiment/condcov-optuna-joint-20261125"
+RUN_NAME = "condcov_optuna_joint_20261125_low_contrast"
+OUTPUT = CODE / "train_output" / RUN_NAME
+BRANCH = "experiment/condcov-optuna-low-contrast-20261125"
 MODEL_COMMIT = "a55914e203d1b3e36706a681550d17e620eb4172"
 DATA = Path("/home/hooasia/lgg/data/repro_dccl_data")
 CLIP = Path("/home/hooasia/.cache/clip/ViT-B-16.pt")
@@ -37,7 +38,7 @@ DATASETS = {
 SPACE = {
     "condcov_weight": (0.5, 1.0, 2.0),
     "rd_weight": (0.5, 1.0, 2.0),
-    "contrastive_weight": (0.1, 0.25, 0.5),
+    "contrastive_weight": (0.025, 0.05, 0.1),
     "prompt_length": (4, 8, 16),
     "contrastive_mix": (0.25, 0.5, 0.75),
 }
