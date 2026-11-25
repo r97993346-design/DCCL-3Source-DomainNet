@@ -1,0 +1,19 @@
+{
+  "fold": 3,
+  "domain": "Sketch",
+  "seed": 990940125,
+  "selected_step": 3900,
+  "iid": 0.9013994910941476,
+  "test_in": 0.9013994910941476,
+  "test_out": 0.9070063694267516,
+  "source_val": 0.9952127696626474,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.90235368956743,
+  "final_test_out": 0.9070063694267516,
+  "final_source_val": 0.9945005189503966,
+  "log": "results.jsonl",
+  "telemetry": "optimizer.jsonl",
+  "elapsed_seconds": 2009.0,
+  "actual_prompt_length": 16
+}

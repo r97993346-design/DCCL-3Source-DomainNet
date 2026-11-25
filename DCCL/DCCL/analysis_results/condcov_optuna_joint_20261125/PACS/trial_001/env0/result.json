@@ -1,0 +1,19 @@
+{
+  "fold": 0,
+  "domain": "Art Painting",
+  "seed": 280998037,
+  "selected_step": 4200,
+  "iid": 0.9804758999389872,
+  "test_in": 0.9804758999389872,
+  "test_out": 0.980440097799511,
+  "source_val": 0.9849873881721014,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.9792556436851739,
+  "final_test_out": 0.9755501222493888,
+  "final_source_val": 0.9830012521095324,
+  "log": "results.jsonl",
+  "telemetry": "optimizer.jsonl",
+  "elapsed_seconds": 1923.0,
+  "actual_prompt_length": 16
+}

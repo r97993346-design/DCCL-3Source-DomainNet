@@ -1,0 +1,5 @@
+dataset,trial_id,condcov_weight,rd_weight,contrastive_weight,prompt_length,contrastive_mix,state,completed_folds,source_val,iid,test_in,test_out,elapsed_seconds
+PACS,0,1.0,1.0,0.1,16,0.25,complete,4,0.9869324960291742,0.9676357465788208,0.9676357465788208,0.967219679754083,8048.0
+PACS,1,1.0,0.5,0.25,16,0.25,completed_folds_only,2,,,,,
+VLCS,0,1.0,1.0,0.1,16,0.25,completed_folds_only,1,,,,,
+OfficeHome,0,1.0,1.0,0.1,16,0.25,completed_folds_only,1,,,,,
