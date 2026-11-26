@@ -1,0 +1,12 @@
+{
+  "study_name": "VLCS_condcov_rd_clip_allpos_cosine_seed1",
+  "state": "waiting_for_legacy_dataset",
+  "gpu": 1,
+  "budget": 10,
+  "active": null,
+  "iid_reference_target": 0.845,
+  "stop_reason": null,
+  "completed_trials": 0,
+  "completed_folds": 0,
+  "running_progress": []
+}

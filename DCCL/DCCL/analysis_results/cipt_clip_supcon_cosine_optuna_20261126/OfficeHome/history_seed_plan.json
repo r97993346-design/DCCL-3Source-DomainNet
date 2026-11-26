@@ -1,0 +1,111 @@
+{
+  "dataset": "OfficeHome",
+  "top_3_by_source_val": [
+    {
+      "source_study_run": "condcov_optuna_joint_20261125_low_contrast",
+      "source_trial": 0,
+      "historical_source_val": 0.8938988876253442,
+      "params": {
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.1,
+        "prompt_length": 16,
+        "rd_weight": 1.0
+      }
+    },
+    {
+      "source_study_run": "condcov_optuna_joint_20261125_low_contrast",
+      "source_trial": 1,
+      "historical_source_val": 0.8938767830930756,
+      "params": {
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.05,
+        "prompt_length": 16,
+        "rd_weight": 0.5
+      }
+    },
+    {
+      "source_study_run": "condcov_optuna_joint_20261125_low_contrast",
+      "source_trial": 2,
+      "historical_source_val": 0.8914714763226016,
+      "params": {
+        "condcov_weight": 2.0,
+        "contrastive_mix": 0.5,
+        "contrastive_weight": 0.1,
+        "prompt_length": 8,
+        "rd_weight": 2.0
+      }
+    }
+  ],
+  "queue": [
+    {
+      "params": {
+        "initial_lr": 2e-05,
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.1,
+        "prompt_length": 16,
+        "rd_weight": 1.0
+      },
+      "historical_rank": 1
+    },
+    {
+      "params": {
+        "initial_lr": 3e-05,
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.1,
+        "prompt_length": 16,
+        "rd_weight": 1.0
+      },
+      "historical_rank": 1
+    },
+    {
+      "params": {
+        "initial_lr": 2e-05,
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.05,
+        "prompt_length": 16,
+        "rd_weight": 0.5
+      },
+      "historical_rank": 2
+    },
+    {
+      "params": {
+        "initial_lr": 3e-05,
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.05,
+        "prompt_length": 16,
+        "rd_weight": 0.5
+      },
+      "historical_rank": 2
+    },
+    {
+      "params": {
+        "initial_lr": 2e-05,
+        "condcov_weight": 2.0,
+        "contrastive_mix": 0.5,
+        "contrastive_weight": 0.1,
+        "prompt_length": 8,
+        "rd_weight": 2.0
+      },
+      "historical_rank": 3
+    },
+    {
+      "params": {
+        "initial_lr": 3e-05,
+        "condcov_weight": 2.0,
+        "contrastive_mix": 0.5,
+        "contrastive_weight": 0.1,
+        "prompt_length": 8,
+        "rd_weight": 2.0
+      },
+      "historical_rank": 3
+    }
+  ],
+  "historical_objectives_imported": 0,
+  "captured_unix_seconds": 1795692626
+}

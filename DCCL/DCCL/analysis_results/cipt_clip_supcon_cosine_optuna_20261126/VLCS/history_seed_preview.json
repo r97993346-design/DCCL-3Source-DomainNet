@@ -1,0 +1,77 @@
+{
+  "dataset": "VLCS",
+  "top_3_by_source_val": [
+    {
+      "source_study_run": "condcov_optuna_joint_20261125_low_contrast",
+      "source_trial": 0,
+      "historical_source_val": 0.889708228708935,
+      "params": {
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.1,
+        "prompt_length": 16,
+        "rd_weight": 1.0
+      }
+    },
+    {
+      "source_study_run": "condcov_optuna_joint_20261125_low_contrast",
+      "source_trial": 1,
+      "historical_source_val": 0.8893411693180021,
+      "params": {
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.05,
+        "prompt_length": 16,
+        "rd_weight": 0.5
+      }
+    }
+  ],
+  "queue": [
+    {
+      "params": {
+        "initial_lr": 2e-05,
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.1,
+        "prompt_length": 16,
+        "rd_weight": 1.0
+      },
+      "historical_rank": 1
+    },
+    {
+      "params": {
+        "initial_lr": 3e-05,
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.1,
+        "prompt_length": 16,
+        "rd_weight": 1.0
+      },
+      "historical_rank": 1
+    },
+    {
+      "params": {
+        "initial_lr": 2e-05,
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.05,
+        "prompt_length": 16,
+        "rd_weight": 0.5
+      },
+      "historical_rank": 2
+    },
+    {
+      "params": {
+        "initial_lr": 3e-05,
+        "condcov_weight": 1.0,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.05,
+        "prompt_length": 16,
+        "rd_weight": 0.5
+      },
+      "historical_rank": 2
+    }
+  ],
+  "historical_objectives_imported": 0,
+  "captured_unix_seconds": 1795693025
+}

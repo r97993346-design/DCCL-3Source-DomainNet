@@ -1,12 +1,12 @@
 # CLIP SupCon Optuna 运行快照
 
-采集时间 2026-11-26T21:09:56.096741+08:00。已完成的折包含完整验证结果和训练日志。仍在运行的折只记录最近一次评估进度。
+采集时间 2026-11-26T21:10:30.868985+08:00。已完成的折包含完整验证结果和训练日志。仍在运行的折只记录最近一次评估进度。
 
 | 数据集 | 已完成 Trial | 已完成折 | 状态 |
 | --- | ---: | ---: | --- |
-| PACS | 0 | 3 | Trial 0 · Sketch · Step 3900 |
+| PACS | 0 | 3 | Trial 0 · Sketch · Step 4200 |
 | VLCS | 0 | 0 | 等待旧版 VLCS 结束 |
-| OfficeHome | 0 | 0 | Trial 0 · Art · Step 3000 |
+| OfficeHome | 0 | 0 | Trial 0 · Art · Step 3300 |
 
 - [分折结果](folds_summary.csv)
 - [Trial 汇总](trials_summary.csv)

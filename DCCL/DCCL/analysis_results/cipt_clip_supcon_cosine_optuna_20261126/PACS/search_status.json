@@ -1,0 +1,32 @@
+{
+  "study_name": "PACS_condcov_rd_clip_allpos_cosine_seed1",
+  "state": "running",
+  "gpu": 0,
+  "budget": 10,
+  "active": {
+    "trial_id": 0,
+    "params": {
+      "initial_lr": 2e-05,
+      "condcov_weight": 2.0,
+      "rd_weight": 0.5,
+      "contrastive_weight": 0.05,
+      "contrastive_mix": 0.75,
+      "prompt_length": 8
+    },
+    "target": "Sketch",
+    "completed_folds": 3
+  },
+  "iid_reference_target": 0.975,
+  "stop_reason": null,
+  "completed_trials": 0,
+  "completed_folds": 3,
+  "running_progress": [
+    {
+      "attempt": "PACS/trials/trial_000/env3/attempt_001",
+      "last_evaluated_step": 4200,
+      "eval_seconds": 1.1438183784484863,
+      "cache_enabled": true,
+      "cache_hit_splits": 8
+    }
+  ]
+}
