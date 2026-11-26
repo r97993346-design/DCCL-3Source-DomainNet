@@ -186,7 +186,7 @@ def read_attempt(attempt, dataset, fold, params, *, updates=STEPS):
                              rel_tol=1e-7, abs_tol=1e-16), f"invalid LR trace at step {i}")
     require(entries[-1]["lr_after_scheduler"] == 0.0, "scheduler did not reach zero")
     console = (attempt / "console.log").read_text(encoding="utf-8")
-    prompts = re.findall(r"^PROMPT_CONTEXT_LENGTH (\\d+)$", console, re.M)
+    prompts = re.findall(r"^PROMPT_CONTEXT_LENGTH (\d+)$", console, re.M)
     require(prompts and all(int(n) == params["prompt_length"] for n in prompts), "wrong prompt length")
     require(f"ADAM_UPDATES {updates} COSINE_UPDATES {updates}" in console, "missing optimizer count proof")
     return dict(result, log=str(logs[0]), learning_rates=str(trace_path), actual_prompt_length=params["prompt_length"],
