@@ -29,7 +29,7 @@ from protocol import (
 from reports import refresh
 from sampler import UniqueTPE
 
-GPU_FOR_DATASET = {"PACS": 0, "VLCS": 1, "OfficeHome": 1}
+GPU_FOR_DATASET = {"PACS": 0, "VLCS": 0, "OfficeHome": 1}
 MIN_RAM_KIB = 10 * 1024 * 1024
 POLL = 60
 SERVICE = "cipt-clip-supcon-mincl-optuna-20261126.service"
