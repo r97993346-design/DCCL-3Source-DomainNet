@@ -49,6 +49,27 @@ def apply_explicit_hparam_cli(parser, args, hparams, argv):
             hparams[action.dest] = getattr(args, action.dest)
     return hparams
 
+
+def default_cipt_eval_visual_cache(args, hparams):
+    """Enable fold-local caching for the deterministic CLIP SupCon evaluation path."""
+    return (
+        args.dataset in {"VLCS", "PACS", "OfficeHome"}
+        and args.algorithm == "CIPTDCCL"
+        and args.source_only_selection
+        and hparams.get("cipt_objective") == "env_anchor"
+        and hparams.get("ind_mode") == "condcov"
+        and hparams.get("cipt_env_constraint") == "relative_distance"
+        and hparams.get("cipt_contrastive_type") == "clip_guided_supcon"
+        and hparams.get("cipt_env_inference", "e_only") == "e_only"
+        and hparams.get("cipt_enabled")
+        and not hparams.get("cipt_use_aug_view")
+        and not hparams.get("val_augment")
+        and not hparams.get("indomain_test")
+        and not hparams.get("swad")
+        and not args.debug
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Domain generalization")
     parser.add_argument("name", type=str)
@@ -114,6 +135,9 @@ def main():
         help="[fast, all]. if fast, ignore train_in datasets in evaluation time.",
     )
     parser.add_argument("--prebuild_loader", action="store_true", help="Pre-build eval loaders")
+    parser.add_argument("--cipt_cache_eval_visual", action=argparse.BooleanOptionalAction,
+                        default=None, help="Cache frozen CLIP visual features for evaluation only "
+                        "(default: enabled for eligible PACS, VLCS, and OfficeHome CondCov + RD + CLIP SupCon runs)")
     parser.add_argument("--model", type=str, default="resnet50", help="Backbone model architecture")
     parser.add_argument("--label_ratio", type=float, default=1.0, help="Ratio of labeled data to use")
     
@@ -232,6 +256,8 @@ def main():
             parser.error(str(error))
     if args.algorithm == "ERM" and args.weak_erm:
         hparams = apply_weak_erm_hparams(hparams)
+    if args.cipt_cache_eval_visual is None:
+        args.cipt_cache_eval_visual = bool(default_cipt_eval_visual_cache(args, hparams))
 
     # setup debug
     if args.debug:

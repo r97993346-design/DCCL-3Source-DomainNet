@@ -572,7 +572,22 @@ class CIPTDCCL(_BaseCIPTDCCL):
             return self._clip_ce_logits(x)
         if self.objective_mode == "legacy":
             return super().predict(x)
-        visual = self._visual(x)
+        return self._predict_from_visual(self._visual(x))
+
+    def encode_eval_visual(self, x):
+        self._require_eval_visual_cache_mode()
+        with torch.no_grad():
+            return self.clip_model.encode_image(x)
+
+    def predict_from_eval_visual(self, raw_visual):
+        self._require_eval_visual_cache_mode()
+        return self._predict_from_visual(F.normalize(raw_visual.float(), dim=-1))
+
+    def _require_eval_visual_cache_mode(self):
+        if self.training or self.objective_mode != "env_anchor" or self.inference_mode != "e_only":
+            raise ValueError("Cached visual prediction is only supported for env_anchor E-only evaluation")
+
+    def _predict_from_visual(self, visual):
         causal, _ = self.causal_decomposition(visual)
         class_features = self._class_text_features()
         if self.inference_mode == "e_only":

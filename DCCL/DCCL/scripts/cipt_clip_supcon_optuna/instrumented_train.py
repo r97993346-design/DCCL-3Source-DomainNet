@@ -11,7 +11,7 @@ import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.optimizer import register_optimizer_step_pre_hook, register_optimizer_step_post_hook
 
-from protocol import CODE, cosine_lr, read_json, require
+from protocol import CODE, cosine_lr, git, read_json, require
 
 
 class CosineTrace:
@@ -60,6 +60,7 @@ def main():
     require(torch.cuda.device_count() == 1 and f"GPU-{torch.cuda.get_device_properties(0).uuid}".lower()
             == visible.lower(), "training process is not bound to its assigned GPU")
     print(f"CUDA_PHYSICAL_UUID {visible}", flush=True)
+    print(f"TRAINING_CODE_COMMIT {git('rev-parse', 'HEAD')}", flush=True)
     sys.path.insert(0, str(CODE))
     from domainbed.algorithms.cipt_prompt import PromptLearner
 

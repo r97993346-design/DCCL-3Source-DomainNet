@@ -33,6 +33,14 @@ GPU_FOR_DATASET = {"PACS": 0, "VLCS": 1, "OfficeHome": 1}
 MIN_RAM_KIB = 10 * 1024 * 1024
 POLL = 60
 SERVICE = "cipt-clip-supcon-cosine-optuna-20261126.service"
+PRE_CACHE_COMMIT = "024952d3d41e04768b3a24bf0809bac3c7a4710c"
+CACHE_FILES = {
+    "DCCL/DCCL/domainbed/algorithms/cipt_env_kl.py",
+    "DCCL/DCCL/domainbed/evaluator.py",
+    "DCCL/DCCL/domainbed/lib/eval_visual_cache.py",
+    "DCCL/DCCL/domainbed/trainer.py",
+    "DCCL/DCCL/train_all.py",
+}
 SMOKE_LOCK = Lock()
 ADMISSION = Lock()
 TRIAL_ADMISSION = Lock()
@@ -82,7 +90,9 @@ def create_plan():
         "DCCL/DCCL/domainbed/algorithms/cipt_clip_guided_contrastive.py",
         "DCCL/DCCL/domainbed/algorithms/cipt_env_kl.py",
     }
-    require(set(git("diff", "--name-only", BASE_COMMIT, "HEAD", "--", *training_paths).splitlines()) == expected
+    changed = set(git("diff", "--name-only", BASE_COMMIT, "HEAD", "--", *training_paths).splitlines())
+    cache_changed = set(git("diff", "--name-only", PRE_CACHE_COMMIT, "HEAD", "--", *training_paths).splitlines())
+    require(changed == expected | CACHE_FILES and cache_changed == CACHE_FILES
             and not git("status", "--porcelain", "--", *training_paths), "unexpected training-code changes")
     require(CLIP.is_file() and all((DATA / info[2]).is_dir() for info in DATASETS.values()), "data or CLIP missing")
     plan = {
@@ -103,18 +113,38 @@ def create_plan():
         "min_ram_kib_exclusive": MIN_RAM_KIB, "oom_fallback": "serialize on the affected GPU; retry the fold",
         "study_names": {d: study_name(d) for d in DATASETS}, "commands": resume_commands(),
     }
-    path = OUTPUT / "protocol.json"
+    record_eval_cache_protocol(OUTPUT, plan)
+
+
+def record_eval_cache_protocol(output, plan):
+    path = output / "protocol.json"
+    plan = json.loads(json.dumps(plan))
     if path.exists():
-        require(read_json(path) == json.loads(json.dumps(plan)), "persisted CLIP SupCon protocol changed")
+        original = read_json(path)
+        legacy = dict(plan, code_commit=PRE_CACHE_COMMIT)
+        require(original == plan or original == legacy, "persisted CLIP SupCon protocol changed")
     else:
         write_json(path, plan)
+
+    cache_record = {
+        "code_commit": plan["code_commit"],
+        "study_names": plan["study_names"],
+        "enabled_on": sorted(DATASETS),
+        "scope": "fold-local frozen CLIP visual evaluation features on CPU",
+    }
+    cache_path = output / "eval_visual_cache_protocol.json"
+    if cache_path.exists():
+        require(read_json(cache_path) == cache_record, "persisted evaluation cache protocol changed")
+    else:
+        write_json(cache_path, cache_record)
 
 
 def inspect_show(log, dataset, params):
     text = ANSI.sub("", log.read_text(encoding="utf-8"))
     args, hparams = text.split("Args:", 1)[1].split("HParams:", 1)
     for section, expected in ((args, dict(FIXED_ARGS, dataset=dataset, source_only_selection=True,
-                                          deterministic=True)), (hparams, hparams_for(params))):
+                                          deterministic=True, cipt_cache_eval_visual=True)),
+                              (hparams, hparams_for(params))):
         for key, value in expected.items():
             match = re.search(rf"^[ \t]*{re.escape(key)}:[ \t]*([^\r\n]+)", section, flags=re.M)
             require(match, f"preflight missing {key}")
@@ -129,7 +159,7 @@ def preflight(identities):
     for dataset in DATASETS:
         for index in range(4):
             params = {name: choices[index % len(choices)] for name, choices in SPACE.items()}
-            case = OUTPUT / "audit" / "preflight" / dataset / f"candidate_{index}"
+            case = OUTPUT / "audit" / "preflight_eval_visual_cache" / dataset / f"candidate_{index}"
             case.mkdir(parents=True, exist_ok=True)
             proof = case / "verified.json"
             if proof.exists():
@@ -140,7 +170,7 @@ def preflight(identities):
             cases.append({"argv": argv, "log": str(log)})
             settings.append((dataset, params, log, proof))
     if cases:
-        spec = OUTPUT / "audit" / "preflight" / "entry_cases.json"
+        spec = OUTPUT / "audit" / "preflight_eval_visual_cache" / "entry_cases.json"
         write_json(spec, cases)
         batch_log = spec.parent / "entry_resolution.log"
         with batch_log.open("wb") as stream:

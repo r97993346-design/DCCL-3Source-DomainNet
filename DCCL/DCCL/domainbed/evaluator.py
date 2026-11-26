@@ -2,6 +2,7 @@ import collections
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from domainbed.lib.eval_visual_cache import EvalVisualCache
 from domainbed.lib.fast_data_loader import FastDataLoader
 
 if torch.cuda.is_available():
@@ -10,20 +11,22 @@ else:
     device = "cpu"
 
 
-def accuracy_from_loader(algorithm, loader, weights, debug=False):
+def accuracy_from_loader(algorithm, loader, weights, debug=False, predict=None):
     correct = 0
     total = 0
     losssum = 0.0
     weights_offset = 0
 
     algorithm.eval()
+    if predict is None:
+        predict = algorithm.predict
 
-    for i, batch in enumerate(loader):
+    for batch in loader:
         x = batch["x"].to(device)
         y = batch["y"].to(device)
 
         with torch.no_grad():
-            logits = algorithm.predict(x)
+            logits = predict(x)
             loss = F.cross_entropy(logits, y).item()
 
         B = len(x)
@@ -51,19 +54,22 @@ def accuracy_from_loader(algorithm, loader, weights, debug=False):
     return acc, loss
 
 
-def accuracy(algorithm, loader_kwargs, weights, **kwargs):
+def _make_loader(loader_kwargs):
     if isinstance(loader_kwargs, dict):
-        loader = FastDataLoader(**loader_kwargs)
-    elif isinstance(loader_kwargs, FastDataLoader):
-        loader = loader_kwargs
-    else:
-        raise ValueError(loader_kwargs)
-    return accuracy_from_loader(algorithm, loader, weights, **kwargs)
+        return FastDataLoader(**loader_kwargs)
+    if isinstance(loader_kwargs, FastDataLoader):
+        return loader_kwargs
+    raise ValueError(loader_kwargs)
+
+
+def accuracy(algorithm, loader_kwargs, weights, **kwargs):
+    return accuracy_from_loader(algorithm, _make_loader(loader_kwargs), weights, **kwargs)
 
 
 class Evaluator:
     def __init__(
-        self, test_envs, eval_meta, n_envs, logger, evalmode="fast", debug=False, target_env=None
+        self, test_envs, eval_meta, n_envs, logger, evalmode="fast", debug=False, target_env=None,
+        cache_visual=False,
     ):
         all_envs = list(range(n_envs))
         train_envs = sorted(set(all_envs) - set(test_envs))
@@ -74,6 +80,9 @@ class Evaluator:
         self.logger = logger
         self.evalmode = evalmode
         self.debug = debug
+        if cache_visual and debug:
+            raise ValueError("Evaluation visual caching requires complete evaluation splits")
+        self.visual_cache = EvalVisualCache() if cache_visual else None
 
         if target_env is not None:
             self.set_target_env(target_env)
@@ -94,6 +103,8 @@ class Evaluator:
         summaries["train_out"] = 0.0
         accuracies = {}
         losses = {}
+        if self.visual_cache is not None:
+            self.visual_cache.prepare(algorithm)
 
         # order: in_splits + out_splits.
         for name, loader_kwargs, weights in self.eval_meta:
@@ -106,7 +117,15 @@ class Evaluator:
                 continue
 
             is_test = env_num in self.test_envs
-            acc, loss = accuracy(algorithm, loader_kwargs, weights, debug=self.debug)
+            if self.visual_cache is None:
+                acc, loss = accuracy(algorithm, loader_kwargs, weights, debug=self.debug)
+            else:
+                batches = self.visual_cache.batches(
+                    name, lambda: _make_loader(loader_kwargs), algorithm.encode_eval_visual, device
+                )
+                acc, loss = accuracy_from_loader(
+                    algorithm, batches, weights, predict=algorithm.predict_from_eval_visual
+                )
             accuracies[name] = acc
             losses[name] = loss
 

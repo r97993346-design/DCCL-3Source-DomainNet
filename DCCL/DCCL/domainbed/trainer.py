@@ -12,6 +12,7 @@ import torch
 import torch.utils.data
 from domainbed.mmd import mmd_loss
 from domainbed.datasets import get_dataset, split_dataset
+from domainbed.datasets.transforms import clip_basic
 from domainbed import algorithms
 from domainbed.evaluator import Evaluator
 from domainbed.lib import misc
@@ -81,6 +82,21 @@ def preserve_training_rng():
 def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, target_env=None):
     logger.info("")
     is_cipt = args.algorithm == "CIPTDCCL"
+    cache_eval_visual = getattr(args, "cipt_cache_eval_visual", False)
+    if cache_eval_visual and (
+        not is_cipt
+        or hparams.get("cipt_objective") != "env_anchor"
+        or hparams.get("cipt_env_inference", "e_only") != "e_only"
+        or hparams.get("val_augment")
+        or hparams.get("swad")
+        or hparams.get("indomain_test")
+        or args.debug
+        or not getattr(args, "source_only_selection", False)
+    ):
+        raise ValueError(
+            "Evaluation visual caching requires CIPTDCCL env_anchor E-only, "
+            "deterministic evaluation, source-only selection, and SWAD/debug off"
+        )
     source_sampling = getattr(args, "source_sampling", "domain_balanced")
     epochs = getattr(args, "epochs", None)
     warmup_epochs = getattr(args, "cipt_contrastive_warmup_epochs", None)
@@ -221,6 +237,11 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
     # setup eval loaders
     eval_loaders_kwargs = []
     for i, (env, _) in enumerate(in_splits + out_splits + test_splits):
+        if cache_eval_visual and (
+            env.transforms != {"x": clip_basic}
+            or not (env.cipt_pure or env.cipt_single_view)
+        ):
+            raise ValueError("Evaluation visual caching requires the single-view fixed CLIP transform")
         batchsize = hparams["test_batchsize"]
         loader_kwargs = {
             "dataset": env,
@@ -291,6 +312,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         evalmode=args.evalmode,
         debug=args.debug,
         target_env=target_env,
+        cache_visual=cache_eval_visual,
     )
 
     swad = None
@@ -372,6 +394,9 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
             with preserve_training_rng() if is_cipt else nullcontext():
                 accuracies, summaries = evaluator.evaluate(algorithm)
             results["eval_time"] = time.time() - eval_start_time
+            if cache_eval_visual:
+                results["eval_visual_cache_hit_splits"] = evaluator.visual_cache.hit_splits
+                results["eval_visual_cache_bytes"] = evaluator.visual_cache.size_bytes
 
             results_keys = (
                 list(summaries.keys()) + sorted(accuracies.keys()) + list(results.keys())
