@@ -1,0 +1,13 @@
+dataset,trial_id,state,initial_lr,condcov_weight,rd_weight,contrastive_weight,contrastive_mix,prompt_length,source_val,iid,test_in,test_out,elapsed_seconds,error,candidate_group,started_at,ended_at
+PACS,0,RUNNING,2e-05,2.0,0.5,0.05,0.75,8,,,,,,,historical_warm_start,2026-11-26T19:37:07.099322,
+PACS,1,WAITING,3e-05,2.0,0.5,0.05,0.75,8,,,,,,,historical_warm_start,,
+PACS,2,WAITING,2e-05,0.5,2.0,0.05,0.75,8,,,,,,,historical_warm_start,,
+PACS,3,WAITING,3e-05,0.5,2.0,0.05,0.75,8,,,,,,,historical_warm_start,,
+PACS,4,WAITING,2e-05,0.5,2.0,0.05,0.5,8,,,,,,,historical_warm_start,,
+PACS,5,WAITING,3e-05,0.5,2.0,0.05,0.5,8,,,,,,,historical_warm_start,,
+OfficeHome,0,RUNNING,2e-05,1.0,1.0,0.1,0.25,16,,,,,,,historical_warm_start,2026-11-26T19:37:07.808887,
+OfficeHome,1,WAITING,3e-05,1.0,1.0,0.1,0.25,16,,,,,,,historical_warm_start,,
+OfficeHome,2,WAITING,2e-05,1.0,0.5,0.05,0.25,16,,,,,,,historical_warm_start,,
+OfficeHome,3,WAITING,3e-05,1.0,0.5,0.05,0.25,16,,,,,,,historical_warm_start,,
+OfficeHome,4,WAITING,2e-05,2.0,2.0,0.1,0.5,8,,,,,,,historical_warm_start,,
+OfficeHome,5,WAITING,3e-05,2.0,2.0,0.1,0.5,8,,,,,,,historical_warm_start,,
