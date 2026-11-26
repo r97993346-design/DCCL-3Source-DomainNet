@@ -486,9 +486,21 @@ class CIPTDCCL(_BaseCIPTDCCL):
         if self.use_ind:
             name = "original_ind" if self.ind_mode == "original" else self.ind_mode
             ind_metrics[f"loss_{name}"] = ind_value
+        supcon_metrics = {}
+        if self.contrastive_type == "clip_guided_supcon" and anchor_mode:
+            components = {
+                "e_cls": (e_value, self.e_cls_weight), "s_uniform": (s_value, self.s_uniform_weight),
+                "condcov": (ind_value, self.ind_weight), "rd": (anchor_metrics.get("env_rd_loss", 0.0), self.env_loss_weight),
+                "contrastive": (con_value, con_weight),
+            }
+            supcon_metrics = {"loss_contrastive": con_value, "tr_loss": total_value}
+            for name, (value, weight) in components.items():
+                supcon_metrics[f"weight_{name}"] = weight
+                supcon_metrics[f"weighted_{name}"] = weight * value
         return {
             **anchor_metrics,
             **ind_metrics,
+            **supcon_metrics,
             **grad_metrics,
             **{name: value.item() for name, value in neighbor_stats.items()},
             **self._selector_metric_items(selector_metrics),
@@ -497,7 +509,9 @@ class CIPTDCCL(_BaseCIPTDCCL):
             "loss_e_cls": e_value,
             "loss_s_uniform": s_value,
             "loss_rd": anchor_metrics.get("env_rd_loss", 0.0),
-            "loss_clip_contrast": con_value if self.contrastive_type == "clip_guided_cross_domain" else 0.0,
+            "loss_clip_contrast": con_value if self.contrastive_type in (
+                "clip_guided_cross_domain", "clip_guided_supcon"
+            ) else 0.0,
             "ind_weight": self.ind_weight,
             "cipt_base_loss": base.item(),
             # Compatibility diagnostics only; DE is NOT added again to total.

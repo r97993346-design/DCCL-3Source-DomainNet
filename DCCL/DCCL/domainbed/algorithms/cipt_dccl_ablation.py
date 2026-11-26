@@ -117,11 +117,11 @@ class CIPTDCCL(_BaseCIPTDCCL):
             raise ValueError("cipt_contrastive_temperature must be positive")
         self.contrastive_type = str(hparams.get("cipt_contrastive_type", "supcon")).lower()
         if self.contrastive_type not in (
-            "supcon", "neighbor_retention", "cross_domain_supcon", "clip_guided_cross_domain"
+            "supcon", "neighbor_retention", "cross_domain_supcon", "clip_guided_cross_domain", "clip_guided_supcon"
         ):
             raise ValueError(
                 "cipt_contrastive_type must be supcon, neighbor_retention, "
-                "cross_domain_supcon, or clip_guided_cross_domain"
+                "cross_domain_supcon, clip_guided_cross_domain, or clip_guided_supcon"
             )
         self.clip_teacher_temperature = float(hparams.get("cipt_clip_teacher_temperature", 0.2))
         self.clip_teacher_mix = float(hparams.get("cipt_clip_teacher_mix", 0.5))
@@ -129,6 +129,8 @@ class CIPTDCCL(_BaseCIPTDCCL):
         validate_clip_teacher_options(
             self.clip_teacher_temperature, self.clip_teacher_mix, self.clip_teacher_topk
         )
+        if self.contrastive_type == "clip_guided_supcon" and self.clip_teacher_topk != 0:
+            raise ValueError("clip_guided_supcon requires all positives (teacher TopK=0)")
         self.neighbor_k = hparams.get("cipt_neighbor_k", 5)
         self.neighbor_alpha = float(hparams.get("cipt_neighbor_alpha", 0.5))
         validate_neighbor_options(self.neighbor_k, self.neighbor_alpha)
@@ -195,14 +197,20 @@ class CIPTDCCL(_BaseCIPTDCCL):
                 self.neighbor_diagnostics,
             )
         )
+        guided_mix = self.clip_teacher_mix if self.contrastive_type in (
+            "clip_guided_cross_domain", "clip_guided_supcon",
+        ) else 0.0
+        effective_start = self.contrastive_weight if (
+            hparams.get("cipt_use_contrastive", True) and self.contrastive_warmup_steps == 0
+        ) else 0.0
         print(
-            "CIPTDCCL cross-domain contrastive: mode={}, teacher_temperature={}, "
-            "teacher_mix={}, teacher_topk={}, temperature={}, configured_weight={}, "
-            "warmup_steps={}".format(
+            "CIPTDCCL contrastive settings: mode={}, teacher_temperature={}, "
+            "teacher_mix={}, teacher_mix_eff={}, teacher_topk={}, temperature={}, configured_weight={}, "
+            "warmup_steps={}, contrastive_weight_eff_start={}".format(
                 self.contrastive_type, self.clip_teacher_temperature,
-                self.clip_teacher_mix, self.clip_teacher_topk,
+                self.clip_teacher_mix, guided_mix, self.clip_teacher_topk,
                 self.contrastive_temperature, self.contrastive_weight,
-                self.contrastive_warmup_steps,
+                self.contrastive_warmup_steps, effective_start,
             )
         )
 
@@ -366,6 +374,21 @@ class CIPTDCCL(_BaseCIPTDCCL):
         stats.update(empty_clip_guided_stats(causal))
         stats["nbr_wmean"] = causal.new_ones(())
         stats["nbr_wmax"] = causal.new_ones(())
+        if enabled and self.contrastive_type == "clip_guided_supcon":
+            if self.clip_teacher_mix == 0.0:
+                # Call the ordinary SupCon implementation for exact equivalence.
+                loss, valid_fraction = self._single_view_supcon(causal, labels)
+            else:
+                loss, measured = clip_guided_cross_domain_loss(
+                    visual, causal, labels, None, temperature=self.contrastive_temperature,
+                    teacher_temperature=self.clip_teacher_temperature,
+                    teacher_mix=self.clip_teacher_mix, all_same_class=True,
+                )
+                stats.update(measured)
+                valid_fraction = stats["cg_valid_anchor_fraction"]
+            stats["cg_all_class_active"] = causal.new_ones(())
+            self._causal_contrastive_step.add_(1)
+            return loss, valid_fraction, self._contrastive_scale(), stats
         cross_domain = enabled and self.contrastive_type in (
             "cross_domain_supcon", "clip_guided_cross_domain"
         )

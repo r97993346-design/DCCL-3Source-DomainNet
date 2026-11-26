@@ -48,24 +48,27 @@ def source_domain_ids(labels, label_batches):
 
 @torch.no_grad()
 def cross_domain_targets(visual, labels, domain_ids, teacher_temperature=0.2,
-                         teacher_mix=0.5, topk=0):
+                         teacher_mix=0.5, topk=0, *, all_same_class=False):
     """Return detached (weights, positives, denominator_mask, teacher_cosines).
 
     Positive candidates: same class, different source domain, not self.
     Top-K is per anchor, across all eligible source domains, using V only.
     Negatives: all different-class samples, including the anchor's own domain.
-    Only selected positives and negatives enter the denominator.
+    Only selected positives and negatives enter the legacy denominator.
+    The all-same-class variant ignores domains and includes every non-self sample.
     """
     validate_clip_teacher_options(teacher_temperature, teacher_mix, topk)
     if visual.ndim != 2 or visual.shape[1] < 1 or not visual.is_floating_point():
         raise ValueError("visual must be floating point with shape [B,D], D >= 1")
     batch = visual.shape[0]
-    if labels.shape != (batch,) or domain_ids.shape != (batch,):
-        raise ValueError("labels and domain_ids must have shape [B]")
-    if labels.dtype != torch.long or domain_ids.dtype != torch.long:
-        raise ValueError("labels and domain_ids must be LongTensors")
-    if labels.device != visual.device or domain_ids.device != visual.device:
-        raise ValueError("visual, labels and domain_ids must share a device")
+    if labels.shape != (batch,) or labels.dtype != torch.long or labels.device != visual.device:
+        raise ValueError("labels must be a LongTensor [B] on the visual device")
+    if all_same_class:
+        if topk:
+            raise ValueError("all same-class SupCon does not truncate positives")
+    elif (domain_ids is None or domain_ids.shape != (batch,) or
+          domain_ids.dtype != torch.long or domain_ids.device != visual.device):
+        raise ValueError("domain_ids must be a LongTensor [B] on the visual device")
     if not torch.isfinite(visual).all():
         raise ValueError("visual must contain finite features")
 
@@ -74,9 +77,10 @@ def cross_domain_targets(visual, labels, domain_ids, teacher_temperature=0.2,
         unit_v = F.normalize(visual.detach().float(), dim=-1)
         similarity = unit_v @ unit_v.t()
         same_class = labels[:, None].eq(labels[None, :])
-        different_domain = domain_ids[:, None].ne(domain_ids[None, :])
         not_self = ~torch.eye(batch, dtype=torch.bool, device=visual.device)
-        positives = same_class & different_domain & not_self
+        positives = same_class & not_self
+        if not all_same_class:
+            positives = positives & domain_ids[:, None].ne(domain_ids[None, :])
 
         if topk > 0 and batch:
             indices = similarity.masked_fill(~positives, -torch.inf).topk(
@@ -85,7 +89,7 @@ def cross_domain_targets(visual, labels, domain_ids, teacher_temperature=0.2,
             selected = torch.zeros_like(positives).scatter_(1, indices, True)
             positives = positives & selected
 
-        denominator = positives | (~same_class & not_self)
+        denominator = not_self if all_same_class else positives | (~same_class & not_self)
         weights = torch.zeros_like(similarity)
         counts = positives.sum(dim=1)
         valid = counts > 0
@@ -105,7 +109,7 @@ def cross_domain_targets(visual, labels, domain_ids, teacher_temperature=0.2,
 
 def clip_guided_cross_domain_loss(visual, causal, labels, domain_ids,
                                   temperature=0.1, teacher_temperature=0.2,
-                                  teacher_mix=0.5, topk=0):
+                                  teacher_mix=0.5, topk=0, *, all_same_class=False):
     """Return (loss, detached metrics); mix=0 is equal-weight cross-domain SupCon.
 
     L_i = -sum_j w_ij log(exp(cos(E_i,E_j)/tau) /
@@ -123,7 +127,7 @@ def clip_guided_cross_domain_loss(visual, causal, labels, domain_ids,
         raise ValueError("causal must contain finite features")
 
     weights, positives, denominator, similarity = cross_domain_targets(
-        visual, labels, domain_ids, teacher_temperature, teacher_mix, topk
+        visual, labels, domain_ids, teacher_temperature, teacher_mix, topk, all_same_class=all_same_class,
     )
     stats = empty_clip_guided_stats(causal)
     counts = positives.sum(dim=1)
@@ -144,6 +148,10 @@ def clip_guided_cross_domain_loss(visual, causal, labels, domain_ids,
         # multiplication by zero, avoiding 0 * -inf.
         loss = -(weights[valid] * (logits - log_denominator)).sum(dim=1).mean()
 
+    if all_same_class:
+        stats.update(cg_contrastive_loss=loss.detach(), cg_valid_anchor_fraction=valid.float().mean(),
+                     cg_active=features.new_ones(()))
+        return loss, stats
     with torch.no_grad():
         valid_weights = weights[valid]
         entropy = -(valid_weights * valid_weights.clamp_min(1e-30).log()).sum(dim=1)

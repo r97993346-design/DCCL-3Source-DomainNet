@@ -364,6 +364,9 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
             for key, val in checkpoint_vals.items():
                 results[key] = np.mean(val)
+            if is_cipt and hparams.get("cipt_contrastive_type") == "clip_guided_supcon" and lr_scheduler is not None:
+                results.update(actual_lr=used_lr, optimizer_updates=step + 1,
+                               scheduler_updates=lr_scheduler.last_epoch)
 
             eval_start_time = time.time()
             with preserve_training_rng() if is_cipt else nullcontext():

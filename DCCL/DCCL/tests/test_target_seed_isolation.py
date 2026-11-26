@@ -7,6 +7,8 @@ No CLIP weights, images, CUDA or long-running experiment is required.
 import ast
 import collections
 import copy
+import itertools
+from contextlib import contextmanager, nullcontext
 import json
 import random
 from pathlib import Path
@@ -49,6 +51,7 @@ class TinyDataset(torch.utils.data.Dataset):
 
     def __init__(self, env, indices):
         self.indices = indices
+        self.env = self.env_id = env
         self.env = env
 
     def __len__(self):
@@ -76,9 +79,11 @@ class TinyAlgorithm(nn.Module):
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super().__init__()
         self.linear = nn.Linear(input_shape[0], num_classes)
-        self.optimizer = torch.optim.SGD(self.parameters(), lr=hparams["lr"])
+        optimizer = torch.optim.Adam if hparams.get("optimizer") == "adam" else torch.optim.SGD
+        self.optimizer = optimizer(self.parameters(), lr=hparams["lr"])
         self.initial = self.linear.weight.detach().clone()
         self.history = []
+        self.update_lrs = []
 
     def predict(self, x):
         return self.linear(x)
@@ -90,6 +95,7 @@ class TinyAlgorithm(nn.Module):
         loss = F.cross_entropy(self.predict(images), torch.cat(y))
         self.optimizer.zero_grad()
         loss.backward()
+        self.update_lrs.append(self.optimizer.param_groups[0]["lr"])
         self.optimizer.step()
         self.history.append((images.clone(), draws, self.linear.weight.detach().clone()))
         return {"total_loss": loss.item()}
@@ -110,10 +116,11 @@ class TargetSeedIsolationTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.models = []
         self.splits = []
-        definition = next(
+        definition = [
             n for n in ast.parse((ROOT / "domainbed/trainer.py").read_text()).body
-            if isinstance(n, ast.FunctionDef) and n.name == "train"
-        )
+            if isinstance(n, ast.FunctionDef) and n.name in
+            ("train", "reset_training_rng", "loader_generator", "preserve_training_rng")
+        ]
 
         def algorithm_class(_):
             def construct(*args, **kwargs):
@@ -136,6 +143,7 @@ class TargetSeedIsolationTests(unittest.TestCase):
 
         namespace = dict(
             collections=collections, copy=copy, json=json, random=random, time=time,
+            itertools=itertools, contextmanager=contextmanager, nullcontext=nullcontext,
             np=np, torch=torch, misc=misc, device="cpu", Q=Q,
             algorithms=SimpleNamespace(get_algorithm_class=algorithm_class),
             get_dataset=get_dataset, Evaluator=Evaluator,
@@ -144,19 +152,20 @@ class TargetSeedIsolationTests(unittest.TestCase):
             resolve_loader_workers=lambda args, dataset: (0, 0),
             json_handler=lambda value: str(value),
         )
-        exec(compile(ast.Module(body=[definition], type_ignores=[]), "trainer.py", "exec"), namespace)
+        exec(compile(ast.Module(body=definition, type_ignores=[]), "trainer.py", "exec"), namespace)
         self.train = namespace["train"]
 
-    def run_target(self, env, steps, seed=0, trial_seed=0):
+    def run_target(self, env, steps, seed=0, trial_seed=0, *, checkpoint=2, fixed_seed=True, **options):
         args = SimpleNamespace(
             dataset="PACS", algorithm="CIPTDCCL", seed=seed, trial_seed=trial_seed,
             source_envs=None, target_env=None, prebuild_loader=False,
             evalmode="fast", debug=False, log=False, model_save=None,
-            tb_freq=100, out_dir=Path(self.temporary.name),
+            tb_freq=100, out_dir=Path(self.temporary.name), source_only_selection=True, fixed_fold_seed=fixed_seed,
         )
         hparams = HParams(indomain_test=False, batch_size=2, test_batchsize=4,
                          swad=None, lr=.01, cipt_lr_schedule="constant")
-        self.train([env], args, hparams, steps, 2, NullLogger(), NullWriter())
+        hparams.update(options)
+        self.train([env], args, hparams, steps, checkpoint, NullLogger(), NullWriter())
         return self.models[-1]
 
     def assert_same_trajectory(self, first, second, length=None):
