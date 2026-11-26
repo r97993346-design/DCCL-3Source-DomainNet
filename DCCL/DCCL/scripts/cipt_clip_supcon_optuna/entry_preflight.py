@@ -5,8 +5,9 @@ import logging
 import sys
 from pathlib import Path
 
-from protocol import read_json, require
+from protocol import CODE, read_json, require
 
+sys.path.insert(0, str(CODE))
 import train_all
 
 
