@@ -1,0 +1,21 @@
+{
+  "fold": 0,
+  "domain": "Caltech",
+  "seed": 1141299501,
+  "selected_step": 4999,
+  "iid": 0.9867491166077739,
+  "test_in": 0.9867491166077739,
+  "test_out": 0.9929328621908127,
+  "source_val": 0.8516062779742677,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.9867491166077739,
+  "final_test_out": 0.9929328621908127,
+  "final_source_val": 0.8516062779742677,
+  "elapsed_seconds": 9120.0,
+  "actual_prompt_length": 16,
+  "log": "results.jsonl",
+  "telemetry": "optimizer.jsonl",
+  "source_run": "condcov_optuna_joint_20261125_low_contrast",
+  "reused": false
+}

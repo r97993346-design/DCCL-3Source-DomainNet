@@ -1,0 +1,21 @@
+{
+  "fold": 3,
+  "domain": "Real World",
+  "seed": 728627790,
+  "selected_step": 4800,
+  "iid": 0.9153757888697648,
+  "test_in": 0.9153757888697648,
+  "test_out": 0.9001148105625718,
+  "source_val": 0.8850021932345065,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.9159495123350545,
+  "final_test_out": 0.8966704936854191,
+  "final_source_val": 0.8817305502715607,
+  "elapsed_seconds": 6668.0,
+  "actual_prompt_length": 16,
+  "log": "results.jsonl",
+  "telemetry": "optimizer.jsonl",
+  "source_run": "condcov_optuna_joint_20261125_low_contrast",
+  "reused": false
+}

@@ -1,0 +1,21 @@
+{
+  "fold": 1,
+  "domain": "Clipart",
+  "seed": 846366325,
+  "selected_step": 4999,
+  "iid": 0.7184994272623139,
+  "test_in": 0.7184994272623139,
+  "test_out": 0.7101947308132875,
+  "source_val": 0.9279006898619525,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.7184994272623139,
+  "final_test_out": 0.7101947308132875,
+  "final_source_val": 0.9279006898619525,
+  "elapsed_seconds": 9157.0,
+  "actual_prompt_length": 16,
+  "log": "../../../../condcov_optuna_joint_20261125/OfficeHome/trial_000/env1/results.jsonl",
+  "telemetry": "../../../../condcov_optuna_joint_20261125/OfficeHome/trial_000/env1/optimizer.jsonl",
+  "source_run": "condcov_optuna_joint_20261125",
+  "reused": true
+}

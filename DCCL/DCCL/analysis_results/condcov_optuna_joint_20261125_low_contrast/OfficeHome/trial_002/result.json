@@ -1,0 +1,48 @@
+{
+  "dataset": "OfficeHome",
+  "trial_id": 2,
+  "condcov_weight": 2.0,
+  "contrastive_mix": 0.5,
+  "contrastive_weight": 0.1,
+  "prompt_length": 8,
+  "rd_weight": 2.0,
+  "state": "completed_folds_only",
+  "origin": "new",
+  "completed_folds": 1,
+  "source_val": null,
+  "iid": null,
+  "test_in": null,
+  "test_out": null,
+  "elapsed_seconds": null,
+  "params": {
+    "condcov_weight": 2.0,
+    "contrastive_mix": 0.5,
+    "contrastive_weight": 0.1,
+    "prompt_length": 8,
+    "rd_weight": 2.0
+  },
+  "fixed_config": "config.json",
+  "folds": [
+    {
+      "fold": 0,
+      "domain": "Art",
+      "seed": 1892989228,
+      "selected_step": 4999,
+      "iid": 0.829557157569516,
+      "test_in": 0.829557157569516,
+      "test_out": 0.8783505154639175,
+      "source_val": 0.8837814279695634,
+      "final_step": 4999,
+      "updates": 5000,
+      "final_iid": 0.829557157569516,
+      "final_test_out": 0.8783505154639175,
+      "final_source_val": 0.8837814279695634,
+      "elapsed_seconds": 7097.0,
+      "actual_prompt_length": 8,
+      "log": "env0/results.jsonl",
+      "telemetry": "env0/optimizer.jsonl",
+      "source_run": "condcov_optuna_joint_20261125_low_contrast",
+      "reused": false
+    }
+  ]
+}

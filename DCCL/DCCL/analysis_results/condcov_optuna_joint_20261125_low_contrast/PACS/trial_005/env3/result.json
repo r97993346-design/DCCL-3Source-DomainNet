@@ -1,0 +1,21 @@
+{
+  "fold": 3,
+  "domain": "Sketch",
+  "seed": 990940125,
+  "selected_step": 4500,
+  "iid": 0.9048982188295165,
+  "test_in": 0.9048982188295165,
+  "test_out": 0.9082802547770701,
+  "source_val": 0.9968427615126882,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.905852417302799,
+  "final_test_out": 0.910828025477707,
+  "final_source_val": 0.9968427615126882,
+  "elapsed_seconds": 1830.0,
+  "actual_prompt_length": 8,
+  "log": "results.jsonl",
+  "telemetry": "optimizer.jsonl",
+  "source_run": "condcov_optuna_joint_20261125_low_contrast",
+  "reused": false
+}

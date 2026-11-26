@@ -1,0 +1,21 @@
+{
+  "fold": 1,
+  "domain": "LabelMe",
+  "seed": 592449405,
+  "selected_step": 4500,
+  "iid": 0.676235294117647,
+  "test_in": 0.676235294117647,
+  "test_out": 0.6459510357815442,
+  "source_val": 0.9215898825654923,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.6569411764705883,
+  "final_test_out": 0.6308851224105462,
+  "final_source_val": 0.9215612767238783,
+  "elapsed_seconds": 5833.0,
+  "actual_prompt_length": 16,
+  "log": "results.jsonl",
+  "telemetry": "optimizer.jsonl",
+  "source_run": "condcov_optuna_joint_20261125_low_contrast",
+  "reused": false
+}

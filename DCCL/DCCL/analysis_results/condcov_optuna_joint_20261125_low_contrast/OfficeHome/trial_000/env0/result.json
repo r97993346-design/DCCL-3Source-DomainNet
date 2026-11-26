@@ -1,0 +1,21 @@
+{
+  "fold": 0,
+  "domain": "Art",
+  "seed": 1892989228,
+  "selected_step": 4999,
+  "iid": 0.8388259526261586,
+  "test_in": 0.8388259526261586,
+  "test_out": 0.8742268041237113,
+  "source_val": 0.8834169164566019,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.8388259526261586,
+  "final_test_out": 0.8742268041237113,
+  "final_source_val": 0.8834169164566019,
+  "elapsed_seconds": 7369.0,
+  "actual_prompt_length": 16,
+  "log": "../../../../condcov_optuna_joint_20261125/OfficeHome/trial_000/env0/results.jsonl",
+  "telemetry": "../../../../condcov_optuna_joint_20261125/OfficeHome/trial_000/env0/optimizer.jsonl",
+  "source_run": "condcov_optuna_joint_20261125",
+  "reused": true
+}

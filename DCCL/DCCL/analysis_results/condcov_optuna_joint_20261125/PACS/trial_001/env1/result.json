@@ -12,8 +12,10 @@
   "final_iid": 0.988272921108742,
   "final_test_out": 0.9893162393162394,
   "final_source_val": 0.9823026489963091,
+  "elapsed_seconds": 2009.0,
+  "actual_prompt_length": 16,
   "log": "results.jsonl",
   "telemetry": "optimizer.jsonl",
-  "elapsed_seconds": 2009.0,
-  "actual_prompt_length": 16
+  "source_run": "condcov_optuna_joint_20261125",
+  "reused": false
 }

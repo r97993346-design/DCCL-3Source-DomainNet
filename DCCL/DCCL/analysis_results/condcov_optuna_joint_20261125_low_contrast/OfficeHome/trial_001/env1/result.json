@@ -1,0 +1,21 @@
+{
+  "fold": 1,
+  "domain": "Clipart",
+  "seed": 846366325,
+  "selected_step": 4999,
+  "iid": 0.7153493699885453,
+  "test_in": 0.7153493699885453,
+  "test_out": 0.7056128293241696,
+  "source_val": 0.9290349888811225,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.7153493699885453,
+  "final_test_out": 0.7056128293241696,
+  "final_source_val": 0.9290349888811225,
+  "elapsed_seconds": 7415.0,
+  "actual_prompt_length": 16,
+  "log": "results.jsonl",
+  "telemetry": "optimizer.jsonl",
+  "source_run": "condcov_optuna_joint_20261125_low_contrast",
+  "reused": false
+}

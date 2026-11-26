@@ -1,0 +1,21 @@
+{
+  "fold": 0,
+  "domain": "Art",
+  "seed": 1892989228,
+  "selected_step": 4999,
+  "iid": 0.829557157569516,
+  "test_in": 0.829557157569516,
+  "test_out": 0.8783505154639175,
+  "source_val": 0.8837814279695634,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.829557157569516,
+  "final_test_out": 0.8783505154639175,
+  "final_source_val": 0.8837814279695634,
+  "elapsed_seconds": 7097.0,
+  "actual_prompt_length": 8,
+  "log": "results.jsonl",
+  "telemetry": "optimizer.jsonl",
+  "source_run": "condcov_optuna_joint_20261125_low_contrast",
+  "reused": false
+}

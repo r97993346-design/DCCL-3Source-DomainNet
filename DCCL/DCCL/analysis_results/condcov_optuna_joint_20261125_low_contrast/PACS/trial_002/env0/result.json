@@ -1,0 +1,21 @@
+{
+  "fold": 0,
+  "domain": "Art Painting",
+  "seed": 280998037,
+  "selected_step": 3000,
+  "iid": 0.9786455155582673,
+  "test_in": 0.9786455155582673,
+  "test_out": 0.9755501222493888,
+  "source_val": 0.9841381312718891,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.9792556436851739,
+  "final_test_out": 0.9828850855745721,
+  "final_source_val": 0.9817273667592139,
+  "elapsed_seconds": 2337.0,
+  "actual_prompt_length": 8,
+  "log": "results.jsonl",
+  "telemetry": "optimizer.jsonl",
+  "source_run": "condcov_optuna_joint_20261125_low_contrast",
+  "reused": false
+}

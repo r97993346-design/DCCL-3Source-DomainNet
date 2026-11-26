@@ -1,0 +1,21 @@
+{
+  "fold": 3,
+  "domain": "SUN",
+  "seed": 733132323,
+  "selected_step": 2100,
+  "iid": 0.7970297029702971,
+  "test_in": 0.7970297029702971,
+  "test_out": 0.8003048780487805,
+  "source_val": 0.8998786356978448,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.784082254379284,
+  "final_test_out": 0.7957317073170732,
+  "final_source_val": 0.894934301053564,
+  "elapsed_seconds": 10423.0,
+  "actual_prompt_length": 16,
+  "log": "results.jsonl",
+  "telemetry": "optimizer.jsonl",
+  "source_run": "condcov_optuna_joint_20261125_low_contrast",
+  "reused": false
+}

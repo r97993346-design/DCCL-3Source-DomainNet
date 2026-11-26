@@ -1,0 +1,17 @@
+{
+  "dataset": "PACS",
+  "trial_id": 4,
+  "condcov_weight": 0.5,
+  "contrastive_mix": 0.75,
+  "contrastive_weight": 0.05,
+  "prompt_length": 8,
+  "rd_weight": 2.0,
+  "state": "complete",
+  "origin": "new",
+  "completed_folds": 4,
+  "source_val": 0.9872629256539056,
+  "iid": 0.9687616290877412,
+  "test_in": 0.9687616290877412,
+  "test_out": 0.9701203949169703,
+  "elapsed_seconds": 7364.0
+}
