@@ -2,7 +2,7 @@
 
 from optuna.trial import TrialState
 
-from protocol import BUDGET, DATASETS, SPACE, read_json, write_csv, write_json
+from protocol import DATASETS, SPACE, budget_for, read_json, write_csv, write_json
 
 
 def refresh(dataset, study, root, state, *, gpu, active=None, reason=None):
@@ -33,7 +33,7 @@ def refresh(dataset, study, root, state, *, gpu, active=None, reason=None):
     iid_best = max(observation, key=lambda r: r["iid"], default=None)
     goal = DATASETS[dataset][1]
     status = {"dataset": dataset, "study_name": study.study_name, "state": state, "gpu": gpu, "n_jobs": 1,
-              "complete_trials": len(observation), "budget": BUDGET, "active": active, "stop_reason": reason,
+              "complete_trials": len(observation), "budget": budget_for(root.parent, dataset), "active": active, "stop_reason": reason,
               "iid_reference_target": goal, "iid_reference_reached": bool(iid_best and iid_best["iid"] >= goal),
               "best_source_val": best, "best_iid": iid_best}
     trial_fields = ["trial_id", "state", *SPACE, "source_val", "iid", "test_in", "test_out", "elapsed_seconds", "error",

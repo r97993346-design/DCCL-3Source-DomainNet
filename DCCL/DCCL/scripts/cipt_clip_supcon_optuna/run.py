@@ -22,7 +22,7 @@ from optuna.trial import TrialState
 
 from protocol import (
     BASE, BASE_COMMIT, BRANCH, BUDGET, CHECK, CLIP, CODE, DATA, DATASETS, EVAL_STEPS, FIXED_ARGS,
-    LR_POLICY, MODEL_COMMIT, N_JOBS, OUTPUT, PAUSE, SAMPLER_SEED, SPACE, STEPS, command, cosine_lr,
+    LR_POLICY, MODEL_COMMIT, N_JOBS, OUTPUT, PAUSE, SAMPLER_SEED, SPACE, STEPS, budget_for, command, cosine_lr,
     fixed_hparams, git, hparams_for, read_json, read_rows, require, seed_for, signature,
     study_name, summarize, validate_fold, write_json, write_text,
 )
@@ -70,7 +70,8 @@ def available_ram_kib():
 
 def resume_commands():
     prefix = f"cd {shlex.quote(str(CODE))} && {shlex.quote(sys.executable)} -B scripts/cipt_clip_supcon_optuna/run.py"
-    return {"pause": f"{prefix} --pause", "resume": f"{prefix} --resume"}
+    return {"pause": f"{prefix} --pause", "resume": f"{prefix} --resume",
+            "extend": f"{prefix} --extend <dataset> <new_total>"}
 
 
 def create_plan():
@@ -365,7 +366,7 @@ def run_study(dataset, root, study, sampler, gpu, uuid, lock_fd):
             if any(read_json(root/"trials"/f"trial_{t.number:03d}"/"result.json")["iid"] >= DATASETS[dataset][1]
                    for t in complete):
                 return refresh(dataset, study, root, "complete", gpu=gpu, reason="iid_target_reached")
-            if len(complete) >= BUDGET:
+            if len(complete) >= budget_for(OUTPUT, dataset):
                 return refresh(dataset, study, root, "complete", gpu=gpu, reason="completed_trial_budget")
             next_trial = admit_trial(study, sampler)
             if next_trial is None:
@@ -411,13 +412,31 @@ def control(flag):
             print("Existing CLIP SupCon studies scheduled to resume.")
 
 
+def extend_budget(dataset, total):
+    require(dataset in DATASETS, "unknown dataset")
+    with (BASE / ".control.lock").open("a") as guard:
+        fcntl.flock(guard, fcntl.LOCK_EX)
+        status = subprocess.check_output(["systemctl", "--user", "show", SERVICE, "-p", "ActiveState", "--value"],
+                                         text=True).strip()
+        require(status in ("inactive", "failed"), "pause the service before extending a budget")
+        require(budget_for(OUTPUT, dataset) < total <= math.prod(map(len, SPACE.values())),
+                "new budget must increase within the discrete space")
+        path = OUTPUT / "trial_budgets.json"
+        values = read_json(path) if path.is_file() else {}
+        write_json(path, dict(values, **{dataset: total}))
+        print(f"{dataset} budget extended to {total}; resume to apply.")
+
+
 def main():
     os.chdir(CODE)
     OUTPUT.mkdir(parents=True, exist_ok=True)
     if sys.argv[1:] in (["--pause"], ["--resume"]):
         control(sys.argv[1])
         return
-    require(sys.argv[1:] in ([], ["--prepare"]), "use no arguments, --prepare, --pause or --resume")
+    if len(sys.argv) == 4 and sys.argv[1] == "--extend":
+        extend_budget(sys.argv[2], int(sys.argv[3]))
+        return
+    require(sys.argv[1:] in ([], ["--prepare"]), "use no arguments, --prepare, --pause, --resume or --extend")
     with (BASE / ".clip_supcon_optuna.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         create_plan()

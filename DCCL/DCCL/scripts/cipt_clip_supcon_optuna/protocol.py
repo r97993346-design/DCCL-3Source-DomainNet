@@ -116,6 +116,11 @@ def seed_for(dataset, fold):
     return int(hashlib.md5(str((dataset, "CIPTDCCL", [fold], 0, 1)).encode()).hexdigest(), 16) % (2**31)
 
 
+def budget_for(root, dataset):
+    path = root / "trial_budgets.json"
+    return read_json(path).get(dataset, BUDGET) if path.is_file() else BUDGET
+
+
 def signature(params):
     require(set(params) == set(SPACE), f"wrong search parameters: {params}")
     result = []
