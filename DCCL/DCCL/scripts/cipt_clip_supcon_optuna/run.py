@@ -1,4 +1,4 @@
-"""Run one persistent CondCov + RD + NR study per dataset."""
+"""Run one persistent CondCov + RD + CLIP SupCon study per dataset."""
 
 import fcntl
 import json
@@ -6,6 +6,7 @@ import math
 import os
 import re
 import shlex
+import sqlite3
 import subprocess
 import sys
 import time
@@ -15,14 +16,13 @@ from pathlib import Path
 from threading import Lock
 
 import optuna
-import history_seed
 import yaml
-from optuna.distributions import CategoricalDistribution
 from optuna.trial import TrialState
 
 from protocol import (
     BASE, BASE_COMMIT, BRANCH, BUDGET, CHECK, CLIP, CODE, DATA, DATASETS, EVAL_STEPS, FIXED_ARGS,
-    LR_POLICY, MODEL_COMMIT, N_JOBS, OUTPUT, PAUSE, SAMPLER_SEED, SPACE, STEPS, budget_for, command, cosine_lr,
+    INITIAL_PARAMS, LR_POLICY, MODEL_COMMIT, N_JOBS, OUTPUT, PAUSE, SAMPLER_SEED, SPACE, STARTUP_TRIALS, STEPS,
+    budget_for, command, cosine_lr,
     fixed_hparams, git, hparams_for, read_json, read_rows, require, seed_for, signature,
     study_name, summarize, validate_fold, write_json, write_text,
 )
@@ -32,16 +32,9 @@ from sampler import UniqueTPE
 GPU_FOR_DATASET = {"PACS": 0, "VLCS": 1, "OfficeHome": 1}
 MIN_RAM_KIB = 10 * 1024 * 1024
 POLL = 60
-SERVICE = "cipt-clip-supcon-cosine-optuna-20261126.service"
-PRE_CACHE_COMMIT = "024952d3d41e04768b3a24bf0809bac3c7a4710c"
-CACHE_FILES = {
-    "DCCL/DCCL/domainbed/algorithms/cipt_env_kl.py",
-    "DCCL/DCCL/domainbed/evaluator.py",
-    "DCCL/DCCL/domainbed/lib/eval_visual_cache.py",
-    "DCCL/DCCL/domainbed/trainer.py",
-    "DCCL/DCCL/train_all.py",
-}
-SMOKE_LOCK = Lock()
+SERVICE = "cipt-clip-supcon-mincl-optuna-20261126.service"
+PREVIOUS_RUN = "cipt_clip_supcon_cosine_optuna_20261126"
+OLDER_VLCS_RUN = "condcov_optuna_joint_20261125_low_contrast"
 ADMISSION = Lock()
 TRIAL_ADMISSION = Lock()
 EVENT_LOG = Lock()
@@ -49,7 +42,6 @@ ACTIVE_GPU = {0: 0, 1: 0}
 ACTIVE_DATASETS = set()
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 OOM = re.compile(r"out of memory|OutOfMemoryError|cannot allocate memory|DefaultCPUAllocator", re.I)
-DISTRIBUTIONS = {key: CategoricalDistribution(choices) for key, choices in SPACE.items()}
 
 
 def emit(event, **fields):
@@ -84,16 +76,10 @@ def resume_commands():
 
 def create_plan():
     require(git("branch", "--show-current") == BRANCH, "wrong experiment branch")
-    training_paths = ("domainbed", "train_all.py", "config_cipt_pacs_ind_ablation.yaml")
-    expected = {
-        "DCCL/DCCL/domainbed/trainer.py", "DCCL/DCCL/domainbed/algorithms/cipt_dccl_ablation.py",
-        "DCCL/DCCL/domainbed/algorithms/cipt_clip_guided_contrastive.py",
-        "DCCL/DCCL/domainbed/algorithms/cipt_env_kl.py",
-    }
-    changed = set(git("diff", "--name-only", BASE_COMMIT, "HEAD", "--", *training_paths).splitlines())
-    cache_changed = set(git("diff", "--name-only", PRE_CACHE_COMMIT, "HEAD", "--", *training_paths).splitlines())
-    require(changed == expected | CACHE_FILES and cache_changed == CACHE_FILES
-            and not git("status", "--porcelain", "--", *training_paths), "unexpected training-code changes")
+    training_paths = ("domainbed", "train_all.py", "config.yaml", "config_cipt_pacs_ind_ablation.yaml",
+                      "scripts/cipt_clip_supcon_optuna/instrumented_train.py", "../../CLIP")
+    require(not git("diff", "--name-only", BASE_COMMIT, "HEAD", "--", *training_paths)
+            and not git("status", "--porcelain", "--", *training_paths), "training code differs from the running version")
     require(CLIP.is_file() and all((DATA / info[2]).is_dir() for info in DATASETS.values()), "data or CLIP missing")
     plan = {
         "code_commit": git("rev-parse", "HEAD"), "base_commit": BASE_COMMIT, "condcov_commit": MODEL_COMMIT,
@@ -102,15 +88,16 @@ def create_plan():
         "fixed_args": FIXED_ARGS, "fixed_hparams": fixed_hparams(), "steps": STEPS, "checkpoint_freq": CHECK,
         "replacement": True, "class_balanced": False, "lr_policy": LR_POLICY, "evaluation_steps": EVAL_STEPS,
         "gradient_diagnostics": False, "space": {k: list(v) for k, v in SPACE.items()},
-        "warm_start": "three unique historical parameter sets ranked only on source validation, both LRs per set",
+        "enqueued_trial_0": INITIAL_PARAMS, "search_space_size": math.prod(map(len, SPACE.values())),
         "sampler": {"name": "TPESampler", "seed": SAMPLER_SEED,
-        "multivariate": False, "n_startup_trials": 5, "n_ei_candidates": 24}, "pruner": "NopPruner",
+        "multivariate": False, "n_startup_trials": STARTUP_TRIALS, "n_ei_candidates": 24}, "pruner": "NopPruner",
         "objective": "four source-validation accuracies at source-selected checkpoints, averaged",
         "direction": "maximize", "trial_budget": BUDGET, "target_iid_threshold_stops_study": True,
         "target_iid_reference": {d: v[1] for d, v in DATASETS.items()}, "history_import": False,
         "training_seeds": {d: [seed_for(d, i) for i in range(4)] for d in DATASETS},
         "gpu_for_dataset": GPU_FOR_DATASET, "n_jobs_per_study": N_JOBS,
         "min_ram_kib_exclusive": MIN_RAM_KIB, "oom_fallback": "serialize on the affected GPU; retry the fold",
+        "handoff": {"previous_run": PREVIOUS_RUN, "additional_vlcs_run": OLDER_VLCS_RUN},
         "study_names": {d: study_name(d) for d in DATASETS}, "commands": resume_commands(),
     }
     record_eval_cache_protocol(OUTPUT, plan)
@@ -120,9 +107,7 @@ def record_eval_cache_protocol(output, plan):
     path = output / "protocol.json"
     plan = json.loads(json.dumps(plan))
     if path.exists():
-        original = read_json(path)
-        legacy = dict(plan, code_commit=PRE_CACHE_COMMIT)
-        require(original == plan or original == legacy, "persisted CLIP SupCon protocol changed")
+        require(read_json(path) == plan, "persisted CLIP SupCon protocol changed")
     else:
         write_json(path, plan)
 
@@ -183,6 +168,16 @@ def preflight(identities):
         emit("preflight_verified", dataset=dataset, params=params)
 
 
+def enqueue_initial_trial(study):
+    trials = study.get_trials(deepcopy=False)
+    if not trials:
+        study.enqueue_trial(INITIAL_PARAMS, user_attrs={"candidate_group": "enqueued_minimum"})
+        return
+    require(trials[0].number == 0 and trials[0].system_attrs.get("fixed_params") == INITIAL_PARAMS
+            and all("fixed_params" not in trial.system_attrs for trial in trials[1:]),
+            "unexpected fixed candidates in the new study")
+
+
 def open_studies():
     studies = {}
     for dataset in DATASETS:
@@ -193,6 +188,7 @@ def open_studies():
                                             engine_kwargs={"connect_args": {"timeout": 60}})
         study = optuna.create_study(study_name=study_name(dataset), direction="maximize", sampler=sampler,
                                     pruner=optuna.pruners.NopPruner(), storage=storage, load_if_exists=True)
+        enqueue_initial_trial(study)
         for trial in study.get_trials(deepcopy=False):
             if set(trial.params) == set(SPACE):
                 sampler.reserve(trial.params)
@@ -314,23 +310,6 @@ class FoldFailed(RuntimeError):
     pass
 
 
-def smoke(dataset, gpu, uuid, lock_fd):
-    root = OUTPUT / "audit" / "cuda_smoke"
-    root.mkdir(parents=True, exist_ok=True)
-    proof = root / "verified.json"
-    if proof.is_file():
-        return
-    params = {k: v[0] for k, v in SPACE.items()}
-    params["contrastive_mix"] = .25
-    params["prompt_length"] = 16
-    case = root/dataset
-    case.mkdir(exist_ok=True)
-    write_json(case / "config.json", hparams_for(params))
-    result = run_fold(case, dataset, 0, "smoke", params, gpu, environment_for(uuid), lock_fd, updates=1)
-    write_json(proof, {"dataset": dataset, "params": params, "result": result, "excluded_from_studies": True})
-    emit("cuda_smoke_passed", result=result)
-
-
 def admit_trial(study, sampler):
     with TRIAL_ADMISSION, (BASE / ".control.lock").open("a") as guard:
         fcntl.flock(guard, fcntl.LOCK_EX)
@@ -339,6 +318,9 @@ def admit_trial(study, sampler):
         require(sampler.remaining, "categorical search space exhausted")
         trial = study.ask()
         trial.set_user_attr("origin", "new")
+        if trial.number != 0:
+            observed = len(study.get_trials(deepcopy=False, states=(TrialState.COMPLETE, TrialState.PRUNED)))
+            trial.set_user_attr("candidate_group", "random_startup" if observed < STARTUP_TRIALS else "tpe")
         params = {name: trial.suggest_categorical(name, choices) for name, choices in SPACE.items()}
         require(signature(params) in sampler.remaining, "duplicate trial parameters")
         sampler.reserve(params)
@@ -412,18 +394,33 @@ def run_study(dataset, root, study, sampler, gpu, uuid, lock_fd):
         refresh(dataset, study, root, "queued", gpu=gpu)
 
 
-def after_legacy(dataset, root, study, sampler, gpu, uuid, lock_fd):
-    while not history_seed.legacy_finished(dataset):
+def previous_study_drained(run, dataset):
+    root = BASE.parent / run / "code" / "DCCL" / "DCCL" / "train_output" / run / dataset
+    status = read_json(root / "search_status.json")
+    if status["state"] not in ("paused", "stopped", "complete") or status["active"] is not None:
+        return False
+    uri = (root / "study.sqlite3").resolve().as_uri() + "?mode=ro"
+    with sqlite3.connect(uri, uri=True, timeout=20) as conn:
+        return conn.execute("SELECT 1 FROM trials WHERE state='RUNNING' LIMIT 1").fetchone() is None
+
+
+def pending_handoff(dataset):
+    runs = (PREVIOUS_RUN, OLDER_VLCS_RUN) if dataset == "VLCS" else (PREVIOUS_RUN,)
+    return [run for run in runs if not previous_study_drained(run, dataset)]
+
+
+def after_previous(dataset, root, study, sampler, gpu, uuid, lock_fd):
+    previous = None
+    while pending := pending_handoff(dataset):
         if PAUSE.exists():
             return refresh(dataset, study, root, "paused", gpu=gpu, reason="requested_before_handoff")
-        refresh(dataset, study, root, "waiting_for_legacy_dataset", gpu=gpu)
+        if pending != previous:
+            refresh(dataset, study, root, "waiting_for_previous_trial", gpu=gpu,
+                    reason="waiting_for:" + ",".join(pending))
+            emit("handoff_wait", dataset=dataset, pending=pending)
+            previous = pending
         time.sleep(30)
-    history_seed.enqueue(dataset, root, study)
-    if not PAUSE.exists():
-        refresh(dataset, study, root, "validating_cuda_smoke", gpu=gpu)
-        with SMOKE_LOCK:
-            if not PAUSE.exists():
-                smoke(dataset, gpu, uuid, lock_fd)
+    emit("handoff_ready", dataset=dataset, gpu=gpu)
     return run_study(dataset, root, study, sampler, gpu, uuid, lock_fd)
 
 
@@ -475,19 +472,15 @@ def main():
         preflight(identities)
         if sys.argv[1:] == ["--prepare"]:
             for dataset, (root, study, _) in studies.items():
-                write_json(root/"history_seed_preview.json", history_seed.seed_plan(dataset))
-                if history_seed.legacy_finished(dataset):
-                    history_seed.enqueue(dataset, root, study)
-                    state = "ready_to_launch"
-                else:
-                    state = "waiting_for_legacy_dataset"
-                refresh(dataset, study, root, state, gpu=GPU_FOR_DATASET[dataset])
+                pending = pending_handoff(dataset)
+                refresh(dataset, study, root, "waiting_for_previous_trial" if pending else "ready_to_launch",
+                        gpu=GPU_FOR_DATASET[dataset], reason="waiting_for:" + ",".join(pending) if pending else None)
             return
         write_json(OUTPUT / "run_status.json", {"state": "running", "gpu": GPU_FOR_DATASET,
                                                  "handoff": "independent_by_dataset"})
         with ThreadPoolExecutor(max_workers=len(studies)) as pool:
             jobs = {
-                dataset: pool.submit(after_legacy, dataset, root, study, sampler, GPU_FOR_DATASET[dataset],
+                dataset: pool.submit(after_previous, dataset, root, study, sampler, GPU_FOR_DATASET[dataset],
                                      identities[GPU_FOR_DATASET[dataset]], lock.fileno())
                 for dataset, (root, study, sampler) in studies.items()
             }

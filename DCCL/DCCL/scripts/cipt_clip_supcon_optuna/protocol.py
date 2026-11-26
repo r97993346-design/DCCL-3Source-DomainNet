@@ -16,10 +16,10 @@ import yaml
 
 CODE = Path(__file__).resolve().parents[2]
 BASE = CODE.parents[1].parent
-RUN_NAME = "cipt_clip_supcon_cosine_optuna_20261126"
+RUN_NAME = "cipt_clip_supcon_cosine_optuna_mincl_20261126"
 OUTPUT = CODE / "train_output" / RUN_NAME
-BRANCH = "feature/cipt-condcov-rd-clip-supcon-cosine-optuna-20261126"
-BASE_COMMIT = "a5069e9199dd49de5a2ed199c076e40707661e1e"
+BRANCH = "experiment/cipt-clip-supcon-mincl-optuna-20261126"
+BASE_COMMIT = "8e25addc9ae0ba32cd48e1673f023997ae000039"
 PAUSE = OUTPUT / "pause_after_trial.request"
 MODEL_COMMIT = "a55914e203d1b3e36706a681550d17e620eb4172"
 DATA = Path("/home/hooasia/lgg/data/repro_dccl_data")
@@ -28,6 +28,7 @@ STEPS = 5001
 CHECK = 300
 BUDGET = 10
 SAMPLER_SEED = 42
+STARTUP_TRIALS = 5
 N_JOBS = 1
 EVAL_STEPS = [*range(0, STEPS, CHECK), STEPS - 1]
 DATASETS = {
@@ -39,10 +40,11 @@ SPACE = {
     "initial_lr": (2e-5, 3e-5),
     "condcov_weight": (0.5, 1.0, 2.0),
     "rd_weight": (0.5, 1.0, 2.0),
-    "contrastive_weight": (0.025, 0.05, 0.1),
+    "contrastive_weight": (0.001, 0.025, 0.05),
     "contrastive_mix": (0.0, 0.25, 0.5, 0.75),
     "prompt_length": (4, 8, 16),
 }
+INITIAL_PARAMS = {name: min(choices) for name, choices in SPACE.items()}
 SEARCH_KEYS = dict(zip(SPACE, (
     "lr", "cipt_condcov_weight", "cipt_env_loss_weight", "cipt_causal_contrastive_weight",
     "cipt_clip_teacher_mix", "cipt_prompt_length",
@@ -151,7 +153,7 @@ def hparams_for(params):
 
 
 def study_name(dataset):
-    return f"{dataset}_condcov_rd_clip_allpos_cosine_seed1"
+    return f"{dataset}_condcov_rd_clip_allpos_cosine_mincl_seed1"
 
 
 def cosine_lr(index, initial_lr, updates=STEPS):

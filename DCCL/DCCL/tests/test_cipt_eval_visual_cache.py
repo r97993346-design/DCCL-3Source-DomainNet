@@ -11,7 +11,7 @@ import torch
 from domainbed.evaluator import Evaluator
 from test_cipt_env_anchor import build
 from test_cipt_clip_supcon_cosine_protocol import SPACE, hparams_for
-from run import PRE_CACHE_COMMIT, record_eval_cache_protocol
+from run import record_eval_cache_protocol
 
 
 def model_for_test():
@@ -132,18 +132,15 @@ class EvalVisualCacheTests(unittest.TestCase):
                           dict(cipt_contrastive_type="neighbor_retention")):
             self.assertFalse(enabled(SimpleNamespace(**args), dict(params, **overrides)))
 
-    def test_existing_study_manifest_preserves_original_and_rejects_protocol_changes(self):
+    def test_new_study_manifest_rejects_protocol_changes(self):
         with TemporaryDirectory() as tmp:
             output = Path(tmp)
-            original = {"code_commit": PRE_CACHE_COMMIT, "study_names": {"PACS": "existing_study"}, "steps": 5001}
-            path = output / "protocol.json"
-            path.write_text(json.dumps(original))
-            plan = dict(original, code_commit="cache-commit")
+            plan = {"code_commit": "search-commit", "study_names": {"PACS": "new_study"}, "steps": 5001}
             record_eval_cache_protocol(output, plan)
             record_eval_cache_protocol(output, plan)
-            self.assertEqual(json.loads(path.read_text()), original)
+            self.assertEqual(json.loads((output / "protocol.json").read_text()), plan)
             rollout = json.loads((output / "eval_visual_cache_protocol.json").read_text())
             self.assertEqual(rollout["code_commit"], plan["code_commit"])
-            self.assertEqual(rollout["study_names"], original["study_names"])
+            self.assertEqual(rollout["study_names"], plan["study_names"])
             with self.assertRaisesRegex(ValueError, "protocol changed"):
                 record_eval_cache_protocol(output, dict(plan, steps=9000))

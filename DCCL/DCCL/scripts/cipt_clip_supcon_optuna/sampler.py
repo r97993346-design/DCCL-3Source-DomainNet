@@ -8,13 +8,13 @@ from optuna.samplers import TPESampler
 from optuna.samplers._tpe.sampler import _split_trials
 from optuna.trial import TrialState
 
-from protocol import SAMPLER_SEED, SPACE, read_json, require, signature, write_json
+from protocol import SAMPLER_SEED, SPACE, STARTUP_TRIALS, read_json, require, signature, write_json
 
 
 class UniqueTPE(TPESampler):
     def __init__(self, rng_state):
         require(optuna.__version__ == "4.9.0", "the independent categorical mask was audited on Optuna 4.9.0")
-        super().__init__(multivariate=False, n_startup_trials=5, n_ei_candidates=24, seed=SAMPLER_SEED)
+        super().__init__(multivariate=False, n_startup_trials=STARTUP_TRIALS, n_ei_candidates=24, seed=SAMPLER_SEED)
         self.remaining = set(itertools.product(*SPACE.values()))
         self.rng_state = rng_state
         if rng_state.exists():

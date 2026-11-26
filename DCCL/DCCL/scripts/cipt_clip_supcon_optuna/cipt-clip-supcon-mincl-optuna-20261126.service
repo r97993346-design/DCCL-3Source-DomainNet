@@ -1,15 +1,15 @@
 [Unit]
-Description=Independent CondCov RD CLIP SupCon cosine Optuna Studies
+Description=Independent CondCov RD CLIP SupCon minimum-weight Optuna studies
 StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-WorkingDirectory=/media/hooasia/data/cipt_clip_supcon_cosine_optuna_20261126/code/DCCL/DCCL
+WorkingDirectory=/media/hooasia/data/cipt_clip_supcon_cosine_optuna_mincl_20261126/code/DCCL/DCCL
 ExecStartPre=/usr/bin/mountpoint -q /media/hooasia/data
 ExecStart=/home/hooasia/miniconda3/envs/dccl/bin/python -B -u scripts/cipt_clip_supcon_optuna/run.py
 Restart=on-failure
 RestartSec=60
-StandardOutput=append:/media/hooasia/data/cipt_clip_supcon_cosine_optuna_20261126/queue-console.log
+StandardOutput=append:/media/hooasia/data/cipt_clip_supcon_cosine_optuna_mincl_20261126/queue-console.log
 StandardError=inherit
 
 [Install]
