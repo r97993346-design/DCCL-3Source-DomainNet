@@ -70,3 +70,41 @@ Registry claimed VLCS T1 70a97303534b71d11c629bdc8172658bdfd0fecf75d6868dad68040
 {"time": "2026-11-27T22:44:09.868842+08:00", "event": "fold_completed", "dataset": "VLCS", "trial": 1, "fold": 2, "domain": "Pascal", "seed": 374236774, "selected_step": 3300, "iid": 0.8704183635690484, "test_in": 0.8704183635690484, "test_out": 0.8607407407407407, "source_val": 0.8820181280908854, "final_step": 5000, "updates": 5001, "scheduler_updates": 5001, "evaluations": 18, "final_iid": 0.8700481303221029, "final_test_out": 0.8607407407407407, "final_source_val": 0.881898511781728, "log": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env2/attempt_001/raw/VLCS/261127_21-59-01_VLCS_trial1_fold2/results.jsonl", "learning_rates": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env2/attempt_001/learning_rates.jsonl", "actual_prompt_length": 4, "elapsed_seconds": 2711.0}
 {"time": "2026-11-27T22:44:19.301959+08:00", "event": "fold_started", "dataset": "VLCS", "trial": 1, "fold": 3, "updates": 5001, "gpu": 0, "mem_available_kib": 118469420, "pid": 160655}
 {"time": "2026-11-27T23:31:28.847035+08:00", "event": "fold_completed", "dataset": "VLCS", "trial": 1, "fold": 3, "domain": "SUN", "seed": 733132323, "selected_step": 4500, "iid": 0.7989337395277989, "test_in": 0.7989337395277989, "test_out": 0.7972560975609756, "source_val": 0.9001464741577736, "final_step": 5000, "updates": 5001, "scheduler_updates": 5001, "evaluations": 18, "final_iid": 0.7974105102817974, "final_test_out": 0.7957317073170732, "final_source_val": 0.9001464741577736, "log": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env3/attempt_001/raw/VLCS/261127_22-44-22_VLCS_trial1_fold3/results.jsonl", "learning_rates": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env3/attempt_001/learning_rates.jsonl", "actual_prompt_length": 4, "elapsed_seconds": 2829.0}
+[results/vlcs-fixed6-tpe-lr1e5-prompt-rd3-condcov3-20261127 1e67097] Update VLCS fixed-six study records
+ 38 files changed, 22426 insertions(+), 7 deletions(-)
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/config.json
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env0/attempt_001/console.log
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env0/attempt_001/elapsed_seconds
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env0/attempt_001/exit_code
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env0/attempt_001/learning_rates.jsonl
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env0/attempt_001/raw/VLCS/261127_20-30-16_VLCS_trial1_fold0/log.txt
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env0/attempt_001/raw/VLCS/261127_20-30-16_VLCS_trial1_fold0/results.jsonl
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env1/attempt_001/console.log
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env1/attempt_001/elapsed_seconds
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env1/attempt_001/exit_code
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env1/attempt_001/learning_rates.jsonl
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env1/attempt_001/raw/VLCS/261127_21-14-44_VLCS_trial1_fold1/log.txt
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env1/attempt_001/raw/VLCS/261127_21-14-44_VLCS_trial1_fold1/results.jsonl
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env2/attempt_001/console.log
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env2/attempt_001/elapsed_seconds
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env2/attempt_001/exit_code
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env2/attempt_001/learning_rates.jsonl
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env2/attempt_001/raw/VLCS/261127_21-59-01_VLCS_trial1_fold2/log.txt
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env2/attempt_001/raw/VLCS/261127_21-59-01_VLCS_trial1_fold2/results.jsonl
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env3/attempt_001/console.log
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env3/attempt_001/elapsed_seconds
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env3/attempt_001/exit_code
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env3/attempt_001/learning_rates.jsonl
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env3/attempt_001/raw/VLCS/261127_22-44-22_VLCS_trial1_fold3/log.txt
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/env3/attempt_001/raw/VLCS/261127_22-44-22_VLCS_trial1_fold3/results.jsonl
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/fold_0.json
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/fold_1.json
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/fold_2.json
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/fold_3.json
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/registry_manifest.json
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_001/result.json
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/best_iid.json
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/best_source_val.json
+ create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/best_test_out.json
+fatal: unable to access 'https://github.com/r97993346-design/DCCL-3Source-DomainNet.git/': Failed to connect to github.com port 443 after 129661 ms: Connection timed out
+Registry operation delayed: CalledProcessError: Command '['git', '-c', 'core.hooksPath=/dev/null', '-C', '/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/.github-sync', 'push', 'origin', 'HEAD:refs/heads/results/vlcs-fixed6-tpe-lr1e5-prompt-rd3-condcov3-20261127']' returned non-zero exit status 128.
