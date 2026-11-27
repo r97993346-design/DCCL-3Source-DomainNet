@@ -6,7 +6,7 @@
     "OfficeHome": {
       "state": "running",
       "completed_trials": 5,
-      "completed_folds": 20,
+      "completed_folds": 21,
       "trial_states": {
         "COMPLETE": 5,
         "RUNNING": 1
@@ -22,19 +22,12 @@
             "contrastive_mix": 0.5,
             "prompt_length": 16
           },
-          "completed_folds": 0,
-          "current_target": "Art",
+          "completed_folds": 1,
+          "current_target": "Clipart",
           "latest_attempt": {
-            "path": "OfficeHome/trials/trial_005/env0/attempt_001",
+            "path": "OfficeHome/trials/trial_005/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4800,
-              "test_in": 0.8357363542739444,
-              "test_out": 0.8824742268041237,
-              "train_out": 0.8879901611401542,
-              "eval_time": 13.195523262023926,
-              "eval_visual_cache_hit_splits": 8
-            }
+            "last_evaluation": {}
           }
         }
       ],
@@ -67,11 +60,11 @@
             "path": "PACS/trials/trial_013/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 2700,
+              "step": 3300,
               "test_in": 0.9985029940119761,
               "test_out": 1.0,
-              "train_out": 0.9814055212346835,
-              "eval_time": 1.5060114860534668,
+              "train_out": 0.982679406585002,
+              "eval_time": 1.4982781410217285,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -121,5 +114,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T02:22:28+08:00"
+  "synced_at": "2026-11-28T02:25:02+08:00"
 }
