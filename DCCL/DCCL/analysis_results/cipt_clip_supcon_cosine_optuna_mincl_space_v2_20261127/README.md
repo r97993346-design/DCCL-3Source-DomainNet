@@ -3,7 +3,7 @@
 | 数据集 | 已完成 Trial | 已完成目标域 | 运行状态 |
 | --- | ---: | ---: | --- |
 | OfficeHome | 5 | 21 | running |
-| PACS | 13 | 55 | running |
+| PACS | 13 | 56 | running |
 | VLCS | 1 | 5 | running |
 
 - [同步时间和运行进度](snapshot.json)
