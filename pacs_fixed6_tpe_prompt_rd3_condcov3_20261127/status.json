@@ -2,13 +2,13 @@
   "state": "running",
   "gpu": 0,
   "active": {
-    "trial_id": 5,
+    "trial_id": 30,
     "params": {
       "condcov_weight": 3.0,
-      "rd_weight": 3.0,
+      "rd_weight": 2.0,
       "contrastive_weight": 0.025,
       "contrastive_mix": 0.25,
-      "prompt_length": 8,
+      "prompt_length": 16,
       "initial_lr": 2e-05
     },
     "target": "Sketch",
