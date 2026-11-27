@@ -21,7 +21,7 @@ from optuna.trial import TrialState
 
 from protocol import (
     BASE, BASE_COMMIT, BRANCH, BUDGET, CHECK, CLIP, CODE, DATA, DATASETS, EVAL_STEPS, FIXED_ARGS,
-    INITIAL_PARAMS, LR_POLICY, MODEL_COMMIT, N_JOBS, OUTPUT, PAUSE, SAMPLER_SEED, SPACE, STARTUP_TRIALS, STEPS,
+    LR_POLICY, MODEL_COMMIT, N_JOBS, OUTPUT, PAUSE, SAMPLER_SEED, SPACE, STARTUP_TRIALS, STEPS,
     budget_for, command, cosine_lr, OLD_OUTPUT, OLD_RUN_NAME, space_for,
     fixed_hparams, git, hparams_for, read_json, read_rows, require, seed_for, signature,
     study_name, summarize, validate_fold, write_json, write_text,
@@ -171,15 +171,6 @@ def preflight(identities):
         emit("preflight_verified", dataset=dataset, params=params)
 
 
-def enqueue_initial_trial(study):
-    trials = study.get_trials(deepcopy=False)
-    if not trials:
-        study.enqueue_trial(INITIAL_PARAMS, user_attrs={"candidate_group": "enqueued_minimum"})
-        return
-    require(trials[0].number == 0 and trials[0].system_attrs.get("fixed_params") == INITIAL_PARAMS
-            and all("fixed_params" not in trial.system_attrs for trial in trials[1:]),
-            "unexpected fixed candidates in the new study")
-
 
 def open_studies():
     studies = {}
@@ -320,23 +311,6 @@ class FoldFailed(RuntimeError):
     pass
 
 
-def admit_trial(study, sampler):
-    with TRIAL_ADMISSION, (BASE / ".control.lock").open("a") as guard:
-        fcntl.flock(guard, fcntl.LOCK_EX)
-        if PAUSE.exists():
-            return None
-        require(sampler.remaining, "categorical search space exhausted")
-        trial = study.ask()
-        trial.set_user_attr("origin", "new")
-        if trial.number != 0:
-            observed = len(study.get_trials(deepcopy=False, states=(TrialState.COMPLETE, TrialState.PRUNED)))
-            trial.set_user_attr("candidate_group", "random_startup" if observed < STARTUP_TRIALS else "tpe")
-        params = {name: trial.suggest_categorical(name, choices) for name, choices in SPACE.items()}
-        require(signature(params) in sampler.remaining, "duplicate trial parameters")
-        sampler.reserve(params)
-        sampler.checkpoint_rng()
-        return trial.number, params
-
 
 def finish_trial(root, dataset, study, number, params, gpu, env, lock_fd, on_fold=None):
     trial = root / "trials" / f"trial_{number:03d}"
@@ -373,38 +347,6 @@ def finish_trial(root, dataset, study, number, params, gpu, env, lock_fd, on_fol
     return result
 
 
-def run_study(dataset, root, study, sampler, gpu, uuid, lock_fd):
-    env = environment_for(uuid)
-    while True:
-        pending = study.get_trials(deepcopy=False, states=(TrialState.RUNNING,))
-        require(len(pending) <= 1, "more than one active Trial in a study")
-        if pending:
-            trial = pending[0]
-            if set(trial.params) != set(SPACE):
-                study.tell(trial.number, state=TrialState.FAIL)
-                emit("abandoned_partial_suggestion", dataset=dataset, trial=trial.number)
-                continue
-            next_trial = trial.number, trial.params
-        else:
-            complete = study.get_trials(deepcopy=False, states=(TrialState.COMPLETE,))
-            if any(read_json(root/"trials"/f"trial_{t.number:03d}"/"result.json")["iid"] >= DATASETS[dataset][1]
-                   for t in complete):
-                return refresh(dataset, study, root, "complete", gpu=gpu, reason="iid_target_reached")
-            if len(complete) >= budget_for(OUTPUT, dataset):
-                return refresh(dataset, study, root, "complete", gpu=gpu, reason="completed_trial_budget")
-            next_trial = admit_trial(study, sampler)
-            if next_trial is None:
-                return refresh(dataset, study, root, "paused", gpu=gpu, reason="requested_after_current_trial")
-        number, params = next_trial
-        result = finish_trial(root, dataset, study, number, params, gpu, env, lock_fd)
-        if "error" in result:
-            study.tell(number, state=TrialState.FAIL)
-            emit("trial_failed", dataset=dataset, trial=number, error=result["error"])
-        else:
-            study.tell(number, result["source_val"])
-            emit("trial_completed", dataset=dataset, trial=number, source_val=result["source_val"], iid=result["iid"])
-        refresh(dataset, study, root, "queued", gpu=gpu)
-
 
 def previous_study_drained(run, dataset):
     root = BASE.parent / run / "code" / "DCCL" / "DCCL" / "train_output" / run / dataset
@@ -420,20 +362,6 @@ def pending_handoff(dataset):
     runs = (PREVIOUS_RUN, OLDER_VLCS_RUN) if dataset == "VLCS" else (PREVIOUS_RUN,)
     return [run for run in runs if not previous_study_drained(run, dataset)]
 
-
-def after_previous(dataset, root, study, sampler, gpu, uuid, lock_fd):
-    previous = None
-    while pending := pending_handoff(dataset):
-        if PAUSE.exists():
-            return refresh(dataset, study, root, "paused", gpu=gpu, reason="requested_before_handoff")
-        if pending != previous:
-            refresh(dataset, study, root, "waiting_for_previous_trial", gpu=gpu,
-                    reason="waiting_for:" + ",".join(pending))
-            emit("handoff_wait", dataset=dataset, pending=pending)
-            previous = pending
-        time.sleep(30)
-    emit("handoff_ready", dataset=dataset, gpu=gpu)
-    return run_study(dataset, root, study, sampler, gpu, uuid, lock_fd)
 
 
 def control(flag):

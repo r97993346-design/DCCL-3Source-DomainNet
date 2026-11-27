@@ -165,7 +165,12 @@ def peer_ready(registry):
         if claim_key.is_absolute() or ".." in claim_key.parts or not (root / claim_key).is_file():
             return False
         receipt = read_json(root / claim_key)
-        return receipt.get("server_id") == PEER and receipt.get("owner_token") is not None
+        effective = receipt.get("effective_config") or {}
+        if receipt.get("server_id") != PEER or not receipt.get("owner_token"):
+            return False
+        return (claim_key == registry.key(receipt["dataset"], receipt["config_hash"])
+                and effective.get("dataset") == receipt["dataset"]
+                and digest(effective) == receipt["config_hash"])
 
 
 def sha_file(path):
@@ -327,6 +332,38 @@ def reuse(root, dataset, trial, params, config, registry, record):
     return result
 
 
+def register_history(dataset, root, study, registry, source):
+    marker = root / "registry_migration.json"
+    if marker.exists():
+        return
+    imported = [t for t in study.get_trials(deepcopy=False) if t.user_attrs.get("origin") == "imported"]
+    pending = []
+    for trial in imported:
+        config = config_for(dataset, trial.params, source)
+        key = digest(config)
+        result_path = root/"trials"/f"trial_{trial.number:03d}"/"result.json"
+        result = read_json(result_path)
+        if result.get("config_hash") != key:
+            write_json(result_path, dict(result, config_hash=key))
+        pending.append((trial.number, config, key))
+    request_sync()
+    recorded = []
+    for number, config, key in pending:
+        token = digest({"server": SERVER, "study": study.study_name, "configuration": key})
+        won, remote = registry.claim(config, server_id=SERVER, study=study.study_name,
+            trial_id=number, commit=git("rev-parse", "HEAD"), owner_token=token)
+        if won:
+            ref, path = archive_location(root, number)
+            registry.progress(registry.key(dataset, key), token, completed_folds=list(range(4)))
+            _, remote = registry.complete(registry.key(dataset, key), token, ref, path,
+                lambda m: {k: sum(f[k] for f in m["folds"])/4 for k in ("source_val","iid","test_out")})
+            if not remote or remote["status"] != "COMPLETE":
+                raise Unavailable("historical completion could not be confirmed")
+        recorded.append({"trial": number, "config_hash": key, "registry_state": remote["status"],
+                         "registry_server": remote["server_id"]})
+    write_json(marker, {"dataset": dataset, "verified_history_in_registry": recorded})
+
+
 def after_boundary(dataset, root, study, sampler, gpu, gpu_uuid, lock_fd):
     while not runner.previous_study_drained(OLD_RUN_NAME, dataset):
         runner.refresh(dataset, study, root, "waiting_for_previous_trial", gpu=gpu)
@@ -355,6 +392,7 @@ def after_boundary(dataset, root, study, sampler, gpu, gpu_uuid, lock_fd):
             # Reading the current registry is required even for a local resumed trial.
             if source is None:
                 source = identity(dataset)
+            register_history(dataset, root, study, registry, source)
             if pending:
                 frozen, = pending
                 trial = optuna.trial.Trial(study, frozen._trial_id)
