@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_005/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 2700,
-              "test_in": 0.9225788288288288,
-              "test_out": 0.9098083427282976,
-              "train_out": 0.8772138952782129,
-              "eval_time": 9.055124759674072,
+              "step": 3000,
+              "test_in": 0.9222972972972973,
+              "test_out": 0.9086809470124013,
+              "train_out": 0.8782083941031471,
+              "eval_time": 8.32552719116211,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -99,11 +99,11 @@
             "path": "VLCS/trials/trial_001/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 4200,
-              "test_in": 0.8593113661606813,
-              "test_out": 0.8562962962962963,
-              "train_out": 0.8807206554801967,
-              "eval_time": 1.3313584327697754,
+              "step": 4500,
+              "test_in": 0.8600518326545724,
+              "test_out": 0.8533333333333334,
+              "train_out": 0.8808402717893542,
+              "eval_time": 1.3485383987426758,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -114,5 +114,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T05:14:19+08:00"
+  "synced_at": "2026-11-28T05:15:30+08:00"
 }
