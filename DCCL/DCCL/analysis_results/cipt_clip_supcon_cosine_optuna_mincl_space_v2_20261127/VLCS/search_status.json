@@ -1,13 +1,25 @@
 {
   "dataset": "VLCS",
   "study_name": "VLCS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1",
-  "state": "waiting_for_registry",
+  "state": "running",
   "gpu": 0,
   "n_jobs": 1,
   "complete_trials": 0,
   "budget": 648,
-  "active": null,
-  "stop_reason": "reservation update unconfirmed",
+  "active": {
+    "trial_id": 0,
+    "params": {
+      "initial_lr": 1e-05,
+      "condcov_weight": 0.5,
+      "rd_weight": 1.0,
+      "contrastive_weight": 0.025,
+      "contrastive_mix": 0.75,
+      "prompt_length": 4
+    },
+    "target": "Caltech",
+    "completed_folds": 0
+  },
+  "stop_reason": null,
   "iid_reference_target": 0.845,
   "iid_reference_reached": false,
   "best_source_val": null,
@@ -29,8 +41,12 @@
         "prompt_length": 4
       },
       "completed_folds": 0,
-      "current_target": null,
-      "latest_attempt": null
+      "current_target": "Caltech",
+      "latest_attempt": {
+        "path": "VLCS/trials/trial_000/env0/attempt_001",
+        "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
+        "last_evaluation": {}
+      }
     }
   ]
 }
