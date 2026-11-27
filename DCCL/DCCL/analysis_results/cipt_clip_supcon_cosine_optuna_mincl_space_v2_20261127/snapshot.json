@@ -99,11 +99,11 @@
             "path": "VLCS/trials/trial_001/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3900,
-              "test_in": 0.8596815994076268,
+              "step": 4200,
+              "test_in": 0.8593113661606813,
               "test_out": 0.8562962962962963,
-              "train_out": 0.8808402717893542,
-              "eval_time": 2.179631233215332,
+              "train_out": 0.8807206554801967,
+              "eval_time": 1.3313584327697754,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -114,5 +114,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T05:08:48+08:00"
+  "synced_at": "2026-11-28T05:09:55+08:00"
 }
