@@ -3,8 +3,8 @@
 | 数据集 | 已完成 Trial | 已完成目标域 | 运行状态 |
 | --- | ---: | ---: | --- |
 | OfficeHome | 5 | 21 | running |
-| PACS | 13 | 54 | running |
-| VLCS | 1 | 4 | running |
+| PACS | 13 | 55 | running |
+| VLCS | 1 | 5 | running |
 
 - [同步时间和运行进度](snapshot.json)
 - [Trial 汇总](trials_summary.csv) · [目标域汇总](folds_summary.csv)
