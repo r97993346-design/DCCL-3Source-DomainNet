@@ -16,8 +16,8 @@
       "contrastive_mix": 0.75,
       "prompt_length": 8
     },
-    "target": "Cartoon",
-    "completed_folds": 1
+    "target": "Sketch",
+    "completed_folds": 3
   },
   "stop_reason": null,
   "iid_reference_target": 0.975,
@@ -78,7 +78,7 @@
         "prompt_length": 8
       },
       "completed_folds": 4,
-      "current_target": "Cartoon",
+      "current_target": "Sketch",
       "latest_attempt": null
     }
   ]

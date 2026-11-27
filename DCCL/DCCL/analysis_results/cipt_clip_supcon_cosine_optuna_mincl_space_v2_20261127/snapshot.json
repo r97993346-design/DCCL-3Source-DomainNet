@@ -33,7 +33,7 @@
             "prompt_length": 8
           },
           "completed_folds": 4,
-          "current_target": "Cartoon",
+          "current_target": "Sketch",
           "latest_attempt": null
         }
       ],
@@ -80,5 +80,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T19:09:02+08:00"
+  "synced_at": "2026-11-27T19:09:34+08:00"
 }
