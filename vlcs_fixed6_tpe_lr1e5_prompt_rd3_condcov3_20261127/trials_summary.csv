@@ -1,1 +1,2 @@
 trial,state,condcov_weight,rd_weight,contrastive_weight,contrastive_mix,prompt_length,initial_lr,origin,source_val,iid,test_in,test_out,elapsed_seconds,error
+0,RUNNING,2.0,2.0,0.1,0.5,8,1e-05,fixed_T0,,,,,,

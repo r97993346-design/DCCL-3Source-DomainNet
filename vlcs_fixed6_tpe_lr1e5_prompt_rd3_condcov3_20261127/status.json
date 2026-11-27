@@ -1,0 +1,17 @@
+{
+  "state": "running",
+  "gpu": 0,
+  "active": {
+    "trial_id": 0,
+    "params": {
+      "condcov_weight": 2.0,
+      "rd_weight": 2.0,
+      "contrastive_weight": 0.1,
+      "contrastive_mix": 0.5,
+      "prompt_length": 8,
+      "initial_lr": 1e-05
+    },
+    "target": "SUN",
+    "completed_folds": 3
+  }
+}
