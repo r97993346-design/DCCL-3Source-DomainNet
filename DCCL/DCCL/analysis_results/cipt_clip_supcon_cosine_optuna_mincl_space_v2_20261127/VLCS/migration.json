@@ -1,0 +1,53 @@
+{
+  "source_search": "cipt_clip_supcon_cosine_optuna_mincl_20261126",
+  "dataset": "VLCS",
+  "imported": [],
+  "excluded": [
+    {
+      "number": 0,
+      "state": "COMPLETE",
+      "params": {
+        "condcov_weight": 0.5,
+        "contrastive_mix": 0.0,
+        "contrastive_weight": 0.001,
+        "initial_lr": 2e-05,
+        "prompt_length": 4,
+        "rd_weight": 0.5
+      },
+      "objective": 0.8893378583385645,
+      "reason": "old_initial_lr_outside_new_space",
+      "reference_only": true
+    },
+    {
+      "number": 1,
+      "state": "COMPLETE",
+      "params": {
+        "condcov_weight": 0.5,
+        "contrastive_mix": 0.0,
+        "contrastive_weight": 0.025,
+        "initial_lr": 3e-05,
+        "prompt_length": 16,
+        "rd_weight": 2.0
+      },
+      "objective": 0.8896409718255863,
+      "reason": "old_initial_lr_outside_new_space",
+      "reference_only": true
+    },
+    {
+      "number": 2,
+      "state": "COMPLETE",
+      "params": {
+        "condcov_weight": 0.5,
+        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.05,
+        "initial_lr": 2e-05,
+        "prompt_length": 8,
+        "rd_weight": 2.0
+      },
+      "objective": 0.888727958081513,
+      "reason": "old_initial_lr_outside_new_space",
+      "reference_only": true
+    }
+  ],
+  "historical_complete": 3
+}
