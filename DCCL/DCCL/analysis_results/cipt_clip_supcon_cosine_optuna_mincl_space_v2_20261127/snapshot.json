@@ -16,7 +16,7 @@
     "PACS": {
       "state": "running",
       "completed_trials": 9,
-      "completed_folds": 38,
+      "completed_folds": 39,
       "trial_states": {
         "COMPLETE": 9,
         "RUNNING": 1
@@ -32,20 +32,9 @@
             "contrastive_mix": 0.75,
             "prompt_length": 8
           },
-          "completed_folds": 2,
+          "completed_folds": 3,
           "current_target": "Photo",
-          "latest_attempt": {
-            "path": "PACS/trials/trial_009/env2/attempt_001",
-            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4800,
-              "test_in": 0.9985029940119761,
-              "test_out": 1.0,
-              "train_out": 0.9806932705224329,
-              "eval_time": 1.2646708488464355,
-              "eval_visual_cache_hit_splits": 8
-            }
-          }
+          "latest_attempt": null
         }
       ],
       "gpu": 0,
@@ -91,5 +80,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T18:34:04+08:00"
+  "synced_at": "2026-11-27T18:35:13+08:00"
 }
