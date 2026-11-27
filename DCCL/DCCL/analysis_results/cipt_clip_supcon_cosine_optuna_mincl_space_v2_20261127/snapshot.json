@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_005/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 600,
-              "test_in": 0.8259526261585994,
-              "test_out": 0.8804123711340206,
-              "train_out": 0.8651503420666589,
-              "eval_time": 12.572335243225098,
+              "step": 900,
+              "test_in": 0.8398558187435633,
+              "test_out": 0.8907216494845361,
+              "train_out": 0.8704528311879229,
+              "eval_time": 12.116495132446289,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -45,7 +45,7 @@
     "PACS": {
       "state": "running",
       "completed_trials": 13,
-      "completed_folds": 52,
+      "completed_folds": 53,
       "trial_states": {
         "COMPLETE": 13,
         "RUNNING": 1
@@ -61,20 +61,9 @@
             "contrastive_mix": 0.5,
             "prompt_length": 8
           },
-          "completed_folds": 0,
+          "completed_folds": 1,
           "current_target": "Art Painting",
-          "latest_attempt": {
-            "path": "PACS/trials/trial_013/env0/attempt_001",
-            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4500,
-              "test_in": 0.9810860280658938,
-              "test_out": 0.980440097799511,
-              "train_out": 0.9842751374598508,
-              "eval_time": 1.3756897449493408,
-              "eval_visual_cache_hit_splits": 8
-            }
-          }
+          "latest_attempt": null
         }
       ],
       "gpu": 0,
@@ -121,5 +110,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T01:30:00+08:00"
+  "synced_at": "2026-11-28T01:31:23+08:00"
 }
