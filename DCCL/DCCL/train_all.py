@@ -74,7 +74,7 @@ def main():
     parser = argparse.ArgumentParser(description="Domain generalization")
     parser.add_argument("name", type=str)
     parser.add_argument("configs", nargs="*")
-    parser.add_argument("--data_dir", type=str, default="datadir/")
+    parser.add_argument("--data_dir", type=str, default="/root/autodl-tmp/datasets")
     parser.add_argument("--dataset", type=str, default="PACS")
     parser.add_argument("--algorithm", type=str, default="DCCL")
     parser.add_argument(
@@ -174,7 +174,7 @@ def main():
     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
     parser.add_argument("--cipt_enabled", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--cipt_clip_backbone", default="ViT-B/16")
-    parser.add_argument("--cipt_clip_path", default="", help="Local OpenAI CLIP checkpoint (offline-safe)")
+    parser.add_argument("--cipt_clip_path", default="/root/autodl-tmp/weights/ViT-B-16.pt", help="Local OpenAI CLIP checkpoint (offline-safe)")
     parser.add_argument("--cipt_beta", type=float, default=4.0)
     parser.add_argument("--cipt_gamma", type=float, default=5.0)
     parser.add_argument("--ind_mode", choices=IND_MODES,
@@ -203,7 +203,7 @@ def main():
     parser.add_argument(
         "--output_root",
         type=str,
-        default="train_output",
+        default="/root/autodl-tmp/outputs",
         help="Root directory for training outputs"
     )
     args, left_argv = parser.parse_known_args()

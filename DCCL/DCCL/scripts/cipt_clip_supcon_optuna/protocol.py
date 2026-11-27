@@ -16,14 +16,15 @@ import yaml
 
 CODE = Path(__file__).resolve().parents[2]
 BASE = CODE.parents[1].parent
-RUN_NAME = "cipt_clip_supcon_cosine_optuna_mincl_20261126"
-OUTPUT = CODE / "train_output" / RUN_NAME
-BRANCH = "experiment/cipt-clip-supcon-mincl-optuna-20261126"
+RUN_NAME = "cipt_clip_supcon_cosine_optuna_autodl"
+OUTPUT = BASE / "outputs" / RUN_NAME
+OPTUNA = BASE / "optuna" / RUN_NAME
+BRANCH = "autodl-cipt"
 BASE_COMMIT = "8e25addc9ae0ba32cd48e1673f023997ae000039"
 PAUSE = OUTPUT / "pause_after_trial.request"
 MODEL_COMMIT = "a55914e203d1b3e36706a681550d17e620eb4172"
-DATA = Path("/home/hooasia/lgg/data/repro_dccl_data")
-CLIP = Path("/home/hooasia/.cache/clip/ViT-B-16.pt")
+DATA = BASE / "datasets"
+CLIP = BASE / "weights" / "ViT-B-16.pt"
 STEPS = 5001
 CHECK = 300
 BUDGET = 10

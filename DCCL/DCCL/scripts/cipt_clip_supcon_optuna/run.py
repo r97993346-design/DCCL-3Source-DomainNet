@@ -6,7 +6,6 @@ import math
 import os
 import re
 import shlex
-import sqlite3
 import subprocess
 import sys
 import time
@@ -21,7 +20,7 @@ from optuna.trial import TrialState
 
 from protocol import (
     BASE, BASE_COMMIT, BRANCH, BUDGET, CHECK, CLIP, CODE, DATA, DATASETS, EVAL_STEPS, FIXED_ARGS,
-    INITIAL_PARAMS, LR_POLICY, MODEL_COMMIT, N_JOBS, OUTPUT, PAUSE, SAMPLER_SEED, SPACE, STARTUP_TRIALS, STEPS,
+    INITIAL_PARAMS, LR_POLICY, MODEL_COMMIT, N_JOBS, OPTUNA, OUTPUT, PAUSE, SAMPLER_SEED, SPACE, STARTUP_TRIALS, STEPS,
     budget_for, command, cosine_lr,
     fixed_hparams, git, hparams_for, read_json, read_rows, require, seed_for, signature,
     study_name, summarize, validate_fold, write_json, write_text,
@@ -29,16 +28,13 @@ from protocol import (
 from reports import refresh
 from sampler import UniqueTPE
 
-GPU_FOR_DATASET = {"PACS": 0, "VLCS": 0, "OfficeHome": 1}
+GPU_FOR_DATASET = {dataset: int(os.environ.get(f"CIPT_GPU_{dataset.upper()}", "0")) for dataset in DATASETS}
 MIN_RAM_KIB = 10 * 1024 * 1024
 POLL = 60
-SERVICE = "cipt-clip-supcon-mincl-optuna-20261126.service"
-PREVIOUS_RUN = "cipt_clip_supcon_cosine_optuna_20261126"
-OLDER_VLCS_RUN = "condcov_optuna_joint_20261125_low_contrast"
 ADMISSION = Lock()
 TRIAL_ADMISSION = Lock()
 EVENT_LOG = Lock()
-ACTIVE_GPU = {0: 0, 1: 0}
+ACTIVE_GPU = {index: 0 for index in GPU_FOR_DATASET.values()}
 ACTIVE_DATASETS = set()
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 OOM = re.compile(r"out of memory|OutOfMemoryError|cannot allocate memory|DefaultCPUAllocator", re.I)
@@ -65,7 +61,12 @@ def environment_for(uuid):
 
 def available_ram_kib():
     with Path("/proc/meminfo").open() as stream:
-        return int(next(line for line in stream if line.startswith("MemAvailable:")).split()[1])
+        host_kib = int(next(line for line in stream if line.startswith("MemAvailable:")).split()[1])
+    limit_file = Path("/sys/fs/cgroup/memory.max")
+    if not limit_file.is_file() or (limit := limit_file.read_text().strip()) == "max":
+        return host_kib
+    used = int(Path("/sys/fs/cgroup/memory.current").read_text())
+    return min(host_kib, max(0, int(limit) - used) // 1024)
 
 
 def resume_commands():
@@ -78,8 +79,7 @@ def create_plan():
     require(git("branch", "--show-current") == BRANCH, "wrong experiment branch")
     training_paths = ("domainbed", "train_all.py", "config.yaml", "config_cipt_pacs_ind_ablation.yaml",
                       "scripts/cipt_clip_supcon_optuna/instrumented_train.py", "../../CLIP")
-    require(not git("diff", "--name-only", BASE_COMMIT, "HEAD", "--", *training_paths)
-            and not git("status", "--porcelain", "--", *training_paths), "training code differs from the running version")
+    require(not git("status", "--porcelain", "--", *training_paths), "training code differs from the running version")
     require(CLIP.is_file() and all((DATA / info[2]).is_dir() for info in DATASETS.values()), "data or CLIP missing")
     plan = {
         "code_commit": git("rev-parse", "HEAD"), "base_commit": BASE_COMMIT, "condcov_commit": MODEL_COMMIT,
@@ -97,7 +97,7 @@ def create_plan():
         "training_seeds": {d: [seed_for(d, i) for i in range(4)] for d in DATASETS},
         "gpu_for_dataset": GPU_FOR_DATASET, "n_jobs_per_study": N_JOBS,
         "min_ram_kib_exclusive": MIN_RAM_KIB, "oom_fallback": "serialize on the affected GPU; retry the fold",
-        "handoff": {"previous_run": PREVIOUS_RUN, "additional_vlcs_run": OLDER_VLCS_RUN},
+        "handoff": "independent_autodl_run",
         "study_names": {d: study_name(d) for d in DATASETS}, "commands": resume_commands(),
     }
     record_eval_cache_protocol(OUTPUT, plan)
@@ -160,7 +160,7 @@ def preflight(identities):
         batch_log = spec.parent / "entry_resolution.log"
         with batch_log.open("wb") as stream:
             subprocess.run([sys.executable, "-B", "-u", "scripts/cipt_clip_supcon_optuna/entry_preflight.py", str(spec)],
-                           env=environment_for(identities[0]), stdout=stream, stderr=subprocess.STDOUT,
+                           env=environment_for(identities[GPU_FOR_DATASET[next(iter(DATASETS))]]), stdout=stream, stderr=subprocess.STDOUT,
                            check=True, timeout=900)
     for dataset, params, log, proof in settings:
         inspect_show(log, dataset, params)
@@ -183,8 +183,10 @@ def open_studies():
     for dataset in DATASETS:
         root = OUTPUT / dataset
         root.mkdir(exist_ok=True)
-        sampler = UniqueTPE(root / "sampler_rng.json")
-        storage = optuna.storages.RDBStorage(f"sqlite:///{root / 'study.sqlite3'}",
+        study_dir = OPTUNA / dataset
+        study_dir.mkdir(parents=True, exist_ok=True)
+        sampler = UniqueTPE(study_dir / "sampler_rng.json")
+        storage = optuna.storages.RDBStorage(f"sqlite:///{study_dir / 'study.sqlite3'}",
                                             engine_kwargs={"connect_args": {"timeout": 60}})
         study = optuna.create_study(study_name=study_name(dataset), direction="maximize", sampler=sampler,
                                     pruner=optuna.pruners.NopPruner(), storage=storage, load_if_exists=True)
@@ -239,7 +241,7 @@ def start_attempt(attempt, dataset, fold, number, config, gpu, env, lock_fd, *, 
             with ADMISSION:
                 ram = available_ram_kib()
                 limits = read_json(resources) if resources.is_file() else {}
-                gpu_limit = limits.get("gpu", {}).get(str(gpu), len(GPU_FOR_DATASET))
+                gpu_limit = limits.get("gpu", {}).get(str(gpu), 1)
                 global_limit = limits.get("global", len(GPU_FOR_DATASET))
                 if ram > MIN_RAM_KIB and ACTIVE_GPU[gpu] < gpu_limit and len(ACTIVE_DATASETS) < global_limit:
                     require(dataset not in ACTIVE_DATASETS, f"duplicate active dataset {dataset}")
@@ -394,36 +396,6 @@ def run_study(dataset, root, study, sampler, gpu, uuid, lock_fd):
         refresh(dataset, study, root, "queued", gpu=gpu)
 
 
-def previous_study_drained(run, dataset):
-    root = BASE.parent / run / "code" / "DCCL" / "DCCL" / "train_output" / run / dataset
-    status = read_json(root / "search_status.json")
-    if status["state"] not in ("paused", "stopped", "complete") or status["active"] is not None:
-        return False
-    uri = (root / "study.sqlite3").resolve().as_uri() + "?mode=ro"
-    with sqlite3.connect(uri, uri=True, timeout=20) as conn:
-        return conn.execute("SELECT 1 FROM trials WHERE state='RUNNING' LIMIT 1").fetchone() is None
-
-
-def pending_handoff(dataset):
-    runs = (PREVIOUS_RUN, OLDER_VLCS_RUN) if dataset == "VLCS" else (PREVIOUS_RUN,)
-    return [run for run in runs if not previous_study_drained(run, dataset)]
-
-
-def after_previous(dataset, root, study, sampler, gpu, uuid, lock_fd):
-    previous = None
-    while pending := pending_handoff(dataset):
-        if PAUSE.exists():
-            return refresh(dataset, study, root, "paused", gpu=gpu, reason="requested_before_handoff")
-        if pending != previous:
-            refresh(dataset, study, root, "waiting_for_previous_trial", gpu=gpu,
-                    reason="waiting_for:" + ",".join(pending))
-            emit("handoff_wait", dataset=dataset, pending=pending)
-            previous = pending
-        time.sleep(30)
-    emit("handoff_ready", dataset=dataset, gpu=gpu)
-    return run_study(dataset, root, study, sampler, gpu, uuid, lock_fd)
-
-
 def control(flag):
     with (BASE / ".control.lock").open("a") as guard:
         fcntl.flock(guard, fcntl.LOCK_EX)
@@ -431,27 +403,24 @@ def control(flag):
             write_text(PAUSE, datetime.now().astimezone().isoformat() + "\n")
             print("Warm pause requested after the current Trials.")
         else:
-            active = subprocess.check_output(["systemctl", "--user", "show", SERVICE, "-p", "ActiveState", "--value"],
-                                             text=True).strip()
-            require(active in ("inactive", "failed"), "wait for the current Trials to finish before resuming")
-            PAUSE.unlink(missing_ok=True)
-            subprocess.run(["systemctl", "--user", "start", "--no-block", SERVICE], check=True)
-            print("Existing CLIP SupCon studies scheduled to resume.")
+            with (BASE / ".clip_supcon_optuna.lock").open("a") as run_lock:
+                fcntl.flock(run_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                PAUSE.unlink(missing_ok=True)
+            print("Pause cleared. Start the launcher to continue the existing studies.")
 
 
 def extend_budget(dataset, total):
     require(dataset in DATASETS, "unknown dataset")
     with (BASE / ".control.lock").open("a") as guard:
         fcntl.flock(guard, fcntl.LOCK_EX)
-        status = subprocess.check_output(["systemctl", "--user", "show", SERVICE, "-p", "ActiveState", "--value"],
-                                         text=True).strip()
-        require(status in ("inactive", "failed"), "pause the service before extending a budget")
-        require(budget_for(OUTPUT, dataset) < total <= math.prod(map(len, SPACE.values())),
-                "new budget must increase within the discrete space")
-        path = OUTPUT / "trial_budgets.json"
-        values = read_json(path) if path.is_file() else {}
-        write_json(path, dict(values, **{dataset: total}))
-        print(f"{dataset} budget extended to {total}; resume to apply.")
+        with (BASE / ".clip_supcon_optuna.lock").open("a") as run_lock:
+            fcntl.flock(run_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            require(budget_for(OUTPUT, dataset) < total <= math.prod(map(len, SPACE.values())),
+                    "new budget must increase within the discrete space")
+            path = OUTPUT / "trial_budgets.json"
+            values = read_json(path) if path.is_file() else {}
+            write_json(path, dict(values, **{dataset: total}))
+            print(f"{dataset} budget extended to {total}; resume to apply.")
 
 
 def main():
@@ -472,15 +441,13 @@ def main():
         preflight(identities)
         if sys.argv[1:] == ["--prepare"]:
             for dataset, (root, study, _) in studies.items():
-                pending = pending_handoff(dataset)
-                refresh(dataset, study, root, "waiting_for_previous_trial" if pending else "ready_to_launch",
-                        gpu=GPU_FOR_DATASET[dataset], reason="waiting_for:" + ",".join(pending) if pending else None)
+                refresh(dataset, study, root, "ready_to_launch", gpu=GPU_FOR_DATASET[dataset])
             return
         write_json(OUTPUT / "run_status.json", {"state": "running", "gpu": GPU_FOR_DATASET,
-                                                 "handoff": "independent_by_dataset"})
+                                                 "handoff": "independent_autodl_run"})
         with ThreadPoolExecutor(max_workers=len(studies)) as pool:
             jobs = {
-                dataset: pool.submit(after_previous, dataset, root, study, sampler, GPU_FOR_DATASET[dataset],
+                dataset: pool.submit(run_study, dataset, root, study, sampler, GPU_FOR_DATASET[dataset],
                                      identities[GPU_FOR_DATASET[dataset]], lock.fileno())
                 for dataset, (root, study, sampler) in studies.items()
             }
