@@ -182,3 +182,10 @@ Dataset:
 [36mINFO[0m 11/27 18:07:45 | Target test envs = [[2]]
 [36mINFO[0m 11/27 18:07:45 | 
 [36mINFO[0m 11/27 18:07:45 | Fold RNG: strategy=domainbed_sweep, test_envs=[2], seed=683537036, hparams_seed=0, trial_seed=1
+[36mINFO[0m 11/27 18:07:50 | Testenv name escaping te_photo -> te_photo
+[36mINFO[0m 11/27 18:07:50 | Test envs = [2], name = te_photo
+[36mINFO[0m 11/27 18:07:50 | Source sampling: domain_balanced
+[36mINFO[0m 11/27 18:07:50 | Batch sizes for each domain: [32, 32, 0, 32] (total=96)
+[36mINFO[0m 11/27 18:07:50 | steps-per-epoch for each domain: 51.22, 58.62, 98.25 -> min = 51.22
+[36mINFO[0m 11/27 18:07:50 | DataLoader workers: train=2 per source domain (6 total), eval=0 per loader
+PROMPT_CONTEXT_LENGTH 8
