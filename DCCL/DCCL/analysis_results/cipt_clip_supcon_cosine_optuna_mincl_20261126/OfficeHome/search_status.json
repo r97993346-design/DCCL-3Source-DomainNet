@@ -4,20 +4,20 @@
   "state": "running",
   "gpu": 1,
   "n_jobs": 1,
-  "complete_trials": 2,
+  "complete_trials": 3,
   "budget": 10,
   "active": {
-    "trial_id": 2,
+    "trial_id": 3,
     "params": {
       "initial_lr": 2e-05,
       "condcov_weight": 0.5,
       "rd_weight": 2.0,
-      "contrastive_weight": 0.05,
-      "contrastive_mix": 0.25,
+      "contrastive_weight": 0.025,
+      "contrastive_mix": 0.75,
       "prompt_length": 8
     },
-    "target": "Real World",
-    "completed_folds": 3
+    "target": "Art",
+    "completed_folds": 0
   },
   "stop_reason": null,
   "iid_reference_target": 0.86,
@@ -60,36 +60,29 @@
     "elapsed_seconds": 14692.0,
     "error": null
   },
-  "completed_trials": 2,
-  "completed_folds": 11,
+  "completed_trials": 3,
+  "completed_folds": 12,
   "trial_states": {
-    "COMPLETE": 2,
+    "COMPLETE": 3,
     "RUNNING": 1
   },
   "running_trials": [
     {
-      "trial_id": 2,
+      "trial_id": 3,
       "params": {
         "initial_lr": 2e-05,
         "condcov_weight": 0.5,
         "rd_weight": 2.0,
-        "contrastive_weight": 0.05,
-        "contrastive_mix": 0.25,
+        "contrastive_weight": 0.025,
+        "contrastive_mix": 0.75,
         "prompt_length": 8
       },
-      "completed_folds": 3,
-      "current_target": "Real World",
+      "completed_folds": 0,
+      "current_target": "Art",
       "latest_attempt": {
-        "path": "OfficeHome/trials/trial_002/env3/attempt_001",
+        "path": "OfficeHome/trials/trial_003/env0/attempt_001",
         "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
-        "last_evaluation": {
-          "step": 4200,
-          "test_in": 0.9193918531267928,
-          "test_out": 0.8966704936854191,
-          "train_out": 0.8865817525471869,
-          "eval_time": 8.778697729110718,
-          "eval_visual_cache_hit_splits": 8
-        }
+        "last_evaluation": {}
       }
     }
   ]
