@@ -16,8 +16,8 @@
       "contrastive_mix": 0.25,
       "prompt_length": 8
     },
-    "target": "LabelMe",
-    "completed_folds": 1
+    "target": "Pascal",
+    "completed_folds": 2
   },
   "stop_reason": null,
   "iid_reference_target": 0.845,
@@ -61,7 +61,7 @@
     "error": null
   },
   "completed_trials": 2,
-  "completed_folds": 9,
+  "completed_folds": 10,
   "trial_states": {
     "COMPLETE": 2,
     "RUNNING": 1
@@ -77,17 +77,17 @@
         "contrastive_mix": 0.25,
         "prompt_length": 8
       },
-      "completed_folds": 1,
-      "current_target": "LabelMe",
+      "completed_folds": 2,
+      "current_target": "Pascal",
       "latest_attempt": {
-        "path": "VLCS/trials/trial_002/env1/attempt_001",
+        "path": "VLCS/trials/trial_002/env2/attempt_001",
         "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
         "last_evaluation": {
-          "step": 3300,
-          "test_in": 0.6555294117647059,
-          "test_out": 0.6271186440677966,
-          "train_out": 0.9226204456489009,
-          "eval_time": 2.0796241760253906,
+          "step": 600,
+          "test_in": 0.8641243983709738,
+          "test_out": 0.8562962962962963,
+          "train_out": 0.8705397470641373,
+          "eval_time": 2.0964787006378174,
           "eval_visual_cache_hit_splits": 8
         }
       }
