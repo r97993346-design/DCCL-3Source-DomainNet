@@ -1,25 +1,13 @@
 {
   "dataset": "OfficeHome",
   "study_name": "OfficeHome_condcov_rd_clip_allpos_cosine_mincl_seed1",
-  "state": "draining",
+  "state": "paused",
   "gpu": 1,
   "n_jobs": 1,
-  "complete_trials": 3,
+  "complete_trials": 4,
   "budget": 648,
-  "active": {
-    "trial_id": 3,
-    "params": {
-      "initial_lr": 2e-05,
-      "condcov_weight": 0.5,
-      "rd_weight": 2.0,
-      "contrastive_weight": 0.025,
-      "contrastive_mix": 0.75,
-      "prompt_length": 8
-    },
-    "target": "Real World",
-    "completed_folds": 3
-  },
-  "stop_reason": null,
+  "active": null,
+  "stop_reason": "requested_after_current_trial",
   "iid_reference_target": 0.86,
   "iid_reference_reached": false,
   "best_source_val": {
@@ -60,37 +48,10 @@
     "elapsed_seconds": 14692.0,
     "error": null
   },
-  "completed_trials": 3,
-  "completed_folds": 15,
+  "completed_trials": 4,
+  "completed_folds": 16,
   "trial_states": {
-    "COMPLETE": 3,
-    "RUNNING": 1
+    "COMPLETE": 4
   },
-  "running_trials": [
-    {
-      "trial_id": 3,
-      "params": {
-        "initial_lr": 2e-05,
-        "condcov_weight": 0.5,
-        "rd_weight": 2.0,
-        "contrastive_weight": 0.025,
-        "contrastive_mix": 0.75,
-        "prompt_length": 8
-      },
-      "completed_folds": 3,
-      "current_target": "Real World",
-      "latest_attempt": {
-        "path": "OfficeHome/trials/trial_003/env3/attempt_001",
-        "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
-        "last_evaluation": {
-          "step": 2400,
-          "test_in": 0.9162363740676994,
-          "test_out": 0.8955223880597015,
-          "train_out": 0.8802434554872403,
-          "eval_time": 8.491119384765625,
-          "eval_visual_cache_hit_splits": 8
-        }
-      }
-    }
-  ]
+  "running_trials": []
 }

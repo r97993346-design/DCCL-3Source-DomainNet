@@ -2,7 +2,7 @@
 
 | 数据集 | 已完成 Trial | 已完成目标域 | 运行状态 |
 | --- | ---: | ---: | --- |
-| OfficeHome | 3 | 15 | draining |
+| OfficeHome | 4 | 16 | paused |
 | PACS | 9 | 36 | paused |
 | VLCS | 3 | 12 | paused |
 
