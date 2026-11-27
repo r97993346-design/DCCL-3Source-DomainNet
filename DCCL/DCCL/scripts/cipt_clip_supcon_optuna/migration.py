@@ -21,7 +21,8 @@ from protocol import (
 )
 
 sys.path.insert(0, "/media/hooasia/data/global-optuna-registry")
-from global_registry import Registry, Unavailable, configuration, digest, model_fingerprint
+from global_registry import Unavailable, configuration, digest, model_fingerprint
+from registry_transport import BoundedRegistry
 from registry_gate import Occupied, TrialGate
 
 SERVER = "school-hooasia"
@@ -240,15 +241,10 @@ def guarded_trial(dataset, root, study, trial, params, gpu, env, lock_fd, gate, 
     with gate.eligible(trial, config) as reservation:
         def on_fold():
             markers = sorted(int(p.stem.split("_")[-1]) for p in output.parent.glob("fold_*.json"))
-            while True:
-                try:
-                    _, current = gate.fold_finished(reservation, markers)
-                    if not current or current["status"] != "RUNNING" or current["owner_token"] != reservation[1]:
-                        raise ValueError("loss of global ownership before next fold")
-                    request_sync()
-                    return
-                except Unavailable:
-                    time.sleep(runner.POLL)
+            _, current = gate.fold_finished(reservation, markers)
+            if not current or current["status"] != "RUNNING" or current["owner_token"] != reservation[1]:
+                raise ValueError("loss of global ownership before next fold")
+            request_sync()
 
         log_registry(root, "registry_claim_confirmed", trial=number, config_hash=digest(config))
         result = runner.finish_trial(root, dataset, study, number, params, gpu, env, lock_fd, on_fold=on_fold)
@@ -266,17 +262,12 @@ def guarded_trial(dataset, root, study, trial, params, gpu, env, lock_fd, gate, 
         write_json(output, dict(result, config_hash=digest(config)))
         on_fold()
         branch, path = archive_location(root, number)
-        while True:
-            try:
-                changed, record = gate.publish_complete(reservation, branch, path)
-                if not record or record["status"] != "COMPLETE":
-                    raise Unavailable("global completion is unconfirmed")
-                tell_complete(study, number, result)
-                log_registry(root, "registry_result_published", trial=number, config_hash=digest(config),
-                             branch=branch, path=path)
-                return
-            except (Unavailable, FileNotFoundError):
-                time.sleep(runner.POLL)
+        _, record = gate.publish_complete(reservation, branch, path)
+        if not record or record["status"] != "COMPLETE":
+            raise Unavailable("global completion is unconfirmed")
+        tell_complete(study, number, result)
+        log_registry(root, "registry_result_published", trial=number, config_hash=digest(config),
+                     branch=branch, path=path)
 
 
 def reuse(root, dataset, trial, params, config, registry, record):
@@ -369,11 +360,12 @@ def after_boundary(dataset, root, study, sampler, gpu, gpu_uuid, lock_fd):
         runner.refresh(dataset, study, root, "waiting_for_previous_trial", gpu=gpu)
         time.sleep(runner.POLL)
     report = migrate(dataset, root, study, sampler)
-    registry = Registry(REGISTRY)
+    registry = BoundedRegistry(REGISTRY)
     gate = TrialGate(registry, SERVER, study.study_name, git("rev-parse", "HEAD"))
     source = None
     env = runner.environment_for(gpu_uuid)
     prior_budget = budget_for(OLD_OUTPUT, dataset)
+    failures = 0
     prior_excluded_budget = report["historical_complete"] if dataset == "VLCS" else 0
     while True:
         done = study.get_trials(deepcopy=False, states=(optuna.trial.TrialState.COMPLETE,))
@@ -428,6 +420,13 @@ def after_boundary(dataset, root, study, sampler, gpu, gpu_uuid, lock_fd):
                     study.tell(trial.number, state=optuna.trial.TrialState.FAIL)
                     log_registry(root, "registry_occupied", trial=trial.number, config_hash=digest(config),
                                  owner=record["server_id"], state=record["status"])
+            failures = 0
         except (Unavailable, FileNotFoundError) as error:
-            runner.refresh(dataset, study, root, "waiting_for_registry", gpu=gpu, reason=str(error))
-            time.sleep(runner.POLL)
+            failures += 1
+            delay = min(20 * 2 ** min(failures - 1, 4), 300)
+            reason = str(error)
+            if isinstance(error, FileNotFoundError):
+                reason = "published result artifact not yet available"
+            runner.refresh(dataset, study, root, "waiting_for_registry", gpu=gpu, reason=reason)
+            log_registry(root, "registry_retry_scheduled", reason=reason, retry_in_seconds=delay)
+            time.sleep(delay)
