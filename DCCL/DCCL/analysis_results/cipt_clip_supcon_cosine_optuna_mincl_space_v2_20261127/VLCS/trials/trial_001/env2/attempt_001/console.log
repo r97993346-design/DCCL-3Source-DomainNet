@@ -170,3 +170,15 @@ HParams:
 	cipt_causal_contrastive_weight: 0.001
 	cipt_contrastive_warmup_steps: 0
 	cipt_env_inference: e_only
+Dataset:
+	[VLCS] #envs=4, #classes=5
+	env0: CALTECH (#1415)
+	env1: LABELME (#2656)
+	env2: PASCAL (#3376)
+	env3: SUN (#3282)
+
+[36mINFO[0m 11/28 03:17:12 | checkpoint_freq = 300
+[36mINFO[0m 11/28 03:17:12 | Training budget: 5001 updates, including evaluation at the final step
+[36mINFO[0m 11/28 03:17:12 | Target test envs = [[2]]
+[36mINFO[0m 11/28 03:17:12 | 
+[36mINFO[0m 11/28 03:17:12 | Fold RNG: strategy=domainbed_sweep, test_envs=[2], seed=374236774, hparams_seed=0, trial_seed=1
