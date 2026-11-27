@@ -1,0 +1,6 @@
+{
+  "loss_fields": [],
+  "weighted_loss_fields": [],
+  "gradient_fields": [],
+  "learning_rate_fields": []
+}
