@@ -6,7 +6,7 @@
     "OfficeHome": {
       "state": "draining",
       "completed_trials": 3,
-      "completed_folds": 13,
+      "completed_folds": 14,
       "trial_states": {
         "COMPLETE": 3,
         "RUNNING": 1
@@ -22,19 +22,12 @@
             "contrastive_mix": 0.75,
             "prompt_length": 8
           },
-          "completed_folds": 1,
-          "current_target": "Clipart",
+          "completed_folds": 2,
+          "current_target": "Product",
           "latest_attempt": {
-            "path": "OfficeHome/trials/trial_003/env1/attempt_001",
+            "path": "OfficeHome/trials/trial_003/env2/attempt_001",
             "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
-            "last_evaluation": {
-              "step": 2100,
-              "test_in": 0.7142038946162658,
-              "test_out": 0.7273768613974799,
-              "train_out": 0.9215498003030487,
-              "eval_time": 5.455111265182495,
-              "eval_visual_cache_hit_splits": 8
-            }
+            "last_evaluation": {}
           }
         }
       ],
@@ -79,11 +72,11 @@
             "path": "VLCS/trials/trial_002/env3/attempt_001",
             "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
             "last_evaluation": {
-              "step": 1500,
-              "test_in": 0.801980198019802,
-              "test_out": 0.8033536585365854,
-              "train_out": 0.8953923414940363,
-              "eval_time": 1.4727628231048584,
+              "step": 3000,
+              "test_in": 0.7905559786747905,
+              "test_out": 0.8003048780487805,
+              "train_out": 0.8920276208411801,
+              "eval_time": 1.3530464172363281,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -94,5 +87,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T16:30:34+08:00"
+  "synced_at": "2026-11-27T17:00:17+08:00"
 }
