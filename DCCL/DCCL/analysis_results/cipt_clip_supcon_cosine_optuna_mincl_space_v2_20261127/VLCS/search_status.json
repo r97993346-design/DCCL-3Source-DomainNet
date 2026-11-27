@@ -16,8 +16,8 @@
       "contrastive_mix": 0.75,
       "prompt_length": 4
     },
-    "target": "LabelMe",
-    "completed_folds": 1
+    "target": "Pascal",
+    "completed_folds": 2
   },
   "stop_reason": null,
   "iid_reference_target": 0.845,
@@ -25,7 +25,7 @@
   "best_source_val": null,
   "best_iid": null,
   "completed_trials": 0,
-  "completed_folds": 1,
+  "completed_folds": 2,
   "trial_states": {
     "RUNNING": 1
   },
@@ -40,19 +40,12 @@
         "contrastive_mix": 0.75,
         "prompt_length": 4
       },
-      "completed_folds": 1,
-      "current_target": "LabelMe",
+      "completed_folds": 2,
+      "current_target": "Pascal",
       "latest_attempt": {
-        "path": "VLCS/trials/trial_000/env1/attempt_001",
+        "path": "VLCS/trials/trial_000/env2/attempt_001",
         "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-        "last_evaluation": {
-          "step": 4800,
-          "test_in": 0.6508235294117647,
-          "test_out": 0.6271186440677966,
-          "train_out": 0.9226204456489009,
-          "eval_time": 2.3244831562042236,
-          "eval_visual_cache_hit_splits": 8
-        }
+        "last_evaluation": {}
       }
     }
   ]

@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_004/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 2100,
-              "test_in": 0.835221421215242,
-              "test_out": 0.8927835051546392,
-              "train_out": 0.8841581032926749,
-              "eval_time": 9.143477201461792,
+              "step": 2400,
+              "test_in": 0.833676622039135,
+              "test_out": 0.8865979381443299,
+              "train_out": 0.883380646437941,
+              "eval_time": 8.573070526123047,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -67,12 +67,12 @@
             "path": "PACS/trials/trial_010/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 0,
-              "test_in": 0.999251497005988,
+              "step": 300,
+              "test_in": 0.9985029940119761,
               "test_out": 1.0,
-              "train_out": 0.9532979871166842,
-              "eval_time": 73.3532133102417,
-              "eval_visual_cache_hit_splits": 0
+              "train_out": 0.9762414955958318,
+              "eval_time": 1.1993904113769531,
+              "eval_visual_cache_hit_splits": 8
             }
           }
         }
@@ -84,7 +84,7 @@
     "VLCS": {
       "state": "running",
       "completed_trials": 0,
-      "completed_folds": 1,
+      "completed_folds": 2,
       "trial_states": {
         "RUNNING": 1
       },
@@ -99,19 +99,12 @@
             "contrastive_mix": 0.75,
             "prompt_length": 4
           },
-          "completed_folds": 1,
-          "current_target": "LabelMe",
+          "completed_folds": 2,
+          "current_target": "Pascal",
           "latest_attempt": {
-            "path": "VLCS/trials/trial_000/env1/attempt_001",
+            "path": "VLCS/trials/trial_000/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4800,
-              "test_in": 0.6508235294117647,
-              "test_out": 0.6271186440677966,
-              "train_out": 0.9226204456489009,
-              "eval_time": 2.3244831562042236,
-              "eval_visual_cache_hit_splits": 8
-            }
+            "last_evaluation": {}
           }
         }
       ],
@@ -120,5 +113,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T20:22:47+08:00"
+  "synced_at": "2026-11-27T20:23:58+08:00"
 }
