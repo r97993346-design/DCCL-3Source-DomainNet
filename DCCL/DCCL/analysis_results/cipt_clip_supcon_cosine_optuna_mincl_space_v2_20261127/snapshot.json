@@ -3,6 +3,16 @@
   "format": "optuna",
   "training_code_commit": "0092fe42da224c25ee885411eda46e71dac6819b",
   "datasets": {
+    "OfficeHome": {
+      "state": "waiting_for_previous_trial",
+      "completed_trials": 0,
+      "completed_folds": 0,
+      "trial_states": {},
+      "running_trials": [],
+      "gpu": 1,
+      "budget": 648,
+      "stop_reason": null
+    },
     "PACS": {
       "state": "waiting_for_previous_trial",
       "completed_trials": 0,
@@ -24,5 +34,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T15:24:42+08:00"
+  "synced_at": "2026-11-27T15:25:53+08:00"
 }

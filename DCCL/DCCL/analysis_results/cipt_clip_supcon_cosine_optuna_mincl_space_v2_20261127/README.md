@@ -2,6 +2,7 @@
 
 | 数据集 | 已完成 Trial | 已完成目标域 | 运行状态 |
 | --- | ---: | ---: | --- |
+| OfficeHome | 0 | 0 | waiting_for_previous_trial |
 | PACS | 0 | 0 | waiting_for_previous_trial |
 | VLCS | 0 | 0 | waiting_for_previous_trial |
 
