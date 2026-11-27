@@ -1,0 +1,7 @@
+{
+  "commit": "3cf51b7e317126a4933c99f8d576b2b5fa47cc4f",
+  "data": "/root/autodl-tmp/datasets",
+  "weights": "/root/autodl-tmp/weights/ViT-B-16.pt",
+  "python": "3.10.8",
+  "optuna": "4.9.0"
+}
