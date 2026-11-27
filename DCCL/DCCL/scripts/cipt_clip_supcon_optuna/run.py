@@ -79,7 +79,8 @@ def create_plan():
     require(git("branch", "--show-current") == BRANCH, "wrong experiment branch")
     training_paths = ("domainbed", "train_all.py", "config.yaml", "config_cipt_pacs_ind_ablation.yaml",
                       "scripts/cipt_clip_supcon_optuna/instrumented_train.py", "../../CLIP")
-    require(not git("status", "--porcelain", "--", *training_paths), "training code differs from the running version")
+    require(not git("diff", "--name-only", "autodl-training-baseline", "HEAD", "--", *training_paths)
+            and not git("status", "--porcelain", "--", *training_paths), "training code differs from the AutoDL baseline")
     require(CLIP.is_file() and all((DATA / info[2]).is_dir() for info in DATASETS.values()), "data or CLIP missing")
     plan = {
         "code_commit": git("rev-parse", "HEAD"), "base_commit": BASE_COMMIT, "condcov_commit": MODEL_COMMIT,
