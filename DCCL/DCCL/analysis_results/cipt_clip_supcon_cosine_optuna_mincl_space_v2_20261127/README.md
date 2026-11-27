@@ -4,7 +4,7 @@
 | --- | ---: | ---: | --- |
 | OfficeHome | 5 | 21 | running |
 | PACS | 14 | 56 | running |
-| VLCS | 1 | 5 | running |
+| VLCS | 1 | 6 | running |
 
 - [同步时间和运行进度](snapshot.json)
 - [Trial 汇总](trials_summary.csv) · [目标域汇总](folds_summary.csv)

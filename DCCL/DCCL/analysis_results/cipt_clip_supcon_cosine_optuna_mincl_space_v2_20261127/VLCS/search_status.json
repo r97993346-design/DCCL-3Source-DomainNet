@@ -61,7 +61,7 @@
     "error": null
   },
   "completed_trials": 1,
-  "completed_folds": 5,
+  "completed_folds": 6,
   "trial_states": {
     "COMPLETE": 1,
     "RUNNING": 1
@@ -77,20 +77,9 @@
         "contrastive_mix": 0.25,
         "prompt_length": 8
       },
-      "completed_folds": 1,
+      "completed_folds": 2,
       "current_target": "LabelMe",
-      "latest_attempt": {
-        "path": "VLCS/trials/trial_001/env1/attempt_001",
-        "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-        "last_evaluation": {
-          "step": 4500,
-          "test_in": 0.6625882352941177,
-          "test_out": 0.6271186440677966,
-          "train_out": 0.9231714844926227,
-          "eval_time": 1.417971134185791,
-          "eval_visual_cache_hit_splits": 8
-        }
-      }
+      "latest_attempt": null
     }
   ]
 }
