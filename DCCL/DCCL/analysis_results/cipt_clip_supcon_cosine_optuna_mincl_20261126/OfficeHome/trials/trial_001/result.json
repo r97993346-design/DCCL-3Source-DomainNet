@@ -21,11 +21,10 @@
       "final_iid": 0.8357363542739444,
       "final_test_out": 0.8804123711340206,
       "final_source_val": 0.8872394407473692,
-      "log": "OfficeHome/trials/trial_001/env0/attempt_001/results.jsonl",
-      "learning_rates": "OfficeHome/trials/trial_001/env0/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 3870.0,
-      "cache_enabled": true,
+      "log": "OfficeHome/trials/trial_001/env0/attempt_001/results.jsonl",
+      "learning_rates": "OfficeHome/trials/trial_001/env0/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -44,11 +43,10 @@
       "final_iid": 0.7142038946162658,
       "final_test_out": 0.7033218785796106,
       "final_source_val": 0.9278018614250205,
-      "log": "OfficeHome/trials/trial_001/env1/attempt_001/results.jsonl",
-      "learning_rates": "OfficeHome/trials/trial_001/env1/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 3987.0,
-      "cache_enabled": true,
+      "log": "OfficeHome/trials/trial_001/env1/attempt_001/results.jsonl",
+      "learning_rates": "OfficeHome/trials/trial_001/env1/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -67,11 +65,10 @@
       "final_iid": 0.9217342342342343,
       "final_test_out": 0.9064261555806088,
       "final_source_val": 0.8778248154767619,
-      "log": "OfficeHome/trials/trial_001/env2/attempt_001/results.jsonl",
-      "learning_rates": "OfficeHome/trials/trial_001/env2/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 4191.0,
-      "cache_enabled": true,
+      "log": "OfficeHome/trials/trial_001/env2/attempt_001/results.jsonl",
+      "learning_rates": "OfficeHome/trials/trial_001/env2/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -90,14 +87,13 @@
       "final_iid": 0.9185312679288583,
       "final_test_out": 0.8978185993111366,
       "final_source_val": 0.8876508628946477,
-      "log": "OfficeHome/trials/trial_001/env3/attempt_001/results.jsonl",
-      "learning_rates": "OfficeHome/trials/trial_001/env3/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 2644.0,
-      "cache_enabled": true,
+      "log": "OfficeHome/trials/trial_001/env3/attempt_001/results.jsonl",
+      "learning_rates": "OfficeHome/trials/trial_001/env3/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     }
   ],
   "stop_reason": "four_folds_complete",
-  "fixed_config": "OfficeHome/trials/trial_001/config.json"
+  "fixed_config": "/media/hooasia/data/cipt_clip_supcon_cosine_optuna_mincl_20261126/code/DCCL/DCCL/train_output/cipt_clip_supcon_cosine_optuna_mincl_20261126/OfficeHome/trials/trial_001/config.json"
 }

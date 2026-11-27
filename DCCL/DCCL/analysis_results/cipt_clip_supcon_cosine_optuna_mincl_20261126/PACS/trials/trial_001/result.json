@@ -21,11 +21,10 @@
       "final_iid": 0.9810860280658938,
       "final_test_out": 0.9828850855745721,
       "final_source_val": 0.9849873881721014,
-      "log": "PACS/trials/trial_001/env0/attempt_001/results.jsonl",
-      "learning_rates": "PACS/trials/trial_001/env0/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 1645.0,
-      "cache_enabled": true,
+      "log": "PACS/trials/trial_001/env0/attempt_001/results.jsonl",
+      "learning_rates": "PACS/trials/trial_001/env0/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -44,11 +43,10 @@
       "final_iid": 0.990405117270789,
       "final_test_out": 0.9871794871794872,
       "final_source_val": 0.9843915302716479,
-      "log": "PACS/trials/trial_001/env1/attempt_001/results.jsonl",
-      "learning_rates": "PACS/trials/trial_001/env1/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 1682.0,
-      "cache_enabled": true,
+      "log": "PACS/trials/trial_001/env1/attempt_001/results.jsonl",
+      "learning_rates": "PACS/trials/trial_001/env1/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -67,11 +65,10 @@
       "final_iid": 0.999251497005988,
       "final_test_out": 1.0,
       "final_source_val": 0.9811178989725391,
-      "log": "PACS/trials/trial_001/env2/attempt_001/results.jsonl",
-      "learning_rates": "PACS/trials/trial_001/env2/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 1537.0,
-      "cache_enabled": true,
+      "log": "PACS/trials/trial_001/env2/attempt_001/results.jsonl",
+      "learning_rates": "PACS/trials/trial_001/env2/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -90,14 +87,13 @@
       "final_iid": 0.9077608142493638,
       "final_test_out": 0.9159235668789809,
       "final_source_val": 0.9953155148754169,
-      "log": "PACS/trials/trial_001/env3/attempt_001/results.jsonl",
-      "learning_rates": "PACS/trials/trial_001/env3/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 1517.0,
-      "cache_enabled": true,
+      "log": "PACS/trials/trial_001/env3/attempt_001/results.jsonl",
+      "learning_rates": "PACS/trials/trial_001/env3/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     }
   ],
   "stop_reason": "four_folds_complete",
-  "fixed_config": "PACS/trials/trial_001/config.json"
+  "fixed_config": "/media/hooasia/data/cipt_clip_supcon_cosine_optuna_mincl_20261126/code/DCCL/DCCL/train_output/cipt_clip_supcon_cosine_optuna_mincl_20261126/PACS/trials/trial_001/config.json"
 }

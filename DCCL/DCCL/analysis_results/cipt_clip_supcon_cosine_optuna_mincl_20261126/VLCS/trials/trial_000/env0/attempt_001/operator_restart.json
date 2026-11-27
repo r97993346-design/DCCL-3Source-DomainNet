@@ -1,0 +1,13 @@
+{
+  "requested_at": "2026-11-26T22:10:25.462958+08:00",
+  "dataset": "VLCS",
+  "trial": 0,
+  "fold": 0,
+  "target": "Caltech",
+  "previous_gpu": 1,
+  "requested_gpu": 0,
+  "previous_queue_pid": 436848,
+  "last_evaluated_step": null,
+  "reason": "operator_requested_gpu_migration",
+  "restart_from_step": 0
+}

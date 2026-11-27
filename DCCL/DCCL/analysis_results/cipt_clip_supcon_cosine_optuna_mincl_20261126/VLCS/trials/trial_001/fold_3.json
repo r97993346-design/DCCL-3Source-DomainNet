@@ -14,10 +14,9 @@
   "final_iid": 0.774942878903275,
   "final_test_out": 0.7850609756097561,
   "final_source_val": 0.890807914780285,
-  "log": "VLCS/trials/trial_001/env3/attempt_001/results.jsonl",
-  "learning_rates": "VLCS/trials/trial_001/env3/attempt_001/learning_rates.jsonl",
   "actual_prompt_length": 16,
   "elapsed_seconds": 6510.0,
-  "cache_enabled": true,
+  "log": "VLCS/trials/trial_001/env3/attempt_001/results.jsonl",
+  "learning_rates": "VLCS/trials/trial_001/env3/attempt_001/learning_rates.jsonl",
   "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
 }

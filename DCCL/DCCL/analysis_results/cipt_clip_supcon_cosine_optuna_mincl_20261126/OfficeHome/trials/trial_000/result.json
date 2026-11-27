@@ -21,11 +21,10 @@
       "final_iid": 0.8316168898043255,
       "final_test_out": 0.8907216494845361,
       "final_source_val": 0.8818662757969699,
-      "log": "OfficeHome/trials/trial_000/env0/attempt_001/results.jsonl",
-      "learning_rates": "OfficeHome/trials/trial_000/env0/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 4,
       "elapsed_seconds": 4387.0,
-      "cache_enabled": true,
+      "log": "OfficeHome/trials/trial_000/env0/attempt_001/results.jsonl",
+      "learning_rates": "OfficeHome/trials/trial_000/env0/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -44,11 +43,10 @@
       "final_iid": 0.7076174112256587,
       "final_test_out": 0.722794959908362,
       "final_source_val": 0.9279006898619525,
-      "log": "OfficeHome/trials/trial_000/env1/attempt_001/results.jsonl",
-      "learning_rates": "OfficeHome/trials/trial_000/env1/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 4,
       "elapsed_seconds": 4100.0,
-      "cache_enabled": true,
+      "log": "OfficeHome/trials/trial_000/env1/attempt_001/results.jsonl",
+      "learning_rates": "OfficeHome/trials/trial_000/env1/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -67,11 +65,10 @@
       "final_iid": 0.9242680180180181,
       "final_test_out": 0.9165727170236753,
       "final_source_val": 0.8723230266852362,
-      "log": "OfficeHome/trials/trial_000/env2/attempt_001/results.jsonl",
-      "learning_rates": "OfficeHome/trials/trial_000/env2/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 4,
       "elapsed_seconds": 4152.0,
-      "cache_enabled": true,
+      "log": "OfficeHome/trials/trial_000/env2/attempt_001/results.jsonl",
+      "learning_rates": "OfficeHome/trials/trial_000/env2/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -90,14 +87,13 @@
       "final_iid": 0.9208261617900172,
       "final_test_out": 0.9035591274397244,
       "final_source_val": 0.8841802576178847,
-      "log": "OfficeHome/trials/trial_000/env3/attempt_001/results.jsonl",
-      "learning_rates": "OfficeHome/trials/trial_000/env3/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 4,
       "elapsed_seconds": 2554.0,
-      "cache_enabled": true,
+      "log": "OfficeHome/trials/trial_000/env3/attempt_001/results.jsonl",
+      "learning_rates": "OfficeHome/trials/trial_000/env3/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     }
   ],
   "stop_reason": "four_folds_complete",
-  "fixed_config": "OfficeHome/trials/trial_000/config.json"
+  "fixed_config": "/media/hooasia/data/cipt_clip_supcon_cosine_optuna_mincl_20261126/code/DCCL/DCCL/train_output/cipt_clip_supcon_cosine_optuna_mincl_20261126/OfficeHome/trials/trial_000/config.json"
 }

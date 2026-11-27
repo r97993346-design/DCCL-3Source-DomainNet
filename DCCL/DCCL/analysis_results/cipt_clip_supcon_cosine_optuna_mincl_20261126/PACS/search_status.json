@@ -1,7 +1,10 @@
 {
+  "dataset": "PACS",
   "study_name": "PACS_condcov_rd_clip_allpos_cosine_mincl_seed1",
   "state": "running",
   "gpu": 0,
+  "n_jobs": 1,
+  "complete_trials": 7,
   "budget": 10,
   "active": {
     "trial_id": 7,
@@ -13,20 +16,74 @@
       "contrastive_mix": 0.25,
       "prompt_length": 16
     },
-    "target": "Cartoon",
-    "completed_folds": 1
+    "target": "Photo",
+    "completed_folds": 2
   },
-  "iid_reference_target": 0.975,
   "stop_reason": null,
+  "iid_reference_target": 0.975,
+  "iid_reference_reached": false,
+  "best_source_val": {
+    "trial_id": 2,
+    "state": "COMPLETE",
+    "initial_lr": 2e-05,
+    "condcov_weight": 0.5,
+    "rd_weight": 2.0,
+    "contrastive_weight": 0.05,
+    "contrastive_mix": 0.25,
+    "prompt_length": 8,
+    "started_at": "2026-11-27T02:37:06.309612",
+    "ended_at": "2026-11-27T04:19:15.909519",
+    "candidate_group": "random_startup",
+    "source_val": 0.9874752398789588,
+    "iid": 0.967609857992381,
+    "test_in": 0.967609857992381,
+    "test_out": 0.968502370782283,
+    "elapsed_seconds": 6126.0,
+    "error": null
+  },
+  "best_iid": {
+    "trial_id": 0,
+    "state": "COMPLETE",
+    "initial_lr": 2e-05,
+    "condcov_weight": 0.5,
+    "rd_weight": 0.5,
+    "contrastive_weight": 0.001,
+    "contrastive_mix": 0.0,
+    "prompt_length": 4,
+    "started_at": "2026-11-26T22:38:36.509431",
+    "ended_at": "2026-11-27T00:46:40.022597",
+    "candidate_group": "enqueued_minimum",
+    "source_val": 0.9868982444821839,
+    "iid": 0.969870914813483,
+    "test_in": 0.969870914813483,
+    "test_out": 0.9693448227393846,
+    "elapsed_seconds": 6538.0,
+    "error": null
+  },
   "completed_trials": 7,
-  "completed_folds": 28,
-  "running_progress": [
+  "completed_folds": 30,
+  "trial_states": {
+    "COMPLETE": 7,
+    "RUNNING": 1
+  },
+  "running_trials": [
     {
-      "attempt": "PACS/trials/trial_007/env1/attempt_001",
-      "last_evaluated_step": 3300,
-      "eval_seconds": 1.8326592445373535,
-      "cache_enabled": true,
-      "cache_hit_splits": 8
+      "trial_id": 7,
+      "params": {
+        "initial_lr": 2e-05,
+        "condcov_weight": 2.0,
+        "rd_weight": 1.0,
+        "contrastive_weight": 0.05,
+        "contrastive_mix": 0.25,
+        "prompt_length": 16
+      },
+      "completed_folds": 2,
+      "current_target": "Photo",
+      "latest_attempt": {
+        "path": "PACS/trials/trial_007/env2/attempt_001",
+        "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
+        "last_evaluation": {}
+      }
     }
   ]
 }

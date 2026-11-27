@@ -21,11 +21,10 @@
       "final_iid": 0.9734982332155477,
       "final_test_out": 0.9858657243816255,
       "final_source_val": 0.8489603141794129,
-      "log": "VLCS/trials/trial_001/env0/attempt_001/results.jsonl",
-      "learning_rates": "VLCS/trials/trial_001/env0/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 5903.0,
-      "cache_enabled": true,
+      "log": "VLCS/trials/trial_001/env0/attempt_001/results.jsonl",
+      "learning_rates": "VLCS/trials/trial_001/env0/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -44,11 +43,10 @@
       "final_iid": 0.6663529411764706,
       "final_test_out": 0.6421845574387948,
       "final_source_val": 0.9191207467630231,
-      "log": "VLCS/trials/trial_001/env1/attempt_001/results.jsonl",
-      "learning_rates": "VLCS/trials/trial_001/env1/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 2362.0,
-      "cache_enabled": true,
+      "log": "VLCS/trials/trial_001/env1/attempt_001/results.jsonl",
+      "learning_rates": "VLCS/trials/trial_001/env1/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -67,11 +65,10 @@
       "final_iid": 0.8396890040725657,
       "final_test_out": 0.8429629629629629,
       "final_source_val": 0.8833809221958584,
-      "log": "VLCS/trials/trial_001/env2/attempt_001/results.jsonl",
-      "learning_rates": "VLCS/trials/trial_001/env2/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 6164.0,
-      "cache_enabled": true,
+      "log": "VLCS/trials/trial_001/env2/attempt_001/results.jsonl",
+      "learning_rates": "VLCS/trials/trial_001/env2/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     },
     {
@@ -90,14 +87,13 @@
       "final_iid": 0.774942878903275,
       "final_test_out": 0.7850609756097561,
       "final_source_val": 0.890807914780285,
-      "log": "VLCS/trials/trial_001/env3/attempt_001/results.jsonl",
-      "learning_rates": "VLCS/trials/trial_001/env3/attempt_001/learning_rates.jsonl",
       "actual_prompt_length": 16,
       "elapsed_seconds": 6510.0,
-      "cache_enabled": true,
+      "log": "VLCS/trials/trial_001/env3/attempt_001/results.jsonl",
+      "learning_rates": "VLCS/trials/trial_001/env3/attempt_001/learning_rates.jsonl",
       "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
     }
   ],
   "stop_reason": "four_folds_complete",
-  "fixed_config": "VLCS/trials/trial_001/config.json"
+  "fixed_config": "/media/hooasia/data/cipt_clip_supcon_cosine_optuna_mincl_20261126/code/DCCL/DCCL/train_output/cipt_clip_supcon_cosine_optuna_mincl_20261126/VLCS/trials/trial_001/config.json"
 }

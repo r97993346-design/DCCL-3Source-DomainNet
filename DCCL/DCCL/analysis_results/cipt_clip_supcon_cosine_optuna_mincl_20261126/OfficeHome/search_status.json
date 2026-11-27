@@ -1,7 +1,10 @@
 {
+  "dataset": "OfficeHome",
   "study_name": "OfficeHome_condcov_rd_clip_allpos_cosine_mincl_seed1",
   "state": "running",
   "gpu": 1,
+  "n_jobs": 1,
+  "complete_trials": 2,
   "budget": 10,
   "active": {
     "trial_id": 2,
@@ -16,9 +19,71 @@
     "target": "Product",
     "completed_folds": 2
   },
-  "iid_reference_target": 0.86,
   "stop_reason": null,
+  "iid_reference_target": 0.86,
+  "iid_reference_reached": false,
+  "best_source_val": {
+    "trial_id": 1,
+    "state": "COMPLETE",
+    "initial_lr": 3e-05,
+    "condcov_weight": 0.5,
+    "rd_weight": 2.0,
+    "contrastive_weight": 0.025,
+    "contrastive_mix": 0.0,
+    "prompt_length": 16,
+    "started_at": "2026-11-27T05:10:02.092150",
+    "ended_at": "2026-11-27T09:14:56.895870",
+    "candidate_group": "random_startup",
+    "source_val": 0.8965034048835858,
+    "iid": 0.8479146057958826,
+    "test_in": 0.8479146057958826,
+    "test_out": 0.8487039243815717,
+    "elapsed_seconds": 14692.0,
+    "error": null
+  },
+  "best_iid": {
+    "trial_id": 1,
+    "state": "COMPLETE",
+    "initial_lr": 3e-05,
+    "condcov_weight": 0.5,
+    "rd_weight": 2.0,
+    "contrastive_weight": 0.025,
+    "contrastive_mix": 0.0,
+    "prompt_length": 16,
+    "started_at": "2026-11-27T05:10:02.092150",
+    "ended_at": "2026-11-27T09:14:56.895870",
+    "candidate_group": "random_startup",
+    "source_val": 0.8965034048835858,
+    "iid": 0.8479146057958826,
+    "test_in": 0.8479146057958826,
+    "test_out": 0.8487039243815717,
+    "elapsed_seconds": 14692.0,
+    "error": null
+  },
   "completed_trials": 2,
-  "completed_folds": 8,
-  "running_progress": []
+  "completed_folds": 10,
+  "trial_states": {
+    "COMPLETE": 2,
+    "RUNNING": 1
+  },
+  "running_trials": [
+    {
+      "trial_id": 2,
+      "params": {
+        "initial_lr": 2e-05,
+        "condcov_weight": 0.5,
+        "rd_weight": 2.0,
+        "contrastive_weight": 0.05,
+        "contrastive_mix": 0.25,
+        "prompt_length": 8
+      },
+      "completed_folds": 2,
+      "current_target": "Product",
+      "latest_attempt": {
+        "path": "OfficeHome/trials/trial_002/env2/attempt_001",
+        "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
+        "last_evaluation": {}
+      }
+    }
+  ]
 }

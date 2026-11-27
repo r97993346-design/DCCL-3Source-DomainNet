@@ -14,10 +14,9 @@
   "final_iid": 0.9888059701492538,
   "final_test_out": 0.9871794871794872,
   "final_source_val": 0.9835765343466276,
-  "log": "PACS/trials/trial_004/env1/attempt_001/results.jsonl",
-  "learning_rates": "PACS/trials/trial_004/env1/attempt_001/learning_rates.jsonl",
   "actual_prompt_length": 4,
   "elapsed_seconds": 1553.0,
-  "cache_enabled": true,
+  "log": "PACS/trials/trial_004/env1/attempt_001/results.jsonl",
+  "learning_rates": "PACS/trials/trial_004/env1/attempt_001/learning_rates.jsonl",
   "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
 }

@@ -14,10 +14,9 @@
   "final_iid": 0.7142038946162658,
   "final_test_out": 0.7033218785796106,
   "final_source_val": 0.9278018614250205,
-  "log": "OfficeHome/trials/trial_001/env1/attempt_001/results.jsonl",
-  "learning_rates": "OfficeHome/trials/trial_001/env1/attempt_001/learning_rates.jsonl",
   "actual_prompt_length": 16,
   "elapsed_seconds": 3987.0,
-  "cache_enabled": true,
+  "log": "OfficeHome/trials/trial_001/env1/attempt_001/results.jsonl",
+  "learning_rates": "OfficeHome/trials/trial_001/env1/attempt_001/learning_rates.jsonl",
   "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
 }
