@@ -182,3 +182,10 @@ Dataset:
 [36mINFO[0m 11/28 03:17:12 | Target test envs = [[2]]
 [36mINFO[0m 11/28 03:17:12 | 
 [36mINFO[0m 11/28 03:17:12 | Fold RNG: strategy=domainbed_sweep, test_envs=[2], seed=374236774, hparams_seed=0, trial_seed=1
+[36mINFO[0m 11/28 03:20:27 | Testenv name escaping te_PASCAL -> te_PASCAL
+[36mINFO[0m 11/28 03:20:27 | Test envs = [2], name = te_PASCAL
+[36mINFO[0m 11/28 03:20:27 | Source sampling: domain_balanced
+[36mINFO[0m 11/28 03:20:27 | Batch sizes for each domain: [32, 32, 0, 32] (total=96)
+[36mINFO[0m 11/28 03:20:27 | steps-per-epoch for each domain: 35.38, 66.41, 82.06 -> min = 35.38
+[36mINFO[0m 11/28 03:20:27 | DataLoader workers: train=2 per source domain (6 total), eval=0 per loader
+PROMPT_CONTEXT_LENGTH 8
