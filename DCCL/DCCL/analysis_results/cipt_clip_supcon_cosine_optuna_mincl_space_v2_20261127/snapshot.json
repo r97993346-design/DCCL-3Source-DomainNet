@@ -27,7 +27,14 @@
           "latest_attempt": {
             "path": "OfficeHome/trials/trial_005/env3/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {}
+            "last_evaluation": {
+              "step": 0,
+              "test_in": 0.7478485370051635,
+              "test_out": 0.7187141216991964,
+              "train_out": 0.6431034505024207,
+              "eval_time": 449.82312273979187,
+              "eval_visual_cache_hit_splits": 0
+            }
           }
         }
       ],
@@ -60,11 +67,11 @@
             "path": "PACS/trials/trial_015/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3000,
-              "test_in": 0.9780353874313605,
+              "step": 3300,
+              "test_in": 0.9786455155582673,
               "test_out": 0.9779951100244498,
-              "train_out": 0.984699765909957,
-              "eval_time": 1.260596513748169,
+              "train_out": 0.9842751374598508,
+              "eval_time": 1.988907814025879,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -114,5 +121,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T06:05:07+08:00"
+  "synced_at": "2026-11-28T06:06:30+08:00"
 }
