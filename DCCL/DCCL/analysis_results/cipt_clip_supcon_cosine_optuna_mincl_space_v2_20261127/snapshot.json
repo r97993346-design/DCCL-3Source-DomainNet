@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_006/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3300,
-              "test_in": 0.8362512873326468,
-              "test_out": 0.8804123711340206,
-              "train_out": 0.8849260265906969,
-              "eval_time": 9.04421091079712,
+              "step": 3600,
+              "test_in": 0.8414006179196705,
+              "test_out": 0.8762886597938144,
+              "train_out": 0.8864749137480368,
+              "eval_time": 9.11485767364502,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -114,5 +114,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T07:56:21+08:00"
+  "synced_at": "2026-11-28T07:57:39+08:00"
 }
