@@ -1,0 +1,22 @@
+{
+  "fold": 0,
+  "domain": "Art Painting",
+  "seed": 280998037,
+  "selected_step": 3000,
+  "iid": 0.9810860280658938,
+  "test_in": 0.9810860280658938,
+  "test_out": 0.980440097799511,
+  "source_val": 0.9858366450723137,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.9810860280658938,
+  "final_test_out": 0.9828850855745721,
+  "final_source_val": 0.9854120166222076,
+  "actual_prompt_length": 16,
+  "elapsed_seconds": 1628.0,
+  "log": "PACS/trials/trial_014/env0/attempt_001/results.jsonl",
+  "learning_rates": "PACS/trials/trial_014/env0/attempt_001/learning_rates.jsonl",
+  "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1"
+}
