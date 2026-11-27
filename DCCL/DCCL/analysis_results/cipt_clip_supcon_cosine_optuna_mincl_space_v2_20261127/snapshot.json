@@ -36,7 +36,7 @@
       "stop_reason": null
     },
     "PACS": {
-      "state": "waiting_for_registry",
+      "state": "running",
       "completed_trials": 13,
       "completed_folds": 52,
       "trial_states": {
@@ -55,13 +55,17 @@
             "prompt_length": 8
           },
           "completed_folds": 0,
-          "current_target": null,
-          "latest_attempt": null
+          "current_target": "Art Painting",
+          "latest_attempt": {
+            "path": "PACS/trials/trial_013/env0/attempt_001",
+            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
+            "last_evaluation": {}
+          }
         }
       ],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": "published result artifact not yet available"
+      "stop_reason": null
     },
     "VLCS": {
       "state": "running",
@@ -103,5 +107,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T01:04:25+08:00"
+  "synced_at": "2026-11-28T01:05:34+08:00"
 }
