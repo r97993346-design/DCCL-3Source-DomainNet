@@ -16,8 +16,8 @@
       "contrastive_mix": 0.75,
       "prompt_length": 4
     },
-    "target": "Caltech",
-    "completed_folds": 0
+    "target": "LabelMe",
+    "completed_folds": 1
   },
   "stop_reason": null,
   "iid_reference_target": 0.845,
@@ -41,8 +41,12 @@
         "prompt_length": 4
       },
       "completed_folds": 1,
-      "current_target": "Caltech",
-      "latest_attempt": null
+      "current_target": "LabelMe",
+      "latest_attempt": {
+        "path": "VLCS/trials/trial_000/env1/attempt_001",
+        "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
+        "last_evaluation": {}
+      }
     }
   ]
 }
