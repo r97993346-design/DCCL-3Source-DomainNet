@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_006/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 1200,
-              "test_in": 0.8341915550978373,
-              "test_out": 0.8845360824742268,
-              "train_out": 0.8780558046104581,
-              "eval_time": 8.028387069702148,
+              "step": 1500,
+              "test_in": 0.8388259526261586,
+              "test_out": 0.8865979381443299,
+              "train_out": 0.8799968164938545,
+              "eval_time": 9.089299201965332,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -43,32 +43,36 @@
       "stop_reason": null
     },
     "PACS": {
-      "state": "waiting_for_registry",
-      "completed_trials": 15,
+      "state": "running",
+      "completed_trials": 16,
       "completed_folds": 64,
       "trial_states": {
-        "COMPLETE": 15,
+        "COMPLETE": 16,
         "RUNNING": 1
       },
       "running_trials": [
         {
-          "trial_id": 15,
+          "trial_id": 16,
           "params": {
             "initial_lr": 3e-05,
-            "condcov_weight": 3.0,
-            "rd_weight": 3.0,
-            "contrastive_weight": 0.05,
-            "contrastive_mix": 0.5,
-            "prompt_length": 4
+            "condcov_weight": 1.0,
+            "rd_weight": 1.0,
+            "contrastive_weight": 0.025,
+            "contrastive_mix": 0.75,
+            "prompt_length": 8
           },
-          "completed_folds": 4,
-          "current_target": null,
-          "latest_attempt": null
+          "completed_folds": 0,
+          "current_target": "Art Painting",
+          "latest_attempt": {
+            "path": "PACS/trials/trial_016/env0/attempt_001",
+            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
+            "last_evaluation": {}
+          }
         }
       ],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": "published result artifact not yet available"
+      "stop_reason": null
     },
     "VLCS": {
       "state": "running",
@@ -103,5 +107,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T07:35:04+08:00"
+  "synced_at": "2026-11-28T07:36:11+08:00"
 }
