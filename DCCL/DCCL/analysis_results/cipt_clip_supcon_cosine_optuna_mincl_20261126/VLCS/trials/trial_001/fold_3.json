@@ -1,0 +1,23 @@
+{
+  "fold": 3,
+  "domain": "SUN",
+  "seed": 733132323,
+  "selected_step": 900,
+  "iid": 0.7909367859862909,
+  "test_in": 0.7909367859862909,
+  "test_out": 0.7972560975609756,
+  "source_val": 0.8977694078259051,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.774942878903275,
+  "final_test_out": 0.7850609756097561,
+  "final_source_val": 0.890807914780285,
+  "log": "VLCS/trials/trial_001/env3/attempt_001/results.jsonl",
+  "learning_rates": "VLCS/trials/trial_001/env3/attempt_001/learning_rates.jsonl",
+  "actual_prompt_length": 16,
+  "elapsed_seconds": 6510.0,
+  "cache_enabled": true,
+  "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
+}

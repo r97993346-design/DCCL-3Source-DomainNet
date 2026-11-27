@@ -1,0 +1,14 @@
+{
+  "code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
+  "study_names": {
+    "PACS": "PACS_condcov_rd_clip_allpos_cosine_mincl_seed1",
+    "VLCS": "VLCS_condcov_rd_clip_allpos_cosine_mincl_seed1",
+    "OfficeHome": "OfficeHome_condcov_rd_clip_allpos_cosine_mincl_seed1"
+  },
+  "enabled_on": [
+    "OfficeHome",
+    "PACS",
+    "VLCS"
+  ],
+  "scope": "fold-local frozen CLIP visual evaluation features on CPU"
+}

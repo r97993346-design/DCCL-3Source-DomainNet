@@ -1,0 +1,23 @@
+{
+  "fold": 3,
+  "domain": "Real World",
+  "seed": 728627790,
+  "selected_step": 2700,
+  "iid": 0.9211130235226621,
+  "test_in": 0.9211130235226621,
+  "test_out": 0.9035591274397244,
+  "source_val": 0.8841862841700123,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.9208261617900172,
+  "final_test_out": 0.9035591274397244,
+  "final_source_val": 0.8841802576178847,
+  "log": "OfficeHome/trials/trial_000/env3/attempt_001/results.jsonl",
+  "learning_rates": "OfficeHome/trials/trial_000/env3/attempt_001/learning_rates.jsonl",
+  "actual_prompt_length": 4,
+  "elapsed_seconds": 2554.0,
+  "cache_enabled": true,
+  "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
+}

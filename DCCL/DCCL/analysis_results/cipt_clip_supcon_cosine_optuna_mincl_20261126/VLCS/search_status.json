@@ -1,0 +1,32 @@
+{
+  "study_name": "VLCS_condcov_rd_clip_allpos_cosine_mincl_seed1",
+  "state": "running",
+  "gpu": 0,
+  "budget": 10,
+  "active": {
+    "trial_id": 2,
+    "params": {
+      "initial_lr": 2e-05,
+      "condcov_weight": 0.5,
+      "rd_weight": 2.0,
+      "contrastive_weight": 0.05,
+      "contrastive_mix": 0.25,
+      "prompt_length": 8
+    },
+    "target": "Caltech",
+    "completed_folds": 0
+  },
+  "iid_reference_target": 0.845,
+  "stop_reason": null,
+  "completed_trials": 2,
+  "completed_folds": 8,
+  "running_progress": [
+    {
+      "attempt": "VLCS/trials/trial_002/env0/attempt_001",
+      "last_evaluated_step": 3000,
+      "eval_seconds": 2.1859490871429443,
+      "cache_enabled": true,
+      "cache_hit_splits": 8
+    }
+  ]
+}
