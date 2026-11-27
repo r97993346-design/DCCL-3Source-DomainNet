@@ -82,7 +82,14 @@
       "latest_attempt": {
         "path": "OfficeHome/trials/trial_003/env1/attempt_001",
         "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
-        "last_evaluation": {}
+        "last_evaluation": {
+          "step": 2100,
+          "test_in": 0.7142038946162658,
+          "test_out": 0.7273768613974799,
+          "train_out": 0.9215498003030487,
+          "eval_time": 5.455111265182495,
+          "eval_visual_cache_hit_splits": 8
+        }
       }
     }
   ]
