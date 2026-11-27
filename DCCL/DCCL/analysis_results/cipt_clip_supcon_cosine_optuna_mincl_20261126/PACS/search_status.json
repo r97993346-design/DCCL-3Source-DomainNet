@@ -4,20 +4,20 @@
   "state": "running",
   "gpu": 0,
   "n_jobs": 1,
-  "complete_trials": 7,
+  "complete_trials": 8,
   "budget": 10,
   "active": {
-    "trial_id": 7,
+    "trial_id": 8,
     "params": {
-      "initial_lr": 2e-05,
-      "condcov_weight": 2.0,
-      "rd_weight": 1.0,
+      "initial_lr": 3e-05,
+      "condcov_weight": 0.5,
+      "rd_weight": 2.0,
       "contrastive_weight": 0.05,
-      "contrastive_mix": 0.25,
-      "prompt_length": 16
+      "contrastive_mix": 0.75,
+      "prompt_length": 8
     },
-    "target": "Sketch",
-    "completed_folds": 3
+    "target": "Art Painting",
+    "completed_folds": 0
   },
   "stop_reason": null,
   "iid_reference_target": 0.975,
@@ -60,36 +60,29 @@
     "elapsed_seconds": 6538.0,
     "error": null
   },
-  "completed_trials": 7,
-  "completed_folds": 31,
+  "completed_trials": 8,
+  "completed_folds": 32,
   "trial_states": {
-    "COMPLETE": 7,
+    "COMPLETE": 8,
     "RUNNING": 1
   },
   "running_trials": [
     {
-      "trial_id": 7,
+      "trial_id": 8,
       "params": {
-        "initial_lr": 2e-05,
-        "condcov_weight": 2.0,
-        "rd_weight": 1.0,
+        "initial_lr": 3e-05,
+        "condcov_weight": 0.5,
+        "rd_weight": 2.0,
         "contrastive_weight": 0.05,
-        "contrastive_mix": 0.25,
-        "prompt_length": 16
+        "contrastive_mix": 0.75,
+        "prompt_length": 8
       },
-      "completed_folds": 3,
-      "current_target": "Sketch",
+      "completed_folds": 0,
+      "current_target": "Art Painting",
       "latest_attempt": {
-        "path": "PACS/trials/trial_007/env3/attempt_001",
+        "path": "PACS/trials/trial_008/env0/attempt_001",
         "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
-        "last_evaluation": {
-          "step": 900,
-          "test_in": 0.8979007633587787,
-          "test_out": 0.9057324840764331,
-          "train_out": 0.9935827778126067,
-          "eval_time": 1.139535665512085,
-          "eval_visual_cache_hit_splits": 8
-        }
+        "last_evaluation": {}
       }
     }
   ]
