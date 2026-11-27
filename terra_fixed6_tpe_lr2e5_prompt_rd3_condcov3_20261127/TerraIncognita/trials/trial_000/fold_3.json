@@ -1,0 +1,21 @@
+{
+  "fold": 3,
+  "domain": "L46",
+  "seed": 180733564,
+  "selected_step": 4500,
+  "iid": 0.4371171906900776,
+  "test_in": 0.4371171906900776,
+  "test_out": 0.4207516339869281,
+  "source_val": 0.7683577347419428,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.43691302572478563,
+  "final_test_out": 0.42810457516339867,
+  "final_source_val": 0.7664781806043242,
+  "log": "/root/autodl-tmp/outputs/terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127/TerraIncognita/trials/trial_000/env3/attempt_001/raw/TerraIncognita/261127_20-14-04_TerraIncognita_trial0_fold3/results.jsonl",
+  "learning_rates": "/root/autodl-tmp/outputs/terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127/TerraIncognita/trials/trial_000/env3/attempt_001/learning_rates.jsonl",
+  "actual_prompt_length": 16,
+  "elapsed_seconds": 2857.0
+}

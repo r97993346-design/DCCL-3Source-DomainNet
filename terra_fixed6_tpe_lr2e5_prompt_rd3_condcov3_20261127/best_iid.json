@@ -1,0 +1,17 @@
+{
+  "trial": 0,
+  "state": "COMPLETE",
+  "condcov_weight": 0.5,
+  "rd_weight": 1.0,
+  "contrastive_weight": 0.0,
+  "contrastive_mix": 0.0,
+  "prompt_length": 16,
+  "initial_lr": 2e-05,
+  "origin": "fixed_T0",
+  "source_val": 0.7442690331361775,
+  "iid": 0.49786880658484267,
+  "test_in": 0.49786880658484267,
+  "test_out": 0.49282397929481536,
+  "elapsed_seconds": 11314.0,
+  "error": null
+}

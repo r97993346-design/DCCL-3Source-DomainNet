@@ -2,16 +2,16 @@
   "state": "running",
   "gpu": 0,
   "active": {
-    "trial_id": 0,
+    "trial_id": 1,
     "params": {
       "condcov_weight": 0.5,
       "rd_weight": 1.0,
       "contrastive_weight": 0.0,
       "contrastive_mix": 0.0,
-      "prompt_length": 16,
+      "prompt_length": 4,
       "initial_lr": 2e-05
     },
-    "target": "L46",
-    "completed_folds": 3
+    "target": "L100",
+    "completed_folds": 0
   }
 }
