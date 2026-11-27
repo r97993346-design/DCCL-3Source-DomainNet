@@ -170,3 +170,15 @@ HParams:
 	cipt_causal_contrastive_weight: 0.0
 	cipt_contrastive_warmup_steps: 0
 	cipt_env_inference: e_only
+Dataset:
+	[TerraIncognita] #envs=4, #classes=10
+	env0: L100 (#4879)
+	env1: L38 (#9767)
+	env2: L43 (#4020)
+	env3: L46 (#6122)
+
+[36mINFO[0m 11/27 18:42:26 | checkpoint_freq = 300
+[36mINFO[0m 11/27 18:42:26 | Training budget: 5001 updates, including evaluation at the final step
+[36mINFO[0m 11/27 18:42:26 | Target test envs = [[1]]
+[36mINFO[0m 11/27 18:42:26 | 
+[36mINFO[0m 11/27 18:42:26 | Fold RNG: strategy=domainbed_sweep, test_envs=[1], seed=542344157, hparams_seed=0, trial_seed=1
