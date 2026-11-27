@@ -1,1 +1,2 @@
 {"event": "registry_retry_scheduled", "reason": "reservation update unconfirmed", "retry_in_seconds": 20}
+{"event": "registry_claim_confirmed", "trial": 4, "config_hash": "ca5805a2c9b10cde2873bf5c1649a7f0e20516fce8b76dcd31a7703e18ce7372"}

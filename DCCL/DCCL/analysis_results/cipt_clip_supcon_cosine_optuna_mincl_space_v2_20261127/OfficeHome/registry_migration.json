@@ -1,0 +1,29 @@
+{
+  "dataset": "OfficeHome",
+  "verified_history_in_registry": [
+    {
+      "trial": 0,
+      "config_hash": "a6204606e8865c5d148b75aa46b204bfdf46eb977f9adc0c824fceec1b4f2bb6",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    },
+    {
+      "trial": 1,
+      "config_hash": "277d3bc9b2eefe02d41723da1860910c1154b35ce9a729721949b9a3e04dd8cd",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    },
+    {
+      "trial": 2,
+      "config_hash": "ee694aaf8ac2924a7b37a7be47ad0219dfdcf387bea837086f7dab48b794ed41",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    },
+    {
+      "trial": 3,
+      "config_hash": "7db4d0482dc6f04e94af3ab52a58ed72c4a28718ef9ee5bdec5ea5d37d3455f5",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    }
+  ]
+}
