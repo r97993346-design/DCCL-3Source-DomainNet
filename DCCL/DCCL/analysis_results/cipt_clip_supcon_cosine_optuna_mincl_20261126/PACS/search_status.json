@@ -16,8 +16,8 @@
       "contrastive_mix": 0.75,
       "prompt_length": 8
     },
-    "target": "Cartoon",
-    "completed_folds": 1
+    "target": "Photo",
+    "completed_folds": 2
   },
   "stop_reason": null,
   "iid_reference_target": 0.975,
@@ -61,7 +61,7 @@
     "error": null
   },
   "completed_trials": 8,
-  "completed_folds": 33,
+  "completed_folds": 34,
   "trial_states": {
     "COMPLETE": 8,
     "RUNNING": 1
@@ -77,17 +77,17 @@
         "contrastive_mix": 0.75,
         "prompt_length": 8
       },
-      "completed_folds": 1,
-      "current_target": "Cartoon",
+      "completed_folds": 2,
+      "current_target": "Photo",
       "latest_attempt": {
-        "path": "PACS/trials/trial_008/env1/attempt_001",
+        "path": "PACS/trials/trial_008/env2/attempt_001",
         "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
         "last_evaluation": {
-          "step": 4500,
-          "test_in": 0.990405117270789,
-          "test_out": 0.9871794871794872,
-          "train_out": 0.9852065261966683,
-          "eval_time": 1.3793303966522217,
+          "step": 3900,
+          "test_in": 0.9985029940119761,
+          "test_out": 1.0,
+          "train_out": 0.9815425274226453,
+          "eval_time": 1.2671563625335693,
           "eval_visual_cache_hit_splits": 8
         }
       }
