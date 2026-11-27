@@ -1,0 +1,59 @@
+{
+  "dataset": "PACS",
+  "verified_history_in_registry": [
+    {
+      "trial": 0,
+      "config_hash": "449446c9b5a97c69f10c720f172eccfd927efb9e04b704b3ee5532cf3d0555c9",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    },
+    {
+      "trial": 1,
+      "config_hash": "58e4b5807d86de957489ab2c415303c850e5632ac2220854890fc0a90be06f7a",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    },
+    {
+      "trial": 2,
+      "config_hash": "b93e80c073095b750443ed2174c35614896f7a46fe84ba2bcbf587b27a7148fa",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    },
+    {
+      "trial": 3,
+      "config_hash": "d29a5b6a8cee7f58b43d8644a8b9d9f4c1e29d2c774de87cff6c04f496f833b7",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    },
+    {
+      "trial": 4,
+      "config_hash": "6d1808d35a7f2bbf3e5c6ba75232cf4c295fcf7baa05b2d54c3e9cec8e67b2d6",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    },
+    {
+      "trial": 5,
+      "config_hash": "7d9164aff6c35c60912c879066ba9b4c750cb48deb0570134bc3c85bb9b53767",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    },
+    {
+      "trial": 6,
+      "config_hash": "415bba29612833937e95b35c4754c1f8a0181e543ba2cb82884feea572a96c5e",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    },
+    {
+      "trial": 7,
+      "config_hash": "f65cfbfc5c5e9c1c9ea475985942cec747e55570855123d98db0cee6f3f88e77",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    },
+    {
+      "trial": 8,
+      "config_hash": "b47545599cd9add29f494e493e9f3869231e2d4419eb6a608a7f98480b8babeb",
+      "registry_state": "COMPLETE",
+      "registry_server": "school-hooasia"
+    }
+  ]
+}
