@@ -61,7 +61,7 @@
     "error": null
   },
   "completed_trials": 4,
-  "completed_folds": 19,
+  "completed_folds": 20,
   "trial_states": {
     "COMPLETE": 4,
     "RUNNING": 1
@@ -77,20 +77,9 @@
         "contrastive_mix": 0.75,
         "prompt_length": 4
       },
-      "completed_folds": 3,
+      "completed_folds": 4,
       "current_target": "Real World",
-      "latest_attempt": {
-        "path": "OfficeHome/trials/trial_004/env3/attempt_001",
-        "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-        "last_evaluation": {
-          "step": 4800,
-          "test_in": 0.9182444061962134,
-          "test_out": 0.8966704936854191,
-          "train_out": 0.8869113188549724,
-          "eval_time": 13.833750486373901,
-          "eval_visual_cache_hit_splits": 8
-        }
-      }
+      "latest_attempt": null
     }
   ]
 }
