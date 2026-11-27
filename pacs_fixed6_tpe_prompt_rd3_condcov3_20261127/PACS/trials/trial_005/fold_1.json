@@ -1,0 +1,21 @@
+{
+  "fold": 1,
+  "domain": "Cartoon",
+  "seed": 1975502969,
+  "selected_step": 3000,
+  "iid": 0.9898720682302772,
+  "test_in": 0.9898720682302772,
+  "test_out": 0.9893162393162394,
+  "source_val": 0.9848161587217541,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.9898720682302772,
+  "final_test_out": 0.9871794871794872,
+  "final_source_val": 0.9843915302716479,
+  "log": "/root/autodl-tmp/outputs/pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_005/env1/attempt_001/raw/PACS/261128_01-17-07_PACS_trial5_fold1/results.jsonl",
+  "learning_rates": "/root/autodl-tmp/outputs/pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_005/env1/attempt_001/learning_rates.jsonl",
+  "actual_prompt_length": 8,
+  "elapsed_seconds": 2320.0
+}
