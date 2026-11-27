@@ -1,25 +1,13 @@
 {
   "dataset": "PACS",
   "study_name": "PACS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1",
-  "state": "running",
+  "state": "waiting_for_registry",
   "gpu": 0,
   "n_jobs": 1,
   "complete_trials": 9,
   "budget": 648,
-  "active": {
-    "trial_id": 9,
-    "params": {
-      "initial_lr": 3e-05,
-      "condcov_weight": 3.0,
-      "rd_weight": 3.0,
-      "contrastive_weight": 0.05,
-      "contrastive_mix": 0.75,
-      "prompt_length": 8
-    },
-    "target": "Sketch",
-    "completed_folds": 3
-  },
-  "stop_reason": null,
+  "active": null,
+  "stop_reason": "reservation update unconfirmed",
   "iid_reference_target": 0.975,
   "iid_reference_reached": false,
   "best_source_val": {
@@ -78,7 +66,7 @@
         "prompt_length": 8
       },
       "completed_folds": 4,
-      "current_target": "Sketch",
+      "current_target": null,
       "latest_attempt": null
     }
   ]
