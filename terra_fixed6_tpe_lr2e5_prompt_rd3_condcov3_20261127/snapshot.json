@@ -1,0 +1,7 @@
+{
+  "commit": "5f2121f35ef3e3cd0708b4742ce17e49eb66e843",
+  "data": "/root/autodl-tmp/datasets/terra_incognita_fixed",
+  "weights": "/root/autodl-tmp/weights/ViT-B-16.pt",
+  "python": "3.10.8",
+  "optuna": "4.9.0"
+}
