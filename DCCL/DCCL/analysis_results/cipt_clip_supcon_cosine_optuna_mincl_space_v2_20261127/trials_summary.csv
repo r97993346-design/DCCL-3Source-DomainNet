@@ -23,4 +23,4 @@ PACS,PACS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1,13,COMPLETE,COMPLET
 PACS,PACS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1,14,COMPLETE,COMPLETE,4,,,0.5,0.75,0.05,3e-05,16,2.0,0.9872338368791578,0.9872338368791578,0.9681150498986448,0.9681150498986448,0.968440771904829,2026-11-28 03:08:18.659534,2026-11-28 05:45:57.076193,6741.0,four_folds_complete,
 PACS,PACS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1,15,RUNNING,RUNNING,3,,,3.0,0.5,0.05,3e-05,4,3.0,,,,,,2026-11-28 05:46:09.782437,,,,
 VLCS,VLCS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1,0,COMPLETE,COMPLETE,4,,,0.5,0.75,0.025,1e-05,4,1.0,0.8872513830835107,0.8872513830835107,0.8262125561741146,0.8262125561741146,0.8185329968765789,2026-11-27 17:35:33.651326,2026-11-28 00:22:05.140447,23952.0,four_folds_complete,
-VLCS,VLCS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1,1,RUNNING,RUNNING,3,,,3.0,0.25,0.001,7.5e-06,8,2.0,,,,,,2026-11-28 00:22:14.235277,,,,
+VLCS,VLCS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1,1,RUNNING,RUNNING,4,,,3.0,0.25,0.001,7.5e-06,8,2.0,,,,,,2026-11-28 00:22:14.235277,,25003.0,four_folds_complete,

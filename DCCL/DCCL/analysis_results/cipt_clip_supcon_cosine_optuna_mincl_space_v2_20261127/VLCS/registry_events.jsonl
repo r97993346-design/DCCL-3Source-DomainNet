@@ -5,3 +5,4 @@
 {"event": "registry_claim_confirmed", "trial": 0, "config_hash": "145694628d98e801548eb4d24a593f1e480e310da6b5ab4bd6c539ed1763d31e"}
 {"event": "registry_result_published", "trial": 0, "config_hash": "145694628d98e801548eb4d24a593f1e480e310da6b5ab4bd6c539ed1763d31e", "branch": "results/cipt-clip-supcon-cosine-optuna-mincl-space-v2-20261127", "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/VLCS/trials/trial_000/registry_manifest.json"}
 {"event": "registry_claim_confirmed", "trial": 1, "config_hash": "96f24f0292e598e3e4e2433441db8062c88203ec1763ed7d1a4162d7da3f4dd7"}
+{"event": "registry_retry_scheduled", "reason": "published result artifact not yet available", "retry_in_seconds": 20}
