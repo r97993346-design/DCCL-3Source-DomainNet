@@ -36,7 +36,7 @@
       "stop_reason": null
     },
     "PACS": {
-      "state": "waiting_for_registry",
+      "state": "running",
       "completed_trials": 15,
       "completed_folds": 60,
       "trial_states": {
@@ -55,7 +55,7 @@
             "prompt_length": 4
           },
           "completed_folds": 0,
-          "current_target": null,
+          "current_target": "Art Painting",
           "latest_attempt": {
             "path": "PACS/trials/trial_015/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
@@ -65,7 +65,7 @@
       ],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": "reservation update unconfirmed"
+      "stop_reason": null
     },
     "VLCS": {
       "state": "running",
@@ -107,5 +107,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T05:46:31+08:00"
+  "synced_at": "2026-11-28T05:48:09+08:00"
 }
