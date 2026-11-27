@@ -1,0 +1,118 @@
+{
+  "config_hash": "5e7025de184ca428155f750822fe663416c443ff7ea5f0c1d34ece1207928ea9",
+  "dataset": "PACS",
+  "folds": [
+    {
+      "fold": 0,
+      "domain": "Art Painting",
+      "seed": 280998037,
+      "selected_step": 3300,
+      "iid": 0.9792556436851739,
+      "test_in": 0.9792556436851739,
+      "test_out": 0.9779951100244498,
+      "source_val": 0.9849873881721014,
+      "final_step": 5000,
+      "updates": 5001,
+      "scheduler_updates": 5001,
+      "evaluations": 18,
+      "final_iid": 0.9792556436851739,
+      "final_test_out": 0.9779951100244498,
+      "final_source_val": 0.9845627597219953,
+      "log": "/root/autodl-tmp/outputs/pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env0/attempt_001/raw/PACS/261127_17-33-48_PACS_trial2_fold0/results.jsonl",
+      "learning_rates": {
+        "path": "pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env0/attempt_001/learning_rates.jsonl",
+        "sha256": "10bcd0b06f4ccf8a8a06796253b6b749b9ab3f1df1df80bde5d831fb73550a90"
+      },
+      "actual_prompt_length": 4,
+      "elapsed_seconds": 1418.0,
+      "results": {
+        "path": "pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env0/attempt_001/raw/PACS/261127_17-33-48_PACS_trial2_fold0/results.jsonl",
+        "sha256": "ebc43c2833c88c6e04dca47398a03a8892c1dc1725e89f045a2d9f8d6d4f880b"
+      }
+    },
+    {
+      "fold": 1,
+      "domain": "Cartoon",
+      "seed": 1975502969,
+      "selected_step": 4200,
+      "iid": 0.9898720682302772,
+      "test_in": 0.9898720682302772,
+      "test_out": 0.9893162393162394,
+      "source_val": 0.9835765343466276,
+      "final_step": 5000,
+      "updates": 5001,
+      "scheduler_updates": 5001,
+      "evaluations": 18,
+      "final_iid": 0.9898720682302772,
+      "final_test_out": 0.9871794871794872,
+      "final_source_val": 0.9835765343466276,
+      "log": "/root/autodl-tmp/outputs/pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env1/attempt_001/raw/PACS/261127_17-57-33_PACS_trial2_fold1/results.jsonl",
+      "learning_rates": {
+        "path": "pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env1/attempt_001/learning_rates.jsonl",
+        "sha256": "10bcd0b06f4ccf8a8a06796253b6b749b9ab3f1df1df80bde5d831fb73550a90"
+      },
+      "actual_prompt_length": 4,
+      "elapsed_seconds": 2230.0,
+      "results": {
+        "path": "pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env1/attempt_001/raw/PACS/261127_17-57-33_PACS_trial2_fold1/results.jsonl",
+        "sha256": "09f0e61daabdd19d5508f36188085779a6667c280820ec451d440456bbb52c6e"
+      }
+    },
+    {
+      "fold": 2,
+      "domain": "Photo",
+      "seed": 683537036,
+      "selected_step": 4500,
+      "iid": 0.999251497005988,
+      "test_in": 0.999251497005988,
+      "test_out": 1.0,
+      "source_val": 0.982152032922126,
+      "final_step": 5000,
+      "updates": 5001,
+      "scheduler_updates": 5001,
+      "evaluations": 18,
+      "final_iid": 0.999251497005988,
+      "final_test_out": 1.0,
+      "final_source_val": 0.9817274044720199,
+      "log": "/root/autodl-tmp/outputs/pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env2/attempt_001/raw/PACS/261127_18-34-52_PACS_trial2_fold2/results.jsonl",
+      "learning_rates": {
+        "path": "pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env2/attempt_001/learning_rates.jsonl",
+        "sha256": "10bcd0b06f4ccf8a8a06796253b6b749b9ab3f1df1df80bde5d831fb73550a90"
+      },
+      "actual_prompt_length": 4,
+      "elapsed_seconds": 2097.0,
+      "results": {
+        "path": "pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env2/attempt_001/raw/PACS/261127_18-34-52_PACS_trial2_fold2/results.jsonl",
+        "sha256": "67968928efe6dd2a5b031c6a58ebd82b77841dfb62aa00569d0aaf5e71401e41"
+      }
+    },
+    {
+      "fold": 3,
+      "domain": "Sketch",
+      "seed": 990940125,
+      "selected_step": 1500,
+      "iid": 0.9080788804071247,
+      "test_in": 0.9080788804071247,
+      "test_out": 0.9095541401273886,
+      "source_val": 0.9968427615126882,
+      "final_step": 5000,
+      "updates": 5001,
+      "scheduler_updates": 5001,
+      "evaluations": 18,
+      "final_iid": 0.9090330788804071,
+      "final_test_out": 0.9146496815286624,
+      "final_source_val": 0.9968427615126882,
+      "log": "/root/autodl-tmp/outputs/pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env3/attempt_001/raw/PACS/261127_19-09-58_PACS_trial2_fold3/results.jsonl",
+      "learning_rates": {
+        "path": "pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env3/attempt_001/learning_rates.jsonl",
+        "sha256": "10bcd0b06f4ccf8a8a06796253b6b749b9ab3f1df1df80bde5d831fb73550a90"
+      },
+      "actual_prompt_length": 4,
+      "elapsed_seconds": 2222.0,
+      "results": {
+        "path": "pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_002/env3/attempt_001/raw/PACS/261127_19-09-58_PACS_trial2_fold3/results.jsonl",
+        "sha256": "5bfe70b6f3d8bf11676a98a3e05e49e16d1df00cd69f52cb1be89fdd2ddd5b2a"
+      }
+    }
+  ]
+}

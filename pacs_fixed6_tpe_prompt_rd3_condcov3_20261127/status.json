@@ -1,3 +1,17 @@
 {
-  "state": "paused"
+  "state": "running",
+  "gpu": 0,
+  "active": {
+    "trial_id": 2,
+    "params": {
+      "condcov_weight": 0.5,
+      "rd_weight": 2.0,
+      "contrastive_weight": 0.001,
+      "contrastive_mix": 0.0,
+      "prompt_length": 4,
+      "initial_lr": 2e-05
+    },
+    "target": "Sketch",
+    "completed_folds": 3
+  }
 }
