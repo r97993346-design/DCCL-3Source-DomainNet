@@ -35,3 +35,4 @@
 {"event": "registry_claim_confirmed", "trial": 14, "config_hash": "183ec57e56ff59c105acf1103637652c756fb60ba52a82c430fa41826c29d772"}
 {"event": "registry_retry_scheduled", "reason": "published result artifact not yet available", "retry_in_seconds": 40}
 {"event": "registry_claim_confirmed", "trial": 14, "config_hash": "183ec57e56ff59c105acf1103637652c756fb60ba52a82c430fa41826c29d772"}
+{"event": "registry_retry_scheduled", "reason": "reservation update unconfirmed", "retry_in_seconds": 80}
