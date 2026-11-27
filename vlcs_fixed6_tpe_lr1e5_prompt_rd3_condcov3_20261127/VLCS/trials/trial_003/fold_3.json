@@ -1,0 +1,21 @@
+{
+  "fold": 3,
+  "domain": "SUN",
+  "seed": 733132323,
+  "selected_step": 4800,
+  "iid": 0.7989337395277989,
+  "test_in": 0.7989337395277989,
+  "test_out": 0.7972560975609756,
+  "source_val": 0.9014019669386901,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.7989337395277989,
+  "final_test_out": 0.7972560975609756,
+  "final_source_val": 0.9014019669386901,
+  "log": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_003/env3/attempt_001/raw/VLCS/261128_05-09-59_VLCS_trial3_fold3/results.jsonl",
+  "learning_rates": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_003/env3/attempt_001/learning_rates.jsonl",
+  "actual_prompt_length": 4,
+  "elapsed_seconds": 2694.0
+}
