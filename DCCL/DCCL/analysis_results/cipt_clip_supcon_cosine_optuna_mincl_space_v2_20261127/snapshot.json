@@ -36,7 +36,7 @@
       "stop_reason": null
     },
     "PACS": {
-      "state": "waiting_for_registry",
+      "state": "running",
       "completed_trials": 10,
       "completed_folds": 44,
       "trial_states": {
@@ -55,13 +55,13 @@
             "prompt_length": 4
           },
           "completed_folds": 4,
-          "current_target": null,
+          "current_target": "Cartoon",
           "latest_attempt": null
         }
       ],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": "reservation update unconfirmed"
+      "stop_reason": null
     },
     "VLCS": {
       "state": "running",
@@ -102,5 +102,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T21:11:58+08:00"
+  "synced_at": "2026-11-27T21:12:29+08:00"
 }
