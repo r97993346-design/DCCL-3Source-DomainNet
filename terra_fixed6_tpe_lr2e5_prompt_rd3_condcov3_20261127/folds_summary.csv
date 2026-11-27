@@ -1,1 +1,2 @@
-trial,fold,domain,source_val
+trial,fold,domain,seed,selected_step,iid,test_in,test_out,source_val,final_step,updates,scheduler_updates,evaluations,final_iid,final_test_out,final_source_val,log,learning_rates,actual_prompt_length,elapsed_seconds
+0,0,L100,1699798815,3900,0.5184426229508197,0.5184426229508197,0.52,0.708435361519561,5000,5001,5001,18,0.5107581967213115,0.5148717948717949,0.7082440610117691,/root/autodl-tmp/outputs/terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127/TerraIncognita/trials/trial_000/env0/attempt_002/raw/TerraIncognita/261127_17-53-08_TerraIncognita_trial0_fold0/results.jsonl,/root/autodl-tmp/outputs/terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127/TerraIncognita/trials/trial_000/env0/attempt_002/learning_rates.jsonl,16,2876.0
