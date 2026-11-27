@@ -14,7 +14,7 @@
       "stop_reason": null
     },
     "PACS": {
-      "state": "running",
+      "state": "waiting_for_registry",
       "completed_trials": 9,
       "completed_folds": 39,
       "trial_states": {
@@ -33,13 +33,13 @@
             "prompt_length": 8
           },
           "completed_folds": 3,
-          "current_target": "Photo",
+          "current_target": null,
           "latest_attempt": null
         }
       ],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": null
+      "stop_reason": "reservation update unconfirmed"
     },
     "VLCS": {
       "state": "running",
@@ -80,5 +80,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T18:35:13+08:00"
+  "synced_at": "2026-11-27T18:36:18+08:00"
 }
