@@ -2,7 +2,7 @@
 
 | 数据集 | 已完成 Trial | 已完成目标域 | 运行状态 |
 | --- | ---: | ---: | --- |
-| OfficeHome | 5 | 22 | running |
+| OfficeHome | 5 | 23 | running |
 | PACS | 14 | 59 | running |
 | VLCS | 1 | 7 | running |
 

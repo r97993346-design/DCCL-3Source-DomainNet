@@ -1,0 +1,22 @@
+{
+  "fold": 2,
+  "domain": "Product",
+  "seed": 1343141770,
+  "selected_step": 3300,
+  "iid": 0.9222972972972973,
+  "test_in": 0.9222972972972973,
+  "test_out": 0.9120631341600902,
+  "source_val": 0.8808811699717993,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.9220157657657657,
+  "final_test_out": 0.9075535512965051,
+  "final_source_val": 0.8785121007001296,
+  "actual_prompt_length": 16,
+  "elapsed_seconds": 5244.0,
+  "log": "OfficeHome/trials/trial_005/env2/attempt_001/results.jsonl",
+  "learning_rates": "OfficeHome/trials/trial_005/env2/attempt_001/learning_rates.jsonl",
+  "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1"
+}
