@@ -16,8 +16,8 @@
       "contrastive_mix": 0.75,
       "prompt_length": 4
     },
-    "target": "Pascal",
-    "completed_folds": 2
+    "target": "SUN",
+    "completed_folds": 3
   },
   "stop_reason": null,
   "iid_reference_target": 0.845,
@@ -25,7 +25,7 @@
   "best_source_val": null,
   "best_iid": null,
   "completed_trials": 0,
-  "completed_folds": 2,
+  "completed_folds": 3,
   "trial_states": {
     "RUNNING": 1
   },
@@ -40,19 +40,12 @@
         "contrastive_mix": 0.75,
         "prompt_length": 4
       },
-      "completed_folds": 2,
-      "current_target": "Pascal",
+      "completed_folds": 3,
+      "current_target": "SUN",
       "latest_attempt": {
-        "path": "VLCS/trials/trial_000/env2/attempt_001",
+        "path": "VLCS/trials/trial_000/env3/attempt_001",
         "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-        "last_evaluation": {
-          "step": 4800,
-          "test_in": 0.868196964087375,
-          "test_out": 0.8622222222222222,
-          "train_out": 0.8820181280908854,
-          "eval_time": 2.4424874782562256,
-          "eval_visual_cache_hit_splits": 8
-        }
+        "last_evaluation": {}
       }
     }
   ]

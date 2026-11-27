@@ -60,11 +60,11 @@
             "path": "PACS/trials/trial_011/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3300,
-              "test_in": 0.9893390191897654,
+              "step": 3600,
+              "test_in": 0.9898720682302772,
               "test_out": 0.9871794871794872,
-              "train_out": 0.9847818977465621,
-              "eval_time": 1.2228119373321533,
+              "train_out": 0.9839669018215418,
+              "eval_time": 1.5295782089233398,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -77,7 +77,7 @@
     "VLCS": {
       "state": "running",
       "completed_trials": 0,
-      "completed_folds": 2,
+      "completed_folds": 3,
       "trial_states": {
         "RUNNING": 1
       },
@@ -92,19 +92,12 @@
             "contrastive_mix": 0.75,
             "prompt_length": 4
           },
-          "completed_folds": 2,
-          "current_target": "Pascal",
+          "completed_folds": 3,
+          "current_target": "SUN",
           "latest_attempt": {
-            "path": "VLCS/trials/trial_000/env2/attempt_001",
+            "path": "VLCS/trials/trial_000/env3/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4800,
-              "test_in": 0.868196964087375,
-              "test_out": 0.8622222222222222,
-              "train_out": 0.8820181280908854,
-              "eval_time": 2.4424874782562256,
-              "eval_visual_cache_hit_splits": 8
-            }
+            "last_evaluation": {}
           }
         }
       ],
@@ -113,5 +106,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T22:16:34+08:00"
+  "synced_at": "2026-11-27T22:18:49+08:00"
 }
