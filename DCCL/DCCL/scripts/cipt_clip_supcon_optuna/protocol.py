@@ -191,7 +191,8 @@ def validate_fold(rows, dataset, fold, params, *, updates=STEPS):
         require(row["ind_mode"] == "condcov" and row["cipt_ind_loss"] == row["nbr_check"] == 0.
                 and not hp.get("ind_grad_steps") and not any(k.endswith("grad_by_step") for k in row),
                 "legacy IND, NR or high-cost gradient diagnostics were active")
-        require(all(row[k] == 1. for k in ("ablation_de_enabled", "env_anchor_active", "cg_all_class_active", "e_only_infer")),
+        require(all(row[k] == 1. for k in ("ablation_de_enabled", "env_anchor_active", "e_only_infer"))
+                and row.get("cg_all_class_active", 0.) == float(params["contrastive_weight"] > 0),
                 "required CLIP SupCon path was inactive")
         require(row["optimizer_updates"] == row["scheduler_updates"] == step + 1
                 and row["actual_lr"] > 0
