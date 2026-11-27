@@ -5,25 +5,25 @@
   "datasets": {
     "OfficeHome": {
       "state": "running",
-      "completed_trials": 4,
+      "completed_trials": 5,
       "completed_folds": 20,
       "trial_states": {
-        "COMPLETE": 4,
+        "COMPLETE": 5,
         "RUNNING": 1
       },
       "running_trials": [
         {
-          "trial_id": 4,
+          "trial_id": 5,
           "params": {
             "initial_lr": 3e-05,
-            "condcov_weight": 0.5,
-            "rd_weight": 1.0,
+            "condcov_weight": 2.0,
+            "rd_weight": 3.0,
             "contrastive_weight": 0.025,
-            "contrastive_mix": 0.75,
-            "prompt_length": 4
+            "contrastive_mix": 0.5,
+            "prompt_length": 16
           },
-          "completed_folds": 4,
-          "current_target": "Real World",
+          "completed_folds": 0,
+          "current_target": null,
           "latest_attempt": null
         }
       ],
@@ -103,5 +103,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T00:38:19+08:00"
+  "synced_at": "2026-11-28T00:40:32+08:00"
 }
