@@ -1,3 +1,4 @@
 trial,state,condcov_weight,rd_weight,contrastive_weight,contrastive_mix,prompt_length,initial_lr,origin,source_val,iid,test_in,test_out,elapsed_seconds,error
 0,COMPLETE,0.5,1.0,0.0,0.0,16,2e-05,fixed_T0,0.7442690331361775,0.49786880658484267,0.49786880658484267,0.49282397929481536,11314.0,
-1,RUNNING,0.5,1.0,0.0,0.0,4,2e-05,fixed_T1,,,,,,
+1,COMPLETE,0.5,1.0,0.0,0.0,4,2e-05,fixed_T1,0.7439071011744409,0.5031603476433858,0.5031603476433858,0.5016593750755367,11646.0,
+2,RUNNING,2.0,2.0,0.0,0.0,4,2e-05,fixed_T2,,,,,,
