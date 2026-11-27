@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_006/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 900,
-              "test_in": 0.8377960865087538,
-              "test_out": 0.8969072164948454,
-              "train_out": 0.8708364098143082,
-              "eval_time": 7.605957984924316,
+              "step": 1200,
+              "test_in": 0.8341915550978373,
+              "test_out": 0.8845360824742268,
+              "train_out": 0.8780558046104581,
+              "eval_time": 8.028387069702148,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -45,7 +45,7 @@
     "PACS": {
       "state": "running",
       "completed_trials": 15,
-      "completed_folds": 63,
+      "completed_folds": 64,
       "trial_states": {
         "COMPLETE": 15,
         "RUNNING": 1
@@ -61,20 +61,9 @@
             "contrastive_mix": 0.5,
             "prompt_length": 4
           },
-          "completed_folds": 3,
+          "completed_folds": 4,
           "current_target": "Sketch",
-          "latest_attempt": {
-            "path": "PACS/trials/trial_015/env3/attempt_001",
-            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4500,
-              "test_in": 0.9099872773536896,
-              "test_out": 0.9146496815286624,
-              "train_out": 0.9961305108004375,
-              "eval_time": 1.300689697265625,
-              "eval_visual_cache_hit_splits": 8
-            }
-          }
+          "latest_attempt": null
         }
       ],
       "gpu": 0,
@@ -114,5 +103,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T07:32:01+08:00"
+  "synced_at": "2026-11-28T07:33:56+08:00"
 }

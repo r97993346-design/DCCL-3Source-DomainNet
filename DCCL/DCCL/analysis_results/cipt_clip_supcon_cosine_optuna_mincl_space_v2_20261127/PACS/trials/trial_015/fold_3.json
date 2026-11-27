@@ -1,0 +1,22 @@
+{
+  "fold": 3,
+  "domain": "Sketch",
+  "seed": 990940125,
+  "selected_step": 900,
+  "iid": 0.9096692111959288,
+  "test_in": 0.9096692111959288,
+  "test_out": 0.9121019108280255,
+  "source_val": 0.9968427615126882,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.9106234096692112,
+  "final_test_out": 0.9146496815286624,
+  "final_source_val": 0.9961305108004375,
+  "actual_prompt_length": 4,
+  "elapsed_seconds": 1511.0,
+  "log": "PACS/trials/trial_015/env3/attempt_001/results.jsonl",
+  "learning_rates": "PACS/trials/trial_015/env3/attempt_001/learning_rates.jsonl",
+  "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1"
+}
