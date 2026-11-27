@@ -1,0 +1,22 @@
+{
+  "fold": 2,
+  "domain": "Photo",
+  "seed": 683537036,
+  "selected_step": 3300,
+  "iid": 0.999251497005988,
+  "test_in": 0.999251497005988,
+  "test_out": 0.9970059880239521,
+  "source_val": 0.9818644106599816,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.999251497005988,
+  "final_test_out": 1.0,
+  "final_source_val": 0.9810151537597693,
+  "actual_prompt_length": 16,
+  "elapsed_seconds": 2078.0,
+  "log": "PACS/trials/trial_007/env2/attempt_001/results.jsonl",
+  "learning_rates": "PACS/trials/trial_007/env2/attempt_001/learning_rates.jsonl",
+  "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
+}

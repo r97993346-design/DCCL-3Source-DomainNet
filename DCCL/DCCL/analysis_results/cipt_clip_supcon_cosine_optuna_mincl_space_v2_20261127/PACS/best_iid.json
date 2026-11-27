@@ -1,1 +1,29 @@
-null
+{
+  "study_name": "PACS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1",
+  "trial_id": 0,
+  "db_state": "COMPLETE",
+  "started_at": "2026-11-27 15:29:02.852301",
+  "ended_at": "2026-11-27 15:29:02.852301",
+  "params": {
+    "condcov_weight": 0.5,
+    "contrastive_mix": 0.0,
+    "contrastive_weight": 0.001,
+    "initial_lr": 2e-05,
+    "prompt_length": 4,
+    "rd_weight": 0.5
+  },
+  "objective_value": 0.9868982444821839,
+  "origin": "imported",
+  "candidate_group": "verified_history",
+  "historical_rank": null,
+  "state": "COMPLETE",
+  "source_val": 0.9868982444821839,
+  "iid": 0.969870914813483,
+  "test_in": 0.969870914813483,
+  "test_out": 0.9693448227393846,
+  "dataset": "PACS",
+  "completed_folds": 4,
+  "elapsed_seconds": 6538.0,
+  "error": null,
+  "stop_reason": "verified_history"
+}

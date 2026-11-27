@@ -1,0 +1,44 @@
+{
+  "source_search": "cipt_clip_supcon_cosine_optuna_mincl_20261126",
+  "dataset": "PACS",
+  "imported": [
+    {
+      "old_trial": 0,
+      "new_trial": 0
+    },
+    {
+      "old_trial": 1,
+      "new_trial": 1
+    },
+    {
+      "old_trial": 2,
+      "new_trial": 2
+    },
+    {
+      "old_trial": 3,
+      "new_trial": 3
+    },
+    {
+      "old_trial": 4,
+      "new_trial": 4
+    },
+    {
+      "old_trial": 5,
+      "new_trial": 5
+    },
+    {
+      "old_trial": 6,
+      "new_trial": 6
+    },
+    {
+      "old_trial": 7,
+      "new_trial": 7
+    },
+    {
+      "old_trial": 8,
+      "new_trial": 8
+    }
+  ],
+  "excluded": [],
+  "historical_complete": 9
+}
