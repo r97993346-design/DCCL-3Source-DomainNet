@@ -1,3 +1,6 @@
 TerraIncognita GPU0 shared launch authorized, free VRAM MiB 21786
 [I 2026-11-27 16:45:10,298] Using an existing study with name 'terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127' instead of creating a new one.
 {"time": "2026-11-27T16:45:10.408564+08:00", "event": "fold_started", "dataset": "TerraIncognita", "trial": 0, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 121849448, "pid": 8001}
+TerraIncognita GPU0 shared launch authorized, free VRAM MiB 19319
+[I 2026-11-27 17:53:04,469] Using an existing study with name 'terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127' instead of creating a new one.
+{"time": "2026-11-27T17:53:04.539440+08:00", "event": "fold_started", "dataset": "TerraIncognita", "trial": 0, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 118270788, "pid": 42309}
