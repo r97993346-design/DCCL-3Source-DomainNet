@@ -7,7 +7,7 @@
   "complete_trials": 9,
   "budget": 648,
   "active": null,
-  "stop_reason": "Git transport unavailable",
+  "stop_reason": "rental controller has no verified atomic-claim receipt",
   "iid_reference_target": 0.975,
   "iid_reference_reached": false,
   "best_source_val": {

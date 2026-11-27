@@ -1,0 +1,65 @@
+{
+  "config_hash": "b47545599cd9add29f494e493e9f3869231e2d4419eb6a608a7f98480b8babeb",
+  "folds": [
+    {
+      "fold": 0,
+      "source_val": 0.9851243943600632,
+      "iid": 0.9816961561928005,
+      "test_out": 0.980440097799511,
+      "selected_step": 2700,
+      "results": {
+        "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/PACS/trials/trial_008/env0/attempt_001/results.jsonl",
+        "sha256": "6f6fa3ee3c5241f728bf8be5102d3d0d50219dbc825944ced461d69859a82ce7"
+      },
+      "learning_rates": {
+        "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/PACS/trials/trial_008/env0/attempt_001/learning_rates.jsonl",
+        "sha256": "9804492e383b605d4c7f41b69a2ae14bc97a3689a5ed8561307af6a23b7c2b48"
+      }
+    },
+    {
+      "fold": 1,
+      "source_val": 0.9860557830968806,
+      "iid": 0.990405117270789,
+      "test_out": 0.9871794871794872,
+      "selected_step": 2700,
+      "results": {
+        "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/PACS/trials/trial_008/env1/attempt_001/results.jsonl",
+        "sha256": "b2f3c735b81cfe42437f2e21196f2e11ad710747f44bf3f622d3a9ac28191708"
+      },
+      "learning_rates": {
+        "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/PACS/trials/trial_008/env1/attempt_001/learning_rates.jsonl",
+        "sha256": "9804492e383b605d4c7f41b69a2ae14bc97a3689a5ed8561307af6a23b7c2b48"
+      }
+    },
+    {
+      "fold": 2,
+      "source_val": 0.9823917843228576,
+      "iid": 0.9985029940119761,
+      "test_out": 1.0,
+      "selected_step": 3300,
+      "results": {
+        "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/PACS/trials/trial_008/env2/attempt_001/results.jsonl",
+        "sha256": "75683e75d9e01e3e419a5438e73ccc5aee649c769b0bfda2499cb37135ad2494"
+      },
+      "learning_rates": {
+        "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/PACS/trials/trial_008/env2/attempt_001/learning_rates.jsonl",
+        "sha256": "9804492e383b605d4c7f41b69a2ae14bc97a3689a5ed8561307af6a23b7c2b48"
+      }
+    },
+    {
+      "fold": 3,
+      "source_val": 0.9968427615126882,
+      "iid": 0.9036259541984732,
+      "test_out": 0.910828025477707,
+      "selected_step": 1800,
+      "results": {
+        "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/PACS/trials/trial_008/env3/attempt_001/results.jsonl",
+        "sha256": "abfa041fcb5d916d2d1bbe413dbe129d53912da52acb503bca80c0b9cb5234a1"
+      },
+      "learning_rates": {
+        "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/PACS/trials/trial_008/env3/attempt_001/learning_rates.jsonl",
+        "sha256": "9804492e383b605d4c7f41b69a2ae14bc97a3689a5ed8561307af6a23b7c2b48"
+      }
+    }
+  ]
+}

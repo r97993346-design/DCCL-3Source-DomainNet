@@ -23,7 +23,7 @@
       "running_trials": [],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": "Git transport unavailable"
+      "stop_reason": "rental controller has no verified atomic-claim receipt"
     },
     "VLCS": {
       "state": "waiting_for_previous_trial",
@@ -36,5 +36,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T16:31:28+08:00"
+  "synced_at": "2026-11-27T16:47:43+08:00"
 }

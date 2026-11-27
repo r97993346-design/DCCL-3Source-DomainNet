@@ -97,5 +97,6 @@
   "stop_reason": "verified_history",
   "fixed_config": "/media/hooasia/data/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/code/DCCL/DCCL/train_output/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/PACS/trials/trial_005/config.json",
   "source_search": "cipt_clip_supcon_cosine_optuna_mincl_20261126",
-  "source_trial": 5
+  "source_trial": 5,
+  "config_hash": "7d9164aff6c35c60912c879066ba9b4c750cb48deb0570134bc3c85bb9b53767"
 }
