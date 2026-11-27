@@ -4,3 +4,4 @@
 {"event": "registry_retry_scheduled", "reason": "reservation update unconfirmed", "retry_in_seconds": 80}
 {"event": "registry_claim_confirmed", "trial": 9, "config_hash": "2e2777f5a0fae5dcbfd40cdf6d2b90325e42fc2e05ffbc44cec21fa0203bfeb6"}
 {"event": "registry_retry_scheduled", "reason": "reservation update unconfirmed", "retry_in_seconds": 160}
+{"event": "registry_claim_confirmed", "trial": 9, "config_hash": "2e2777f5a0fae5dcbfd40cdf6d2b90325e42fc2e05ffbc44cec21fa0203bfeb6"}
