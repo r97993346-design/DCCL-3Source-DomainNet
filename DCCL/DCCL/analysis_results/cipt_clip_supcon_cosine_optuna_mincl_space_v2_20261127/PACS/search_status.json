@@ -16,8 +16,8 @@
       "contrastive_mix": 0.75,
       "prompt_length": 8
     },
-    "target": "Cartoon",
-    "completed_folds": 1
+    "target": "Photo",
+    "completed_folds": 2
   },
   "stop_reason": null,
   "iid_reference_target": 0.975,
@@ -78,8 +78,12 @@
         "prompt_length": 8
       },
       "completed_folds": 2,
-      "current_target": "Cartoon",
-      "latest_attempt": null
+      "current_target": "Photo",
+      "latest_attempt": {
+        "path": "PACS/trials/trial_009/env2/attempt_001",
+        "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
+        "last_evaluation": {}
+      }
     }
   ]
 }
