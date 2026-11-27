@@ -16,8 +16,8 @@
       "contrastive_mix": 0.25,
       "prompt_length": 8
     },
-    "target": "Caltech",
-    "completed_folds": 0
+    "target": "LabelMe",
+    "completed_folds": 1
   },
   "stop_reason": null,
   "iid_reference_target": 0.845,
@@ -61,7 +61,7 @@
     "error": null
   },
   "completed_trials": 2,
-  "completed_folds": 8,
+  "completed_folds": 9,
   "trial_states": {
     "COMPLETE": 2,
     "RUNNING": 1
@@ -77,19 +77,12 @@
         "contrastive_mix": 0.25,
         "prompt_length": 8
       },
-      "completed_folds": 0,
-      "current_target": "Caltech",
+      "completed_folds": 1,
+      "current_target": "LabelMe",
       "latest_attempt": {
-        "path": "VLCS/trials/trial_002/env0/attempt_001",
+        "path": "VLCS/trials/trial_002/env1/attempt_001",
         "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
-        "last_evaluation": {
-          "step": 4200,
-          "test_in": 0.9955830388692579,
-          "test_out": 1.0,
-          "train_out": 0.8420397419605081,
-          "eval_time": 2.118002414703369,
-          "eval_visual_cache_hit_splits": 8
-        }
+        "last_evaluation": {}
       }
     }
   ]

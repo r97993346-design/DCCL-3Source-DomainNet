@@ -12,4 +12,4 @@ PACS,PACS_condcov_rd_clip_allpos_cosine_mincl_seed1,6,COMPLETE,COMPLETE,4,new,tp
 PACS,PACS_condcov_rd_clip_allpos_cosine_mincl_seed1,7,RUNNING,RUNNING,3,new,tpe,2.0,0.25,0.05,2e-05,16,1.0,,,,,,2026-11-27 11:19:29.567753,,,,
 VLCS,VLCS_condcov_rd_clip_allpos_cosine_mincl_seed1,0,COMPLETE,COMPLETE,4,new,enqueued_minimum,0.5,0.0,0.001,2e-05,4,0.5,0.8893378583385645,0.8893378583385645,0.8259919149360233,0.8259919149360233,0.8217810677047448,2026-11-26 22:03:13.212587,2026-11-27 04:58:31.335112,23063.0,four_folds_complete,
 VLCS,VLCS_condcov_rd_clip_allpos_cosine_mincl_seed1,1,COMPLETE,COMPLETE,4,new,random_startup,0.5,0.0,0.025,3e-05,16,2.0,0.8896409718255863,0.8896409718255863,0.8211634527032896,0.8211634527032896,0.8180933792976457,2026-11-27 04:58:31.942710,2026-11-27 10:47:32.873409,20939.0,four_folds_complete,
-VLCS,VLCS_condcov_rd_clip_allpos_cosine_mincl_seed1,2,RUNNING,RUNNING,0,new,random_startup,0.5,0.25,0.05,2e-05,8,2.0,,,,,,2026-11-27 10:47:33.328544,,,,
+VLCS,VLCS_condcov_rd_clip_allpos_cosine_mincl_seed1,2,RUNNING,RUNNING,1,new,random_startup,0.5,0.25,0.05,2e-05,8,2.0,,,,,,2026-11-27 10:47:33.328544,,,,

@@ -1,0 +1,22 @@
+{
+  "fold": 0,
+  "domain": "Caltech",
+  "seed": 1141299501,
+  "selected_step": 3900,
+  "iid": 0.9973498233215548,
+  "test_in": 0.9973498233215548,
+  "test_out": 1.0,
+  "source_val": 0.8444597170547976,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.9964664310954063,
+  "final_test_out": 1.0,
+  "final_source_val": 0.842068347802122,
+  "actual_prompt_length": 8,
+  "elapsed_seconds": 8745.0,
+  "log": "VLCS/trials/trial_002/env0/attempt_001/results.jsonl",
+  "learning_rates": "VLCS/trials/trial_002/env0/attempt_001/learning_rates.jsonl",
+  "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
+}
