@@ -1,4 +1,5 @@
 trial,state,condcov_weight,rd_weight,contrastive_weight,contrastive_mix,prompt_length,initial_lr,origin,source_val,iid,test_in,test_out,elapsed_seconds,error
 0,COMPLETE,0.5,0.5,0.001,0.0,4,2e-05,verified_school_reuse,0.9868982444821839,0.969870914813483,0.969870914813483,0.9693448227393846,6538.0,
 1,COMPLETE,0.5,0.5,0.0,0.0,4,2e-05,fixed_T1,0.9868982444821839,0.969870914813483,0.969870914813483,0.9693448227393846,4477.0,
-2,RUNNING,0.5,2.0,0.001,0.0,4,2e-05,fixed_T2,,,,,,
+2,COMPLETE,0.5,2.0,0.001,0.0,4,2e-05,fixed_T2,0.9868896792383859,0.9691145223321409,0.9691145223321409,0.9692163723670194,7967.0,
+3,RUNNING,0.5,2.0,0.001,0.75,4,2e-05,fixed_T3,,,,,,
