@@ -16,8 +16,8 @@
       "contrastive_mix": 0.75,
       "prompt_length": 4
     },
-    "target": "Art Painting",
-    "completed_folds": 0
+    "target": "Cartoon",
+    "completed_folds": 1
   },
   "stop_reason": null,
   "iid_reference_target": 0.975,
@@ -61,7 +61,7 @@
     "error": null
   },
   "completed_trials": 10,
-  "completed_folds": 40,
+  "completed_folds": 41,
   "trial_states": {
     "COMPLETE": 10,
     "RUNNING": 1
@@ -77,19 +77,12 @@
         "contrastive_mix": 0.75,
         "prompt_length": 4
       },
-      "completed_folds": 0,
-      "current_target": "Art Painting",
+      "completed_folds": 1,
+      "current_target": "Cartoon",
       "latest_attempt": {
-        "path": "PACS/trials/trial_010/env0/attempt_001",
+        "path": "PACS/trials/trial_010/env1/attempt_001",
         "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-        "last_evaluation": {
-          "step": 4800,
-          "test_in": 0.9780353874313605,
-          "test_out": 0.9779951100244498,
-          "train_out": 0.984699765909957,
-          "eval_time": 1.3159840106964111,
-          "eval_visual_cache_hit_splits": 8
-        }
+        "last_evaluation": {}
       }
     }
   ]
