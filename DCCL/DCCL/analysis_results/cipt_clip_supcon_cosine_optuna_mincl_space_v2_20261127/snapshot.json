@@ -36,7 +36,7 @@
       "stop_reason": null
     },
     "PACS": {
-      "state": "running",
+      "state": "waiting_for_registry",
       "completed_trials": 14,
       "completed_folds": 60,
       "trial_states": {
@@ -55,13 +55,13 @@
             "prompt_length": 16
           },
           "completed_folds": 4,
-          "current_target": "Sketch",
+          "current_target": null,
           "latest_attempt": null
         }
       ],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": null
+      "stop_reason": "published result artifact not yet available"
     },
     "VLCS": {
       "state": "running",
@@ -103,5 +103,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T05:40:34+08:00"
+  "synced_at": "2026-11-28T05:41:43+08:00"
 }
