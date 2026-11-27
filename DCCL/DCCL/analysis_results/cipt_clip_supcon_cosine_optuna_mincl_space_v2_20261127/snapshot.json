@@ -14,7 +14,7 @@
       "stop_reason": null
     },
     "PACS": {
-      "state": "waiting_for_registry",
+      "state": "running",
       "completed_trials": 9,
       "completed_folds": 39,
       "trial_states": {
@@ -33,13 +33,13 @@
             "prompt_length": 8
           },
           "completed_folds": 3,
-          "current_target": null,
+          "current_target": "Cartoon",
           "latest_attempt": null
         }
       ],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": "reservation update unconfirmed"
+      "stop_reason": null
     },
     "VLCS": {
       "state": "running",
@@ -65,11 +65,11 @@
             "path": "VLCS/trials/trial_000/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 2100,
-              "test_in": 0.9982332155477032,
+              "step": 2400,
+              "test_in": 0.9973498233215548,
               "test_out": 1.0,
-              "train_out": 0.8403047249399047,
-              "eval_time": 2.2579352855682373,
+              "train_out": 0.8380176100725227,
+              "eval_time": 1.7564241886138916,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -80,5 +80,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T18:36:18+08:00"
+  "synced_at": "2026-11-27T18:38:21+08:00"
 }
