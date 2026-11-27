@@ -1,11 +1,11 @@
 {
   "dataset": "OfficeHome",
   "study_name": "OfficeHome_condcov_rd_clip_allpos_cosine_mincl_seed1",
-  "state": "running",
+  "state": "draining",
   "gpu": 1,
   "n_jobs": 1,
   "complete_trials": 3,
-  "budget": 10,
+  "budget": 648,
   "active": {
     "trial_id": 3,
     "params": {
@@ -16,8 +16,8 @@
       "contrastive_mix": 0.75,
       "prompt_length": 8
     },
-    "target": "Art",
-    "completed_folds": 0
+    "target": "Clipart",
+    "completed_folds": 1
   },
   "stop_reason": null,
   "iid_reference_target": 0.86,
@@ -61,7 +61,7 @@
     "error": null
   },
   "completed_trials": 3,
-  "completed_folds": 12,
+  "completed_folds": 13,
   "trial_states": {
     "COMPLETE": 3,
     "RUNNING": 1
@@ -77,19 +77,12 @@
         "contrastive_mix": 0.75,
         "prompt_length": 8
       },
-      "completed_folds": 0,
-      "current_target": "Art",
+      "completed_folds": 1,
+      "current_target": "Clipart",
       "latest_attempt": {
-        "path": "OfficeHome/trials/trial_003/env0/attempt_001",
+        "path": "OfficeHome/trials/trial_003/env1/attempt_001",
         "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
-        "last_evaluation": {
-          "step": 3600,
-          "test_in": 0.8341915550978373,
-          "test_out": 0.8824742268041237,
-          "train_out": 0.8833893032435068,
-          "eval_time": 5.422060489654541,
-          "eval_visual_cache_hit_splits": 8
-        }
+        "last_evaluation": {}
       }
     }
   ]

@@ -1,11 +1,11 @@
 {
   "dataset": "VLCS",
   "study_name": "VLCS_condcov_rd_clip_allpos_cosine_mincl_seed1",
-  "state": "running",
+  "state": "draining",
   "gpu": 0,
   "n_jobs": 1,
   "complete_trials": 2,
-  "budget": 10,
+  "budget": 648,
   "active": {
     "trial_id": 2,
     "params": {
@@ -16,8 +16,8 @@
       "contrastive_mix": 0.25,
       "prompt_length": 8
     },
-    "target": "Pascal",
-    "completed_folds": 2
+    "target": "SUN",
+    "completed_folds": 3
   },
   "stop_reason": null,
   "iid_reference_target": 0.845,
@@ -61,7 +61,7 @@
     "error": null
   },
   "completed_trials": 2,
-  "completed_folds": 10,
+  "completed_folds": 11,
   "trial_states": {
     "COMPLETE": 2,
     "RUNNING": 1
@@ -77,18 +77,18 @@
         "contrastive_mix": 0.25,
         "prompt_length": 8
       },
-      "completed_folds": 2,
-      "current_target": "Pascal",
+      "completed_folds": 3,
+      "current_target": "SUN",
       "latest_attempt": {
-        "path": "VLCS/trials/trial_002/env2/attempt_001",
+        "path": "VLCS/trials/trial_002/env3/attempt_001",
         "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
         "last_evaluation": {
-          "step": 4200,
-          "test_in": 0.8448722695298038,
-          "test_out": 0.84,
-          "train_out": 0.879973292780581,
-          "eval_time": 1.3047306537628174,
-          "eval_visual_cache_hit_splits": 8
+          "step": 0,
+          "test_in": 0.5788271134805788,
+          "test_out": 0.5975609756097561,
+          "train_out": 0.7526451192163595,
+          "eval_time": 223.66213536262512,
+          "eval_visual_cache_hit_splits": 0
         }
       }
     }
