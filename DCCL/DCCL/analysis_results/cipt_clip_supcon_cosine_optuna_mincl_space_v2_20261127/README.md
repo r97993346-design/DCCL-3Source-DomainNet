@@ -4,7 +4,7 @@
 | --- | ---: | ---: | --- |
 | OfficeHome | 0 | 0 | waiting_for_previous_trial |
 | PACS | 9 | 36 | running |
-| VLCS | 0 | 0 | waiting_for_previous_trial |
+| VLCS | 0 | 0 | waiting_for_registry |
 
 - [同步时间和运行进度](snapshot.json)
 - [Trial 汇总](trials_summary.csv) · [目标域汇总](folds_summary.csv)
