@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_005/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3900,
-              "test_in": 0.9228603603603603,
-              "test_out": 0.910935738444194,
-              "train_out": 0.8791985091723513,
-              "eval_time": 9.024823188781738,
+              "step": 4200,
+              "test_in": 0.9217342342342343,
+              "test_out": 0.9075535512965051,
+              "train_out": 0.8795812110475905,
+              "eval_time": 9.068002462387085,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -67,11 +67,11 @@
             "path": "PACS/trials/trial_014/env3/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 1500,
-              "test_in": 0.9017175572519084,
-              "test_out": 0.9082802547770701,
-              "train_out": 0.9960277655876677,
-              "eval_time": 1.4220905303955078,
+              "step": 1800,
+              "test_in": 0.9029898218829516,
+              "test_out": 0.9095541401273886,
+              "train_out": 0.9952127696626474,
+              "eval_time": 1.9944157600402832,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -84,7 +84,7 @@
     "VLCS": {
       "state": "running",
       "completed_trials": 1,
-      "completed_folds": 6,
+      "completed_folds": 7,
       "trial_states": {
         "COMPLETE": 1,
         "RUNNING": 1
@@ -100,19 +100,12 @@
             "contrastive_mix": 0.25,
             "prompt_length": 8
           },
-          "completed_folds": 2,
-          "current_target": "Pascal",
+          "completed_folds": 3,
+          "current_target": "SUN",
           "latest_attempt": {
-            "path": "VLCS/trials/trial_001/env2/attempt_001",
+            "path": "VLCS/trials/trial_001/env3/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4800,
-              "test_in": 0.8600518326545724,
-              "test_out": 0.8548148148148148,
-              "train_out": 0.8802125253988959,
-              "eval_time": 2.130415439605713,
-              "eval_visual_cache_hit_splits": 8
-            }
+            "last_evaluation": {}
           }
         }
       ],
@@ -121,5 +114,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T05:25:59+08:00"
+  "synced_at": "2026-11-28T05:27:32+08:00"
 }
