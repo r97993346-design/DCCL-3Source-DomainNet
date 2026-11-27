@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_005/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3000,
-              "test_in": 0.8388259526261586,
-              "test_out": 0.8783505154639175,
-              "train_out": 0.8849433402018285,
-              "eval_time": 10.14329195022583,
+              "step": 3300,
+              "test_in": 0.8383110195674562,
+              "test_out": 0.8804123711340206,
+              "train_out": 0.8853199048190454,
+              "eval_time": 11.824838876724243,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -45,7 +45,7 @@
     "PACS": {
       "state": "running",
       "completed_trials": 13,
-      "completed_folds": 53,
+      "completed_folds": 54,
       "trial_states": {
         "COMPLETE": 13,
         "RUNNING": 1
@@ -61,20 +61,9 @@
             "contrastive_mix": 0.5,
             "prompt_length": 8
           },
-          "completed_folds": 1,
+          "completed_folds": 2,
           "current_target": "Cartoon",
-          "latest_attempt": {
-            "path": "PACS/trials/trial_013/env1/attempt_001",
-            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 5000,
-              "test_in": 0.990405117270789,
-              "test_out": 0.9871794871794872,
-              "train_out": 0.9856311546467744,
-              "eval_time": 1.2393736839294434,
-              "eval_visual_cache_hit_splits": 8
-            }
-          }
+          "latest_attempt": null
         }
       ],
       "gpu": 0,
@@ -121,5 +110,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T02:01:29+08:00"
+  "synced_at": "2026-11-28T02:03:02+08:00"
 }
