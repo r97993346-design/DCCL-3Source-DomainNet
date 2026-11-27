@@ -1,5 +1,5 @@
 {
-  "state": "running",
+  "state": "paused",
   "gpu": 0,
   "active": {
     "trial_id": 0,
@@ -13,5 +13,7 @@
     },
     "target": "L100",
     "completed_folds": 0
-  }
+  },
+  "stop_reason": "operator_requested_pause",
+  "resume_trial": 0
 }
