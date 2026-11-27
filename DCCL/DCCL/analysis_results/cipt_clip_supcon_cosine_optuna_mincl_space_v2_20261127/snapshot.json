@@ -5,24 +5,24 @@
   "datasets": {
     "OfficeHome": {
       "state": "waiting_for_registry",
-      "completed_trials": 5,
+      "completed_trials": 6,
       "completed_folds": 24,
       "trial_states": {
-        "COMPLETE": 5,
+        "COMPLETE": 6,
         "RUNNING": 1
       },
       "running_trials": [
         {
-          "trial_id": 5,
+          "trial_id": 6,
           "params": {
             "initial_lr": 3e-05,
-            "condcov_weight": 2.0,
-            "rd_weight": 3.0,
-            "contrastive_weight": 0.025,
-            "contrastive_mix": 0.5,
+            "condcov_weight": 1.0,
+            "rd_weight": 2.0,
+            "contrastive_weight": 0.001,
+            "contrastive_mix": 0.0,
             "prompt_length": 16
           },
-          "completed_folds": 4,
+          "completed_folds": 0,
           "current_target": null,
           "latest_attempt": null
         }
@@ -56,12 +56,12 @@
             "path": "PACS/trials/trial_015/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 0,
-              "test_in": 0.999251497005988,
+              "step": 300,
+              "test_in": 0.9985029940119761,
               "test_out": 1.0,
-              "train_out": 0.9532979871166842,
-              "eval_time": 50.309781312942505,
-              "eval_visual_cache_hit_splits": 0
+              "train_out": 0.976666124045938,
+              "eval_time": 1.508612871170044,
+              "eval_visual_cache_hit_splits": 8
             }
           }
         }
@@ -110,5 +110,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T06:45:18+08:00"
+  "synced_at": "2026-11-28T06:46:31+08:00"
 }
