@@ -1,0 +1,45 @@
+# RD + entropy-selected 40 B5b templates + selected anchor + CLIP-guided cross-domain positives.
+# Self-contained opt-in preset: original config_cipt_b5b_entropy_rd.yaml is unchanged.
+# For a controlled contrastive ablation, override only cipt_contrastive_type,
+# keeping temperature, loss weight and warmup identical across runs.
+cipt_objective: env_anchor
+cipt_env_constraint: relative_distance
+cipt_template_mode: b5b
+cipt_selector_mode: random
+cipt_env_selection: entropy
+cipt_env_topk: 40
+cipt_rd_anchor_mode: selected
+cipt_env_loss_weight: 2.0
+cipt_env_inference: e_only
+cipt_use_tda: false
+cipt_env_kl_weight: 0.0
+cipt_fused_cls_weight: 0.0
+
+cipt_use_de: true
+cipt_beta: 1.0
+cipt_e_cls_weight: 1.0
+cipt_s_uniform_weight: 1.0
+cipt_use_ind: false
+cipt_gamma: 0.0
+cipt_use_contrastive: true
+cipt_pure: false
+cipt_use_aug_view: false
+
+# Switch: supcon | neighbor_retention | cross_domain_supcon | clip_guided_cross_domain
+cipt_contrastive_type: clip_guided_cross_domain
+cipt_contrastive_temperature: 0.1
+cipt_causal_contrastive_weight: 1.5
+cipt_contrastive_warmup_steps: 0
+cipt_clip_teacher_temperature: 0.2
+cipt_clip_teacher_mix: 0.5
+cipt_clip_teacher_topk: 0
+# Legacy neighbor settings remain available when switching back.
+cipt_neighbor_k: 10
+cipt_neighbor_alpha: 4.0
+
+cipt_prompt_length: 16
+cipt_prompt_init: a photo of a
+lr: 5.0e-5
+batch_size: 32
+weight_decay: 0.0
+swad: LossValley

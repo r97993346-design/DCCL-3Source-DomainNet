@@ -1,0 +1,51 @@
+CIPT-ICML-20261127 恢复说明
+
+备份源
+  学校服务器 hooasia
+  /media/hooasia/data/CIPT-ICML-20261127-backup
+
+备份包含四个数据集、CLIP ViT-B/16 权重、CIPT 和注册表 Git bundles、当前 Study
+的一致性 SQLite 备份、依赖清单和可单独解包的 Conda/CUDA 运行时。CLIP BPE 词表
+保存在 CIPT bundle 中。历史训练输出、账户凭据及用后即丢的评估缓存未纳入备份。
+
+方式一  从自定义镜像恢复
+
+1. 等待备份完整性验证完成。原实例有未完成任务时，先让任务到达安全停止点。
+2. 在 AutoDL 控制台手动关机，选「更多操作」中的「保存镜像」，命名
+   CIPT-ICML-20261127。在「镜像」页面确认保存完成。
+3. 新租实例选择该镜像，并确认本地数据盘挂载至 /root/autodl-tmp。镜像恢复系统盘，
+   四个数据集和工作树要从外部备份复制到新实例。
+4. 在学校服务器发起直传。先在新实例创建 /root/autodl-tmp/backup-import。
+   将 SSH 端口、目标账户和主机替换成新实例的实际信息。
+
+   rsync -rt --partial --info=progress2 -e 'ssh -p NEW_PORT' \
+     /media/hooasia/data/CIPT-ICML-20261127-backup/ \
+     root@NEW_HOST:/root/autodl-tmp/backup-import/
+
+5. 在新实例上验证并恢复。脚本需要数据盘、Git、rsync 和镜像内的 Python 环境。
+
+   bundle=/root/autodl-tmp/backup-import
+   bash "$bundle/restore-cipt.sh" "$bundle" verify
+   bash "$bundle/restore-cipt.sh" "$bundle" restore
+
+   restore 校验 SHA-256、按各自分支还原 PACS/VLCS/Terra 工作树、校验并同步数据和
+   权重、恢复尚未存在的 Study，并进行 CPU 导入检查。它保留已有 Study 和源文件。
+   恢复后应检查各个 status.json。Terra 仍需显式授权，注册表仍需真实的 GitHub
+   写入权限及控制器接入。有卡时请先核对 nvidia-smi 和 PyTorch CUDA 导入。
+
+方式二  自定义镜像不可用时恢复运行时
+
+在兼容的 x86_64 Ubuntu 22.04、glibc 和 AutoDL NVIDIA 驱动环境中，准备 git、rsync、
+zstd、tar 和 tmux。使用没有占用备份安装路径的基础环境。已有路径时脚本会退出，
+可改用独立容器或请管理员处理原有目录。不要直接覆盖正在使用的 Conda 安装。
+
+   bundle=/root/autodl-tmp/backup-import
+   bash "$bundle/restore-cipt.sh" "$bundle" runtime
+
+运行时归档保持 /root/miniconda3 和 /usr/local/cuda-11.8 等原绝对路径。GPU 驱动由
+宿主机提供。若须重建第三方包，environment.yml 和 requirements.txt 可作为清单。
+CLIP 使用备份代码中的本地实现，代码需在 /root/autodl-tmp/code 恢复后才能导入。
+依赖重建路径仍取决于软件源可用性，首选镜像或运行时归档。
+
+不会自动启动训练。保存镜像后，请先确认新实例可读取学校服务器上的备份，并完成
+SHA-256 和 CPU 检查，再考虑释放原实例。
