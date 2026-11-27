@@ -62,8 +62,12 @@
             "prompt_length": 8
           },
           "completed_folds": 2,
-          "current_target": "Cartoon",
-          "latest_attempt": null
+          "current_target": "Photo",
+          "latest_attempt": {
+            "path": "PACS/trials/trial_013/env2/attempt_001",
+            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
+            "last_evaluation": {}
+          }
         }
       ],
       "gpu": 0,
@@ -110,5 +114,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T02:03:02+08:00"
+  "synced_at": "2026-11-28T02:03:34+08:00"
 }
