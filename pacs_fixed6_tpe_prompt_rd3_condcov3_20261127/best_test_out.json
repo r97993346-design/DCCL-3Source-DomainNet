@@ -1,0 +1,17 @@
+{
+  "trial": 0,
+  "state": "COMPLETE",
+  "condcov_weight": 0.5,
+  "rd_weight": 0.5,
+  "contrastive_weight": 0.001,
+  "contrastive_mix": 0.0,
+  "prompt_length": 4,
+  "initial_lr": 2e-05,
+  "origin": "verified_school_reuse",
+  "source_val": 0.9868982444821839,
+  "iid": 0.969870914813483,
+  "test_in": 0.969870914813483,
+  "test_out": 0.9693448227393846,
+  "elapsed_seconds": 6538.0,
+  "error": null
+}
