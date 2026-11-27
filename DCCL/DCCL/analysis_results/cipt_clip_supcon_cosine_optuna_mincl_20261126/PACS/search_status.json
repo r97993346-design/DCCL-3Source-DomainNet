@@ -16,8 +16,8 @@
       "contrastive_mix": 0.25,
       "prompt_length": 16
     },
-    "target": "Photo",
-    "completed_folds": 2
+    "target": "Sketch",
+    "completed_folds": 3
   },
   "stop_reason": null,
   "iid_reference_target": 0.975,
@@ -61,7 +61,7 @@
     "error": null
   },
   "completed_trials": 7,
-  "completed_folds": 30,
+  "completed_folds": 31,
   "trial_states": {
     "COMPLETE": 7,
     "RUNNING": 1
@@ -77,10 +77,10 @@
         "contrastive_mix": 0.25,
         "prompt_length": 16
       },
-      "completed_folds": 2,
-      "current_target": "Photo",
+      "completed_folds": 3,
+      "current_target": "Sketch",
       "latest_attempt": {
-        "path": "PACS/trials/trial_007/env2/attempt_001",
+        "path": "PACS/trials/trial_007/env3/attempt_001",
         "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
         "last_evaluation": {}
       }

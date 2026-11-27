@@ -83,11 +83,11 @@
         "path": "VLCS/trials/trial_002/env0/attempt_001",
         "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
         "last_evaluation": {
-          "step": 3600,
-          "test_in": 0.9973498233215548,
+          "step": 4200,
+          "test_in": 0.9955830388692579,
           "test_out": 1.0,
-          "train_out": 0.8414406014116638,
-          "eval_time": 1.2757303714752197,
+          "train_out": 0.8420397419605081,
+          "eval_time": 2.118002414703369,
           "eval_visual_cache_hit_splits": 8
         }
       }
