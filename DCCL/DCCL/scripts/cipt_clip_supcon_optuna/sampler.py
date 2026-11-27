@@ -12,19 +12,20 @@ from protocol import SAMPLER_SEED, SPACE, STARTUP_TRIALS, read_json, require, si
 
 
 class UniqueTPE(TPESampler):
-    def __init__(self, rng_state):
+    def __init__(self, rng_state, space=SPACE):
         require(optuna.__version__ == "4.9.0", "the independent categorical mask was audited on Optuna 4.9.0")
         super().__init__(multivariate=False, n_startup_trials=STARTUP_TRIALS, n_ei_candidates=24, seed=SAMPLER_SEED)
-        self.remaining = set(itertools.product(*SPACE.values()))
+        self.space = space
+        self.remaining = set(itertools.product(*space.values()))
         self.rng_state = rng_state
         if rng_state.exists():
             self._restore_rng(read_json(rng_state))
 
     def reserve(self, params):
-        self.remaining.discard(signature(params))
+        self.remaining.discard(signature(params, self.space))
 
     def sample_independent(self, study, trial, param_name, distribution):
-        keys = list(SPACE)
+        keys = list(self.space)
         prefix = {keys.index(name): value for name, value in trial.params.items()}
         index = keys.index(param_name)
         feasible = {combo[index] for combo in self.remaining

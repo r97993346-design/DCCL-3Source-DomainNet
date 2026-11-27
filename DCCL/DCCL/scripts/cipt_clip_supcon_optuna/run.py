@@ -22,7 +22,7 @@ from optuna.trial import TrialState
 from protocol import (
     BASE, BASE_COMMIT, BRANCH, BUDGET, CHECK, CLIP, CODE, DATA, DATASETS, EVAL_STEPS, FIXED_ARGS,
     INITIAL_PARAMS, LR_POLICY, MODEL_COMMIT, N_JOBS, OUTPUT, PAUSE, SAMPLER_SEED, SPACE, STARTUP_TRIALS, STEPS,
-    budget_for, command, cosine_lr,
+    budget_for, command, cosine_lr, OLD_OUTPUT, OLD_RUN_NAME, space_for,
     fixed_hparams, git, hparams_for, read_json, read_rows, require, seed_for, signature,
     study_name, summarize, validate_fold, write_json, write_text,
 )
@@ -32,8 +32,8 @@ from sampler import UniqueTPE
 GPU_FOR_DATASET = {"PACS": 0, "VLCS": 0, "OfficeHome": 1}
 MIN_RAM_KIB = 10 * 1024 * 1024
 POLL = 60
-SERVICE = "cipt-clip-supcon-mincl-optuna-20261126.service"
-PREVIOUS_RUN = "cipt_clip_supcon_cosine_optuna_20261126"
+SERVICE = "cipt-clip-supcon-mincl-space-v2-20261127.service"
+PREVIOUS_RUN = OLD_RUN_NAME
 OLDER_VLCS_RUN = "condcov_optuna_joint_20261125_low_contrast"
 ADMISSION = Lock()
 TRIAL_ADMISSION = Lock()
@@ -87,13 +87,16 @@ def create_plan():
         "clip_size": CLIP.stat().st_size, "clip_mtime": CLIP.stat().st_mtime_ns,
         "fixed_args": FIXED_ARGS, "fixed_hparams": fixed_hparams(), "steps": STEPS, "checkpoint_freq": CHECK,
         "replacement": True, "class_balanced": False, "lr_policy": LR_POLICY, "evaluation_steps": EVAL_STEPS,
-        "gradient_diagnostics": False, "space": {k: list(v) for k, v in SPACE.items()},
-        "enqueued_trial_0": INITIAL_PARAMS, "search_space_size": math.prod(map(len, SPACE.values())),
+        "gradient_diagnostics": False, "space": {d: space_for(d) for d in DATASETS},
+        "search_space_size": {d: math.prod(map(len, space_for(d).values())) for d in DATASETS},
         "sampler": {"name": "TPESampler", "seed": SAMPLER_SEED,
         "multivariate": False, "n_startup_trials": STARTUP_TRIALS, "n_ei_candidates": 24}, "pruner": "NopPruner",
         "objective": "four source-validation accuracies at source-selected checkpoints, averaged",
         "direction": "maximize", "trial_budget": BUDGET, "target_iid_threshold_stops_study": True,
-        "target_iid_reference": {d: v[1] for d, v in DATASETS.items()}, "history_import": False,
+        "target_iid_reference": {d: v[1] for d, v in DATASETS.items()},
+        "history_import": {"PACS": "validated complete", "OfficeHome": "validated complete",
+                           "VLCS": "external reference; original LR outside new space"},
+        "registry": "registry/global-optuna-trials",
         "training_seeds": {d: [seed_for(d, i) for i in range(4)] for d in DATASETS},
         "gpu_for_dataset": GPU_FOR_DATASET, "n_jobs_per_study": N_JOBS,
         "min_ram_kib_exclusive": MIN_RAM_KIB, "oom_fallback": "serialize on the affected GPU; retry the fold",
@@ -143,7 +146,7 @@ def preflight(identities):
     settings = []
     for dataset in DATASETS:
         for index in range(4):
-            params = {name: choices[index % len(choices)] for name, choices in SPACE.items()}
+            params = {name: choices[index % len(choices)] for name, choices in space_for(dataset).items()}
             case = OUTPUT / "audit" / "preflight_eval_visual_cache" / dataset / f"candidate_{index}"
             case.mkdir(parents=True, exist_ok=True)
             proof = case / "verified.json"
@@ -183,12 +186,11 @@ def open_studies():
     for dataset in DATASETS:
         root = OUTPUT / dataset
         root.mkdir(exist_ok=True)
-        sampler = UniqueTPE(root / "sampler_rng.json")
+        sampler = UniqueTPE(root / "sampler_rng.json", space_for(dataset))
         storage = optuna.storages.RDBStorage(f"sqlite:///{root / 'study.sqlite3'}",
                                             engine_kwargs={"connect_args": {"timeout": 60}})
         study = optuna.create_study(study_name=study_name(dataset), direction="maximize", sampler=sampler,
                                     pruner=optuna.pruners.NopPruner(), storage=storage, load_if_exists=True)
-        enqueue_initial_trial(study)
         for trial in study.get_trials(deepcopy=False):
             if set(trial.params) == set(SPACE):
                 sampler.reserve(trial.params)
@@ -239,9 +241,17 @@ def start_attempt(attempt, dataset, fold, number, config, gpu, env, lock_fd, *, 
             with ADMISSION:
                 ram = available_ram_kib()
                 limits = read_json(resources) if resources.is_file() else {}
-                gpu_limit = limits.get("gpu", {}).get(str(gpu), len(GPU_FOR_DATASET))
-                global_limit = limits.get("global", len(GPU_FOR_DATASET))
-                if ram > MIN_RAM_KIB and ACTIVE_GPU[gpu] < gpu_limit and len(ACTIVE_DATASETS) < global_limit:
+                old_limits_path = OLD_OUTPUT / "resource_limits.json"
+                old_limits = read_json(old_limits_path) if old_limits_path.is_file() else {}
+                gpu_limit = min(d.get("gpu", {}).get(str(gpu), len(GPU_FOR_DATASET))
+                                for d in (limits, old_limits))
+                global_limit = min(d.get("global", len(GPU_FOR_DATASET)) for d in (limits, old_limits))
+                live_old = [
+                    GPU_FOR_DATASET[name] for name in DATASETS
+                    if read_json(OLD_OUTPUT / name / "search_status.json").get("active")
+                ]
+                if (ram > MIN_RAM_KIB and ACTIVE_GPU[gpu] + live_old.count(gpu) < gpu_limit
+                        and len(ACTIVE_DATASETS) + len(live_old) < global_limit):
                     require(dataset not in ACTIVE_DATASETS, f"duplicate active dataset {dataset}")
                     child = subprocess.Popen(["bash", str(wrapper)], env=env, stdout=stream,
                                              stderr=subprocess.STDOUT, pass_fds=(lock_fd,))
@@ -328,7 +338,7 @@ def admit_trial(study, sampler):
         return trial.number, params
 
 
-def finish_trial(root, dataset, study, number, params, gpu, env, lock_fd):
+def finish_trial(root, dataset, study, number, params, gpu, env, lock_fd, on_fold=None):
     trial = root / "trials" / f"trial_{number:03d}"
     trial.mkdir(parents=True, exist_ok=True)
     output = trial / "result.json"
@@ -356,6 +366,8 @@ def finish_trial(root, dataset, study, number, params, gpu, env, lock_fd):
             write_json(marker, result)
         folds.append(result)
         emit("fold_completed", dataset=dataset, trial=number, **result)
+        if on_fold is not None:
+            on_fold()
     result = dict(summarize(folds), stop_reason="four_folds_complete", fixed_config=str(config))
     write_json(output, result)
     return result
@@ -478,9 +490,11 @@ def main():
             return
         write_json(OUTPUT / "run_status.json", {"state": "running", "gpu": GPU_FOR_DATASET,
                                                  "handoff": "independent_by_dataset"})
+        sys.modules["run"] = sys.modules[__name__]
+        import migration
         with ThreadPoolExecutor(max_workers=len(studies)) as pool:
             jobs = {
-                dataset: pool.submit(after_previous, dataset, root, study, sampler, GPU_FOR_DATASET[dataset],
+                dataset: pool.submit(migration.after_boundary, dataset, root, study, sampler, GPU_FOR_DATASET[dataset],
                                      identities[GPU_FOR_DATASET[dataset]], lock.fileno())
                 for dataset, (root, study, sampler) in studies.items()
             }
