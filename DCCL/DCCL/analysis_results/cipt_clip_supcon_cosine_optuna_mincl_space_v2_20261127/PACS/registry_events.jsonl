@@ -1,0 +1,1 @@
+{"event": "registry_retry_scheduled", "reason": "reservation update unconfirmed", "retry_in_seconds": 20}

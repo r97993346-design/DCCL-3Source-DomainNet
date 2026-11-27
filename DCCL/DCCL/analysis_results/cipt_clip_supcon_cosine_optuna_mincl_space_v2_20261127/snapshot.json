@@ -23,7 +23,7 @@
       "running_trials": [],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": "Git transport unavailable"
+      "stop_reason": "reservation update unconfirmed"
     },
     "VLCS": {
       "state": "waiting_for_previous_trial",
@@ -36,5 +36,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T17:01:32+08:00"
+  "synced_at": "2026-11-27T17:05:14+08:00"
 }
