@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_004/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 900,
-              "test_in": 0.7087628865979382,
-              "test_out": 0.7067583046964491,
-              "train_out": 0.9149874472637336,
-              "eval_time": 6.073330640792847,
+              "step": 1200,
+              "test_in": 0.7101947308132875,
+              "test_out": 0.715922107674685,
+              "train_out": 0.9242001127595876,
+              "eval_time": 6.127880573272705,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -43,32 +43,36 @@
       "stop_reason": null
     },
     "PACS": {
-      "state": "waiting_for_registry",
-      "completed_trials": 10,
+      "state": "running",
+      "completed_trials": 11,
       "completed_folds": 44,
       "trial_states": {
-        "COMPLETE": 10,
+        "COMPLETE": 11,
         "RUNNING": 1
       },
       "running_trials": [
         {
-          "trial_id": 10,
+          "trial_id": 11,
           "params": {
             "initial_lr": 3e-05,
             "condcov_weight": 3.0,
             "rd_weight": 3.0,
-            "contrastive_weight": 0.001,
+            "contrastive_weight": 0.05,
             "contrastive_mix": 0.75,
-            "prompt_length": 4
+            "prompt_length": 16
           },
-          "completed_folds": 4,
-          "current_target": null,
-          "latest_attempt": null
+          "completed_folds": 0,
+          "current_target": "Art Painting",
+          "latest_attempt": {
+            "path": "PACS/trials/trial_011/env0/attempt_001",
+            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
+            "last_evaluation": {}
+          }
         }
       ],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": "reservation update unconfirmed"
+      "stop_reason": null
     },
     "VLCS": {
       "state": "running",
@@ -94,11 +98,11 @@
             "path": "VLCS/trials/trial_000/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 2400,
-              "test_in": 0.8715290633098852,
-              "test_out": 0.8666666666666667,
-              "train_out": 0.8802545052286681,
-              "eval_time": 1.3997061252593994,
+              "step": 2700,
+              "test_in": 0.8704183635690484,
+              "test_out": 0.8681481481481481,
+              "train_out": 0.8783712660572933,
+              "eval_time": 1.7951643466949463,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -109,5 +113,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T21:28:54+08:00"
+  "synced_at": "2026-11-27T21:33:28+08:00"
 }

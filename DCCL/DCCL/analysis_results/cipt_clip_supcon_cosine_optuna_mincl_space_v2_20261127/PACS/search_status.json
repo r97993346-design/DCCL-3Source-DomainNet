@@ -1,13 +1,25 @@
 {
   "dataset": "PACS",
   "study_name": "PACS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1",
-  "state": "waiting_for_registry",
+  "state": "running",
   "gpu": 0,
   "n_jobs": 1,
-  "complete_trials": 10,
+  "complete_trials": 11,
   "budget": 648,
-  "active": null,
-  "stop_reason": "reservation update unconfirmed",
+  "active": {
+    "trial_id": 11,
+    "params": {
+      "initial_lr": 3e-05,
+      "condcov_weight": 3.0,
+      "rd_weight": 3.0,
+      "contrastive_weight": 0.05,
+      "contrastive_mix": 0.75,
+      "prompt_length": 16
+    },
+    "target": "Art Painting",
+    "completed_folds": 0
+  },
+  "stop_reason": null,
   "iid_reference_target": 0.975,
   "iid_reference_reached": false,
   "best_source_val": {
@@ -48,26 +60,30 @@
     "elapsed_seconds": 6538.0,
     "error": null
   },
-  "completed_trials": 10,
+  "completed_trials": 11,
   "completed_folds": 44,
   "trial_states": {
-    "COMPLETE": 10,
+    "COMPLETE": 11,
     "RUNNING": 1
   },
   "running_trials": [
     {
-      "trial_id": 10,
+      "trial_id": 11,
       "params": {
         "initial_lr": 3e-05,
         "condcov_weight": 3.0,
         "rd_weight": 3.0,
-        "contrastive_weight": 0.001,
+        "contrastive_weight": 0.05,
         "contrastive_mix": 0.75,
-        "prompt_length": 4
+        "prompt_length": 16
       },
-      "completed_folds": 4,
-      "current_target": null,
-      "latest_attempt": null
+      "completed_folds": 0,
+      "current_target": "Art Painting",
+      "latest_attempt": {
+        "path": "PACS/trials/trial_011/env0/attempt_001",
+        "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
+        "last_evaluation": {}
+      }
     }
   ]
 }
