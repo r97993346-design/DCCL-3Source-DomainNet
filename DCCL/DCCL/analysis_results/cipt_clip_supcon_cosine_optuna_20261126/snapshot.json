@@ -1,81 +1,44 @@
 {
-  "captured_at": "2026-11-26T21:10:30.868985+08:00",
+  "experiment": "cipt_clip_supcon_cosine_optuna_20261126",
+  "format": "optuna",
+  "training_code_commit": "024952d3d41e04768b3a24bf0809bac3c7a4710c",
   "datasets": {
+    "OfficeHome": {
+      "state": "paused",
+      "completed_trials": 1,
+      "completed_folds": 4,
+      "trial_states": {
+        "COMPLETE": 1,
+        "WAITING": 5
+      },
+      "running_trials": [],
+      "gpu": 1,
+      "budget": 10,
+      "stop_reason": "requested_after_current_trial"
+    },
     "PACS": {
-      "study_name": "PACS_condcov_rd_clip_allpos_cosine_seed1",
-      "state": "running",
+      "state": "paused",
+      "completed_trials": 2,
+      "completed_folds": 8,
+      "trial_states": {
+        "COMPLETE": 2,
+        "WAITING": 4
+      },
+      "running_trials": [],
       "gpu": 0,
       "budget": 10,
-      "active": {
-        "trial_id": 0,
-        "params": {
-          "initial_lr": 2e-05,
-          "condcov_weight": 2.0,
-          "rd_weight": 0.5,
-          "contrastive_weight": 0.05,
-          "contrastive_mix": 0.75,
-          "prompt_length": 8
-        },
-        "target": "Sketch",
-        "completed_folds": 3
-      },
-      "iid_reference_target": 0.975,
-      "stop_reason": null,
-      "completed_trials": 0,
-      "completed_folds": 3,
-      "running_progress": [
-        {
-          "attempt": "PACS/trials/trial_000/env3/attempt_001",
-          "last_evaluated_step": 4200,
-          "eval_seconds": 1.1438183784484863,
-          "cache_enabled": true,
-          "cache_hit_splits": 8
-        }
-      ]
+      "stop_reason": "requested_after_current_trial"
     },
     "VLCS": {
-      "study_name": "VLCS_condcov_rd_clip_allpos_cosine_seed1",
-      "state": "waiting_for_legacy_dataset",
-      "gpu": 1,
-      "budget": 10,
-      "active": null,
-      "iid_reference_target": 0.845,
-      "stop_reason": null,
+      "state": "paused",
       "completed_trials": 0,
       "completed_folds": 0,
-      "running_progress": []
-    },
-    "OfficeHome": {
-      "study_name": "OfficeHome_condcov_rd_clip_allpos_cosine_seed1",
-      "state": "running",
+      "trial_states": {},
+      "running_trials": [],
       "gpu": 1,
       "budget": 10,
-      "active": {
-        "trial_id": 0,
-        "params": {
-          "initial_lr": 2e-05,
-          "condcov_weight": 1.0,
-          "rd_weight": 1.0,
-          "contrastive_weight": 0.1,
-          "contrastive_mix": 0.25,
-          "prompt_length": 16
-        },
-        "target": "Art",
-        "completed_folds": 0
-      },
-      "iid_reference_target": 0.86,
-      "stop_reason": null,
-      "completed_trials": 0,
-      "completed_folds": 0,
-      "running_progress": [
-        {
-          "attempt": "OfficeHome/trials/trial_000/env0/attempt_002",
-          "last_evaluated_step": 3300,
-          "eval_seconds": 9.052238464355469,
-          "cache_enabled": true,
-          "cache_hit_splits": 8
-        }
-      ]
+      "stop_reason": "requested_before_handoff"
     }
-  }
+  },
+  "synced_at": "2026-11-27T12:27:06+08:00"
 }

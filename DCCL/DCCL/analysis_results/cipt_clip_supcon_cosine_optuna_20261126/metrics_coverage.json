@@ -1,0 +1,28 @@
+{
+  "loss_fields": [
+    "loss_clip_contrast",
+    "loss_condcov",
+    "loss_contrastive",
+    "loss_e_cls",
+    "loss_rd",
+    "loss_s_uniform",
+    "loss_total",
+    "total_loss",
+    "tr_loss",
+    "tr_outloss"
+  ],
+  "weighted_loss_fields": [
+    "weighted_condcov",
+    "weighted_contrastive",
+    "weighted_e_cls",
+    "weighted_rd",
+    "weighted_s_uniform"
+  ],
+  "gradient_fields": [],
+  "learning_rate_fields": [
+    "actual_lr",
+    "lr",
+    "lr_after_scheduler",
+    "lr_used"
+  ]
+}

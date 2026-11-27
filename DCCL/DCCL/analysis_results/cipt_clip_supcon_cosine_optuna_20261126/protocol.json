@@ -185,5 +185,22 @@
     "pause": "cd /media/hooasia/data/cipt_clip_supcon_cosine_optuna_20261126/code/DCCL/DCCL && /home/hooasia/miniconda3/envs/dccl/bin/python -B scripts/cipt_clip_supcon_optuna/run.py --pause",
     "resume": "cd /media/hooasia/data/cipt_clip_supcon_cosine_optuna_20261126/code/DCCL/DCCL && /home/hooasia/miniconda3/envs/dccl/bin/python -B scripts/cipt_clip_supcon_optuna/run.py --resume",
     "extend": "cd /media/hooasia/data/cipt_clip_supcon_cosine_optuna_20261126/code/DCCL/DCCL && /home/hooasia/miniconda3/envs/dccl/bin/python -B scripts/cipt_clip_supcon_optuna/run.py --extend <dataset> <new_total>"
+  },
+  "study_directions": {
+    "OfficeHome": {
+      "1": [
+        "MAXIMIZE"
+      ]
+    },
+    "PACS": {
+      "1": [
+        "MAXIMIZE"
+      ]
+    },
+    "VLCS": {
+      "1": [
+        "MAXIMIZE"
+      ]
+    }
   }
 }

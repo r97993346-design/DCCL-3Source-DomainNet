@@ -1,32 +1,58 @@
 {
+  "dataset": "OfficeHome",
   "study_name": "OfficeHome_condcov_rd_clip_allpos_cosine_seed1",
-  "state": "running",
+  "state": "paused",
   "gpu": 1,
+  "n_jobs": 1,
+  "complete_trials": 1,
   "budget": 10,
-  "active": {
-    "trial_id": 0,
-    "params": {
-      "initial_lr": 2e-05,
-      "condcov_weight": 1.0,
-      "rd_weight": 1.0,
-      "contrastive_weight": 0.1,
-      "contrastive_mix": 0.25,
-      "prompt_length": 16
-    },
-    "target": "Art",
-    "completed_folds": 0
-  },
+  "active": null,
+  "stop_reason": "requested_after_current_trial",
   "iid_reference_target": 0.86,
-  "stop_reason": null,
-  "completed_trials": 0,
-  "completed_folds": 0,
-  "running_progress": [
-    {
-      "attempt": "OfficeHome/trials/trial_000/env0/attempt_002",
-      "last_evaluated_step": 3300,
-      "eval_seconds": 9.052238464355469,
-      "cache_enabled": true,
-      "cache_hit_splits": 8
-    }
-  ]
+  "iid_reference_reached": false,
+  "best_source_val": {
+    "trial_id": 0,
+    "state": "COMPLETE",
+    "initial_lr": 2e-05,
+    "condcov_weight": 1.0,
+    "rd_weight": 1.0,
+    "contrastive_weight": 0.1,
+    "contrastive_mix": 0.25,
+    "prompt_length": 16,
+    "started_at": "2026-11-26T19:37:07.808887",
+    "ended_at": "2026-11-27T00:56:18.463655",
+    "candidate_group": "historical_warm_start",
+    "source_val": 0.8928525393735114,
+    "iid": 0.8479411818671976,
+    "test_in": 0.8479411818671976,
+    "test_out": 0.8525432395687866,
+    "elapsed_seconds": 16423.0,
+    "error": null
+  },
+  "best_iid": {
+    "trial_id": 0,
+    "state": "COMPLETE",
+    "initial_lr": 2e-05,
+    "condcov_weight": 1.0,
+    "rd_weight": 1.0,
+    "contrastive_weight": 0.1,
+    "contrastive_mix": 0.25,
+    "prompt_length": 16,
+    "started_at": "2026-11-26T19:37:07.808887",
+    "ended_at": "2026-11-27T00:56:18.463655",
+    "candidate_group": "historical_warm_start",
+    "source_val": 0.8928525393735114,
+    "iid": 0.8479411818671976,
+    "test_in": 0.8479411818671976,
+    "test_out": 0.8525432395687866,
+    "elapsed_seconds": 16423.0,
+    "error": null
+  },
+  "completed_trials": 1,
+  "completed_folds": 4,
+  "trial_states": {
+    "COMPLETE": 1,
+    "WAITING": 5
+  },
+  "running_trials": []
 }

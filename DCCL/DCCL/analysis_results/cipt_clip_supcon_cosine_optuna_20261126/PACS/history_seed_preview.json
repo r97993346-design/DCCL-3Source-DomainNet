@@ -1,0 +1,111 @@
+{
+  "dataset": "PACS",
+  "top_3_by_source_val": [
+    {
+      "source_study_run": "condcov_optuna_joint_20261125_low_contrast",
+      "source_trial": 7,
+      "historical_source_val": 0.9874033343134225,
+      "params": {
+        "condcov_weight": 2.0,
+        "contrastive_mix": 0.75,
+        "contrastive_weight": 0.05,
+        "prompt_length": 8,
+        "rd_weight": 0.5
+      }
+    },
+    {
+      "source_study_run": "condcov_optuna_joint_20261125_low_contrast",
+      "source_trial": 4,
+      "historical_source_val": 0.9872629256539056,
+      "params": {
+        "condcov_weight": 0.5,
+        "contrastive_mix": 0.75,
+        "contrastive_weight": 0.05,
+        "prompt_length": 8,
+        "rd_weight": 2.0
+      }
+    },
+    {
+      "source_study_run": "condcov_optuna_joint_20261125_low_contrast",
+      "source_trial": 5,
+      "historical_source_val": 0.9871567685413791,
+      "params": {
+        "condcov_weight": 0.5,
+        "contrastive_mix": 0.5,
+        "contrastive_weight": 0.05,
+        "prompt_length": 8,
+        "rd_weight": 2.0
+      }
+    }
+  ],
+  "queue": [
+    {
+      "params": {
+        "initial_lr": 2e-05,
+        "condcov_weight": 2.0,
+        "contrastive_mix": 0.75,
+        "contrastive_weight": 0.05,
+        "prompt_length": 8,
+        "rd_weight": 0.5
+      },
+      "historical_rank": 1
+    },
+    {
+      "params": {
+        "initial_lr": 3e-05,
+        "condcov_weight": 2.0,
+        "contrastive_mix": 0.75,
+        "contrastive_weight": 0.05,
+        "prompt_length": 8,
+        "rd_weight": 0.5
+      },
+      "historical_rank": 1
+    },
+    {
+      "params": {
+        "initial_lr": 2e-05,
+        "condcov_weight": 0.5,
+        "contrastive_mix": 0.75,
+        "contrastive_weight": 0.05,
+        "prompt_length": 8,
+        "rd_weight": 2.0
+      },
+      "historical_rank": 2
+    },
+    {
+      "params": {
+        "initial_lr": 3e-05,
+        "condcov_weight": 0.5,
+        "contrastive_mix": 0.75,
+        "contrastive_weight": 0.05,
+        "prompt_length": 8,
+        "rd_weight": 2.0
+      },
+      "historical_rank": 2
+    },
+    {
+      "params": {
+        "initial_lr": 2e-05,
+        "condcov_weight": 0.5,
+        "contrastive_mix": 0.5,
+        "contrastive_weight": 0.05,
+        "prompt_length": 8,
+        "rd_weight": 2.0
+      },
+      "historical_rank": 3
+    },
+    {
+      "params": {
+        "initial_lr": 3e-05,
+        "condcov_weight": 0.5,
+        "contrastive_mix": 0.5,
+        "contrastive_weight": 0.05,
+        "prompt_length": 8,
+        "rd_weight": 2.0
+      },
+      "historical_rank": 3
+    }
+  ],
+  "historical_objectives_imported": 0,
+  "captured_unix_seconds": 1795693024
+}

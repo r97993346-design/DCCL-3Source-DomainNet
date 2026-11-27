@@ -1,0 +1,12 @@
+{
+  "dataset": "OfficeHome",
+  "trial": 0,
+  "fold": 0,
+  "target": "Art",
+  "pid": 4169470,
+  "last_evaluated_step": 300,
+  "requested_at": "2026-11-26T20:21:30.904731+08:00",
+  "reason": "user_requested_restart_to_enable_evaluation_visual_cache",
+  "retry": "attempt_002",
+  "expected_code_commit": "8e25add"
+}
