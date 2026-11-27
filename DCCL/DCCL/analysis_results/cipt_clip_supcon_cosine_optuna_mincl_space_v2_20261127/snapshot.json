@@ -36,9 +36,9 @@
       "stop_reason": null
     },
     "PACS": {
-      "state": "running",
+      "state": "waiting_for_registry",
       "completed_trials": 10,
-      "completed_folds": 43,
+      "completed_folds": 44,
       "trial_states": {
         "COMPLETE": 10,
         "RUNNING": 1
@@ -54,25 +54,14 @@
             "contrastive_mix": 0.75,
             "prompt_length": 4
           },
-          "completed_folds": 3,
-          "current_target": "Sketch",
-          "latest_attempt": {
-            "path": "PACS/trials/trial_010/env3/attempt_001",
-            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4800,
-              "test_in": 0.9134860050890585,
-              "test_out": 0.9146496815286624,
-              "train_out": 0.9961305108004375,
-              "eval_time": 1.4537622928619385,
-              "eval_visual_cache_hit_splits": 8
-            }
-          }
+          "completed_folds": 4,
+          "current_target": null,
+          "latest_attempt": null
         }
       ],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": null
+      "stop_reason": "reservation update unconfirmed"
     },
     "VLCS": {
       "state": "running",
@@ -98,11 +87,11 @@
             "path": "VLCS/trials/trial_000/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 1500,
-              "test_in": 0.8667160310995927,
-              "test_out": 0.8696296296296296,
-              "train_out": 0.8748440203328587,
-              "eval_time": 2.2235612869262695,
+              "step": 1800,
+              "test_in": 0.8707885968159941,
+              "test_out": 0.882962962962963,
+              "train_out": 0.8734689112427847,
+              "eval_time": 1.3648414611816406,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -113,5 +102,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T21:10:48+08:00"
+  "synced_at": "2026-11-27T21:11:58+08:00"
 }
