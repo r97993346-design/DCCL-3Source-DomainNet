@@ -1,35 +1,47 @@
 """Independent PACS study using the existing CIPT fold runner."""
 import argparse
+from contextlib import ExitStack
 import fcntl
 import itertools
+from importlib.util import module_from_spec, spec_from_file_location
 import os
 import random
 import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import optuna
 from optuna.trial import TrialState
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "cipt_clip_supcon_optuna"))
+legacy = Path(__file__).resolve().parents[1] / "cipt_clip_supcon_optuna"
+sys.path.insert(0, str(legacy))
 import protocol as p
-import run as runner
 
-NAME = "pacs_fixed6_tpe_prompt_rd3_condcov3_20261127"
+runner_spec = spec_from_file_location("cip_t_fold_runner", legacy / "run.py")
+runner = module_from_spec(runner_spec)
+runner_spec.loader.exec_module(runner)
+
+DATASET = "VLCS"
+INITIAL_LR = 1e-5
+TARGET_IID = .845
+SPACE_SIZE = 816
+NAME = "vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127"
 ROOT = p.BASE / "outputs" / NAME
 SPACE = {
     "condcov_weight": (0.5, 1.0, 2.0, 3.0),
     "rd_weight": (0.5, 1.0, 2.0, 3.0),
-    "contrastive_weight": (0.0, 0.001, 0.025, 0.05),
+    "contrastive_weight": (0.0, 0.001, 0.025, 0.05, 0.1),
     "contrastive_mix": (0.0, 0.25, 0.5, 0.75),
     "prompt_length": (4, 8, 16),
 }
-FIXED = [(0.5,0.5,0.001,0.,4), (0.5,0.5,0.,0.,4), (0.5,2.,0.001,0.,4),
-         (0.5,2.,0.001,0.75,4), (2.,2.,0.001,0.75,4), (3.,3.,0.025,0.25,8)]
-SEEDS = [280998037, 1975502969, 683537036, 990940125]
+FIXED = [(2.,2.,.1,.5,8), (.5,.5,.001,0.,4), (2.,2.,0.,0.,4),
+         (2.,2.,.025,0.,4), (2.,2.,.025,.75,4), (3.,3.,.05,.25,8)]
+SEEDS = [1141299501, 592449405, 374236774, 733132323]
 FIXED = [dict(zip(SPACE, row)) for row in FIXED]
 PAUSE = ROOT / "pause.request"
+STOP = ROOT / "stop.request"
 FIXED_HPARAMS = p.fixed_hparams()
 
 
@@ -44,12 +56,12 @@ CANDIDATES = sorted({effective(dict(zip(SPACE, row))) for row in itertools.produ
 
 
 def training_params(values):
-    return dict(zip(SPACE, effective(values)), initial_lr=2e-5)
+    return dict(zip(SPACE, effective(values)), initial_lr=INITIAL_LR)
 
 
 def hparams(values):
     values = training_params(values)
-    return dict(FIXED_HPARAMS, lr=2e-5,
+    return dict(FIXED_HPARAMS, lr=INITIAL_LR,
                 cipt_condcov_weight=values["condcov_weight"],
                 cipt_env_loss_weight=values["rd_weight"],
                 cipt_causal_contrastive_weight=values["contrastive_weight"],
@@ -62,7 +74,8 @@ p.hparams_for = hparams
 runner.hparams_for = hparams
 runner.OUTPUT = ROOT
 runner.PAUSE = PAUSE
-runner.GPU_FOR_DATASET = {"PACS": int(os.environ.get("CIPT_GPU_PACS", "0"))}
+GPU_REQUEST = os.environ.get("CIPT_GPU_VLCS")
+runner.GPU_FOR_DATASET = {DATASET: int(GPU_REQUEST or "0")}
 runner.ACTIVE_GPU = dict.fromkeys(runner.GPU_FOR_DATASET.values(), 0)
 
 
@@ -74,35 +87,75 @@ def immutable(path, value):
 
 
 def prepare():
-    p.require(len(CANDIDATES) == 624 and len({effective(row) for row in FIXED}) == 6, "bad search space")
-    p.require([p.seed_for("PACS", i) for i in range(4)] == SEEDS, "fold seed mismatch")
-    p.require(p.CLIP.is_file() and (p.DATA / "PACS").is_dir(), "weights or PACS missing")
+    p.require(len(CANDIDATES) == SPACE_SIZE and len({effective(row) for row in FIXED}) == 6, "bad search space")
+    p.require([p.seed_for(DATASET, i) for i in range(4)] == SEEDS, "fold seed mismatch")
+    p.require(p.CLIP.is_file() and (p.DATA / DATASET).is_dir(), "weights or PACS missing")
     ROOT.mkdir(parents=True, exist_ok=True)
     immutable(ROOT / "fixed_trials.json", FIXED)
     immutable(ROOT / "search_space.json", {k: list(v) for k, v in SPACE.items()})
     immutable(ROOT / "protocol.json", {
-        "dataset": "PACS", "space_size": 624, "fixed_args": p.FIXED_ARGS,
-        "fixed_hparams": FIXED_HPARAMS, "initial_lr": 2e-5, "scheduler": p.LR_POLICY,
-        "seeds": SEEDS, "target_iid": .975, "objective": "mean four-fold source validation",
+        "dataset": DATASET, "space_size": SPACE_SIZE, "fixed_args": p.FIXED_ARGS,
+        "fixed_hparams": FIXED_HPARAMS, "initial_lr": INITIAL_LR, "scheduler": p.LR_POLICY,
+        "seeds": SEEDS, "target_iid": TARGET_IID, "objective": "mean four-fold source validation",
         "sampler": {"seed": 42, "n_startup_trials": 6, "n_ei_candidates": 24, "multivariate": False},
         "pruner": "NopPruner", "n_jobs": 1,
-        "reference_t0": {"source_val": .98690, "iid": .96987, "test_out": .96934},
+        "historical_references_only": [{"source_val": .88868, "iid": .82736, "test_out": .82140},
+                                       {"source_val": .88934, "iid": .82599, "test_out": .82178}],
     })
     immutable(ROOT / "snapshot.json", {"commit": p.git("rev-parse", "HEAD"),
               "data": str(p.DATA), "weights": str(p.CLIP), "python": sys.version.split()[0],
               "optuna": optuna.__version__})
 
 
-def ready():
+def hardware():
     p.require(runner.available_ram_kib() > runner.MIN_RAM_KIB, "available RAM must exceed 10 GiB")
-    gpu = runner.GPU_FOR_DATASET["PACS"]
-    uuid = runner.gpu_uuids()[gpu]
     p.require(not p.git("status", "--porcelain", "--", "domainbed", "train_all.py", "scripts"), "training tree not clean")
-    env = runner.environment_for(uuid)
-    subprocess.run([sys.executable, "-B", "-c",
-                    "import torch; assert torch.cuda.is_available(); print(torch.cuda.get_device_name(0))"],
-                   env=env, check=True)
-    return gpu, env
+    listing = subprocess.check_output(
+        ["nvidia-smi", "--query-gpu=index,uuid", "--format=csv,noheader"], text=True, timeout=15)
+    devices = dict((int(index.strip()), uuid.strip()) for index, uuid in
+                   (line.split(",") for line in listing.splitlines() if line.strip()))
+    p.require(devices and (GPU_REQUEST is None or int(GPU_REQUEST) in devices), "requested GPU unavailable")
+    subprocess.run([sys.executable, "-B", "-c", "import torch; assert torch.cuda.is_available()"], check=True)
+    return devices
+
+
+def pacs_gpu():
+    for proc in Path("/proc").glob("[0-9]*"):
+        try:
+            cmd = (proc / "cmdline").read_bytes().split(b"\0")
+            if not any(arg.endswith(b"scripts/pacs_fixed6/run.py") for arg in cmd):
+                continue
+            if b"run" not in cmd and b"resume" not in cmd:
+                continue
+            env = dict(item.split(b"=", 1) for item in
+                       (proc / "environ").read_bytes().split(b"\0") if b"=" in item)
+            return int(env.get(b"CIPT_GPU_PACS", b"0"))
+        except (OSError, ValueError):
+            continue
+    return None
+
+
+def reserve_gpu(devices, stack):
+    candidates = [int(GPU_REQUEST)] if GPU_REQUEST is not None else sorted(devices)
+    while not PAUSE.exists() and not STOP.exists():
+        occupied = subprocess.check_output(
+            ["nvidia-smi", "--query-compute-apps=gpu_uuid", "--format=csv,noheader"], text=True, timeout=15)
+        for gpu in candidates:
+            if gpu == pacs_gpu() or devices[gpu] in occupied or runner.available_ram_kib() <= runner.MIN_RAM_KIB:
+                continue
+            reservation = (p.BASE / f".fixed6-gpu-{gpu}.lock").open("a")
+            try:
+                fcntl.flock(reservation, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                reservation.close()
+                continue
+            stack.enter_context(reservation)
+            runner.GPU_FOR_DATASET = {DATASET: gpu}
+            runner.ACTIVE_GPU = {gpu: 0}
+            return gpu, runner.environment_for(devices[gpu])
+        p.write_json(ROOT / "status.json", {"state": "waiting_for_gpu"})
+        time.sleep(15)
+    return None
 
 
 def tables(study):
@@ -111,7 +164,7 @@ def tables(study):
         if not trial.params or not set(SPACE) <= trial.params.keys():
             continue
         params = training_params(trial.params)
-        path = ROOT / "PACS" / "trials" / f"trial_{trial.number:03d}"
+        path = ROOT / DATASET / "trials" / f"trial_{trial.number:03d}"
         result = trial.user_attrs.get("result", {})
         rows.append(dict(trial=trial.number, state=trial.state.name, **params,
                          origin=trial.user_attrs.get("origin"), **{k: result.get(k) for k in
@@ -125,7 +178,7 @@ def tables(study):
     if complete:
         for key in ("source_val", "iid", "test_out"):
             p.write_json(ROOT / f"best_{key}.json", max(complete, key=lambda row: row[key]))
-    hit = next((row for row in complete if row["iid"] >= .975), None)
+    hit = next((row for row in complete if row["iid"] >= TARGET_IID), None)
     if hit and sum(row["trial"] < 6 for row in complete) == 6:
         p.write_json(ROOT / "target_reached.json", hit)
         return True
@@ -172,9 +225,14 @@ def candidate(study):
 
 def search():
     prepare()
-    with (ROOT / "controller.lock").open("a") as lock:
+    with (ROOT / "controller.lock").open("a") as lock, ExitStack() as stack:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        gpu, env = ready()
+        assignment = reserve_gpu(hardware(), stack)
+        if assignment is None:
+            p.write_json(ROOT / "status.json", {"state": "stopped" if STOP.exists() else "paused"})
+            (ROOT / "sync.request").touch()
+            return
+        gpu, env = assignment
         study = optuna.create_study(study_name=NAME, direction="maximize", load_if_exists=True,
                 storage=f"sqlite:///{ROOT / 'optuna.db'}",
                 sampler=optuna.samplers.TPESampler(seed=42, n_startup_trials=6, n_ei_candidates=24, multivariate=False),
@@ -182,8 +240,8 @@ def search():
         if not study.trials:
             for i, params in enumerate(FIXED):
                 study.enqueue_trial(params, user_attrs={"origin": f"fixed_T{i}"})
-        signal.signal(signal.SIGTERM, lambda *_: PAUSE.touch())
-        while not PAUSE.exists():
+        signal.signal(signal.SIGTERM, lambda *_: STOP.touch())
+        while not PAUSE.exists() and not STOP.exists():
             if tables(study):
                 reason = "target_reached"
                 break
@@ -192,7 +250,7 @@ def search():
                 reason = "space_exhausted"
                 break
             trial, params = item
-            result = runner.finish_trial(ROOT / "PACS", "PACS", study, trial.number, params, gpu, env, lock.fileno())
+            result = runner.finish_trial(ROOT / DATASET, DATASET, study, trial.number, params, gpu, env, lock.fileno())
             trial.set_user_attr("result", result)
             if "error" in result:
                 study.tell(trial, state=TrialState.FAIL)
@@ -201,27 +259,29 @@ def search():
             tables(study)
             (ROOT / "sync.request").touch()
         else:
-            reason = "paused"
+            reason = "stopped" if STOP.exists() else "paused"
         p.write_json(ROOT / "status.json", {"state": reason})
         (ROOT / "sync.request").touch()
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("prepare", "ready", "run", "pause", "resume"))
+    parser.add_argument("action", choices=("prepare", "ready", "run", "pause", "resume", "stop"))
     action = parser.parse_args().action
     os.chdir(p.CODE)
-    if action == "pause":
-        PAUSE.touch()
+    if action in ("pause", "stop"):
+        ROOT.mkdir(parents=True, exist_ok=True)
+        (PAUSE if action == "pause" else STOP).touch()
     elif action == "prepare":
         prepare()
     elif action == "ready":
-        ready()
+        print(hardware())
     else:
         if action == "resume":
             with (ROOT / "controller.lock").open("a") as lock:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 PAUSE.unlink(missing_ok=True)
+                STOP.unlink(missing_ok=True)
         search()
 
 

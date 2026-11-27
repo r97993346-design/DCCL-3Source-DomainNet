@@ -1,5 +1,6 @@
 """Publish allowlisted experiment records from a separate Git worktree."""
 import fcntl
+import json
 import os
 import re
 import shutil
@@ -7,9 +8,9 @@ import subprocess
 import time
 from pathlib import Path
 
-from run import NAME, ROOT
+from run import DATASET, NAME, ROOT
 
-BRANCH = "results/pacs-fixed6-tpe-prompt-rd3-condcov3-20261127"
+BRANCH = "results/vlcs-fixed6-tpe-lr1e5-prompt-rd3-condcov3-20261127"
 REMOTE = "https://github.com/r97993346-design/DCCL-3Source-DomainNet.git"
 WORK = ROOT / ".github-sync"
 TOP = {"protocol.json", "snapshot.json", "fixed_trials.json", "search_space.json",
@@ -35,7 +36,7 @@ def publish():
         if ref:
             git("fetch", "origin", BRANCH)
             git("reset", "--hard", "FETCH_HEAD")
-    for src in [*(ROOT / name for name in TOP), *(ROOT / "PACS" / "trials").rglob("*")]:
+    for src in [*(ROOT / name for name in TOP), *(ROOT / DATASET / "trials").rglob("*")]:
         if not src.is_file() or src.is_symlink():
             continue
         rel = src.relative_to(ROOT)
@@ -50,7 +51,7 @@ def publish():
     git("add", "--", NAME)
     if git("diff", "--cached", "--name-only", capture=True):
         git("-c", "user.name=CIPT automation", "-c", "user.email=cipt-automation@users.noreply.github.com",
-            "commit", "-m", "Update PACS fixed-six study records")
+            "commit", "-m", "Update VLCS fixed-six study records")
     git("push", "origin", f"HEAD:refs/heads/{BRANCH}")
 
 
@@ -61,7 +62,7 @@ def main():
         next_sync = 0
         while True:
             request = ROOT / "sync.request"
-            folds = sorted((ROOT / "PACS" / "trials").glob("trial_*/fold_*.json"))
+            folds = sorted((ROOT / DATASET / "trials").glob("trial_*/fold_*.json"))
             marker = (len(folds), request.stat().st_mtime_ns if request.exists() else 0)
             if marker != previous or time.monotonic() >= next_sync:
                 try:
@@ -72,7 +73,7 @@ def main():
                     continue
                 previous, next_sync = marker, time.monotonic() + 1800
                 status = ROOT / "status.json"
-                if status.exists() and '"state": "paused"' not in status.read_text():
+                if status.exists() and json.loads(status.read_text()).get("state") in {"target_reached", "space_exhausted", "stopped"}:
                     return
             time.sleep(5)
 
