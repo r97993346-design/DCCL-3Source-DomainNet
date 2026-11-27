@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_004/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 300,
-              "test_in": 0.815653964984552,
-              "test_out": 0.8577319587628865,
-              "train_out": 0.8419294639143222,
-              "eval_time": 9.101442337036133,
+              "step": 600,
+              "test_in": 0.82389289392379,
+              "test_out": 0.8701030927835052,
+              "train_out": 0.8666604396577944,
+              "eval_time": 9.192832231521606,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -67,11 +67,11 @@
             "path": "PACS/trials/trial_010/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3300,
-              "test_in": 0.9893390191897654,
+              "step": 3600,
+              "test_in": 0.9898720682302772,
               "test_out": 0.9871794871794872,
               "train_out": 0.9831519058965215,
-              "eval_time": 2.0230298042297363,
+              "eval_time": 2.037432909011841,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -105,11 +105,11 @@
             "path": "VLCS/trials/trial_000/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 1800,
-              "test_in": 0.6428235294117647,
-              "test_out": 0.6195856873822976,
-              "train_out": 0.919657482685938,
-              "eval_time": 2.0715596675872803,
+              "step": 2100,
+              "test_in": 0.6418823529411765,
+              "test_out": 0.6177024482109228,
+              "train_out": 0.9241591388136103,
+              "eval_time": 2.1451539993286133,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -120,5 +120,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T20:07:53+08:00"
+  "synced_at": "2026-11-27T20:09:02+08:00"
 }
