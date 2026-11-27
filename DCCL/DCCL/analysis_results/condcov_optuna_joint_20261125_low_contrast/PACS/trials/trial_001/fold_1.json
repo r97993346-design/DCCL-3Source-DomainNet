@@ -1,0 +1,20 @@
+{
+  "fold": 1,
+  "domain": "Cartoon",
+  "seed": 1975502969,
+  "selected_step": 4200,
+  "iid": 0.9888059701492538,
+  "test_in": 0.9888059701492538,
+  "test_out": 0.9914529914529915,
+  "source_val": 0.9839669018215418,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.9893390191897654,
+  "final_test_out": 0.9893162393162394,
+  "final_source_val": 0.9826930164712233,
+  "elapsed_seconds": 2557.0,
+  "actual_prompt_length": 16,
+  "log": "PACS/trials/trial_001/env1/attempt_001/results.jsonl",
+  "telemetry": "PACS/trials/trial_001/env1/attempt_001/optimizer.jsonl",
+  "training_code_commit": "a5069e9199dd49de5a2ed199c076e40707661e1e"
+}

@@ -1,0 +1,364 @@
+{
+  "state": "paused",
+  "updated_at": "2026-11-26T22:02:59+08:00",
+  "code_branch": "experiment/condcov-optuna-low-contrast-20261125",
+  "code_commit": "a5069e9199dd49de5a2ed199c076e40707661e1e",
+  "output_directory": "/media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125_low_contrast",
+  "sampler": {
+    "name": "TPESampler",
+    "multivariate": false,
+    "n_startup_trials": 5,
+    "n_ei_candidates": 24,
+    "seed": 42,
+    "exclude_seen_combinations": true
+  },
+  "pruner": "NopPruner",
+  "resume_command": "/home/hooasia/miniconda3/envs/dccl/bin/python -B /media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/pause_control.py --resume",
+  "datasets": {
+    "PACS": {
+      "study_name": "PACS_condcov_low_contrast_seed1",
+      "storage": "sqlite:////media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125_low_contrast/PACS/study.sqlite3",
+      "database_integrity": "ok",
+      "sampler_state": "/media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125_low_contrast/PACS/sampler_rng.json",
+      "sampler_sha256": "21dbf4c4313fef0cdc5267a065327d46a9e4d2d43043f846aef3ed9629352288",
+      "complete_trials": 9,
+      "new_complete_trials": 8,
+      "best_source_val": {
+        "trial_id": 7,
+        "source_val": 0.9874033343134225,
+        "params": {
+          "condcov_weight": 2.0,
+          "rd_weight": 0.5,
+          "contrastive_weight": 0.05,
+          "prompt_length": 8,
+          "contrastive_mix": 0.75
+        },
+        "origin": "new",
+        "iid": 0.9670707746444405,
+        "test_out": 0.9688979010294398
+      },
+      "complete_results": [
+        {
+          "trial_id": 0,
+          "source_val": 0.9869324960291742,
+          "params": {
+            "condcov_weight": 1.0,
+            "rd_weight": 1.0,
+            "contrastive_weight": 0.1,
+            "prompt_length": 16,
+            "contrastive_mix": 0.25
+          },
+          "origin": "imported",
+          "iid": 0.9676357465788208,
+          "test_out": 0.967219679754083
+        },
+        {
+          "trial_id": 1,
+          "source_val": 0.9869324960291742,
+          "params": {
+            "condcov_weight": 1.0,
+            "rd_weight": 0.5,
+            "contrastive_weight": 0.05,
+            "prompt_length": 16,
+            "contrastive_mix": 0.25
+          },
+          "origin": "new",
+          "iid": 0.9673176804210599,
+          "test_out": 0.9683651147320362
+        },
+        {
+          "trial_id": 2,
+          "source_val": 0.9870506114288526,
+          "params": {
+            "condcov_weight": 2.0,
+            "rd_weight": 2.0,
+            "contrastive_weight": 0.1,
+            "prompt_length": 8,
+            "contrastive_mix": 0.5
+          },
+          "origin": "new",
+          "iid": 0.9676078872790608,
+          "test_out": 0.9688208421198625
+        },
+        {
+          "trial_id": 3,
+          "source_val": 0.9869324960291742,
+          "params": {
+            "condcov_weight": 0.5,
+            "rd_weight": 1.0,
+            "contrastive_weight": 0.1,
+            "prompt_length": 16,
+            "contrastive_mix": 0.5
+          },
+          "origin": "new",
+          "iid": 0.9676357465788208,
+          "test_out": 0.967219679754083
+        },
+        {
+          "trial_id": 4,
+          "source_val": 0.9872629256539056,
+          "params": {
+            "condcov_weight": 0.5,
+            "rd_weight": 2.0,
+            "contrastive_weight": 0.05,
+            "prompt_length": 8,
+            "contrastive_mix": 0.75
+          },
+          "origin": "new",
+          "iid": 0.9687616290877412,
+          "test_out": 0.9701203949169703
+        },
+        {
+          "trial_id": 5,
+          "source_val": 0.9871567685413791,
+          "params": {
+            "condcov_weight": 0.5,
+            "rd_weight": 2.0,
+            "contrastive_weight": 0.05,
+            "prompt_length": 8,
+            "contrastive_mix": 0.5
+          },
+          "origin": "new",
+          "iid": 0.9678464368973814,
+          "test_out": 0.9695091479732051
+        },
+        {
+          "trial_id": 6,
+          "source_val": 0.986304118597813,
+          "params": {
+            "condcov_weight": 0.5,
+            "rd_weight": 2.0,
+            "contrastive_weight": 0.025,
+            "prompt_length": 4,
+            "contrastive_mix": 0.75
+          },
+          "origin": "new",
+          "iid": 0.9696518683366236,
+          "test_out": 0.9704131988077607
+        },
+        {
+          "trial_id": 7,
+          "source_val": 0.9874033343134225,
+          "params": {
+            "condcov_weight": 2.0,
+            "rd_weight": 0.5,
+            "contrastive_weight": 0.05,
+            "prompt_length": 8,
+            "contrastive_mix": 0.75
+          },
+          "origin": "new",
+          "iid": 0.9670707746444405,
+          "test_out": 0.9688979010294398
+        },
+        {
+          "trial_id": 8,
+          "source_val": 0.9868263389166477,
+          "params": {
+            "condcov_weight": 2.0,
+            "rd_weight": 0.5,
+            "contrastive_weight": 0.025,
+            "prompt_length": 4,
+            "contrastive_mix": 0.75
+          },
+          "origin": "new",
+          "iid": 0.9692542856394226,
+          "test_out": 0.9698790107735726
+        }
+      ],
+      "running_trials": [],
+      "all_numbers": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "next_trial_number": 9,
+      "resume_command": "/home/hooasia/miniconda3/envs/dccl/bin/python -B /media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/pause_control.py --resume",
+      "state": "paused",
+      "completed_at": "2026-11-26T15:05:23+08:00",
+      "terminal_trials": [
+        {
+          "trial_id": 8,
+          "state": "COMPLETE"
+        }
+      ]
+    },
+    "VLCS": {
+      "study_name": "VLCS_condcov_low_contrast_seed1",
+      "storage": "sqlite:////media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125_low_contrast/VLCS/study.sqlite3",
+      "database_integrity": "ok",
+      "sampler_state": "/media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125_low_contrast/VLCS/sampler_rng.json",
+      "sampler_sha256": "2228df6b2c665670ef78a4baebeafc7e1ac2508d9ca1aba8cd85a4712b37daec",
+      "complete_trials": 3,
+      "new_complete_trials": 3,
+      "best_source_val": {
+        "trial_id": 0,
+        "source_val": 0.889708228708935,
+        "params": {
+          "condcov_weight": 1.0,
+          "rd_weight": 1.0,
+          "contrastive_weight": 0.1,
+          "prompt_length": 16,
+          "contrastive_mix": 0.25
+        },
+        "origin": "new",
+        "iid": 0.8266954224706125,
+        "test_out": 0.8216015456882025
+      },
+      "complete_results": [
+        {
+          "trial_id": 0,
+          "source_val": 0.889708228708935,
+          "params": {
+            "condcov_weight": 1.0,
+            "rd_weight": 1.0,
+            "contrastive_weight": 0.1,
+            "prompt_length": 16,
+            "contrastive_mix": 0.25
+          },
+          "origin": "new",
+          "iid": 0.8266954224706125,
+          "test_out": 0.8216015456882025
+        },
+        {
+          "trial_id": 1,
+          "source_val": 0.8893411693180021,
+          "params": {
+            "condcov_weight": 1.0,
+            "rd_weight": 0.5,
+            "contrastive_weight": 0.05,
+            "prompt_length": 16,
+            "contrastive_mix": 0.25
+          },
+          "origin": "new",
+          "iid": 0.8261290374946441,
+          "test_out": 0.8209083051163955
+        },
+        {
+          "trial_id": 2,
+          "source_val": 0.8886834863326523,
+          "params": {
+            "condcov_weight": 2.0,
+            "rd_weight": 2.0,
+            "contrastive_weight": 0.1,
+            "prompt_length": 8,
+            "contrastive_mix": 0.5
+          },
+          "origin": "new",
+          "iid": 0.8273608778999704,
+          "test_out": 0.8213952811844503
+        }
+      ],
+      "running_trials": [],
+      "all_numbers": [
+        0,
+        1,
+        2
+      ],
+      "next_trial_number": 3,
+      "resume_command": "/home/hooasia/miniconda3/envs/dccl/bin/python -B /media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/pause_control.py --resume",
+      "state": "paused",
+      "completed_at": "2026-11-26T22:02:59+08:00",
+      "terminal_trials": [
+        {
+          "trial_id": 2,
+          "state": "COMPLETE"
+        }
+      ]
+    },
+    "OfficeHome": {
+      "study_name": "OfficeHome_condcov_low_contrast_seed1",
+      "storage": "sqlite:////media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125_low_contrast/OfficeHome/study.sqlite3",
+      "database_integrity": "ok",
+      "sampler_state": "/media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125_low_contrast/OfficeHome/sampler_rng.json",
+      "sampler_sha256": "2228df6b2c665670ef78a4baebeafc7e1ac2508d9ca1aba8cd85a4712b37daec",
+      "complete_trials": 3,
+      "new_complete_trials": 3,
+      "best_source_val": {
+        "trial_id": 0,
+        "source_val": 0.8938988876253442,
+        "params": {
+          "condcov_weight": 1.0,
+          "rd_weight": 1.0,
+          "contrastive_weight": 0.1,
+          "prompt_length": 16,
+          "contrastive_mix": 0.25
+        },
+        "origin": "new",
+        "iid": 0.8493126795769467,
+        "test_out": 0.8491498699149153
+      },
+      "complete_results": [
+        {
+          "trial_id": 0,
+          "source_val": 0.8938988876253442,
+          "params": {
+            "condcov_weight": 1.0,
+            "rd_weight": 1.0,
+            "contrastive_weight": 0.1,
+            "prompt_length": 16,
+            "contrastive_mix": 0.25
+          },
+          "origin": "new",
+          "iid": 0.8493126795769467,
+          "test_out": 0.8491498699149153
+        },
+        {
+          "trial_id": 1,
+          "source_val": 0.8938767830930756,
+          "params": {
+            "condcov_weight": 1.0,
+            "rd_weight": 0.5,
+            "contrastive_weight": 0.05,
+            "prompt_length": 16,
+            "contrastive_mix": 0.25
+          },
+          "origin": "new",
+          "iid": 0.8480280349268003,
+          "test_out": 0.8497895787612201
+        },
+        {
+          "trial_id": 2,
+          "source_val": 0.8914714763226016,
+          "params": {
+            "condcov_weight": 2.0,
+            "rd_weight": 2.0,
+            "contrastive_weight": 0.1,
+            "prompt_length": 8,
+            "contrastive_mix": 0.5
+          },
+          "origin": "new",
+          "iid": 0.8462176640134734,
+          "test_out": 0.8521879268754731
+        }
+      ],
+      "running_trials": [],
+      "all_numbers": [
+        0,
+        1,
+        2
+      ],
+      "next_trial_number": 3,
+      "resume_command": "/home/hooasia/miniconda3/envs/dccl/bin/python -B /media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/pause_control.py --resume",
+      "state": "paused",
+      "completed_at": "2026-11-26T17:39:48+08:00",
+      "terminal_trials": [
+        {
+          "trial_id": 2,
+          "state": "COMPLETE"
+        }
+      ]
+    }
+  },
+  "future_experiment_required_isolation": [
+    "code branch",
+    "output directory",
+    "database",
+    "study name"
+  ]
+}

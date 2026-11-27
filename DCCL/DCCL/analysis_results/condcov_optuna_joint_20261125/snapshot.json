@@ -1,25 +1,44 @@
 {
-  "captured_at": "2026-11-26T12:02:08+08:00",
+  "experiment": "condcov_optuna_joint_20261125",
+  "format": "optuna",
   "training_code_commit": "c8ac696f156b60e9d5d33679169fd8aacc973545",
-  "model_commit": "a55914e203d1b3e36706a681550d17e620eb4172",
   "datasets": {
+    "OfficeHome": {
+      "state": "superseded",
+      "completed_trials": 0,
+      "completed_folds": 2,
+      "trial_states": {
+        "INCOMPLETE": 1
+      },
+      "running_trials": [],
+      "gpu": 1,
+      "budget": 10,
+      "stop_reason": "contrastive_space_updated"
+    },
     "PACS": {
-      "complete_trials": 2,
-      "imported_complete_trials": 0,
-      "complete_folds": 8,
-      "reused_folds": 0
+      "state": "superseded",
+      "completed_trials": 2,
+      "completed_folds": 8,
+      "trial_states": {
+        "COMPLETE": 2
+      },
+      "running_trials": [],
+      "gpu": 0,
+      "budget": 10,
+      "stop_reason": "contrastive_space_updated"
     },
     "VLCS": {
-      "complete_trials": 0,
-      "imported_complete_trials": 0,
-      "complete_folds": 2,
-      "reused_folds": 0
-    },
-    "OfficeHome": {
-      "complete_trials": 0,
-      "imported_complete_trials": 0,
-      "complete_folds": 2,
-      "reused_folds": 0
+      "state": "superseded",
+      "completed_trials": 0,
+      "completed_folds": 2,
+      "trial_states": {
+        "INCOMPLETE": 1
+      },
+      "running_trials": [],
+      "gpu": 1,
+      "budget": 10,
+      "stop_reason": "contrastive_space_updated"
     }
-  }
+  },
+  "synced_at": "2026-11-27T12:28:47+08:00"
 }

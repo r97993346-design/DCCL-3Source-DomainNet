@@ -1,0 +1,23 @@
+{
+  "state": "paused",
+  "gpu": 1,
+  "n_jobs": 1,
+  "active": null,
+  "stop_reason": null,
+  "initial_new_budget": 10,
+  "max_new_budget": 15,
+  "current_new_budget": 10,
+  "new_complete": 3,
+  "imported_complete": 0,
+  "iid_target": 0.845,
+  "objective": "mean source validation accuracy",
+  "direction": "maximize",
+  "target_reached": false,
+  "completed_trials": 3,
+  "completed_folds": 12,
+  "trial_states": {
+    "COMPLETE": 3
+  },
+  "running_trials": [],
+  "budget": 10
+}

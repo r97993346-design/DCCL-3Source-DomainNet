@@ -1,17 +1,28 @@
 {
-  "dataset": "PACS",
+  "study_name": "PACS_condcov_joint_seed1",
   "trial_id": 0,
-  "condcov_weight": 1.0,
-  "contrastive_mix": 0.25,
-  "contrastive_weight": 0.1,
-  "prompt_length": 16,
-  "rd_weight": 1.0,
-  "state": "complete",
+  "db_state": "COMPLETE",
+  "started_at": "2026-11-25 15:19:42.409133",
+  "ended_at": "2026-11-25 17:33:52.075287",
+  "params": {
+    "condcov_weight": 1.0,
+    "rd_weight": 1.0,
+    "contrastive_weight": 0.1,
+    "prompt_length": 16,
+    "contrastive_mix": 0.25
+  },
+  "objective_value": 0.9869324960291742,
   "origin": "new",
-  "completed_folds": 4,
+  "candidate_group": null,
+  "historical_rank": null,
+  "state": "COMPLETE",
   "source_val": 0.9869324960291742,
   "iid": 0.9676357465788208,
   "test_in": 0.9676357465788208,
   "test_out": 0.967219679754083,
-  "elapsed_seconds": 8048.0
+  "dataset": "PACS",
+  "completed_folds": 4,
+  "elapsed_seconds": 8048.0,
+  "error": null,
+  "stop_reason": "four_folds_complete"
 }

@@ -1,17 +1,28 @@
 {
-  "dataset": "PACS",
+  "study_name": "PACS_condcov_low_contrast_seed1",
   "trial_id": 7,
-  "condcov_weight": 2.0,
-  "contrastive_mix": 0.75,
-  "contrastive_weight": 0.05,
-  "prompt_length": 8,
-  "rd_weight": 0.5,
-  "state": "complete",
+  "db_state": "COMPLETE",
+  "started_at": "2026-11-26 09:55:06.305422",
+  "ended_at": "2026-11-26 12:52:14.262150",
+  "params": {
+    "condcov_weight": 2.0,
+    "rd_weight": 0.5,
+    "contrastive_weight": 0.05,
+    "prompt_length": 8,
+    "contrastive_mix": 0.75
+  },
+  "objective_value": 0.9874033343134225,
   "origin": "new",
-  "completed_folds": 4,
+  "candidate_group": null,
+  "historical_rank": null,
+  "state": "COMPLETE",
   "source_val": 0.9874033343134225,
   "iid": 0.9670707746444405,
   "test_in": 0.9670707746444405,
   "test_out": 0.9688979010294398,
-  "elapsed_seconds": 10497.0
+  "dataset": "PACS",
+  "completed_folds": 4,
+  "elapsed_seconds": 10497.0,
+  "error": null,
+  "stop_reason": "four_folds_complete"
 }

@@ -1,0 +1,20 @@
+{
+  "fold": 0,
+  "domain": "Art",
+  "seed": 1892989228,
+  "selected_step": 4500,
+  "iid": 0.833676622039135,
+  "test_in": 0.833676622039135,
+  "test_out": 0.8824742268041237,
+  "source_val": 0.8822679340797382,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.8398558187435633,
+  "final_test_out": 0.8804123711340206,
+  "final_source_val": 0.8815103103836797,
+  "elapsed_seconds": 7483.0,
+  "actual_prompt_length": 16,
+  "log": "OfficeHome/trials/trial_001/env0/attempt_001/results.jsonl",
+  "telemetry": "OfficeHome/trials/trial_001/env0/attempt_001/optimizer.jsonl",
+  "training_code_commit": "a5069e9199dd49de5a2ed199c076e40707661e1e"
+}

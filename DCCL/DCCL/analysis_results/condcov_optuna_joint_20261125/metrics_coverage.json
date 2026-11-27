@@ -1,0 +1,30 @@
+{
+  "loss_fields": [
+    "loss_clip_contrast",
+    "loss_condcov",
+    "loss_e_cls",
+    "loss_rd",
+    "loss_s_uniform",
+    "loss_total",
+    "total_loss",
+    "tr_outloss"
+  ],
+  "weighted_loss_fields": [],
+  "gradient_fields": [
+    "grad_norm",
+    "ind_grad_by_step",
+    "ind_grad_e_cls_cosine",
+    "ind_grad_e_cls_norm",
+    "ind_grad_e_rd_cosine",
+    "ind_grad_e_rd_norm",
+    "ind_grad_e_selected_norm",
+    "ind_grad_e_selected_weighted_norm",
+    "ind_grad_s_selected_norm",
+    "ind_grad_s_selected_weighted_norm",
+    "ind_grad_s_uniform_cosine",
+    "ind_grad_s_uniform_norm"
+  ],
+  "learning_rate_fields": [
+    "lr"
+  ]
+}

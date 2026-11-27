@@ -1,0 +1,20 @@
+{
+  "fold": 1,
+  "domain": "LabelMe",
+  "seed": 592449405,
+  "selected_step": 4200,
+  "iid": 0.6687058823529411,
+  "test_in": 0.6687058823529411,
+  "test_out": 0.6421845574387948,
+  "source_val": 0.9246386630532972,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.6545882352941177,
+  "final_test_out": 0.6271186440677966,
+  "final_source_val": 0.9214282864265628,
+  "elapsed_seconds": 7233.0,
+  "actual_prompt_length": 8,
+  "log": "VLCS/trials/trial_002/env1/attempt_001/results.jsonl",
+  "telemetry": "VLCS/trials/trial_002/env1/attempt_001/optimizer.jsonl",
+  "training_code_commit": "a5069e9199dd49de5a2ed199c076e40707661e1e"
+}

@@ -1,8 +1,8 @@
 {
   "code_commit": "a5069e9199dd49de5a2ed199c076e40707661e1e",
   "model_commit": "a55914e203d1b3e36706a681550d17e620eb4172",
-  "data": "<USER_HOME>/lgg/data/repro_dccl_data",
-  "clip": "<USER_HOME>/.cache/clip/ViT-B-16.pt",
+  "data": "/home/hooasia/lgg/data/repro_dccl_data",
+  "clip": "/home/hooasia/.cache/clip/ViT-B-16.pt",
   "clip_size": 350837078,
   "clip_mtime": 1786428320933271440,
   "fixed_args": {
@@ -155,5 +155,22 @@
     },
     "n_jobs_per_study": 1,
     "ram_min_kib_exclusive": 10485760
+  },
+  "study_directions": {
+    "OfficeHome": {
+      "1": [
+        "MAXIMIZE"
+      ]
+    },
+    "PACS": {
+      "1": [
+        "MAXIMIZE"
+      ]
+    },
+    "VLCS": {
+      "1": [
+        "MAXIMIZE"
+      ]
+    }
   }
 }

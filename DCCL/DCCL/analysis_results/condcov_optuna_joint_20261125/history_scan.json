@@ -1,0 +1,57 @@
+{
+  "PACS": {
+    "imports": [],
+    "reference": {
+      "params": {
+        "condcov_weight": 1.0,
+        "rd_weight": 1.0,
+        "contrastive_weight": 0.1,
+        "prompt_length": 16,
+        "contrastive_mix": 0.25
+      },
+      "reference_source_val": 0.9881687179327455,
+      "use": "initial_candidate_only"
+    },
+    "history_counts": {
+      "other_learning_rate": 18,
+      "excluded: condcov_weight=0.3 is outside search space": 12
+    }
+  },
+  "VLCS": {
+    "imports": [],
+    "reference": {
+      "params": {
+        "condcov_weight": 1.0,
+        "rd_weight": 1.0,
+        "contrastive_weight": 0.1,
+        "prompt_length": 16,
+        "contrastive_mix": 0.25
+      },
+      "reference_source_val": 0.8874510109193859,
+      "use": "initial_candidate_only"
+    },
+    "history_counts": {
+      "other_learning_rate": 5,
+      "excluded: condcov_weight=0.1 is outside search space": 4
+    }
+  },
+  "OfficeHome": {
+    "imports": [],
+    "reference": {
+      "params": {
+        "condcov_weight": 1.0,
+        "rd_weight": 1.0,
+        "contrastive_weight": 0.1,
+        "prompt_length": 16,
+        "contrastive_mix": 0.25
+      },
+      "reference_source_val": 0.8978699760881148,
+      "use": "initial_candidate_only"
+    },
+    "history_counts": {
+      "excluded: rd_weight=1.5 is outside search space": 1,
+      "excluded: condcov_weight=0.3 is outside search space": 4,
+      "other_learning_rate": 4
+    }
+  }
+}

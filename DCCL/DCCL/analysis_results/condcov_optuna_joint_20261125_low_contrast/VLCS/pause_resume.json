@@ -1,0 +1,83 @@
+{
+  "study_name": "VLCS_condcov_low_contrast_seed1",
+  "storage": "sqlite:////media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125_low_contrast/VLCS/study.sqlite3",
+  "database_integrity": "ok",
+  "sampler_state": "/media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125_low_contrast/VLCS/sampler_rng.json",
+  "sampler_sha256": "2228df6b2c665670ef78a4baebeafc7e1ac2508d9ca1aba8cd85a4712b37daec",
+  "complete_trials": 3,
+  "new_complete_trials": 3,
+  "best_source_val": {
+    "trial_id": 0,
+    "source_val": 0.889708228708935,
+    "params": {
+      "condcov_weight": 1.0,
+      "rd_weight": 1.0,
+      "contrastive_weight": 0.1,
+      "prompt_length": 16,
+      "contrastive_mix": 0.25
+    },
+    "origin": "new",
+    "iid": 0.8266954224706125,
+    "test_out": 0.8216015456882025
+  },
+  "complete_results": [
+    {
+      "trial_id": 0,
+      "source_val": 0.889708228708935,
+      "params": {
+        "condcov_weight": 1.0,
+        "rd_weight": 1.0,
+        "contrastive_weight": 0.1,
+        "prompt_length": 16,
+        "contrastive_mix": 0.25
+      },
+      "origin": "new",
+      "iid": 0.8266954224706125,
+      "test_out": 0.8216015456882025
+    },
+    {
+      "trial_id": 1,
+      "source_val": 0.8893411693180021,
+      "params": {
+        "condcov_weight": 1.0,
+        "rd_weight": 0.5,
+        "contrastive_weight": 0.05,
+        "prompt_length": 16,
+        "contrastive_mix": 0.25
+      },
+      "origin": "new",
+      "iid": 0.8261290374946441,
+      "test_out": 0.8209083051163955
+    },
+    {
+      "trial_id": 2,
+      "source_val": 0.8886834863326523,
+      "params": {
+        "condcov_weight": 2.0,
+        "rd_weight": 2.0,
+        "contrastive_weight": 0.1,
+        "prompt_length": 8,
+        "contrastive_mix": 0.5
+      },
+      "origin": "new",
+      "iid": 0.8273608778999704,
+      "test_out": 0.8213952811844503
+    }
+  ],
+  "running_trials": [],
+  "all_numbers": [
+    0,
+    1,
+    2
+  ],
+  "next_trial_number": 3,
+  "resume_command": "/home/hooasia/miniconda3/envs/dccl/bin/python -B /media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/pause_control.py --resume",
+  "state": "paused",
+  "completed_at": "2026-11-26T22:02:59+08:00",
+  "terminal_trials": [
+    {
+      "trial_id": 2,
+      "state": "COMPLETE"
+    }
+  ]
+}

@@ -1,17 +1,28 @@
 {
-  "dataset": "VLCS",
+  "study_name": "VLCS_condcov_low_contrast_seed1",
   "trial_id": 2,
-  "condcov_weight": 2.0,
-  "contrastive_mix": 0.5,
-  "contrastive_weight": 0.1,
-  "prompt_length": 8,
-  "rd_weight": 2.0,
-  "state": "complete",
+  "db_state": "COMPLETE",
+  "started_at": "2026-11-26 11:30:48.929971",
+  "ended_at": "2026-11-26 22:02:58.997930",
+  "params": {
+    "condcov_weight": 2.0,
+    "rd_weight": 2.0,
+    "contrastive_weight": 0.1,
+    "prompt_length": 8,
+    "contrastive_mix": 0.5
+  },
+  "objective_value": 0.8886834863326523,
   "origin": "new",
-  "completed_folds": 4,
+  "candidate_group": null,
+  "historical_rank": null,
+  "state": "COMPLETE",
   "source_val": 0.8886834863326523,
   "iid": 0.8273608778999704,
   "test_in": 0.8273608778999704,
   "test_out": 0.8213952811844503,
-  "elapsed_seconds": 37926.0
+  "dataset": "VLCS",
+  "completed_folds": 4,
+  "elapsed_seconds": 37926.0,
+  "error": null,
+  "stop_reason": "four_folds_complete"
 }

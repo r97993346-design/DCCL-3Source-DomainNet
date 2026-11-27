@@ -1,25 +1,44 @@
 {
-  "captured_at": "2026-11-27T12:15:59+08:00",
+  "experiment": "condcov_optuna_joint_20261125_low_contrast",
+  "format": "optuna",
   "training_code_commit": "a5069e9199dd49de5a2ed199c076e40707661e1e",
-  "model_commit": "a55914e203d1b3e36706a681550d17e620eb4172",
   "datasets": {
+    "OfficeHome": {
+      "state": "paused",
+      "completed_trials": 3,
+      "completed_folds": 12,
+      "trial_states": {
+        "COMPLETE": 3
+      },
+      "running_trials": [],
+      "gpu": 1,
+      "budget": 10,
+      "stop_reason": null
+    },
     "PACS": {
-      "complete_trials": 9,
-      "imported_complete_trials": 1,
-      "complete_folds": 36,
-      "reused_folds": 4
+      "state": "paused",
+      "completed_trials": 9,
+      "completed_folds": 36,
+      "trial_states": {
+        "COMPLETE": 9
+      },
+      "running_trials": [],
+      "gpu": 0,
+      "budget": 10,
+      "stop_reason": null
     },
     "VLCS": {
-      "complete_trials": 3,
-      "imported_complete_trials": 0,
-      "complete_folds": 12,
-      "reused_folds": 2
-    },
-    "OfficeHome": {
-      "complete_trials": 3,
-      "imported_complete_trials": 0,
-      "complete_folds": 12,
-      "reused_folds": 2
+      "state": "paused",
+      "completed_trials": 3,
+      "completed_folds": 12,
+      "trial_states": {
+        "COMPLETE": 3
+      },
+      "running_trials": [],
+      "gpu": 1,
+      "budget": 10,
+      "stop_reason": null
     }
-  }
+  },
+  "synced_at": "2026-11-27T12:29:08+08:00"
 }

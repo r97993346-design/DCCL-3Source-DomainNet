@@ -1,0 +1,4 @@
+{
+  "state": "ready",
+  "previous_service": "condcov-optuna-joint-20261125.service"
+}

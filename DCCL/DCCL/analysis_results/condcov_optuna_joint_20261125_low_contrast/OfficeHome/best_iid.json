@@ -1,17 +1,28 @@
 {
-  "dataset": "OfficeHome",
+  "study_name": "OfficeHome_condcov_low_contrast_seed1",
   "trial_id": 0,
-  "condcov_weight": 1.0,
-  "contrastive_mix": 0.25,
-  "contrastive_weight": 0.1,
-  "prompt_length": 16,
-  "rd_weight": 1.0,
-  "state": "complete",
+  "db_state": "COMPLETE",
+  "started_at": "2026-11-25 20:09:27.560462",
+  "ended_at": "2026-11-26 00:46:07.834785",
+  "params": {
+    "condcov_weight": 1.0,
+    "rd_weight": 1.0,
+    "contrastive_weight": 0.1,
+    "prompt_length": 16,
+    "contrastive_mix": 0.25
+  },
+  "objective_value": 0.8938988876253442,
   "origin": "new",
-  "completed_folds": 4,
+  "candidate_group": null,
+  "historical_rank": null,
+  "state": "COMPLETE",
   "source_val": 0.8938988876253442,
   "iid": 0.8493126795769467,
   "test_in": 0.8493126795769467,
   "test_out": 0.8491498699149153,
-  "elapsed_seconds": 33122.0
+  "dataset": "OfficeHome",
+  "completed_folds": 4,
+  "elapsed_seconds": 33122.0,
+  "error": null,
+  "stop_reason": "four_folds_complete"
 }

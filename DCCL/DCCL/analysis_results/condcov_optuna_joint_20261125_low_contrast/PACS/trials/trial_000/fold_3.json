@@ -1,0 +1,20 @@
+{
+  "fold": 3,
+  "domain": "Sketch",
+  "seed": 990940125,
+  "selected_step": 3900,
+  "iid": 0.9013994910941476,
+  "test_in": 0.9013994910941476,
+  "test_out": 0.9070063694267516,
+  "source_val": 0.9952127696626474,
+  "final_step": 4999,
+  "updates": 5000,
+  "final_iid": 0.90235368956743,
+  "final_test_out": 0.9070063694267516,
+  "final_source_val": 0.9945005189503966,
+  "elapsed_seconds": 2009.0,
+  "actual_prompt_length": 16,
+  "log_source": "/media/hooasia/data/condcov_optuna_joint_20261125/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125/PACS/trials/trial_000/env3/attempt_001/raw/PACS/261125_17-00-26_PACS_trial0_fold3/results.jsonl",
+  "telemetry_source": "/media/hooasia/data/condcov_optuna_joint_20261125/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125/PACS/trials/trial_000/env3/attempt_001/optimizer.jsonl",
+  "training_code_commit": "a5069e9199dd49de5a2ed199c076e40707661e1e"
+}
