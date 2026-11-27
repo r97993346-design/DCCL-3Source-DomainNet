@@ -38,7 +38,7 @@
     "PACS": {
       "state": "running",
       "completed_trials": 14,
-      "completed_folds": 59,
+      "completed_folds": 60,
       "trial_states": {
         "COMPLETE": 14,
         "RUNNING": 1
@@ -54,20 +54,9 @@
             "contrastive_mix": 0.75,
             "prompt_length": 16
           },
-          "completed_folds": 3,
+          "completed_folds": 4,
           "current_target": "Sketch",
-          "latest_attempt": {
-            "path": "PACS/trials/trial_014/env3/attempt_001",
-            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4800,
-              "test_in": 0.9064885496183206,
-              "test_out": 0.9159235668789809,
-              "train_out": 0.9953155148754169,
-              "eval_time": 1.3089265823364258,
-              "eval_visual_cache_hit_splits": 8
-            }
-          }
+          "latest_attempt": null
         }
       ],
       "gpu": 0,
@@ -114,5 +103,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T05:39:41+08:00"
+  "synced_at": "2026-11-28T05:40:34+08:00"
 }
