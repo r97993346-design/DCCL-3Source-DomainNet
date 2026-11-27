@@ -1,24 +1,24 @@
 {
-  "captured_at": "2026-11-26T12:02:08+08:00",
+  "captured_at": "2026-11-27T12:15:59+08:00",
   "training_code_commit": "a5069e9199dd49de5a2ed199c076e40707661e1e",
   "model_commit": "a55914e203d1b3e36706a681550d17e620eb4172",
   "datasets": {
     "PACS": {
-      "complete_trials": 7,
+      "complete_trials": 9,
       "imported_complete_trials": 1,
-      "complete_folds": 30,
+      "complete_folds": 36,
       "reused_folds": 4
     },
     "VLCS": {
-      "complete_trials": 2,
+      "complete_trials": 3,
       "imported_complete_trials": 0,
-      "complete_folds": 8,
+      "complete_folds": 12,
       "reused_folds": 2
     },
     "OfficeHome": {
-      "complete_trials": 2,
+      "complete_trials": 3,
       "imported_complete_trials": 0,
-      "complete_folds": 9,
+      "complete_folds": 12,
       "reused_folds": 2
     }
   }

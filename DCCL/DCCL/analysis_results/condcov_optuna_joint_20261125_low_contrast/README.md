@@ -1,6 +1,6 @@
 # CondCov Optuna results
 
-Snapshot captured 2026-11-26T12:02:08+08:00.
+Snapshot captured 2026-11-27T12:15:59+08:00.
 Contrastive weights 0.025, 0.05, 0.1.
 
 Training code commit a5069e9199dd49de5a2ed199c076e40707661e1e.
@@ -8,9 +8,9 @@ CondCov model commit a55914e203d1b3e36706a681550d17e620eb4172.
 
 | Dataset | Complete trials | Imported trials | Complete folds | Reused folds |
 | --- | ---: | ---: | ---: | ---: |
-| PACS | 7 | 1 | 30 | 4 |
-| VLCS | 2 | 0 | 8 | 2 |
-| OfficeHome | 2 | 0 | 9 | 2 |
+| PACS | 9 | 1 | 36 | 4 |
+| VLCS | 3 | 0 | 12 | 2 |
+| OfficeHome | 3 | 0 | 12 | 2 |
 
 Each listed fold reached 5,000 optimizer updates. The four-domain summary uses each fold's highest source validation checkpoint. Partial trials have blank aggregate metrics.
 

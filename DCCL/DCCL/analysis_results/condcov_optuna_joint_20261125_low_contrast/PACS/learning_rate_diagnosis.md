@@ -1,6 +1,6 @@
 # PACS · Adam 1e-5 learning-rate diagnosis
 
-Complete observations available 7.
+Complete observations available 9.
 
 First five trial IDs 0, 1, 2, 3, 4.
 Positive late slope means the metric rose between steps 3000 and 4999.
