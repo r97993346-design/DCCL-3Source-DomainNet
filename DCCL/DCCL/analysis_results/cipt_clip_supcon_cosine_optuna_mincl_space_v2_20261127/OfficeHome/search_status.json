@@ -12,8 +12,10 @@
   "iid_reference_reached": false,
   "best_source_val": null,
   "best_iid": null,
-  "completed_trials": 0,
-  "completed_folds": 0,
-  "trial_states": {},
+  "completed_trials": 4,
+  "completed_folds": 16,
+  "trial_states": {
+    "COMPLETE": 4
+  },
   "running_trials": []
 }

@@ -1,0 +1,24 @@
+{
+  "source_search": "cipt_clip_supcon_cosine_optuna_mincl_20261126",
+  "dataset": "OfficeHome",
+  "imported": [
+    {
+      "old_trial": 0,
+      "new_trial": 0
+    },
+    {
+      "old_trial": 1,
+      "new_trial": 1
+    },
+    {
+      "old_trial": 2,
+      "new_trial": 2
+    },
+    {
+      "old_trial": 3,
+      "new_trial": 3
+    }
+  ],
+  "excluded": [],
+  "historical_complete": 4
+}

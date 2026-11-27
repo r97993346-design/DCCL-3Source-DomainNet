@@ -5,9 +5,11 @@
   "datasets": {
     "OfficeHome": {
       "state": "waiting_for_previous_trial",
-      "completed_trials": 0,
-      "completed_folds": 0,
-      "trial_states": {},
+      "completed_trials": 4,
+      "completed_folds": 16,
+      "trial_states": {
+        "COMPLETE": 4
+      },
       "running_trials": [],
       "gpu": 1,
       "budget": 648,
@@ -84,5 +86,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T19:18:39+08:00"
+  "synced_at": "2026-11-27T19:19:47+08:00"
 }

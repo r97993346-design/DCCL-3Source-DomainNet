@@ -1,0 +1,22 @@
+{
+  "fold": 1,
+  "domain": "Clipart",
+  "seed": 846366325,
+  "selected_step": 4500,
+  "iid": 0.7142038946162658,
+  "test_in": 0.7142038946162658,
+  "test_out": 0.7193585337915235,
+  "source_val": 0.9258595441016706,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.7147766323024055,
+  "final_test_out": 0.7193585337915235,
+  "final_source_val": 0.9254837455297051,
+  "actual_prompt_length": 8,
+  "elapsed_seconds": 4795.0,
+  "log": "OfficeHome/trials/trial_002/env1/attempt_001/results.jsonl",
+  "learning_rates": "OfficeHome/trials/trial_002/env1/attempt_001/learning_rates.jsonl",
+  "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e"
+}
