@@ -83,11 +83,11 @@
         "path": "OfficeHome/trials/trial_004/env3/attempt_001",
         "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
         "last_evaluation": {
-          "step": 2700,
-          "test_in": 0.9185312679288583,
-          "test_out": 0.8966704936854191,
-          "train_out": 0.8879100907297424,
-          "eval_time": 8.9481680393219,
+          "step": 3000,
+          "test_in": 0.9188181296615031,
+          "test_out": 0.8989667049368542,
+          "train_out": 0.886147668606786,
+          "eval_time": 9.361934661865234,
           "eval_visual_cache_hit_splits": 8
         }
       }

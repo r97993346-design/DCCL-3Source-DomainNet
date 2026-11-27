@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_004/env3/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 2700,
-              "test_in": 0.9185312679288583,
-              "test_out": 0.8966704936854191,
-              "train_out": 0.8879100907297424,
-              "eval_time": 8.9481680393219,
+              "step": 3000,
+              "test_in": 0.9188181296615031,
+              "test_out": 0.8989667049368542,
+              "train_out": 0.886147668606786,
+              "eval_time": 9.361934661865234,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -66,7 +66,14 @@
           "latest_attempt": {
             "path": "PACS/trials/trial_012/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {}
+            "last_evaluation": {
+              "step": 0,
+              "test_in": 0.999251497005988,
+              "test_out": 1.0,
+              "train_out": 0.9532979871166842,
+              "eval_time": 68.90118074417114,
+              "eval_visual_cache_hit_splits": 0
+            }
           }
         }
       ],
@@ -75,7 +82,7 @@
       "stop_reason": null
     },
     "VLCS": {
-      "state": "running",
+      "state": "waiting_for_registry",
       "completed_trials": 0,
       "completed_folds": 4,
       "trial_states": {
@@ -93,14 +100,14 @@
             "prompt_length": 4
           },
           "completed_folds": 4,
-          "current_target": "SUN",
+          "current_target": null,
           "latest_attempt": null
         }
       ],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": null
+      "stop_reason": "reservation update unconfirmed"
     }
   },
-  "synced_at": "2026-11-28T00:17:46+08:00"
+  "synced_at": "2026-11-28T00:18:58+08:00"
 }
