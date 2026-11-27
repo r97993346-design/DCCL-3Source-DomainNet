@@ -170,3 +170,15 @@ HParams:
 	cipt_causal_contrastive_weight: 0.025
 	cipt_contrastive_warmup_steps: 0
 	cipt_env_inference: e_only
+Dataset:
+	[OfficeHome] #envs=4, #classes=65
+	env0: Art (#2427)
+	env1: Clipart (#4365)
+	env2: Product (#4439)
+	env3: RealWorld (#4357)
+
+[36mINFO[0m 11/27 23:34:28 | checkpoint_freq = 300
+[36mINFO[0m 11/27 23:34:28 | Training budget: 5001 updates, including evaluation at the final step
+[36mINFO[0m 11/27 23:34:28 | Target test envs = [[3]]
+[36mINFO[0m 11/27 23:34:28 | 
+[36mINFO[0m 11/27 23:34:28 | Fold RNG: strategy=domainbed_sweep, test_envs=[3], seed=728627790, hparams_seed=0, trial_seed=1
