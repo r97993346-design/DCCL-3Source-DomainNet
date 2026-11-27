@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_003/env2/attempt_001",
             "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
             "last_evaluation": {
-              "step": 300,
-              "test_in": 0.8868243243243243,
-              "test_out": 0.8816234498308907,
-              "train_out": 0.7937873413792786,
-              "eval_time": 4.349735975265503,
+              "step": 900,
+              "test_in": 0.9090653153153153,
+              "test_out": 0.8985343855693348,
+              "train_out": 0.8487227270116946,
+              "eval_time": 4.295009613037109,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -55,44 +55,17 @@
       "stop_reason": "requested_after_current_trial"
     },
     "VLCS": {
-      "state": "draining",
-      "completed_trials": 2,
-      "completed_folds": 11,
+      "state": "paused",
+      "completed_trials": 3,
+      "completed_folds": 12,
       "trial_states": {
-        "COMPLETE": 2,
-        "RUNNING": 1
+        "COMPLETE": 3
       },
-      "running_trials": [
-        {
-          "trial_id": 2,
-          "params": {
-            "initial_lr": 2e-05,
-            "condcov_weight": 0.5,
-            "rd_weight": 2.0,
-            "contrastive_weight": 0.05,
-            "contrastive_mix": 0.25,
-            "prompt_length": 8
-          },
-          "completed_folds": 3,
-          "current_target": "SUN",
-          "latest_attempt": {
-            "path": "VLCS/trials/trial_002/env3/attempt_001",
-            "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
-            "last_evaluation": {
-              "step": 4500,
-              "test_in": 0.7989337395277989,
-              "test_out": 0.7987804878048781,
-              "train_out": 0.8971416614354468,
-              "eval_time": 2.1166975498199463,
-              "eval_visual_cache_hit_splits": 8
-            }
-          }
-        }
-      ],
+      "running_trials": [],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": null
+      "stop_reason": "requested_after_current_trial"
     }
   },
-  "synced_at": "2026-11-27T17:30:19+08:00"
+  "synced_at": "2026-11-27T17:35:01+08:00"
 }

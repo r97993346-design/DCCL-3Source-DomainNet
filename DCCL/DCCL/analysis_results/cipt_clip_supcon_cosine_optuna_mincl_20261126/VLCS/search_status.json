@@ -1,25 +1,13 @@
 {
   "dataset": "VLCS",
   "study_name": "VLCS_condcov_rd_clip_allpos_cosine_mincl_seed1",
-  "state": "draining",
+  "state": "paused",
   "gpu": 0,
   "n_jobs": 1,
-  "complete_trials": 2,
+  "complete_trials": 3,
   "budget": 648,
-  "active": {
-    "trial_id": 2,
-    "params": {
-      "initial_lr": 2e-05,
-      "condcov_weight": 0.5,
-      "rd_weight": 2.0,
-      "contrastive_weight": 0.05,
-      "contrastive_mix": 0.25,
-      "prompt_length": 8
-    },
-    "target": "SUN",
-    "completed_folds": 3
-  },
-  "stop_reason": null,
+  "active": null,
+  "stop_reason": "requested_after_current_trial",
   "iid_reference_target": 0.845,
   "iid_reference_reached": false,
   "best_source_val": {
@@ -42,55 +30,28 @@
     "error": null
   },
   "best_iid": {
-    "trial_id": 0,
+    "trial_id": 2,
     "state": "COMPLETE",
     "initial_lr": 2e-05,
     "condcov_weight": 0.5,
-    "rd_weight": 0.5,
-    "contrastive_weight": 0.001,
-    "contrastive_mix": 0.0,
-    "prompt_length": 4,
-    "started_at": "2026-11-26T22:03:13.212587",
-    "ended_at": "2026-11-27T04:58:31.335112",
-    "candidate_group": "enqueued_minimum",
-    "source_val": 0.8893378583385645,
-    "iid": 0.8259919149360233,
-    "test_in": 0.8259919149360233,
-    "test_out": 0.8217810677047448,
-    "elapsed_seconds": 23063.0,
+    "rd_weight": 2.0,
+    "contrastive_weight": 0.05,
+    "contrastive_mix": 0.25,
+    "prompt_length": 8,
+    "started_at": "2026-11-27T10:47:33.328544",
+    "ended_at": "2026-11-27T17:34:35.737954",
+    "candidate_group": "random_startup",
+    "source_val": 0.888727958081513,
+    "iid": 0.8329713088498298,
+    "test_in": 0.8329713088498298,
+    "test_out": 0.8244272962503636,
+    "elapsed_seconds": 23998.0,
     "error": null
   },
-  "completed_trials": 2,
-  "completed_folds": 11,
+  "completed_trials": 3,
+  "completed_folds": 12,
   "trial_states": {
-    "COMPLETE": 2,
-    "RUNNING": 1
+    "COMPLETE": 3
   },
-  "running_trials": [
-    {
-      "trial_id": 2,
-      "params": {
-        "initial_lr": 2e-05,
-        "condcov_weight": 0.5,
-        "rd_weight": 2.0,
-        "contrastive_weight": 0.05,
-        "contrastive_mix": 0.25,
-        "prompt_length": 8
-      },
-      "completed_folds": 3,
-      "current_target": "SUN",
-      "latest_attempt": {
-        "path": "VLCS/trials/trial_002/env3/attempt_001",
-        "training_code_commit": "f6394078f099866bb222b906d2d9966d8915729e",
-        "last_evaluation": {
-          "step": 4500,
-          "test_in": 0.7989337395277989,
-          "test_out": 0.7987804878048781,
-          "train_out": 0.8971416614354468,
-          "eval_time": 2.1166975498199463,
-          "eval_visual_cache_hit_splits": 8
-        }
-      }
-    }
-  ]
+  "running_trials": []
 }

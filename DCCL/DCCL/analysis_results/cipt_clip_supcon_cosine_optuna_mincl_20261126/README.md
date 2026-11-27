@@ -4,7 +4,7 @@
 | --- | ---: | ---: | --- |
 | OfficeHome | 3 | 14 | draining |
 | PACS | 9 | 36 | paused |
-| VLCS | 2 | 11 | draining |
+| VLCS | 3 | 12 | paused |
 
 - [同步时间和运行进度](snapshot.json)
 - [Trial 汇总](trials_summary.csv) · [目标域汇总](folds_summary.csv)
