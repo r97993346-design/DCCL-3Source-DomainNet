@@ -60,11 +60,11 @@
             "path": "PACS/trials/trial_010/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3000,
-              "test_in": 0.9780353874313605,
+              "step": 3300,
+              "test_in": 0.9774252593044539,
               "test_out": 0.9779951100244498,
-              "train_out": 0.9851243943600632,
-              "eval_time": 1.486614465713501,
+              "train_out": 0.984699765909957,
+              "eval_time": 1.477630853652954,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -77,7 +77,7 @@
     "VLCS": {
       "state": "running",
       "completed_trials": 0,
-      "completed_folds": 0,
+      "completed_folds": 1,
       "trial_states": {
         "RUNNING": 1
       },
@@ -92,20 +92,9 @@
             "contrastive_mix": 0.75,
             "prompt_length": 4
           },
-          "completed_folds": 0,
+          "completed_folds": 1,
           "current_target": "Caltech",
-          "latest_attempt": {
-            "path": "VLCS/trials/trial_000/env0/attempt_001",
-            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4800,
-              "test_in": 0.9973498233215548,
-              "test_out": 1.0,
-              "train_out": 0.8420540448813152,
-              "eval_time": 2.419135808944702,
-              "eval_visual_cache_hit_splits": 8
-            }
-          }
+          "latest_attempt": null
         }
       ],
       "gpu": 0,
@@ -113,5 +102,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T19:36:13+08:00"
+  "synced_at": "2026-11-27T19:37:53+08:00"
 }
