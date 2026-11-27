@@ -1,0 +1,210 @@
+CUDA_PHYSICAL_UUID GPU-97473323-921d-3883-586d-1a0230891c12
+TRAINING_CODE_COMMIT 5f2121f35ef3e3cd0708b4742ce17e49eb66e843
+[36mINFO[0m 11/28 06:03:28 | Command :: /root/autodl-tmp/code-terra/DCCL/DCCL/train_all.py TerraIncognita_trial3_fold3 /root/autodl-tmp/outputs/terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127/TerraIncognita/trials/trial_003/config.json --test_envs 3 --dataset TerraIncognita --data_dir /root/autodl-tmp/datasets --cipt_clip_path /root/autodl-tmp/weights/ViT-B-16.pt --batch_size 32 --deterministic --source_only_selection --output_root /root/autodl-tmp/outputs/terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127/TerraIncognita/trials/trial_003/env3/attempt_001/raw --algorithm CIPTDCCL --source_sampling domain_balanced --steps 5001 --checkpoint_freq 300 --trial_seed 1 --hparams_seed 0 --holdout_fraction 0.2 --aug 0.0 --evalmode all --num_workers 4 --eval_num_workers 0 --model_save 0 --cipt_cache_eval_visual
+Environment:
+	Python: 3.10.8
+	PyTorch: 2.5.1+cu121
+	Torchvision: 0.20.1+cu121
+	CUDA: 12.1
+	CUDNN: 90100
+	NumPy: 2.2.6
+	PIL: 12.0.0
+Args:
+	TN: False
+	algorithm: CIPTDCCL
+	aug: 0.0
+	checkpoint_freq: 300
+	cipt_beta: 4.0
+	cipt_cache_eval_visual: True
+	cipt_clip_backbone: ViT-B/16
+	cipt_clip_path: /root/autodl-tmp/weights/ViT-B-16.pt
+	cipt_condcov_weight: None
+	cipt_contrastive_warmup_epochs: None
+	cipt_contrastive_weight: 1.0
+	cipt_coopood_weight: None
+	cipt_debug_shapes: False
+	cipt_enabled: True
+	cipt_gamma: 5.0
+	cipt_k: 4
+	cipt_prompt_init: a photo of a
+	cipt_prompt_length: 16
+	cipt_selector_candidates: 8
+	cipt_selector_mode: random
+	cipt_tda_heads: 1
+	configs: ['/root/autodl-tmp/outputs/terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127/TerraIncognita/trials/trial_003/config.json']
+	data_dir: /root/autodl-tmp/datasets
+	dataset: TerraIncognita
+	debug: False
+	deterministic: True
+	domainnet_auto_source_count: 3
+	epochs: None
+	erm_baseline: weak
+	eval_num_workers: 0
+	evalmode: all
+	fixed_fold_seed: False
+	holdout_fraction: 0.2
+	hparams_seed: 0
+	ind_grad_steps: None
+	ind_mode: None
+	l: 1
+	l_d: None
+	l_layer: None
+	label_ratio: 1.0
+	lamda: 5
+	log: False
+	mix: 0
+	model: resnet50
+	model_save: 0
+	n_layer: 1
+	name: TerraIncognita_trial3_fold3
+	num_workers: 4
+	out_dir: /root/autodl-tmp/outputs/terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127/TerraIncognita/trials/trial_003/env3/attempt_001/raw/TerraIncognita/261128_06-03-28_TerraIncognita_trial3_fold3
+	out_root: /root/autodl-tmp/outputs/terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127/TerraIncognita/trials/trial_003/env3/attempt_001/raw/TerraIncognita
+	output_root: /root/autodl-tmp/outputs/terra_fixed6_tpe_lr2e5_prompt_rd3_condcov3_20261127/TerraIncognita/trials/trial_003/env3/attempt_001/raw
+	pos_mask: False
+	prebuild_loader: False
+	re_w: False
+	sample_d: False
+	seed: 0
+	show: False
+	source_envs: None
+	source_only_selection: True
+	source_sampling: domain_balanced
+	start_epoch: 1000
+	steps: 5001
+	sup: True
+	t: 0.1
+	t_pre: 0.2
+	target_env: None
+	tb_freq: 10
+	test_envs: [3]
+	trial_seed: 1
+	two_ce: False
+	unique_name: 261128_06-03-28_TerraIncognita_trial3_fold3
+	weak_erm: False
+	work_dir: .
+HParams:
+	data_augmentation: True
+	val_augment: False
+	resnet18: False
+	resnet_dropout: 0.0
+	class_balanced: False
+	optimizer: adam
+	cipt_enabled: True
+	cipt_clip_backbone: ViT-B/16
+	cipt_clip_path: /root/autodl-tmp/weights/ViT-B-16.pt
+	cipt_beta: 4.0
+	cipt_gamma: 0.0
+	cipt_k: 4
+	cipt_prompt_length: 4
+	cipt_prompt_init: a photo of a
+	cipt_template_mode: b5b
+	cipt_neutral_subject: subject
+	cipt_tda_heads: 1
+	cipt_selector_mode: random
+	cipt_selector_candidates: 8
+	cipt_contrastive_weight: 0.025
+	cipt_contrastive_temperature: 0.07
+	cipt_contrastive_type: clip_guided_supcon
+	cipt_clip_teacher_temperature: 0.2
+	cipt_clip_teacher_mix: 0.0
+	cipt_clip_teacher_topk: 0
+	cipt_neighbor_k: 5
+	cipt_neighbor_alpha: 0.5
+	cipt_neighbor_diagnostics: False
+	cipt_use_aug_view: False
+	cipt_debug_shapes: False
+	cipt_objective: env_anchor
+	ind_mode: condcov
+	cipt_condcov_weight: 2.0
+	cipt_coopood_weight: None
+	ind_grad_steps: ()
+	cipt_env_kl_weight: 0.0
+	cipt_fused_cls_weight: 0.0
+	cipt_env_constraint: relative_distance
+	cipt_env_topk: 80
+	cipt_env_loss_weight: 2.0
+	cipt_env_selection: all
+	cipt_class_text_mode: learnable
+	cipt_lr_schedule: cosine
+	cipt_lr_min: 0.0
+	cipt_rd_anchor_mode: full
+	cipt_e_cls_weight: 1.0
+	cipt_s_uniform_weight: 1.0
+	freeze_bn: True
+	pretrained: True
+	lr: 2e-05
+	[36mbatch_size: 32
+	[0mweight_decay: 0.0
+	t: 0.1
+	t_pre: 0.1
+	l: 1
+	l_d: 0.05
+	l_layer: 0.1
+	n_layer: 2
+	sup: True
+	two_ce: False
+	sample_d: False
+	re_w: False
+	pos_mask: False
+	mix: 0
+	aug: 0.0
+	model: resnet50
+	label_ratio: 1.0
+	TN: False
+	lamda: 5
+	start_epoch: 1000
+	log: False
+	swad: None
+	swad_kwargs: 
+	  n_converge: 3
+	  n_tolerance: 6
+	  tolerance_ratio: 0.3
+	test_batchsize: 64
+	indomain_test: False
+	cipt_pure: False
+	cipt_use_de: True
+	cipt_use_ind: False
+	cipt_use_tda: False
+	cipt_use_contrastive: True
+	cipt_causal_contrastive_weight: 0.025
+	cipt_contrastive_warmup_steps: 0
+	cipt_env_inference: e_only
+Dataset:
+	[TerraIncognita] #envs=4, #classes=10
+	env0: L100 (#4879)
+	env1: L38 (#9767)
+	env2: L43 (#4020)
+	env3: L46 (#6122)
+
+[36mINFO[0m 11/28 06:04:50 | checkpoint_freq = 300
+[36mINFO[0m 11/28 06:04:50 | Training budget: 5001 updates, including evaluation at the final step
+[36mINFO[0m 11/28 06:04:50 | Target test envs = [[3]]
+[36mINFO[0m 11/28 06:04:50 | 
+[36mINFO[0m 11/28 06:04:50 | Fold RNG: strategy=domainbed_sweep, test_envs=[3], seed=180733564, hparams_seed=0, trial_seed=1
+[36mINFO[0m 11/28 06:06:11 | Testenv name escaping te_L46 -> te_L46
+[36mINFO[0m 11/28 06:06:11 | Test envs = [3], name = te_L46
+[36mINFO[0m 11/28 06:06:11 | Source sampling: domain_balanced
+[36mINFO[0m 11/28 06:06:11 | Batch sizes for each domain: [32, 32, 32, 0] (total=96)
+[36mINFO[0m 11/28 06:06:11 | steps-per-epoch for each domain: 122.00, 244.19, 100.50 -> min = 100.50
+[36mINFO[0m 11/28 06:06:11 | DataLoader workers: train=4 per source domain (12 total), eval=0 per loader
+PROMPT_CONTEXT_LENGTH 4
+CIPTDCCL parameters: trainable=1744384, frozen=149620737
+CIPTDCCL trainable tensors: reg_log_variance, causal_decomposition.causal_adapter.weight, causal_decomposition.causal_adapter.bias, causal_decomposition.spurious_adapter.weight, causal_decomposition.spurious_adapter.bias, text_features.prompt_learner.context, tda.attention.in_proj_weight, tda.attention.in_proj_bias, tda.attention.out_proj.weight, tda.attention.out_proj.bias, tda.layer_norm.weight, tda.layer_norm.bias, proj_head.0.weight, proj_head.0.bias, proj_head.1.weight, proj_head.1.bias, proj_head.3.weight, proj_head.3.bias, pre_proj_head.0.weight, pre_proj_head.0.bias, pre_proj_head.1.weight, pre_proj_head.1.bias, pre_proj_head.3.weight, pre_proj_head.3.bias
+CIPTDCCL single-view-causal-contrastive: pure_cipt=False, template_mode=b5b, neutral_subject=subject, K=4, tda_heads=1, lr=2e-05, contrastive_weight=0.025, contrastive_warmup_steps=0, temp=0.07, selector_mode=random, selector_candidates=8, visual_l2_norm=True, adapter_init=identity, augmented_view=False, projection_head=False, pre_cl=False, reg=False
+CIPTDCCL single-view-causal-contrastive parameters: trainable=1579008, frozen=149621249
+CIPTDCCL contrastive_type=clip_guided_supcon, neighbor_k=5, neighbor_alpha=0.5, neighbor_diagnostics=False, detached_weights=True
+CIPTDCCL contrastive settings: mode=clip_guided_supcon, teacher_temperature=0.2, teacher_mix=0.0, teacher_mix_eff=0.0, teacher_topk=0, temperature=0.07, configured_weight=0.025, warmup_steps=0, contrastive_weight_eff_start=0.025
+CIPTDCCL component switches: L_de=True, L_ind=False, TDA=False, Contrastive=True (legacy cipt_pure=False)
+CIPTDCCL env_anchor: constraint=relative_distance, topk=80, env_weight=2.0, E_CE_weight=1.0, S_uniform_weight=1.0, IND_weight=2.0, fusion=none, inference=e_only, env_selection=all, selector=all_80_without_selection, rd_anchor_mode=full, class_text_mode=learnable
+[36mINFO[0m 11/28 06:07:41 | # of params = 151200257
+[36mINFO[0m 11/28 06:07:41 | CIPT cosine LR: initial=[2e-05], eta_min=0.0, T_max=5001 steps
+[36mINFO[0m 11/28 06:14:50 | test_in     test_out    train_in    train_out   tr_outloss  env0_in     env0_out    env1_in     env1_out    env2_in     env2_out    env3_in     env3_out    step        epoch       entropy_se  env_loss    env_mcc_lo  env_rd_los  env_center  env_mean_t  env_loss_w  env_topk    env_all_te  env_anchor  random_sel  env_rd_sel  env_loss_t  e_feature_  e_feature_  e_feature_  s_feature_  s_feature_  s_feature_  condcov_va  loss_condc  loss_contr  tr_loss     weight_e_c  weighted_e  weight_s_u  weighted_s  weight_con  weighted_c  weight_rd   weighted_r  weight_con  weighted_c  nbr_check   nbr_pur_v   nbr_pur_e   nbr_gap     nbr_cover   nbr_drop    cg_contras  cg_valid_a  cg_cross_d  cg_teacher  cg_teacher  cg_teacher  cg_active   nbr_wmean   nbr_wmax    cg_all_cla  prompt_sel  prompt_cou  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  total_loss  loss_total  loss_e_cls  loss_s_uni  loss_rd     loss_clip_  ind_weight  cipt_base_  cipt_cls_l  cipt_de_lo  cipt_de_or  cipt_de_au  cipt_ind_l  causal_con  dccl_contr  contrastiv  contrastiv  pre_cl_los  reg_loss    mean_e_nor  mean_s_nor  mean_es_co  ablation_d  ablation_i  ablation_t  ablation_c  class_text  class_text  e_cls_loss  fused_cls_  s_uni_loss  env_kl_los  e_cls_w     fused_cls_  s_uni_w     env_kl_w    e_cls_term  fused_cls_  s_uni_term  env_kl_ter  env_shift   env_spread  env_l2_shi  env_spread  env_pred_a  sigm_activ  inference_  env_active  env_kl_act  fused_cls_  e_only_inf  lr          step_time   actual_lr   optimizer_  scheduler_  eval_time   eval_visua  eval_visua 
+[36mINFO[0m 11/28 06:14:50 | 0.303593    0.317810    0.360761    0.364724    2.339924    0.527152    0.547692    0.222421    0.235535    0.332711    0.310945    0.303593    0.317810    0           0.000000    0.000000    0.465943    0.000000    0.465943    0.000000    0.000000    2.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.931886    0.002973    0.044094    0.000387    0.002973    0.044094    0.000387    10.000000   0.012498    4.552485    6.217722    1.000000    2.451423    1.000000    2.695606    2.000000    0.024995    2.000000    0.931886    0.025000    0.113812    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    6.217722    6.217722    2.451423    2.695606    0.465943    4.552485    2.000000    5.172025    2.451423    5.147029    5.147029    0.000000    0.000000    0.465943    4.552485    0.025000    1.000000    0.000000    0.000000    1.000000    1.000000    1.000000    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    2.451423    0.000000    2.695606    0.000000    1.000000    0.000000    1.000000    0.000000    2.451423    0.000000    2.695606    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.000020    1.406269    0.000020    1           1           427.692136  0           50964128   
+[36mINFO[0m 11/28 06:17:20 | 0.395059    0.384804    0.643310    0.648722    0.976044    0.740010    0.734359    0.681213    0.679467    0.508706    0.532338    0.395059    0.384804    300         2.985075    0.000000    0.379805    0.000000    0.379805    0.000000    0.000000    2.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.759610    0.003418    0.043050    0.000388    0.003094    0.046960    0.000384    9.123333    0.006870    4.389556    2.456239    1.000000    1.141305    1.000000    0.431845    2.000000    0.013739    2.000000    0.759610    0.025000    0.109739    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    2.456239    2.456239    1.141305    0.431845    0.379805    4.389556    2.000000    1.586890    1.141305    1.573150    1.573150    0.000000    0.000000    0.379805    4.389556    0.025000    0.995035    0.000000    0.000000    0.977177    1.064844    0.967949    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    1.141305    0.000000    0.431845    0.000000    1.000000    0.000000    1.000000    0.000000    1.141305    0.000000    0.431845    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.000020    0.476737    0.000020    301         301         6.599574    8           50964128   
+[36mINFO[0m 11/28 06:19:53 | 0.417926    0.411765    0.693163    0.689732    0.868780    0.775359    0.772308    0.717686    0.714798    0.586443    0.582090    0.417926    0.411765    600         5.970149    0.000000    0.222825    0.000000    0.222825    0.000000    0.000000    2.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.445651    0.002858    0.039973    0.000382    0.002988    0.051003    0.000382    9.156667    0.006538    4.395252    1.578116    1.000000    0.926651    1.000000    0.082857    2.000000    0.013076    2.000000    0.445651    0.025000    0.109881    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.578116    1.578116    0.926651    0.082857    0.222825    4.395252    2.000000    1.022583    0.926651    1.009508    1.009508    0.000000    0.000000    0.222825    4.395252    0.025000    0.995243    0.000000    0.000000    0.906719    1.155843    0.845590    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.926651    0.000000    0.082857    0.000000    1.000000    0.000000    1.000000    0.000000    0.926651    0.000000    0.082857    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.000020    0.484599    0.000019    601         601         7.148416    8           50964128   
+[36mINFO[0m 11/28 06:22:23 | 0.434259    0.442810    0.712539    0.707494    0.812659    0.786885    0.789744    0.725109    0.715822    0.625622    0.616915    0.434259    0.442810    900         8.955224    0.000000    0.140246    0.000000    0.140246    0.000000    0.000000    2.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.280492    0.002231    0.037595    0.000367    0.002942    0.053427    0.000378    9.163333    0.006004    4.396107    1.292643    1.000000    0.846410    1.000000    0.043831    2.000000    0.012008    2.000000    0.280492    0.025000    0.109903    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.292643    1.292643    0.846410    0.043831    0.140246    4.396107    2.000000    0.902249    0.846410    0.890241    0.890241    0.000000    0.000000    0.140246    4.396107    0.025000    0.994931    0.000000    0.000000    0.852043    1.210388    0.704290    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.846410    0.000000    0.043831    0.000000    1.000000    0.000000    1.000000    0.000000    0.846410    0.000000    0.043831    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.000019    0.473926    0.000018    901         901         7.146599    8           50964128   
+[36mINFO[0m 11/28 06:24:53 | 0.436301    0.428922    0.724434    0.729524    0.774835    0.800461    0.811282    0.732915    0.734255    0.639925    0.643035    0.436301    0.428922    1200        11.940299   0.000000    0.099497    0.000000    0.099497    0.000000    0.000000    2.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.198994    0.001804    0.035856    0.000350    0.002895    0.055261    0.000375    9.166667    0.005335    4.350873    1.128518    1.000000    0.781005    1.000000    0.029077    2.000000    0.010670    2.000000    0.198994    0.025000    0.108772    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.128518    1.128518    0.781005    0.029077    0.099497    4.350873    2.000000    0.820752    0.781005    0.810082    0.810082    0.000000    0.000000    0.099497    4.350873    0.025000    0.995208    0.000000    0.000000    0.812186    1.251638    0.598687    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.781005    0.000000    0.029077    0.000000    1.000000    0.000000    1.000000    0.000000    0.781005    0.000000    0.029077    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.000018    0.475288    0.000017    1201        1201        7.105827    8           50964128   
+[36mINFO[0m 11/28 06:27:26 | 0.444059    0.446895    0.733219    0.723885    0.753773    0.811219    0.801026    0.743537    0.745008    0.644900    0.625622    0.444059    0.446895    1500        14.925373   0.000000    0.076120    0.000000    0.076120    0.000000    0.000000    2.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.152241    0.001586    0.034601    0.000332    0.002865    0.056756    0.000368    9.200000    0.004870    4.340524    1.049709    1.000000    0.758451    1.000000    0.020765    2.000000    0.009739    2.000000    0.152241    0.025000    0.108513    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.049709    1.049709    0.758451    0.020765    0.076120    4.340524    2.000000    0.788955    0.758451    0.779216    0.779216    0.000000    0.000000    0.076120    4.340524    0.025000    0.995278    0.000000    0.000000    0.783580    1.285289    0.525362    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.758451    0.000000    0.020765    0.000000    1.000000    0.000000    1.000000    0.000000    0.758451    0.000000    0.020765    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.000017    0.483761    0.000016    1501        1501        7.346958    8           50964128   
+[36mINFO[0m 11/28 06:29:56 | 0.448346    0.442810    0.745314    0.738279    0.730612    0.813268    0.812308    0.751344    0.747056    0.671331    0.655473    0.448346    0.442810    1800        17.910448   0.000000    0.061745    0.000000    0.061745    0.000000    0.000000    2.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.123491    0.001479    0.033739    0.000318    0.002827    0.057944    0.000363    9.170000    0.004494    4.325292    0.989419    1.000000    0.732842    1.000000    0.015965    2.000000    0.008989    2.000000    0.123491    0.025000    0.108132    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.989419    0.989419    0.732842    0.015965    0.061745    4.325292    2.000000    0.757796    0.732842    0.748807    0.748807    0.000000    0.000000    0.061745    4.325292    0.025000    0.994861    0.000000    0.000000    0.763972    1.312013    0.476204    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.732842    0.000000    0.015965    0.000000    1.000000    0.000000    1.000000    0.000000    0.732842    0.000000    0.015965    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.000015    0.475109    0.000014    1801        1801        7.120036    8           50964128   
+[36mINFO[0m 11/28 06:32:26 | 0.460392    0.455882    0.751582    0.747181    0.712621    0.817879    0.817436    0.756207    0.762417    0.680659    0.661692    0.460392    0.455882    2100        20.895522   0.000000    0.052264    0.000000    0.052264    0.000000    0.000000    2.000000    80.000000   1.000000    1.000000    0.000000    0.000000    0.104529    0.001431    0.033172    0.000306    0.002803    0.058960    0.000358    9.096667    0.004161    4.310662    0.946047    1.000000    0.712523    1.000000    0.012906    2.000000    0.008323    2.000000    0.104529    0.025000    0.107767    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.946047    0.946047    0.712523    0.012906    0.052264    4.310662    2.000000    0.733752    0.712523    0.725429    0.725429    0.000000    0.000000    0.052264    4.310662    0.025000    0.994792    0.000000    0.000000    0.751075    1.334883    0.440730    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.712523    0.000000    0.012906    0.000000    1.000000    0.000000    1.000000    0.000000    0.712523    0.000000    0.012906    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    0.000013    0.474607    0.000012    2101        2101        7.231180    8           50964128   
