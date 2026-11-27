@@ -1,0 +1,70 @@
+# Default update config
+# Config order: hparams_registry -> config.yaml -> CLI
+
+# Keep SWAD disabled by default so enabling it remains an explicit experiment choice.
+swad: null
+swad_kwargs:
+  n_converge: 3
+  n_tolerance: 6
+  tolerance_ratio: 0.3
+test_batchsize: 128
+
+indomain_test: False  # use indomain test split or not
+
+# Legacy pure-CIPT compatibility switch.
+# true forces the added causal contrastive objective off.
+# For new ablations, prefer the four explicit switches below.
+cipt_pure: false
+
+# Independent component-ablation switches.
+# They can be overridden from the command line, e.g.
+#   --cipt_use_de false --cipt_use_ind true
+#   --cipt_use_tda false --cipt_use_contrastive false
+cipt_use_de: true
+cipt_use_ind: true
+cipt_use_tda: true
+cipt_use_contrastive: true
+
+# Opt in with config_cipt_env_kl.yaml or --cipt_objective env_kl.
+# env_kl: direct-E CE + KL(U||p_S) + IND + E contrastive + prompt-pair KL.
+# Fused-feature label CE is opt-in; original env_kl runs keep weight zero.
+cipt_objective: legacy
+cipt_env_kl_weight: 0.1
+cipt_fused_cls_weight: 0.0
+cipt_e_cls_weight: 1.0
+cipt_s_uniform_weight: null
+
+# This branch intentionally removes the augmented image branch.
+# Training data returns only x with the official CLIP Resize + CenterCrop +
+# RGB + tensor + CLIP normalization pipeline. No x_2/e_aug is constructed.
+cipt_use_aug_view: false
+
+# Original SupCon, with an optional detached coefficient for each anchor.
+# neighbor_retention: w_i = 1 + alpha * max(r_i(V) - r_i(E), 0)
+# supcon: original single-view supervised contrastive objective
+cipt_contrastive_type: neighbor_retention
+# Method-specific temperature. Tune this independently for standard SupCon and
+# neighbor_retention runs; it does not need to match the generic DCCL `t`.
+cipt_contrastive_temperature: 0.1
+cipt_neighbor_k: 5
+cipt_neighbor_alpha: 0.5
+# Enable V/E statistics also in SupCon / no-contrastive runs. This is detached
+# logging only; it does not add a loss. Disabled by default to avoid extra work.
+cipt_neighbor_diagnostics: false
+
+# Direct single-view causal contrastive coefficient. This is an independent
+# performance-tuning parameter, not an alignment constraint with SupCon.
+# Positives are other original causal features in the merged source-domain batch
+# with the same class label; self-pairs are excluded.
+cipt_causal_contrastive_weight: 1.0
+
+# Linear warmup for the effective contrastive coefficient:
+# lambda_eff = lambda_max * min(1, step / warmup_steps)
+cipt_contrastive_warmup_steps: 500
+
+# Inherited source-branch behavior:
+# 1) frozen CLIP visual feature -> L2 normalization -> E/S adapters
+# 2) causal/spurious linear adapters -> identity weights and zero biases
+# Contrastive learning remains projection-free and uses only original e.
+# V/E normalization for cosine neighborhoods does not change adapter inputs.
+

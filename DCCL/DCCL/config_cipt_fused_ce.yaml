@@ -1,0 +1,11 @@
+# Overlay: load AFTER your existing env_kl or SIGM experiment configuration.
+# Example: train_all.py NAME config_cipt_sigm_mcc.yaml config_cipt_fused_ce.yaml
+# Supervise every fused environment feature against learnable class text.
+# Retain direct-E supervision for e_only deployment; MCC is independently off.
+cipt_objective: env_kl
+cipt_use_tda: true
+cipt_e_cls_weight: 1.0
+cipt_fused_cls_weight: 1.0
+cipt_env_kl_weight: 0.0
+# Fusion operator, selection, S/IND/contrastive weights and inference mode are
+# inherited from the experiment configuration and can still be overridden.
