@@ -170,3 +170,22 @@ HParams:
 	cipt_causal_contrastive_weight: 0.05
 	cipt_contrastive_warmup_steps: 0
 	cipt_env_inference: e_only
+Dataset:
+	[PACS] #envs=4, #classes=7
+	env0: art_painting (#2048)
+	env1: cartoon (#2344)
+	env2: photo (#1670)
+	env3: sketch (#3929)
+
+[36mINFO[0m 11/28 04:08:09 | checkpoint_freq = 300
+[36mINFO[0m 11/28 04:08:09 | Training budget: 5001 updates, including evaluation at the final step
+[36mINFO[0m 11/28 04:08:09 | Target test envs = [[1]]
+[36mINFO[0m 11/28 04:08:09 | 
+[36mINFO[0m 11/28 04:08:09 | Fold RNG: strategy=domainbed_sweep, test_envs=[1], seed=1975502969, hparams_seed=0, trial_seed=1
+[36mINFO[0m 11/28 04:08:14 | Testenv name escaping te_cartoon -> te_cartoon
+[36mINFO[0m 11/28 04:08:14 | Test envs = [1], name = te_cartoon
+[36mINFO[0m 11/28 04:08:14 | Source sampling: domain_balanced
+[36mINFO[0m 11/28 04:08:14 | Batch sizes for each domain: [32, 0, 32, 32] (total=96)
+[36mINFO[0m 11/28 04:08:14 | steps-per-epoch for each domain: 51.22, 41.75, 98.25 -> min = 41.75
+[36mINFO[0m 11/28 04:08:14 | DataLoader workers: train=2 per source domain (6 total), eval=0 per loader
+PROMPT_CONTEXT_LENGTH 16
