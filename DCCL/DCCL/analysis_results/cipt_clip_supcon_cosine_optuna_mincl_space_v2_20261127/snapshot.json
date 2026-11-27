@@ -60,11 +60,11 @@
             "path": "PACS/trials/trial_010/env3/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 1500,
-              "test_in": 0.9080788804071247,
-              "test_out": 0.913375796178344,
-              "train_out": 0.9968427615126882,
-              "eval_time": 1.3545727729797363,
+              "step": 1800,
+              "test_in": 0.9096692111959288,
+              "test_out": 0.9171974522292994,
+              "train_out": 0.9960277655876677,
+              "eval_time": 1.8575685024261475,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -113,5 +113,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-27T20:55:55+08:00"
+  "synced_at": "2026-11-27T20:57:01+08:00"
 }
