@@ -2,9 +2,9 @@
   "state": "running",
   "dataset": "PACS",
   "trial": 3,
-  "fold": 0,
-  "domain": "Art Painting",
+  "fold": 1,
+  "domain": "Cartoon",
   "gpu": 1,
-  "pid": 2604643,
+  "pid": 2671228,
   "controller_pid": 1796737
 }

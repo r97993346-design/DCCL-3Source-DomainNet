@@ -15,3 +15,4 @@
 {"time": "2026-11-29T02:48:28.164307+08:00", "event": "fold_started", "dataset": "PACS", "trial": 2, "fold": 2, "gpu": 1, "pid": 2471016}
 {"time": "2026-11-29T03:11:10.802049+08:00", "event": "fold_started", "dataset": "PACS", "trial": 2, "fold": 3, "gpu": 1, "pid": 2538160}
 {"time": "2026-11-29T03:33:43.336596+08:00", "event": "fold_started", "dataset": "PACS", "trial": 3, "fold": 0, "gpu": 1, "pid": 2604643}
+{"time": "2026-11-29T03:56:22.733228+08:00", "event": "fold_started", "dataset": "PACS", "trial": 3, "fold": 1, "gpu": 1, "pid": 2671228}
