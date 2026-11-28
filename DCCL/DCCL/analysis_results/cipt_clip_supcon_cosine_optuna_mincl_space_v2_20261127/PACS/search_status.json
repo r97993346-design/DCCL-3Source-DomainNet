@@ -82,7 +82,14 @@
       "latest_attempt": {
         "path": "PACS/trials/trial_016/env3/attempt_001",
         "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-        "last_evaluation": {}
+        "last_evaluation": {
+          "step": 1200,
+          "test_in": 0.9007633587786259,
+          "test_out": 0.9082802547770701,
+          "train_out": 0.9960277655876677,
+          "eval_time": 2.6665704250335693,
+          "eval_visual_cache_hit_splits": 8
+        }
       }
     }
   ]
