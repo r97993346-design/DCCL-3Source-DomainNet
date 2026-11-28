@@ -221,5 +221,7 @@
     "stop_reason": "four_folds_complete",
     "fixed_config": "/media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125_low_contrast/VLCS/trials/trial_000/config.json"
   },
-  "hash": "2dab9dadccf7c9385afa2d03edf3ad5d128b406c56cb677fe9828a1382d53575"
+  "hash": "2dab9dadccf7c9385afa2d03edf3ad5d128b406c56cb677fe9828a1382d53575",
+  "history_github_verified": true,
+  "history_github_commit": "e82fce48b48564e2cae2cba8e868da08a354bdc3"
 }
