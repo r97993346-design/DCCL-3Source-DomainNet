@@ -168,3 +168,21 @@ HParams:
 	cipt_causal_contrastive_weight: 0.05
 	cipt_contrastive_warmup_steps: 0
 	cipt_env_inference: e_only
+Dataset:
+	[VLCS] #envs=4, #classes=5
+	env0: CALTECH (#1415)
+	env1: LABELME (#2656)
+	env2: PASCAL (#3376)
+	env3: SUN (#3282)
+
+[37m[36mINFO[0m[0m 11/28 16:00:53 | checkpoint_freq = 300
+[37m[36mINFO[0m[0m 11/28 16:00:53 | Training budget: 5001 updates, including evaluation at the final step
+[37m[36mINFO[0m[0m 11/28 16:00:53 | Target test envs = [[0]]
+[37m[36mINFO[0m[0m 11/28 16:00:53 | 
+[37m[36mINFO[0m[0m 11/28 16:00:53 | Fold RNG: strategy=domainbed_sweep, test_envs=[0], seed=1141299501, hparams_seed=0, trial_seed=1
+[37m[36mINFO[0m[0m 11/28 16:02:28 | Testenv name escaping te_CALTECH -> te_CALTECH
+[37m[36mINFO[0m[0m 11/28 16:02:28 | Test envs = [0], name = te_CALTECH
+[37m[36mINFO[0m[0m 11/28 16:02:28 | Source sampling: domain_balanced
+[37m[36mINFO[0m[0m 11/28 16:02:28 | Batch sizes for each domain: [0, 32, 32, 32] (total=96)
+[37m[36mINFO[0m[0m 11/28 16:02:28 | steps-per-epoch for each domain: 66.41, 84.41, 82.06 -> min = 66.41
+[37m[36mINFO[0m[0m 11/28 16:02:28 | DataLoader workers: train=8 per source domain (24 total), eval=0 per loader
