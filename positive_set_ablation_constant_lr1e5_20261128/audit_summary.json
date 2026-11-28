@@ -19,5 +19,8 @@
   "historical_branch": "results/condcov-optuna-joint-20261125",
   "training_code_commit": "4f548b1e341de2464894bdbf5b065ab0d35ae608",
   "implementation_sha256": "3140ea965c420786a8d5bda9817cbec3114e8b0e5bfe18450fe9b0e6119e6d91",
-  "instrumentation_sha256": "c53c66172789e5d33f85d84c688bbba47efb70b5145cc412bb836cfee66ed64c"
+  "instrumentation_sha256": "c53c66172789e5d33f85d84c688bbba47efb70b5145cc412bb836cfee66ed64c",
+  "added_training_files": [
+    "DCCL/DCCL/domainbed/lib/eval_visual_cache.py"
+  ]
 }

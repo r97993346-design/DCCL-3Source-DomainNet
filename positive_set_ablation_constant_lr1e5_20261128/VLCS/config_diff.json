@@ -223,5 +223,8 @@
   },
   "hash": "2dab9dadccf7c9385afa2d03edf3ad5d128b406c56cb677fe9828a1382d53575",
   "history_github_verified": true,
-  "history_github_commit": "e82fce48b48564e2cae2cba8e868da08a354bdc3"
+  "history_github_commit": "e82fce48b48564e2cae2cba8e868da08a354bdc3",
+  "added_training_files": [
+    "DCCL/DCCL/domainbed/lib/eval_visual_cache.py"
+  ]
 }
