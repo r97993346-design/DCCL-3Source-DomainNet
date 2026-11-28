@@ -1,0 +1,61 @@
+{
+  "changed_training_files": [
+    "DCCL/DCCL/domainbed/algorithms/cipt_clip_guided_contrastive.py",
+    "DCCL/DCCL/domainbed/algorithms/cipt_dccl_ablation.py",
+    "DCCL/DCCL/domainbed/algorithms/cipt_env_kl.py",
+    "DCCL/DCCL/domainbed/evaluator.py",
+    "DCCL/DCCL/domainbed/trainer.py",
+    "DCCL/DCCL/train_all.py"
+  ],
+  "reviewed_differences": [
+    "All same-class non-self positives include within-domain pairs; denominator becomes all non-self samples.",
+    "Eval cache added; first real evaluation batch compares cached and direct logits and predictions.",
+    "SupCon scalar component diagnostics added; no extra gradient diagnostics.",
+    "Training RNG isolation, Prompt implementation, data transforms, sampling, CondCov and RD unchanged.",
+    "Historical optimizer norm diagnostics omitted as requested; no optimizer settings change.",
+    "AutoDL paths differ; execution host and paths excluded from hash.",
+    "Independent telemetry wrapper observes every Adam call; it does not change the model or optimizer."
+  ],
+  "historical_branch": "results/condcov-optuna-joint-20261125",
+  "training_code_commit": "4f548b1e341de2464894bdbf5b065ab0d35ae608",
+  "implementation_sha256": "3140ea965c420786a8d5bda9817cbec3114e8b0e5bfe18450fe9b0e6119e6d91",
+  "instrumentation_sha256": "c53c66172789e5d33f85d84c688bbba47efb70b5145cc412bb836cfee66ed64c",
+  "dataset": "PACS",
+  "old_trial": 7,
+  "fold_seeds": [
+    280998037,
+    1975502969,
+    683537036,
+    990940125
+  ],
+  "actual_adam_updates": 5000,
+  "eval_steps": [
+    0,
+    300,
+    600,
+    900,
+    1200,
+    1500,
+    1800,
+    2100,
+    2400,
+    2700,
+    3000,
+    3300,
+    3600,
+    3900,
+    4200,
+    4500,
+    4800,
+    4999
+  ],
+  "initial_lr": 1e-05,
+  "schedule": "constant",
+  "num_workers": 2,
+  "eval_num_workers": 0,
+  "model_save": 0,
+  "source_selection": "earliest_max_source_val",
+  "ram_start_minimum_gib": 10,
+  "free_vram_minimum_mib": 8192,
+  "resource_lock": "shared-local-admission"
+}

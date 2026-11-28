@@ -1,0 +1,467 @@
+--- old/DCCL/DCCL/domainbed/algorithms/cipt_clip_guided_contrastive.py
++++ new/DCCL/DCCL/domainbed/algorithms/cipt_clip_guided_contrastive.py
+@@ -48,24 +48,27 @@
+ 
+ @torch.no_grad()
+ def cross_domain_targets(visual, labels, domain_ids, teacher_temperature=0.2,
+-                         teacher_mix=0.5, topk=0):
++                         teacher_mix=0.5, topk=0, *, all_same_class=False):
+     """Return detached (weights, positives, denominator_mask, teacher_cosines).
+ 
+     Positive candidates: same class, different source domain, not self.
+     Top-K is per anchor, across all eligible source domains, using V only.
+     Negatives: all different-class samples, including the anchor's own domain.
+-    Only selected positives and negatives enter the denominator.
++    Only selected positives and negatives enter the legacy denominator.
++    The all-same-class variant ignores domains and includes every non-self sample.
+     """
+     validate_clip_teacher_options(teacher_temperature, teacher_mix, topk)
+     if visual.ndim != 2 or visual.shape[1] < 1 or not visual.is_floating_point():
+         raise ValueError("visual must be floating point with shape [B,D], D >= 1")
+     batch = visual.shape[0]
+-    if labels.shape != (batch,) or domain_ids.shape != (batch,):
+-        raise ValueError("labels and domain_ids must have shape [B]")
+-    if labels.dtype != torch.long or domain_ids.dtype != torch.long:
+-        raise ValueError("labels and domain_ids must be LongTensors")
+-    if labels.device != visual.device or domain_ids.device != visual.device:
+-        raise ValueError("visual, labels and domain_ids must share a device")
++    if labels.shape != (batch,) or labels.dtype != torch.long or labels.device != visual.device:
++        raise ValueError("labels must be a LongTensor [B] on the visual device")
++    if all_same_class:
++        if topk:
++            raise ValueError("all same-class SupCon does not truncate positives")
++    elif (domain_ids is None or domain_ids.shape != (batch,) or
++          domain_ids.dtype != torch.long or domain_ids.device != visual.device):
++        raise ValueError("domain_ids must be a LongTensor [B] on the visual device")
+     if not torch.isfinite(visual).all():
+         raise ValueError("visual must contain finite features")
+ 
+@@ -74,9 +77,10 @@
+         unit_v = F.normalize(visual.detach().float(), dim=-1)
+         similarity = unit_v @ unit_v.t()
+         same_class = labels[:, None].eq(labels[None, :])
+-        different_domain = domain_ids[:, None].ne(domain_ids[None, :])
+         not_self = ~torch.eye(batch, dtype=torch.bool, device=visual.device)
+-        positives = same_class & different_domain & not_self
++        positives = same_class & not_self
++        if not all_same_class:
++            positives = positives & domain_ids[:, None].ne(domain_ids[None, :])
+ 
+         if topk > 0 and batch:
+             indices = similarity.masked_fill(~positives, -torch.inf).topk(
+@@ -85,7 +89,7 @@
+             selected = torch.zeros_like(positives).scatter_(1, indices, True)
+             positives = positives & selected
+ 
+-        denominator = positives | (~same_class & not_self)
++        denominator = not_self if all_same_class else positives | (~same_class & not_self)
+         weights = torch.zeros_like(similarity)
+         counts = positives.sum(dim=1)
+         valid = counts > 0
+@@ -105,7 +109,7 @@
+ 
+ def clip_guided_cross_domain_loss(visual, causal, labels, domain_ids,
+                                   temperature=0.1, teacher_temperature=0.2,
+-                                  teacher_mix=0.5, topk=0):
++                                  teacher_mix=0.5, topk=0, *, all_same_class=False):
+     """Return (loss, detached metrics); mix=0 is equal-weight cross-domain SupCon.
+ 
+     L_i = -sum_j w_ij log(exp(cos(E_i,E_j)/tau) /
+@@ -123,7 +127,7 @@
+         raise ValueError("causal must contain finite features")
+ 
+     weights, positives, denominator, similarity = cross_domain_targets(
+-        visual, labels, domain_ids, teacher_temperature, teacher_mix, topk
++        visual, labels, domain_ids, teacher_temperature, teacher_mix, topk, all_same_class=all_same_class,
+     )
+     stats = empty_clip_guided_stats(causal)
+     counts = positives.sum(dim=1)
+@@ -144,6 +148,10 @@
+         # multiplication by zero, avoiding 0 * -inf.
+         loss = -(weights[valid] * (logits - log_denominator)).sum(dim=1).mean()
+ 
++    if all_same_class:
++        stats.update(cg_contrastive_loss=loss.detach(), cg_valid_anchor_fraction=valid.float().mean(),
++                     cg_active=features.new_ones(()))
++        return loss, stats
+     with torch.no_grad():
+         valid_weights = weights[valid]
+         entropy = -(valid_weights * valid_weights.clamp_min(1e-30).log()).sum(dim=1)
+--- old/DCCL/DCCL/domainbed/algorithms/cipt_dccl_ablation.py
++++ new/DCCL/DCCL/domainbed/algorithms/cipt_dccl_ablation.py
+@@ -117,11 +117,11 @@
+             raise ValueError("cipt_contrastive_temperature must be positive")
+         self.contrastive_type = str(hparams.get("cipt_contrastive_type", "supcon")).lower()
+         if self.contrastive_type not in (
+-            "supcon", "neighbor_retention", "cross_domain_supcon", "clip_guided_cross_domain"
++            "supcon", "neighbor_retention", "cross_domain_supcon", "clip_guided_cross_domain", "clip_guided_supcon"
+         ):
+             raise ValueError(
+                 "cipt_contrastive_type must be supcon, neighbor_retention, "
+-                "cross_domain_supcon, or clip_guided_cross_domain"
++                "cross_domain_supcon, clip_guided_cross_domain, or clip_guided_supcon"
+             )
+         self.clip_teacher_temperature = float(hparams.get("cipt_clip_teacher_temperature", 0.2))
+         self.clip_teacher_mix = float(hparams.get("cipt_clip_teacher_mix", 0.5))
+@@ -129,6 +129,8 @@
+         validate_clip_teacher_options(
+             self.clip_teacher_temperature, self.clip_teacher_mix, self.clip_teacher_topk
+         )
++        if self.contrastive_type == "clip_guided_supcon" and self.clip_teacher_topk != 0:
++            raise ValueError("clip_guided_supcon requires all positives (teacher TopK=0)")
+         self.neighbor_k = hparams.get("cipt_neighbor_k", 5)
+         self.neighbor_alpha = float(hparams.get("cipt_neighbor_alpha", 0.5))
+         validate_neighbor_options(self.neighbor_k, self.neighbor_alpha)
+@@ -195,14 +197,20 @@
+                 self.neighbor_diagnostics,
+             )
+         )
++        guided_mix = self.clip_teacher_mix if self.contrastive_type in (
++            "clip_guided_cross_domain", "clip_guided_supcon",
++        ) else 0.0
++        effective_start = self.contrastive_weight if (
++            hparams.get("cipt_use_contrastive", True) and self.contrastive_warmup_steps == 0
++        ) else 0.0
+         print(
+-            "CIPTDCCL cross-domain contrastive: mode={}, teacher_temperature={}, "
+-            "teacher_mix={}, teacher_topk={}, temperature={}, configured_weight={}, "
+-            "warmup_steps={}".format(
++            "CIPTDCCL contrastive settings: mode={}, teacher_temperature={}, "
++            "teacher_mix={}, teacher_mix_eff={}, teacher_topk={}, temperature={}, configured_weight={}, "
++            "warmup_steps={}, contrastive_weight_eff_start={}".format(
+                 self.contrastive_type, self.clip_teacher_temperature,
+-                self.clip_teacher_mix, self.clip_teacher_topk,
++                self.clip_teacher_mix, guided_mix, self.clip_teacher_topk,
+                 self.contrastive_temperature, self.contrastive_weight,
+-                self.contrastive_warmup_steps,
++                self.contrastive_warmup_steps, effective_start,
+             )
+         )
+ 
+@@ -366,6 +374,21 @@
+         stats.update(empty_clip_guided_stats(causal))
+         stats["nbr_wmean"] = causal.new_ones(())
+         stats["nbr_wmax"] = causal.new_ones(())
++        if enabled and self.contrastive_type == "clip_guided_supcon":
++            if self.clip_teacher_mix == 0.0:
++                # Call the ordinary SupCon implementation for exact equivalence.
++                loss, valid_fraction = self._single_view_supcon(causal, labels)
++            else:
++                loss, measured = clip_guided_cross_domain_loss(
++                    visual, causal, labels, None, temperature=self.contrastive_temperature,
++                    teacher_temperature=self.clip_teacher_temperature,
++                    teacher_mix=self.clip_teacher_mix, all_same_class=True,
++                )
++                stats.update(measured)
++                valid_fraction = stats["cg_valid_anchor_fraction"]
++            stats["cg_all_class_active"] = causal.new_ones(())
++            self._causal_contrastive_step.add_(1)
++            return loss, valid_fraction, self._contrastive_scale(), stats
+         cross_domain = enabled and self.contrastive_type in (
+             "cross_domain_supcon", "clip_guided_cross_domain"
+         )
+--- old/DCCL/DCCL/domainbed/algorithms/cipt_env_kl.py
++++ new/DCCL/DCCL/domainbed/algorithms/cipt_env_kl.py
+@@ -486,9 +486,21 @@
+         if self.use_ind:
+             name = "original_ind" if self.ind_mode == "original" else self.ind_mode
+             ind_metrics[f"loss_{name}"] = ind_value
++        supcon_metrics = {}
++        if self.contrastive_type == "clip_guided_supcon" and anchor_mode:
++            components = {
++                "e_cls": (e_value, self.e_cls_weight), "s_uniform": (s_value, self.s_uniform_weight),
++                "condcov": (ind_value, self.ind_weight), "rd": (anchor_metrics.get("env_rd_loss", 0.0), self.env_loss_weight),
++                "contrastive": (con_value, con_weight),
++            }
++            supcon_metrics = {"loss_contrastive": con_value, "tr_loss": total_value}
++            for name, (value, weight) in components.items():
++                supcon_metrics[f"weight_{name}"] = weight
++                supcon_metrics[f"weighted_{name}"] = weight * value
+         return {
+             **anchor_metrics,
+             **ind_metrics,
++            **supcon_metrics,
+             **grad_metrics,
+             **{name: value.item() for name, value in neighbor_stats.items()},
+             **self._selector_metric_items(selector_metrics),
+@@ -497,7 +509,9 @@
+             "loss_e_cls": e_value,
+             "loss_s_uniform": s_value,
+             "loss_rd": anchor_metrics.get("env_rd_loss", 0.0),
+-            "loss_clip_contrast": con_value if self.contrastive_type == "clip_guided_cross_domain" else 0.0,
++            "loss_clip_contrast": con_value if self.contrastive_type in (
++                "clip_guided_cross_domain", "clip_guided_supcon"
++            ) else 0.0,
+             "ind_weight": self.ind_weight,
+             "cipt_base_loss": base.item(),
+             # Compatibility diagnostics only; DE is NOT added again to total.
+@@ -558,7 +572,22 @@
+             return self._clip_ce_logits(x)
+         if self.objective_mode == "legacy":
+             return super().predict(x)
+-        visual = self._visual(x)
++        return self._predict_from_visual(self._visual(x))
++
++    def encode_eval_visual(self, x):
++        self._require_eval_visual_cache_mode()
++        with torch.no_grad():
++            return self.clip_model.encode_image(x)
++
++    def predict_from_eval_visual(self, raw_visual):
++        self._require_eval_visual_cache_mode()
++        return self._predict_from_visual(F.normalize(raw_visual.float(), dim=-1))
++
++    def _require_eval_visual_cache_mode(self):
++        if self.training or self.objective_mode != "env_anchor" or self.inference_mode != "e_only":
++            raise ValueError("Cached visual prediction is only supported for env_anchor E-only evaluation")
++
++    def _predict_from_visual(self, visual):
+         causal, _ = self.causal_decomposition(visual)
+         class_features = self._class_text_features()
+         if self.inference_mode == "e_only":
+--- old/DCCL/DCCL/domainbed/evaluator.py
++++ new/DCCL/DCCL/domainbed/evaluator.py
+@@ -2,6 +2,7 @@
+ import torch
+ import torch.nn as nn
+ import torch.nn.functional as F
++from domainbed.lib.eval_visual_cache import EvalVisualCache
+ from domainbed.lib.fast_data_loader import FastDataLoader
+ 
+ if torch.cuda.is_available():
+@@ -10,20 +11,22 @@
+     device = "cpu"
+ 
+ 
+-def accuracy_from_loader(algorithm, loader, weights, debug=False):
++def accuracy_from_loader(algorithm, loader, weights, debug=False, predict=None):
+     correct = 0
+     total = 0
+     losssum = 0.0
+     weights_offset = 0
+ 
+     algorithm.eval()
++    if predict is None:
++        predict = algorithm.predict
+ 
+-    for i, batch in enumerate(loader):
++    for batch in loader:
+         x = batch["x"].to(device)
+         y = batch["y"].to(device)
+ 
+         with torch.no_grad():
+-            logits = algorithm.predict(x)
++            logits = predict(x)
+             loss = F.cross_entropy(logits, y).item()
+ 
+         B = len(x)
+@@ -51,19 +54,22 @@
+     return acc, loss
+ 
+ 
++def _make_loader(loader_kwargs):
++    if isinstance(loader_kwargs, dict):
++        return FastDataLoader(**loader_kwargs)
++    if isinstance(loader_kwargs, FastDataLoader):
++        return loader_kwargs
++    raise ValueError(loader_kwargs)
++
++
+ def accuracy(algorithm, loader_kwargs, weights, **kwargs):
+-    if isinstance(loader_kwargs, dict):
+-        loader = FastDataLoader(**loader_kwargs)
+-    elif isinstance(loader_kwargs, FastDataLoader):
+-        loader = loader_kwargs
+-    else:
+-        raise ValueError(loader_kwargs)
+-    return accuracy_from_loader(algorithm, loader, weights, **kwargs)
++    return accuracy_from_loader(algorithm, _make_loader(loader_kwargs), weights, **kwargs)
+ 
+ 
+ class Evaluator:
+     def __init__(
+-        self, test_envs, eval_meta, n_envs, logger, evalmode="fast", debug=False, target_env=None
++        self, test_envs, eval_meta, n_envs, logger, evalmode="fast", debug=False, target_env=None,
++        cache_visual=False,
+     ):
+         all_envs = list(range(n_envs))
+         train_envs = sorted(set(all_envs) - set(test_envs))
+@@ -74,6 +80,9 @@
+         self.logger = logger
+         self.evalmode = evalmode
+         self.debug = debug
++        if cache_visual and debug:
++            raise ValueError("Evaluation visual caching requires complete evaluation splits")
++        self.visual_cache = EvalVisualCache() if cache_visual else None
+ 
+         if target_env is not None:
+             self.set_target_env(target_env)
+@@ -94,6 +103,8 @@
+         summaries["train_out"] = 0.0
+         accuracies = {}
+         losses = {}
++        if self.visual_cache is not None:
++            self.visual_cache.prepare(algorithm)
+ 
+         # order: in_splits + out_splits.
+         for name, loader_kwargs, weights in self.eval_meta:
+@@ -106,7 +117,15 @@
+                 continue
+ 
+             is_test = env_num in self.test_envs
+-            acc, loss = accuracy(algorithm, loader_kwargs, weights, debug=self.debug)
++            if self.visual_cache is None:
++                acc, loss = accuracy(algorithm, loader_kwargs, weights, debug=self.debug)
++            else:
++                batches = self.visual_cache.batches(
++                    name, lambda: _make_loader(loader_kwargs), algorithm.encode_eval_visual, device
++                )
++                acc, loss = accuracy_from_loader(
++                    algorithm, batches, weights, predict=algorithm.predict_from_eval_visual
++                )
+             accuracies[name] = acc
+             losses[name] = loss
+ 
+--- old/DCCL/DCCL/domainbed/trainer.py
++++ new/DCCL/DCCL/domainbed/trainer.py
+@@ -12,6 +12,7 @@
+ import torch.utils.data
+ from domainbed.mmd import mmd_loss
+ from domainbed.datasets import get_dataset, split_dataset
++from domainbed.datasets.transforms import clip_basic
+ from domainbed import algorithms
+ from domainbed.evaluator import Evaluator
+ from domainbed.lib import misc
+@@ -81,6 +82,21 @@
+ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, target_env=None):
+     logger.info("")
+     is_cipt = args.algorithm == "CIPTDCCL"
++    cache_eval_visual = getattr(args, "cipt_cache_eval_visual", False)
++    if cache_eval_visual and (
++        not is_cipt
++        or hparams.get("cipt_objective") != "env_anchor"
++        or hparams.get("cipt_env_inference", "e_only") != "e_only"
++        or hparams.get("val_augment")
++        or hparams.get("swad")
++        or hparams.get("indomain_test")
++        or args.debug
++        or not getattr(args, "source_only_selection", False)
++    ):
++        raise ValueError(
++            "Evaluation visual caching requires CIPTDCCL env_anchor E-only, "
++            "deterministic evaluation, source-only selection, and SWAD/debug off"
++        )
+     source_sampling = getattr(args, "source_sampling", "domain_balanced")
+     epochs = getattr(args, "epochs", None)
+     warmup_epochs = getattr(args, "cipt_contrastive_warmup_epochs", None)
+@@ -221,6 +237,11 @@
+     # setup eval loaders
+     eval_loaders_kwargs = []
+     for i, (env, _) in enumerate(in_splits + out_splits + test_splits):
++        if cache_eval_visual and (
++            env.transforms != {"x": clip_basic}
++            or not (env.cipt_pure or env.cipt_single_view)
++        ):
++            raise ValueError("Evaluation visual caching requires the single-view fixed CLIP transform")
+         batchsize = hparams["test_batchsize"]
+         loader_kwargs = {
+             "dataset": env,
+@@ -291,6 +312,7 @@
+         evalmode=args.evalmode,
+         debug=args.debug,
+         target_env=target_env,
++        cache_visual=cache_eval_visual,
+     )
+ 
+     swad = None
+@@ -364,11 +386,17 @@
+ 
+             for key, val in checkpoint_vals.items():
+                 results[key] = np.mean(val)
++            if is_cipt and hparams.get("cipt_contrastive_type") == "clip_guided_supcon" and lr_scheduler is not None:
++                results.update(actual_lr=used_lr, optimizer_updates=step + 1,
++                               scheduler_updates=lr_scheduler.last_epoch)
+ 
+             eval_start_time = time.time()
+             with preserve_training_rng() if is_cipt else nullcontext():
+                 accuracies, summaries = evaluator.evaluate(algorithm)
+             results["eval_time"] = time.time() - eval_start_time
++            if cache_eval_visual:
++                results["eval_visual_cache_hit_splits"] = evaluator.visual_cache.hit_splits
++                results["eval_visual_cache_bytes"] = evaluator.visual_cache.size_bytes
+ 
+             results_keys = (
+                 list(summaries.keys()) + sorted(accuracies.keys()) + list(results.keys())
+--- old/DCCL/DCCL/train_all.py
++++ new/DCCL/DCCL/train_all.py
+@@ -49,11 +49,32 @@
+             hparams[action.dest] = getattr(args, action.dest)
+     return hparams
+ 
++
++def default_cipt_eval_visual_cache(args, hparams):
++    """Enable fold-local caching for the deterministic CLIP SupCon evaluation path."""
++    return (
++        args.dataset in {"VLCS", "PACS", "OfficeHome"}
++        and args.algorithm == "CIPTDCCL"
++        and args.source_only_selection
++        and hparams.get("cipt_objective") == "env_anchor"
++        and hparams.get("ind_mode") == "condcov"
++        and hparams.get("cipt_env_constraint") == "relative_distance"
++        and hparams.get("cipt_contrastive_type") == "clip_guided_supcon"
++        and hparams.get("cipt_env_inference", "e_only") == "e_only"
++        and hparams.get("cipt_enabled")
++        and not hparams.get("cipt_use_aug_view")
++        and not hparams.get("val_augment")
++        and not hparams.get("indomain_test")
++        and not hparams.get("swad")
++        and not args.debug
++    )
++
++
+ def main():
+     parser = argparse.ArgumentParser(description="Domain generalization")
+     parser.add_argument("name", type=str)
+     parser.add_argument("configs", nargs="*")
+-    parser.add_argument("--data_dir", type=str, default="datadir/")
++    parser.add_argument("--data_dir", type=str, default="/root/autodl-tmp/datasets")
+     parser.add_argument("--dataset", type=str, default="PACS")
+     parser.add_argument("--algorithm", type=str, default="DCCL")
+     parser.add_argument(
+@@ -114,6 +135,9 @@
+         help="[fast, all]. if fast, ignore train_in datasets in evaluation time.",
+     )
+     parser.add_argument("--prebuild_loader", action="store_true", help="Pre-build eval loaders")
++    parser.add_argument("--cipt_cache_eval_visual", action=argparse.BooleanOptionalAction,
++                        default=None, help="Cache frozen CLIP visual features for evaluation only "
++                        "(default: enabled for eligible PACS, VLCS, and OfficeHome CondCov + RD + CLIP SupCon runs)")
+     parser.add_argument("--model", type=str, default="resnet50", help="Backbone model architecture")
+     parser.add_argument("--label_ratio", type=float, default=1.0, help="Ratio of labeled data to use")
+     
+@@ -150,7 +174,7 @@
+     parser.add_argument("--log", action="store_true", help="Enable detailed logging")
+     parser.add_argument("--cipt_enabled", action=argparse.BooleanOptionalAction, default=True)
+     parser.add_argument("--cipt_clip_backbone", default="ViT-B/16")
+-    parser.add_argument("--cipt_clip_path", default="", help="Local OpenAI CLIP checkpoint (offline-safe)")
++    parser.add_argument("--cipt_clip_path", default="/root/autodl-tmp/weights/ViT-B-16.pt", help="Local OpenAI CLIP checkpoint (offline-safe)")
+     parser.add_argument("--cipt_beta", type=float, default=4.0)
+     parser.add_argument("--cipt_gamma", type=float, default=5.0)
+     parser.add_argument("--ind_mode", choices=IND_MODES,
+@@ -179,7 +203,7 @@
+     parser.add_argument(
+         "--output_root",
+         type=str,
+-        default="train_output",
++        default="/root/autodl-tmp/outputs",
+         help="Root directory for training outputs"
+     )
+     args, left_argv = parser.parse_known_args()
+@@ -232,6 +256,8 @@
+             parser.error(str(error))
+     if args.algorithm == "ERM" and args.weak_erm:
+         hparams = apply_weak_erm_hparams(hparams)
++    if args.cipt_cache_eval_visual is None:
++        args.cipt_cache_eval_visual = bool(default_cipt_eval_visual_cache(args, hparams))
+ 
+     # setup debug
+     if args.debug:
