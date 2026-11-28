@@ -90,7 +90,7 @@
     "maximize",
     "maximize"
   ],
-  "num_workers": 2,
+  "num_workers": 4,
   "eval_num_workers": 0,
   "registry": false,
   "target_iid": 0.86,
@@ -102,5 +102,5 @@
     "n_ei_candidates": 24,
     "multivariate": false
   },
-  "training_commit": "b5221ba6f98ba0945fac224898c231e6102bed2d"
+  "training_commit": "2a0687ba4f85064b7127b7311dd0567aa980db0e"
 }

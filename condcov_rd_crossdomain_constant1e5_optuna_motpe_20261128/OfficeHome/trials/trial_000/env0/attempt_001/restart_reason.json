@@ -1,0 +1,7 @@
+{
+  "reason": "user_requested_train_num_workers_4",
+  "previous_train_workers": 2,
+  "new_train_workers": 4,
+  "eval_workers": 0,
+  "preserved_previous_attempt": true
+}
