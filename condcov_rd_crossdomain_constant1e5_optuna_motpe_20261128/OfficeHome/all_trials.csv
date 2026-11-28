@@ -1,0 +1,2 @@
+trial,state,s_weight,condcov_weight,rd_weight,contrastive_weight,full_hparams,source_val_mean,target_iid_mean,is_pareto,historical_best_source_val_mean,historical_best_target_iid_mean,fold_source_vals,fold_target_iids,selected_steps,evaluation_mode
+0,WAITING,,,,,,,,False,,,[],[],[],MOTPE / Oracle Exploration

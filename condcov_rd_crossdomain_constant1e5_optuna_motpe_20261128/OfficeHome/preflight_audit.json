@@ -1,0 +1,45 @@
+{
+  "status": "PASS",
+  "optuna": "4.9.0",
+  "sampler": "TPESampler",
+  "directions": [
+    "maximize",
+    "maximize"
+  ],
+  "training_functions_unchanged": [
+    "hp",
+    "validate",
+    "signature"
+  ],
+  "training_sources_changed": [],
+  "instrumentation_unchanged": true,
+  "search_space": {
+    "s_weight": [
+      0.5,
+      0.75,
+      1.0
+    ],
+    "condcov_weight": [
+      1.0,
+      2.0,
+      3.0
+    ],
+    "rd_weight": [
+      1.0,
+      2.0,
+      3.0
+    ],
+    "contrastive_weight": [
+      0.01,
+      0.025,
+      0.05
+    ]
+  },
+  "combinations": 81,
+  "pareto_recomputation": true,
+  "tie_breaking": true,
+  "old_trials_imported": 0,
+  "old_registry_enabled": false,
+  "new_registry_enabled": false,
+  "label": "MOTPE / Oracle Exploration"
+}
