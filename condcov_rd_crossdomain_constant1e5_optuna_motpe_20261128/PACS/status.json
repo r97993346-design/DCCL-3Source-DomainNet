@@ -1,14 +1,14 @@
 {
   "state": "RUNNING",
   "gpu": 1,
-  "trial": 3,
+  "trial": 4,
   "params": {
-    "s_weight": 0.75,
-    "condcov_weight": 2.0,
-    "rd_weight": 1.0,
-    "contrastive_weight": 0.025
+    "s_weight": 1.0,
+    "condcov_weight": 3.0,
+    "rd_weight": 2.0,
+    "contrastive_weight": 0.01
   },
-  "fold": 3,
-  "completed_folds": 3,
-  "pid": 1509014
+  "fold": 0,
+  "completed_folds": 0,
+  "pid": 1577582
 }
