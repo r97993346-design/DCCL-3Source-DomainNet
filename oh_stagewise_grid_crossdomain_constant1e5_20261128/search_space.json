@@ -1,0 +1,84 @@
+{
+  "stage0": [
+    {
+      "s_weight": 0.0,
+      "condcov_weight": 0.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    }
+  ],
+  "stage1": [
+    {
+      "s_weight": 0.5,
+      "condcov_weight": 1.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    },
+    {
+      "s_weight": 0.5,
+      "condcov_weight": 2.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    },
+    {
+      "s_weight": 0.5,
+      "condcov_weight": 3.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    },
+    {
+      "s_weight": 0.75,
+      "condcov_weight": 1.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    },
+    {
+      "s_weight": 0.75,
+      "condcov_weight": 2.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    },
+    {
+      "s_weight": 0.75,
+      "condcov_weight": 3.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    },
+    {
+      "s_weight": 1.0,
+      "condcov_weight": 1.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    },
+    {
+      "s_weight": 1.0,
+      "condcov_weight": 2.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    },
+    {
+      "s_weight": 1.0,
+      "condcov_weight": 3.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    }
+  ],
+  "stage2": {
+    "top": 3,
+    "rd": [
+      1,
+      2,
+      3
+    ],
+    "include_previous_rd_zero": true
+  },
+  "stage3": {
+    "top": 2,
+    "cl": [
+      0.01,
+      0.025,
+      0.05
+    ],
+    "include_previous_cl_zero": true
+  }
+}
