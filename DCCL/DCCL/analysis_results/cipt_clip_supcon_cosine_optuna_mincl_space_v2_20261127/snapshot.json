@@ -6,7 +6,7 @@
     "OfficeHome": {
       "state": "running",
       "completed_trials": 7,
-      "completed_folds": 28,
+      "completed_folds": 29,
       "trial_states": {
         "COMPLETE": 7,
         "RUNNING": 1
@@ -22,20 +22,9 @@
             "contrastive_mix": 0.0,
             "prompt_length": 16
           },
-          "completed_folds": 0,
+          "completed_folds": 1,
           "current_target": "Art",
-          "latest_attempt": {
-            "path": "OfficeHome/trials/trial_007/env0/attempt_001",
-            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4800,
-              "test_in": 0.8347064881565397,
-              "test_out": 0.8824742268041237,
-              "train_out": 0.8853207815701916,
-              "eval_time": 4.305774688720703,
-              "eval_visual_cache_hit_splits": 8
-            }
-          }
+          "latest_attempt": null
         }
       ],
       "gpu": 1,
@@ -67,11 +56,11 @@
             "path": "PACS/trials/trial_018/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3000,
+              "step": 3300,
               "test_in": 0.9898720682302772,
-              "test_out": 0.9893162393162394,
-              "train_out": 0.9852407871718603,
-              "eval_time": 1.2997138500213623,
+              "test_out": 0.9871794871794872,
+              "train_out": 0.9843915302716479,
+              "eval_time": 1.9811575412750244,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -121,5 +110,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T13:32:05+08:00"
+  "synced_at": "2026-11-28T13:33:19+08:00"
 }
