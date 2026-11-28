@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_006/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 600,
-              "test_in": 0.7101947308132875,
-              "test_out": 0.7010309278350515,
-              "train_out": 0.9109041682861296,
-              "eval_time": 8.358853578567505,
+              "step": 900,
+              "test_in": 0.7107674684994273,
+              "test_out": 0.7067583046964491,
+              "train_out": 0.9185860262810268,
+              "eval_time": 7.606837749481201,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -67,11 +67,11 @@
             "path": "PACS/trials/trial_016/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 600,
-              "test_in": 0.9893390191897654,
+              "step": 900,
+              "test_in": 0.9898720682302772,
               "test_out": 0.9935897435897436,
-              "train_out": 0.981912281521395,
-              "eval_time": 1.3662128448486328,
+              "train_out": 0.9831176449213295,
+              "eval_time": 1.376478672027588,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -106,11 +106,11 @@
             "path": "VLCS/trials/trial_002/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3600,
+              "step": 3900,
               "test_in": 0.9964664310954063,
               "test_out": 1.0,
-              "train_out": 0.8460608148454365,
-              "eval_time": 1.3392293453216553,
+              "train_out": 0.8436694455927611,
+              "eval_time": 2.383436679840088,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -121,5 +121,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T08:57:10+08:00"
+  "synced_at": "2026-11-28T08:58:51+08:00"
 }
