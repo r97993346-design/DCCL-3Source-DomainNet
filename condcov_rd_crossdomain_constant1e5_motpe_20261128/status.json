@@ -17,7 +17,7 @@
       "rd_weight": 1.0,
       "contrastive_weight": 0.01
     },
-    "target": "L38",
-    "completed_folds": 1
+    "target": "L43",
+    "completed_folds": 2
   }
 }
