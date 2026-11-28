@@ -16,8 +16,8 @@
       "contrastive_mix": 0.0,
       "prompt_length": 16
     },
-    "target": "Product",
-    "completed_folds": 2
+    "target": "Real World",
+    "completed_folds": 3
   },
   "stop_reason": null,
   "iid_reference_target": 0.86,
@@ -78,8 +78,12 @@
         "prompt_length": 16
       },
       "completed_folds": 3,
-      "current_target": "Product",
-      "latest_attempt": null
+      "current_target": "Real World",
+      "latest_attempt": {
+        "path": "OfficeHome/trials/trial_006/env3/attempt_001",
+        "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
+        "last_evaluation": {}
+      }
     }
   ]
 }
