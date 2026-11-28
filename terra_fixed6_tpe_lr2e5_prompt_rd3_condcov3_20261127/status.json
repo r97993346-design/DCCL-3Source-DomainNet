@@ -1,5 +1,5 @@
 {
-  "state": "running",
+  "state": "draining",
   "gpu": 0,
   "active": {
     "trial_id": 6,
@@ -11,7 +11,7 @@
       "prompt_length": 16,
       "initial_lr": 2e-05
     },
-    "target": "L38",
-    "completed_folds": 1
+    "target": "L43",
+    "completed_folds": 2
   }
 }
