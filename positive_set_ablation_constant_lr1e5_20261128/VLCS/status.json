@@ -1,11 +1,8 @@
 {
-  "state": "RUNNING",
+  "state": "FAILED",
   "dataset": "VLCS",
   "config_hash": "2dab9dadccf7c9385afa2d03edf3ad5d128b406c56cb677fe9828a1382d53575",
   "completed_folds": [],
-  "updated_at": "2026-11-28T04:39:22+00:00",
-  "fold": 0,
-  "pid": 497500,
-  "ram_available_bytes": 115294228480,
-  "gpu_free_mib": 19359
+  "updated_at": "2026-11-28T04:50:07+00:00",
+  "error": "training failed, exit -15"
 }
