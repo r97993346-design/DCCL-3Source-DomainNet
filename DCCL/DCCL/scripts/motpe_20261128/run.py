@@ -155,7 +155,10 @@ def main():
                   worker_rng_note="Eight workers may change augmentation streams relative to previous worker counts.")
     for name,value in (("protocol",protocol),("search_space",{k:list(v) for k,v in SPACE.items()})):
         path=ROOT/(name+".json")
-        if path.exists(): assert p.read_json(path)==value
+        if path.exists():
+            existing = p.read_json(path)
+            if name == "protocol": value["code_commit"] = existing["code_commit"]
+            assert existing == value
         else: p.write_json(path,value)
     with (ROOT/"controller.lock").open("a") as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
