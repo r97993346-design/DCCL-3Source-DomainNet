@@ -4,3 +4,4 @@
 [I 2026-11-28 23:01:42,149] Using an existing study with name 'condcov_rd_crossdomain_cosine2e5_prompt4_final_motpe_20261128_OfficeHome' instead of creating a new one.
 {"time": "2026-11-28T23:01:42.963479+08:00", "event": "fold_started", "dataset": "OfficeHome", "trial": 0, "fold": 0, "gpu": 0, "pid": 1796890}
 {"time": "2026-11-28T23:54:42.176583+08:00", "event": "fold_started", "dataset": "OfficeHome", "trial": 0, "fold": 1, "gpu": 0, "pid": 1955132}
+{"time": "2026-11-29T00:48:23.765077+08:00", "event": "fold_started", "dataset": "OfficeHome", "trial": 0, "fold": 2, "gpu": 0, "pid": 2113119}
