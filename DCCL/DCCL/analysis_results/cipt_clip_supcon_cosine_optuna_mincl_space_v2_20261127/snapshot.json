@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_007/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 1500,
-              "test_in": 0.9228603603603603,
-              "test_out": 0.9120631341600902,
-              "train_out": 0.8756128600104597,
-              "eval_time": 7.9008588790893555,
+              "step": 1800,
+              "test_in": 0.9225788288288288,
+              "test_out": 0.9075535512965051,
+              "train_out": 0.873855587688485,
+              "eval_time": 8.060748815536499,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -69,5 +69,5 @@
       "stop_reason": "completed_trial_budget"
     }
   },
-  "synced_at": "2026-11-28T15:33:03+08:00"
+  "synced_at": "2026-11-28T15:36:27+08:00"
 }
