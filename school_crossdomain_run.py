@@ -1,4 +1,4 @@
-import os,sys,json,time,itertools,subprocess,fcntl,shlex,pickle,threading,shutil,random
+import os,sys,json,time,itertools,subprocess,fcntl,shlex,pickle,threading,shutil,random,math
 from pathlib import Path
 from statistics import mean
 import optuna
@@ -51,7 +51,9 @@ def validate(attempt,ds,fold,v):
     for x in data:
         assert all(x['hparams'].get(k)==a for k,a in hp(v).items())
         assert x['args']['seed']==p.seed_for(ds,fold) and x['e_only_infer']==1
-        assert x['contrastive_weight']==v['contrastive_weight'] and x['ind_weight']==v['condcov_weight']
+        assert x['contrastive_weight_eff']==v['contrastive_weight'] and x['ind_weight']==v['condcov_weight']
+        expected=x['loss_e_cls']+v['s_weight']*x['loss_s_uniform']+v['condcov_weight']*x['loss_condcov']+v['rd_weight']*x['loss_rd']+v['contrastive_weight']*x['loss_clip_contrast']
+        assert math.isclose(x['loss_total'],expected,rel_tol=2e-6,abs_tol=2e-7)
     best=max(data,key=lambda x:x['train_out'])
     assert not list(attempt.rglob('*.pth'))
     return dict(fold=fold,domain=p.DATASETS[ds][0][fold],seed=p.seed_for(ds,fold),selected_step=best['step'],source_val=best['train_out'],iid=best['test_in'],test_in=best['test_in'],test_out=best['test_out'],updates=5001,log=str(logs[0]))
@@ -64,7 +66,7 @@ def run(ds,gpu):
         study=optuna.create_study(study_name=NAME+'_'+ds,storage='sqlite:///'+str(root/'study.sqlite3'),load_if_exists=True,direction='maximize',sampler=sampler,pruner=optuna.pruners.NopPruner())
         first={'s_weight':1.,'condcov_weight':2. if ds=='PACS' else 1.,'rd_weight':1.,'contrastive_weight':.025 if ds=='PACS' else .05}
         if not study.trials:study.enqueue_trial(first)
-        write(root/'protocol.json',dict(name=NAME,dataset=ds,space=SPACE,combinations=81,gpu=gpu,fixed_hparams=hp(first),steps=5001,checkpoint_freq=300,trial_seed=1,source_selection='earliest_max_source_val',objective='mean_four_fold_source_val',num_workers=2,eval_num_workers=0,registry=False,target_iid=p.DATASETS[ds][1],target_policy='report_only_pending_user_clarification',sampler=dict(type='TPESampler',seed=42,n_startup_trials=5,n_ei_candidates=24,multivariate=False),training_commit=p.git('rev-parse','HEAD',cwd=CODE)))
+        write(root/'protocol.json',dict(name=NAME,dataset=ds,space=SPACE,combinations=81,gpu=gpu,fixed_hparams=hp(first),steps=5001,checkpoint_freq=300,trial_seed=1,source_selection='earliest_max_source_val',objective='mean_four_fold_source_val',num_workers=2,eval_num_workers=0,registry=False,target_iid=p.DATASETS[ds][1],target_policy='stop_on_completed_four_fold_mean_iid_user_authorized',sampler=dict(type='TPESampler',seed=42,n_startup_trials=5,n_ei_candidates=24,multivariate=False),training_commit=p.git('rev-parse','HEAD',cwd=CODE)))
         threading.Thread(target=pulse,daemon=True).start()
         while True:
             reached=[t for t in study.trials if t.state==TrialState.COMPLETE and t.user_attrs.get('result',{}).get('iid',0)>=p.DATASETS[ds][1]]
