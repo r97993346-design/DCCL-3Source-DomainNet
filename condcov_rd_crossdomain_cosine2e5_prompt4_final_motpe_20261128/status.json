@@ -1,0 +1,15 @@
+{
+  "state": "running",
+  "dataset": "OfficeHome",
+  "gpu": 0,
+  "controller_pid": 1794432,
+  "trial": 0,
+  "fold": 0,
+  "domain": "Art",
+  "params": {
+    "s_weight": 1.0,
+    "condcov_weight": 2.0,
+    "rd_weight": 1.0,
+    "contrastive_weight": 0.025
+  }
+}

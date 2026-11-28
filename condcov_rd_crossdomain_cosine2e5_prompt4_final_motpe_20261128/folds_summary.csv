@@ -1,0 +1,1 @@
+trial,fold,domain,seed,selected_step,source_val,iid,test_in,test_out,updates,elapsed_seconds,last_adam_lr,final_scheduler_lr,losses,log,learning_rates
