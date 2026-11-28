@@ -67,6 +67,10 @@ def run(ds,gpu):
         write(root/'protocol.json',dict(name=NAME,dataset=ds,space=SPACE,combinations=81,gpu=gpu,fixed_hparams=hp(first),steps=5001,checkpoint_freq=300,trial_seed=1,source_selection='earliest_max_source_val',objective='mean_four_fold_source_val',num_workers=2,eval_num_workers=0,registry=False,target_iid=p.DATASETS[ds][1],target_policy='report_only_pending_user_clarification',sampler=dict(type='TPESampler',seed=42,n_startup_trials=5,n_ei_candidates=24,multivariate=False),training_commit=p.git('rev-parse','HEAD',cwd=CODE)))
         threading.Thread(target=pulse,daemon=True).start()
         while True:
+            reached=[t for t in study.trials if t.state==TrialState.COMPLETE and t.user_attrs.get('result',{}).get('iid',0)>=p.DATASETS[ds][1]]
+            if reached:
+                write(root/'status.json',dict(state='TARGET_REACHED',target_iid=p.DATASETS[ds][1],trial=reached[0].number,objective='source_val',stop_metric='iid'))
+                break
             used={signature(t.params) for t in study.trials if set(t.params)==set(SPACE) and t.user_attrs.get('trained',False)}
             active=[t for t in study.trials if t.state==TrialState.RUNNING]
             if active:trial=optuna.Trial(study,active[0]._trial_id);v=dict(trial.params)
