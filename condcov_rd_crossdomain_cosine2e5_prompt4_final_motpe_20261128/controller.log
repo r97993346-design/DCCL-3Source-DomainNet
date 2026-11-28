@@ -7,3 +7,4 @@
 {"time": "2026-11-28T23:47:14.547818+08:00", "event": "fold_started", "dataset": "PACS", "trial": 0, "fold": 2, "gpu": 1, "pid": 1932634}
 {"time": "2026-11-29T00:10:07.304812+08:00", "event": "fold_started", "dataset": "PACS", "trial": 0, "fold": 3, "gpu": 1, "pid": 2000979}
 {"time": "2026-11-29T00:33:12.676735+08:00", "event": "fold_started", "dataset": "PACS", "trial": 1, "fold": 0, "gpu": 1, "pid": 2069150}
+{"time": "2026-11-29T00:56:23.091617+08:00", "event": "fold_started", "dataset": "PACS", "trial": 1, "fold": 1, "gpu": 1, "pid": 2137618}
