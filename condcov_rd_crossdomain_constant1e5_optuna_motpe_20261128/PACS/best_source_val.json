@@ -1,7 +1,7 @@
 {
-  "trial": 0,
+  "trial": 3,
   "params": {
-    "s_weight": 1.0,
+    "s_weight": 0.75,
     "condcov_weight": 2.0,
     "rd_weight": 1.0,
     "contrastive_weight": 0.025
@@ -32,7 +32,7 @@
     "cipt_use_aug_view": false,
     "cipt_use_contrastive": true,
     "cipt_e_cls_weight": 1.0,
-    "cipt_s_uniform_weight": 1.0,
+    "cipt_s_uniform_weight": 0.75,
     "cipt_gamma": 0.0,
     "cipt_env_constraint": "relative_distance",
     "cipt_contrastive_type": "clip_guided_cross_domain",
@@ -59,8 +59,8 @@
     "ind_grad_steps": []
   },
   "values": [
-    0.9875899622352833,
-    0.9680657167441031
+    0.9876242137822737,
+    0.9676746350940559
   ],
   "result": {
     "folds": [
@@ -70,53 +70,53 @@
         "seed": 280998037,
         "selected_step": 3000,
         "source_val": 0.9854120166222076,
-        "iid": 0.9780353874313605,
-        "test_in": 0.9780353874313605,
-        "test_out": 0.9779951100244498,
+        "iid": 0.9774252593044539,
+        "test_in": 0.9774252593044539,
+        "test_out": 0.9755501222493888,
         "updates": 5001,
-        "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/PACS/trials/trial_000/env0/attempt_001/raw/PACS/261128_15-40-16_PACS_trial0_fold0/results.jsonl"
+        "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/PACS/trials/trial_003/env0/attempt_001/raw/PACS/261128_20-16-23_PACS_trial3_fold0/results.jsonl"
       },
       {
         "fold": 1,
         "domain": "Cartoon",
         "seed": 1975502969,
-        "selected_step": 4500,
-        "source_val": 0.9840011627967338,
+        "selected_step": 5000,
+        "source_val": 0.9844257912468399,
         "iid": 0.9898720682302772,
         "test_in": 0.9898720682302772,
-        "test_out": 0.9893162393162394,
+        "test_out": 0.9871794871794872,
         "updates": 5001,
-        "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/PACS/trials/trial_000/env1/attempt_001/raw/PACS/261128_16-02-31_PACS_trial0_fold1/results.jsonl"
+        "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/PACS/trials/trial_003/env1/attempt_001/raw/PACS/261128_20-40-09_PACS_trial3_fold1/results.jsonl"
       },
       {
         "fold": 2,
         "domain": "Photo",
         "seed": 683537036,
         "selected_step": 5000,
-        "source_val": 0.9841039080095035,
+        "source_val": 0.9838162857473589,
         "iid": 0.9985029940119761,
         "test_in": 0.9985029940119761,
         "test_out": 1.0,
         "updates": 5001,
-        "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/PACS/trials/trial_000/env2/attempt_001/raw/PACS/261128_16-25-02_PACS_trial0_fold2/results.jsonl"
+        "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/PACS/trials/trial_003/env2/attempt_001/raw/PACS/261128_21-02-44_PACS_trial3_fold2/results.jsonl"
       },
       {
         "fold": 3,
         "domain": "Sketch",
         "seed": 990940125,
-        "selected_step": 4800,
+        "selected_step": 4200,
         "source_val": 0.9968427615126882,
-        "iid": 0.905852417302799,
-        "test_in": 0.905852417302799,
-        "test_out": 0.9082802547770701,
+        "iid": 0.9048982188295165,
+        "test_in": 0.9048982188295165,
+        "test_out": 0.9095541401273886,
         "updates": 5001,
-        "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/PACS/trials/trial_000/env3/attempt_001/raw/PACS/261128_16-47-33_PACS_trial0_fold3/results.jsonl"
+        "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/PACS/trials/trial_003/env3/attempt_001/raw/PACS/261128_21-26-22_PACS_trial3_fold3/results.jsonl"
       }
     ],
-    "source_val": 0.9875899622352833,
-    "iid": 0.9680657167441031,
-    "test_in": 0.9680657167441031,
-    "test_out": 0.9688979010294398
+    "source_val": 0.9876242137822737,
+    "iid": 0.9676746350940559,
+    "test_in": 0.9676746350940559,
+    "test_out": 0.9680709373890661
   },
   "evaluation_mode": "MOTPE / Oracle Exploration"
 }

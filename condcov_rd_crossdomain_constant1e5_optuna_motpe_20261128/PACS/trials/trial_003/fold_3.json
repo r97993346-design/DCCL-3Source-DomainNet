@@ -1,0 +1,12 @@
+{
+  "fold": 3,
+  "domain": "Sketch",
+  "seed": 990940125,
+  "selected_step": 4200,
+  "source_val": 0.9968427615126882,
+  "iid": 0.9048982188295165,
+  "test_in": 0.9048982188295165,
+  "test_out": 0.9095541401273886,
+  "updates": 5001,
+  "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/PACS/trials/trial_003/env3/attempt_001/raw/PACS/261128_21-26-22_PACS_trial3_fold3/results.jsonl"
+}
