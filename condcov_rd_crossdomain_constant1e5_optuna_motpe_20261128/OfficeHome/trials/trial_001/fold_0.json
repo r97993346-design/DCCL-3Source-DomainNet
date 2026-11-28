@@ -1,0 +1,12 @@
+{
+  "fold": 0,
+  "domain": "Art",
+  "seed": 1892989228,
+  "selected_step": 5000,
+  "source_val": 0.8845381749144758,
+  "iid": 0.8316168898043255,
+  "test_in": 0.8316168898043255,
+  "test_out": 0.8783505154639175,
+  "updates": 5001,
+  "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/OfficeHome/trials/trial_001/env0/attempt_001/raw/OfficeHome/261128_19-43-46_OfficeHome_trial1_fold0/results.jsonl"
+}
