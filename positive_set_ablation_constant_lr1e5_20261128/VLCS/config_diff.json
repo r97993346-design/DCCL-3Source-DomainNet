@@ -117,16 +117,21 @@
     "cipt_prompt_length": 16,
     "cipt_clip_teacher_mix": 0.25,
     "cipt_contrastive_weight": 0.1,
-    "cipt_neighbor_diagnostics": false
+    "cipt_neighbor_diagnostics": false,
+    "ind_grad_steps": []
   },
   "config_changes": {
-    "cipt_contrastive_type": {
-      "old": "clip_guided_cross_domain",
-      "new": "clip_guided_supcon"
+    "ind_grad_steps": {
+      "old": null,
+      "new": []
     },
     "cipt_neighbor_diagnostics": {
       "old": null,
       "new": false
+    },
+    "cipt_contrastive_type": {
+      "old": "clip_guided_cross_domain",
+      "new": "clip_guided_supcon"
     }
   },
   "old_result": {
@@ -216,5 +221,5 @@
     "stop_reason": "four_folds_complete",
     "fixed_config": "/media/hooasia/data/condcov_optuna_joint_20261125_low_contrast/code/DCCL/DCCL/train_output/condcov_optuna_joint_20261125_low_contrast/VLCS/trials/trial_000/config.json"
   },
-  "hash": "a7bda43b5bbcfe7f84c4d443e4691f13244405c27bef30208ed86bf8caa4b32e"
+  "hash": "2dab9dadccf7c9385afa2d03edf3ad5d128b406c56cb677fe9828a1382d53575"
 }

@@ -75,16 +75,7 @@
     "class_balanced": false,
     "data_augmentation": true,
     "freeze_bn": true,
-    "ind_grad_steps": [
-      0,
-      300,
-      900,
-      1800,
-      3000,
-      4200,
-      4800,
-      4999
-    ],
+    "ind_grad_steps": [],
     "ind_mode": "condcov",
     "indomain_test": false,
     "l": 1,

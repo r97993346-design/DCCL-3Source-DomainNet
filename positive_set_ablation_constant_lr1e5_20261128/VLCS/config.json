@@ -46,5 +46,6 @@
   "cipt_prompt_length": 16,
   "cipt_clip_teacher_mix": 0.25,
   "cipt_contrastive_weight": 0.1,
-  "cipt_neighbor_diagnostics": false
+  "cipt_neighbor_diagnostics": false,
+  "ind_grad_steps": []
 }

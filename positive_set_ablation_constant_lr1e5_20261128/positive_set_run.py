@@ -153,7 +153,7 @@ def prepare():
             selected=max(log,key=lambda x:x['train_out'])
             assert selected['step']==f['selected_step'] and selected['train_out']==f['source_val']
             seeds.append(f['seed'])
-        hp=dict(old,cipt_contrastive_type='clip_guided_supcon',cipt_neighbor_diagnostics=False)
+        hp=dict(old,cipt_contrastive_type='clip_guided_supcon',cipt_neighbor_diagnostics=False,ind_grad_steps=[])
         args=dict(source[dataset]['args'],steps=5000,checkpoint_freq=300,batch_size=32,cipt_cache_eval_visual=True)
         merged=dict(rows(REF/dataset/'env0/results.jsonl')[0]['hparams'],**hp)
         cfg=configuration(dataset,source[dataset]['data'],source[dataset]['weights'],implementation,args,merged,seeds,
