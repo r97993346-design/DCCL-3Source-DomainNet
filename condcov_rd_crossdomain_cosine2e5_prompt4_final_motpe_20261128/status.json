@@ -1,10 +1,10 @@
 {
   "state": "running",
   "dataset": "PACS",
-  "trial": 1,
-  "fold": 3,
-  "domain": "Sketch",
+  "trial": 2,
+  "fold": 0,
+  "domain": "Art Painting",
   "gpu": 1,
-  "pid": 2270210,
+  "pid": 2336740,
   "controller_pid": 1796737
 }
