@@ -28,12 +28,12 @@
             "path": "OfficeHome/trials/trial_006/env3/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 0,
-              "test_in": 0.7478485370051635,
-              "test_out": 0.7187141216991964,
-              "train_out": 0.6431034505024207,
-              "eval_time": 297.29559111595154,
-              "eval_visual_cache_hit_splits": 0
+              "step": 300,
+              "test_in": 0.9001721170395869,
+              "test_out": 0.8909299655568312,
+              "train_out": 0.8285724001992205,
+              "eval_time": 5.558303117752075,
+              "eval_visual_cache_hit_splits": 8
             }
           }
         }
@@ -67,11 +67,11 @@
             "path": "PACS/trials/trial_017/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3900,
-              "test_in": 0.9898720682302772,
+              "step": 4200,
+              "test_in": 0.9893390191897654,
               "test_out": 0.9871794871794872,
               "train_out": 0.9848161587217541,
-              "eval_time": 1.4351768493652344,
+              "eval_time": 1.44435715675354,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -106,11 +106,11 @@
             "path": "VLCS/trials/trial_002/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 2400,
-              "test_in": 0.8615327656423547,
+              "step": 2700,
+              "test_in": 0.8589411329137356,
               "test_out": 0.8592592592592593,
-              "train_out": 0.8786104986756083,
-              "eval_time": 2.2178754806518555,
+              "train_out": 0.8795071425290524,
+              "eval_time": 2.4420127868652344,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -121,5 +121,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T11:46:54+08:00"
+  "synced_at": "2026-11-28T11:48:02+08:00"
 }
