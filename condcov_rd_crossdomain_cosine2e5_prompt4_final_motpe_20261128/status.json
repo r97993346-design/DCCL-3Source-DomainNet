@@ -1,10 +1,10 @@
 {
   "state": "running",
   "dataset": "OfficeHome",
-  "trial": 0,
-  "fold": 3,
-  "domain": "Real World",
+  "trial": 1,
+  "fold": 0,
+  "domain": "Art",
   "gpu": 0,
-  "pid": 2267649,
+  "pid": 2409378,
   "controller_pid": 1796740
 }
