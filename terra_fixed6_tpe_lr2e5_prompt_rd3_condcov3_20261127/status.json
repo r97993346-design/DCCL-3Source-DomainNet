@@ -1,17 +1,3 @@
 {
-  "state": "draining",
-  "gpu": 0,
-  "active": {
-    "trial_id": 6,
-    "params": {
-      "condcov_weight": 0.5,
-      "rd_weight": 0.5,
-      "contrastive_weight": 0.1,
-      "contrastive_mix": 0.5,
-      "prompt_length": 16,
-      "initial_lr": 2e-05
-    },
-    "target": "L46",
-    "completed_folds": 3
-  }
+  "state": "paused"
 }
