@@ -180,3 +180,11 @@ Dataset:
 [37m[36mINFO[0m[0m 11/28 13:38:40 | Target test envs = [[0]]
 [37m[36mINFO[0m[0m 11/28 13:38:40 | 
 [37m[36mINFO[0m[0m 11/28 13:38:40 | Fold RNG: strategy=domainbed_sweep, test_envs=[0], seed=1699798815, hparams_seed=0, trial_seed=1
+[37m[36mINFO[0m[0m 11/28 13:40:01 | Testenv name escaping te_L100 -> te_L100
+[37m[36mINFO[0m[0m 11/28 13:40:01 | Test envs = [0], name = te_L100
+[37m[36mINFO[0m[0m 11/28 13:40:01 | Source sampling: domain_balanced
+[37m[36mINFO[0m[0m 11/28 13:40:01 | Batch sizes for each domain: [0, 32, 32, 32] (total=96)
+[37m[36mINFO[0m[0m 11/28 13:40:01 | steps-per-epoch for each domain: 244.19, 100.50, 153.06 -> min = 100.50
+[37m[36mINFO[0m[0m 11/28 13:40:01 | DataLoader workers: train=4 per source domain (12 total), eval=0 per loader
+[37m[36mINFO[0m[0m 11/28 13:41:35 | # of params = 151206401
+[37m[36mINFO[0m[0m 11/28 13:41:35 | CIPT cosine LR: initial=[2e-05], eta_min=0.0, T_max=5001 steps
