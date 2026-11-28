@@ -1,0 +1,194 @@
+[37m[36mINFO[0m[0m 11/29 02:25:45 | Command :: /root/autodl-tmp/cosine-grid-code/DCCL/DCCL/train_all.py OfficeHome_trial0_fold3 /root/autodl-tmp/outputs/oh_stagewise_grid_crossdomain_cosine2e5_prompt4_20261128/OfficeHome/trials/trial_000/config.json --test_envs 3 --dataset OfficeHome --data_dir /root/autodl-tmp/datasets --cipt_clip_path /root/autodl-tmp/weights/ViT-B-16.pt --batch_size 32 --deterministic --source_only_selection --output_root /root/autodl-tmp/outputs/oh_stagewise_grid_crossdomain_cosine2e5_prompt4_20261128/OfficeHome/trials/trial_000/env3/attempt_001/raw --algorithm CIPTDCCL --source_sampling domain_balanced --steps 5001 --checkpoint_freq 300 --trial_seed 1 --hparams_seed 0 --holdout_fraction 0.2 --aug 0.0 --evalmode all --num_workers 8 --eval_num_workers 0 --model_save 0 --cipt_cache_eval_visual
+Environment:
+	Python: 3.10.8
+	PyTorch: 2.5.1+cu121
+	Torchvision: 0.20.1+cu121
+	CUDA: 12.1
+	CUDNN: 90100
+	NumPy: 2.2.6
+	PIL: 12.0.0
+Args:
+	TN: False
+	algorithm: CIPTDCCL
+	aug: 0.0
+	checkpoint_freq: 300
+	cipt_beta: 4.0
+	cipt_cache_eval_visual: True
+	cipt_clip_backbone: ViT-B/16
+	cipt_clip_path: /root/autodl-tmp/weights/ViT-B-16.pt
+	cipt_condcov_weight: None
+	cipt_contrastive_warmup_epochs: None
+	cipt_contrastive_weight: 1.0
+	cipt_coopood_weight: None
+	cipt_debug_shapes: False
+	cipt_enabled: True
+	cipt_gamma: 5.0
+	cipt_k: 4
+	cipt_prompt_init: a photo of a
+	cipt_prompt_length: 16
+	cipt_selector_candidates: 8
+	cipt_selector_mode: random
+	cipt_tda_heads: 1
+	configs: ['/root/autodl-tmp/outputs/oh_stagewise_grid_crossdomain_cosine2e5_prompt4_20261128/OfficeHome/trials/trial_000/config.json']
+	data_dir: /root/autodl-tmp/datasets
+	dataset: OfficeHome
+	debug: False
+	deterministic: True
+	domainnet_auto_source_count: 3
+	epochs: None
+	erm_baseline: weak
+	eval_num_workers: 0
+	evalmode: all
+	fixed_fold_seed: False
+	holdout_fraction: 0.2
+	hparams_seed: 0
+	ind_grad_steps: None
+	ind_mode: None
+	l: 1
+	l_d: None
+	l_layer: None
+	label_ratio: 1.0
+	lamda: 5
+	log: False
+	mix: 0
+	model: resnet50
+	model_save: 0
+	n_layer: 1
+	name: OfficeHome_trial0_fold3
+	num_workers: 8
+	out_dir: /root/autodl-tmp/outputs/oh_stagewise_grid_crossdomain_cosine2e5_prompt4_20261128/OfficeHome/trials/trial_000/env3/attempt_001/raw/OfficeHome/261129_02-25-45_OfficeHome_trial0_fold3
+	out_root: /root/autodl-tmp/outputs/oh_stagewise_grid_crossdomain_cosine2e5_prompt4_20261128/OfficeHome/trials/trial_000/env3/attempt_001/raw/OfficeHome
+	output_root: /root/autodl-tmp/outputs/oh_stagewise_grid_crossdomain_cosine2e5_prompt4_20261128/OfficeHome/trials/trial_000/env3/attempt_001/raw
+	pos_mask: False
+	prebuild_loader: False
+	re_w: False
+	sample_d: False
+	seed: 0
+	show: False
+	source_envs: None
+	source_only_selection: True
+	source_sampling: domain_balanced
+	start_epoch: 1000
+	steps: 5001
+	sup: True
+	t: 0.1
+	t_pre: 0.2
+	target_env: None
+	tb_freq: 10
+	test_envs: [3]
+	trial_seed: 1
+	two_ce: False
+	unique_name: 261129_02-25-45_OfficeHome_trial0_fold3
+	weak_erm: False
+	work_dir: .
+HParams:
+	data_augmentation: True
+	val_augment: False
+	resnet18: False
+	resnet_dropout: 0.0
+	class_balanced: False
+	optimizer: adam
+	cipt_enabled: True
+	cipt_clip_backbone: ViT-B/16
+	cipt_clip_path: /root/autodl-tmp/weights/ViT-B-16.pt
+	cipt_beta: 4.0
+	cipt_gamma: 0.0
+	cipt_k: 4
+	cipt_prompt_length: 4
+	cipt_prompt_init: a photo of a
+	cipt_template_mode: b5b
+	cipt_neutral_subject: subject
+	cipt_tda_heads: 1
+	cipt_selector_mode: random
+	cipt_selector_candidates: 8
+	cipt_contrastive_weight: 0.0
+	cipt_contrastive_temperature: 0.07
+	cipt_contrastive_type: clip_guided_cross_domain
+	cipt_clip_teacher_temperature: 0.2
+	cipt_clip_teacher_mix: 0.25
+	cipt_clip_teacher_topk: 0
+	cipt_neighbor_k: 5
+	cipt_neighbor_alpha: 0.5
+	cipt_neighbor_diagnostics: False
+	cipt_use_aug_view: False
+	cipt_debug_shapes: False
+	cipt_objective: env_anchor
+	ind_mode: condcov
+	cipt_condcov_weight: 0.0
+	cipt_coopood_weight: None
+	ind_grad_steps: ()
+	cipt_env_kl_weight: 0.0
+	cipt_fused_cls_weight: 0.0
+	cipt_env_constraint: relative_distance
+	cipt_env_topk: 80
+	cipt_env_loss_weight: 0.0
+	cipt_env_selection: all
+	cipt_class_text_mode: learnable
+	cipt_lr_schedule: cosine
+	cipt_lr_min: 0.0
+	cipt_rd_anchor_mode: full
+	cipt_e_cls_weight: 1.0
+	cipt_s_uniform_weight: 0.0
+	freeze_bn: True
+	pretrained: True
+	lr: 2e-05
+	[36mbatch_size: 32
+	[0mweight_decay: 0.0
+	t: 0.1
+	t_pre: 0.3
+	l: 1
+	l_d: 0.05
+	l_layer: 5
+	n_layer: 1
+	sup: True
+	two_ce: False
+	sample_d: False
+	re_w: False
+	pos_mask: False
+	mix: 0
+	aug: 0.0
+	model: resnet50
+	label_ratio: 1.0
+	TN: False
+	lamda: 5
+	start_epoch: 1000
+	log: False
+	swad: None
+	swad_kwargs: 
+	  n_converge: 3
+	  n_tolerance: 6
+	  tolerance_ratio: 0.3
+	test_batchsize: 64
+	indomain_test: False
+	cipt_pure: False
+	cipt_use_de: True
+	cipt_use_ind: False
+	cipt_use_tda: False
+	cipt_use_contrastive: True
+	cipt_causal_contrastive_weight: 0.0
+	cipt_contrastive_warmup_steps: 0
+	cipt_env_inference: e_only
+Dataset:
+	[OfficeHome] #envs=4, #classes=65
+	env0: Art (#2427)
+	env1: Clipart (#4365)
+	env2: Product (#4439)
+	env3: RealWorld (#4357)
+
+[37m[36mINFO[0m[0m 11/29 02:27:26 | checkpoint_freq = 300
+[37m[36mINFO[0m[0m 11/29 02:27:26 | Training budget: 5001 updates, including evaluation at the final step
+[37m[36mINFO[0m[0m 11/29 02:27:26 | Target test envs = [[3]]
+[37m[36mINFO[0m[0m 11/29 02:27:26 | 
+[37m[36mINFO[0m[0m 11/29 02:27:26 | Fold RNG: strategy=domainbed_sweep, test_envs=[3], seed=728627790, hparams_seed=0, trial_seed=1
+[37m[36mINFO[0m[0m 11/29 02:29:06 | Testenv name escaping te_RealWorld -> te_RealWorld
+[37m[36mINFO[0m[0m 11/29 02:29:06 | Test envs = [3], name = te_RealWorld
+[37m[36mINFO[0m[0m 11/29 02:29:06 | Source sampling: domain_balanced
+[37m[36mINFO[0m[0m 11/29 02:29:06 | Batch sizes for each domain: [32, 32, 32, 0] (total=96)
+[37m[36mINFO[0m[0m 11/29 02:29:06 | steps-per-epoch for each domain: 60.69, 109.12, 111.00 -> min = 60.69
+[37m[36mINFO[0m[0m 11/29 02:29:06 | DataLoader workers: train=8 per source domain (24 total), eval=0 per loader
+[37m[36mINFO[0m[0m 11/29 02:43:13 | # of params = 151200257
+[37m[36mINFO[0m[0m 11/29 02:43:13 | CIPT cosine LR: initial=[2e-05], eta_min=0.0, T_max=5001 steps
+[37m[36mINFO[0m[0m 11/29 02:51:02 | test_in     test_out    train_in    train_out   tr_outloss  env0_in     env0_out    env1_in     env1_out    env2_in     env2_out    env3_in     env3_out    step        epoch       entropy_se  env_loss    env_mcc_lo  env_rd_los  env_center  env_mean_t  env_loss_w  env_topk    env_all_te  env_anchor  random_sel  env_rd_sel  env_loss_t  e_feature_  e_feature_  e_feature_  s_feature_  s_feature_  s_feature_  condcov_va  loss_condc  loss_contr  tr_loss     weight_e_c  weighted_e  weight_s_u  weighted_s  weight_con  weighted_c  weight_rd   weighted_r  weight_con  weighted_c  nbr_check   nbr_pur_v   nbr_pur_e   nbr_gap     nbr_cover   nbr_drop    cg_contras  cg_valid_a  cg_cross_d  cg_teacher  cg_teacher  cg_teacher  cg_active   nbr_wmean   nbr_wmax    prompt_sel  prompt_cou  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  total_loss  loss_total  loss_e_cls  loss_s_uni  loss_rd     loss_clip_  ind_weight  cipt_base_  cipt_cls_l  cipt_de_lo  cipt_de_or  cipt_de_au  cipt_ind_l  causal_con  dccl_contr  contrastiv  contrastiv  pre_cl_los  reg_loss    mean_e_nor  mean_s_nor  mean_es_co  ablation_d  ablation_i  ablation_t  ablation_c  class_text  class_text  e_cls_loss  fused_cls_  s_uni_loss  env_kl_los  e_cls_w     fused_cls_  s_uni_w     env_kl_w    e_cls_term  fused_cls_  s_uni_term  env_kl_ter  env_shift   env_spread  env_l2_shi  env_spread  env_pred_a  sigm_activ  inference_  env_active  env_kl_act  fused_cls_  e_only_inf  lr          step_time   actual_lr   optimizer_  scheduler_  eval_time   eval_visua  eval_visua 
+[37m[36mINFO[0m[0m 11/29 02:51:02 | 0.899312    0.890930    0.795738    0.811993    0.688646    0.819258    0.855670    0.672967    0.695304    0.894989    0.885006    0.899312    0.890930    0           0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.001591    0.044166    0.000806    0.001591    0.044166    0.000806    27.000000   0.050140    0.000000    0.858020    1.000000    0.858020    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.858020    0.858020    0.858020    0.000000    0.000000    0.000000    0.000000    0.858020    0.858020    0.858020    0.858020    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    1.000000    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.858020    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    0.000000    0.858020    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000020    2.351267    0.000020    1           1           466.508345  0           32048928   
+[37m[36mINFO[0m[0m 11/29 02:54:35 | 0.915376    0.908152    0.856012    0.857513    0.509309    0.870752    0.898969    0.762600    0.746850    0.934685    0.926719    0.915376    0.908152    300         4.943357    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.001374    0.043794    0.000826    0.001656    0.044163    0.000825    27.963333   0.058880    0.000000    0.591218    1.000000    0.591218    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.591218    0.591218    0.591218    0.000000    0.000000    0.000000    0.000000    0.591218    0.591218    0.591218    0.591218    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.991431    1.000000    0.998147    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.591218    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    0.000000    0.591218    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000020    0.648322    0.000020    301         301         18.445810   8           32048928   
+[37m[36mINFO[0m[0m 11/29 02:57:41 | 0.920252    0.910448    0.876740    0.869701    0.463247    0.893924    0.909278    0.788660    0.767468    0.947635    0.932356    0.920252    0.910448    600         9.886715    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.001218    0.043204    0.000828    0.001668    0.044163    0.000825    27.853333   0.058578    0.000000    0.490200    1.000000    0.490200    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.490200    0.490200    0.490200    0.000000    0.000000    0.000000    0.000000    0.490200    0.490200    0.490200    0.490200    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.977963    1.000000    0.995836    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.490200    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    0.000000    0.490200    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000020    0.572583    0.000019    601         601         13.661970   8           32048928   
