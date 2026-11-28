@@ -1,4 +1,5 @@
 trial,state,s_weight,condcov_weight,rd_weight,contrastive_weight,source_val,worst_fold_source_val,iid,test_in,test_out,elapsed_seconds,folds_json
 0,FAIL,1.0,1.0,1.0,0.01,,,,,,,[]
 1,FAIL,1.0,1.0,1.0,0.01,,,,,,,[]
-2,RUNNING,1.0,1.0,1.0,0.01,,,,,,,[]
+2,FAIL,1.0,1.0,1.0,0.01,,,,,,,[]
+3,WAITING,,,,,,,,,,,[]
