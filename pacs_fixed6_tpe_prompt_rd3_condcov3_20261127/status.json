@@ -2,12 +2,12 @@
   "state": "running",
   "gpu": 0,
   "active": {
-    "trial_id": 32,
+    "trial_id": 33,
     "params": {
       "condcov_weight": 1.0,
-      "rd_weight": 3.0,
+      "rd_weight": 1.0,
       "contrastive_weight": 0.05,
-      "contrastive_mix": 0.25,
+      "contrastive_mix": 0.5,
       "prompt_length": 8,
       "initial_lr": 2e-05
     },
