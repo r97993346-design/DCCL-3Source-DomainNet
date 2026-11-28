@@ -1,14 +1,10 @@
 {
-  "state": "PAUSED_VALIDATION_ERROR",
+  "state": "running",
   "dataset": "PACS",
-  "gpu": 1,
-  "controller_pid": 1794220,
   "trial": 0,
-  "error": "FileNotFoundError: [Errno 2] No such file or directory: '/media/hooasia/cipt_clip_supcon_cosine_optuna_mincl_20261126/code/DCCL/DCCL/train_output/cipt_clip_supcon_cosine_optuna_mincl_20261126/PACS/search_status.json'",
-  "completed": 0,
-  "space_size": 144,
-  "coverage": 0.0,
-  "best_iid": null,
-  "target": 0.975,
-  "gap_to_target": null
+  "fold": 0,
+  "domain": "Art Painting",
+  "gpu": 1,
+  "pid": 1796886,
+  "controller_pid": 1796737
 }
