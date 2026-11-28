@@ -2,24 +2,24 @@
   "state": "running",
   "dataset": "OfficeHome",
   "planned_configurations": 31,
-  "complete_configurations": 0,
-  "case_id": "A00",
-  "stage": 0,
+  "complete_configurations": 1,
+  "case_id": "A01",
+  "stage": 1,
   "params": {
-    "s_weight": 0.0,
-    "condcov_weight": 0.0,
+    "s_weight": 0.5,
+    "condcov_weight": 1.0,
     "rd_weight": 0.0,
     "contrastive_weight": 0.0
   },
   "fold": {
-    "trial_id": 0,
+    "trial_id": 1,
     "params": {
-      "s_weight": 0.0,
-      "condcov_weight": 0.0,
+      "s_weight": 0.5,
+      "condcov_weight": 1.0,
       "rd_weight": 0.0,
       "contrastive_weight": 0.0
     },
-    "target": "Real World",
-    "completed_folds": 3
+    "target": "Art",
+    "completed_folds": 0
   }
 }
