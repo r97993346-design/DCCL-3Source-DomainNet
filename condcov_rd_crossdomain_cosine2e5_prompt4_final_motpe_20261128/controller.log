@@ -1,0 +1,3 @@
+/home/hooasia/miniconda3/envs/dccl/lib/python3.10/site-packages/optuna/_experimental.py:33: ExperimentalWarning: Argument ``multivariate`` is an experimental feature. The interface can change in the future.
+  optuna_warn(
+[I 2026-11-28 23:01:04,833] A new study created in RDB with name: condcov_rd_crossdomain_cosine2e5_prompt4_final_motpe_20261128_PACS
