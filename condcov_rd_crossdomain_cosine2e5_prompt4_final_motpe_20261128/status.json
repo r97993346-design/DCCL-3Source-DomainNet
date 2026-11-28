@@ -4,8 +4,8 @@
   "gpu": 0,
   "controller_pid": 714154,
   "trial": 0,
-  "fold": 2,
-  "domain": "Pascal",
+  "fold": 3,
+  "domain": "SUN",
   "params": {
     "s_weight": 1.0,
     "condcov_weight": 2.0,
