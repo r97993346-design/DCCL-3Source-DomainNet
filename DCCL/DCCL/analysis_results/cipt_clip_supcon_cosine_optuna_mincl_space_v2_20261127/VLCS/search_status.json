@@ -1,13 +1,13 @@
 {
   "dataset": "VLCS",
   "study_name": "VLCS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1",
-  "state": "interrupted_by_user",
+  "state": "waiting_for_registry",
   "gpu": 0,
   "n_jobs": 1,
   "complete_trials": 3,
-  "budget": 648,
+  "budget": 3,
   "active": null,
-  "stop_reason": "user_requested_immediate_cutover",
+  "stop_reason": "reservation update unconfirmed",
   "iid_reference_target": 0.845,
   "iid_reference_reached": false,
   "best_source_val": {

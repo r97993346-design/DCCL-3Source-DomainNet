@@ -1,0 +1,5 @@
+{
+  "error": "VLCS fold 0 failed twice; see /media/hooasia/data/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/code/DCCL/DCCL/train_output/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/VLCS/trials/trial_003/env0/attempt_002/console.log",
+  "folds": [],
+  "stop_reason": "failed_fold"
+}

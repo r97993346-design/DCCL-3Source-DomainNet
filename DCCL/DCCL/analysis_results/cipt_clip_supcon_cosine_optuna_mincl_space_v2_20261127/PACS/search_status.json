@@ -1,13 +1,13 @@
 {
   "dataset": "PACS",
   "study_name": "PACS_condcov_rd_clip_allpos_cosine_mincl_space_v2_seed1",
-  "state": "interrupted_by_user",
+  "state": "complete",
   "gpu": 0,
   "n_jobs": 1,
   "complete_trials": 19,
-  "budget": 648,
+  "budget": 19,
   "active": null,
-  "stop_reason": "user_requested_immediate_cutover",
+  "stop_reason": "completed_trial_budget",
   "iid_reference_target": 0.975,
   "iid_reference_reached": false,
   "best_source_val": {
@@ -52,33 +52,7 @@
   "completed_folds": 77,
   "trial_states": {
     "COMPLETE": 19,
-    "RUNNING": 1
+    "FAIL": 1
   },
-  "running_trials": [
-    {
-      "trial_id": 19,
-      "params": {
-        "initial_lr": 3e-05,
-        "condcov_weight": 2.0,
-        "rd_weight": 0.5,
-        "contrastive_weight": 0.001,
-        "contrastive_mix": 0.0,
-        "prompt_length": 8
-      },
-      "completed_folds": 1,
-      "current_target": null,
-      "latest_attempt": {
-        "path": "PACS/trials/trial_019/env1/attempt_002",
-        "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-        "last_evaluation": {
-          "step": 900,
-          "test_in": 0.9898720682302772,
-          "test_out": 0.9914529914529915,
-          "train_out": 0.9831176449213295,
-          "eval_time": 1.230710506439209,
-          "eval_visual_cache_hit_splits": 8
-        }
-      }
-    }
-  ]
+  "running_trials": []
 }

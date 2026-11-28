@@ -199,3 +199,4 @@ CIPTDCCL component switches: L_de=True, L_ind=False, TDA=False, Contrastive=True
 CIPTDCCL env_anchor: constraint=relative_distance, topk=80, env_weight=3.0, E_CE_weight=1.0, S_uniform_weight=1.0, IND_weight=0.5, fusion=none, inference=e_only, env_selection=all, selector=all_80_without_selection, rd_anchor_mode=full, class_text_mode=learnable
 [36mINFO[0m 11/28 15:26:08 | # of params = 151202305
 [36mINFO[0m 11/28 15:26:08 | CIPT cosine LR: initial=[7.5e-06], eta_min=0.0, T_max=5001 steps
+已终止
