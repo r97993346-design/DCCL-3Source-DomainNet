@@ -19,7 +19,7 @@
       "rd_weight": 0.0,
       "contrastive_weight": 0.0
     },
-    "target": "Product",
-    "completed_folds": 2
+    "target": "Real World",
+    "completed_folds": 3
   }
 }
