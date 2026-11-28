@@ -86,7 +86,7 @@
   "eval_num_workers": 0,
   "registry": false,
   "target_iid": 0.975,
-  "target_policy": "report_only_pending_user_clarification",
+  "target_policy": "stop_on_completed_four_fold_mean_iid_user_authorized",
   "sampler": {
     "type": "TPESampler",
     "seed": 42,
