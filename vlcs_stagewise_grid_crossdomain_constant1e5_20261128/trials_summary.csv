@@ -1,0 +1,2 @@
+id,stage,state,parent,s_weight,condcov_weight,rd_weight,contrastive_weight,source_val,worst_fold_source_val,iid,test_in,test_out,elapsed_seconds,reused,folds_json
+A00,0,running,,0.0,0.0,0.0,0.0,,,,,,,False,[]
