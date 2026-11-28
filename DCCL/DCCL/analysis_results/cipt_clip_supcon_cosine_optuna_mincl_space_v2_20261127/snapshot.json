@@ -6,7 +6,7 @@
     "OfficeHome": {
       "state": "running",
       "completed_trials": 6,
-      "completed_folds": 27,
+      "completed_folds": 28,
       "trial_states": {
         "COMPLETE": 6,
         "RUNNING": 1
@@ -22,20 +22,9 @@
             "contrastive_mix": 0.0,
             "prompt_length": 16
           },
-          "completed_folds": 3,
+          "completed_folds": 4,
           "current_target": "Real World",
-          "latest_attempt": {
-            "path": "OfficeHome/trials/trial_006/env3/attempt_001",
-            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 4800,
-              "test_in": 0.9179575444635686,
-              "test_out": 0.8966704936854191,
-              "train_out": 0.8876508628946477,
-              "eval_time": 5.407276153564453,
-              "eval_visual_cache_hit_splits": 8
-            }
-          }
+          "latest_attempt": null
         }
       ],
       "gpu": 1,
@@ -67,11 +56,11 @@
             "path": "PACS/trials/trial_017/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3300,
+              "step": 3600,
               "test_in": 0.9985029940119761,
               "test_out": 1.0,
               "train_out": 0.9819671558727514,
-              "eval_time": 1.452883243560791,
+              "eval_time": 1.530797004699707,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -106,11 +95,11 @@
             "path": "VLCS/trials/trial_002/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3600,
-              "test_in": 0.8567197334320622,
-              "test_out": 0.8637037037037038,
-              "train_out": 0.8828851070996585,
-              "eval_time": 2.8937907218933105,
+              "step": 3900,
+              "test_in": 0.8548685671973343,
+              "test_out": 0.8607407407407407,
+              "train_out": 0.8840209835714177,
+              "eval_time": 2.287158966064453,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -121,5 +110,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T12:11:03+08:00"
+  "synced_at": "2026-11-28T12:12:18+08:00"
 }
