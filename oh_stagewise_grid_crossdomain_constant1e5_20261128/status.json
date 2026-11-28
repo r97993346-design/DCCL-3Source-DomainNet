@@ -1,5 +1,5 @@
 {
-  "state": "running",
+  "state": "INTERRUPTED",
   "dataset": "OfficeHome",
   "planned_configurations": 25,
   "complete_configurations": 0,
@@ -21,5 +21,8 @@
     },
     "target": "Clipart",
     "completed_folds": 1
-  }
+  },
+  "time": "2026-11-28T22:50:11.298079+08:00",
+  "reason": "operator requested immediate replacement",
+  "controller_group": 668570
 }

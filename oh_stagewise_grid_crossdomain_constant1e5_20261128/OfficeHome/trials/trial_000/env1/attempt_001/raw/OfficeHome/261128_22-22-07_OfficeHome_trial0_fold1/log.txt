@@ -168,3 +168,24 @@ HParams:
 	cipt_causal_contrastive_weight: 0.0
 	cipt_contrastive_warmup_steps: 0
 	cipt_env_inference: e_only
+Dataset:
+	[OfficeHome] #envs=4, #classes=65
+	env0: Art (#2427)
+	env1: Clipart (#4365)
+	env2: Product (#4439)
+	env3: RealWorld (#4357)
+
+[37m[36mINFO[0m[0m 11/28 22:24:03 | checkpoint_freq = 300
+[37m[36mINFO[0m[0m 11/28 22:24:03 | Training budget: 5001 updates, including evaluation at the final step
+[37m[36mINFO[0m[0m 11/28 22:24:03 | Target test envs = [[1]]
+[37m[36mINFO[0m[0m 11/28 22:24:03 | 
+[37m[36mINFO[0m[0m 11/28 22:24:03 | Fold RNG: strategy=domainbed_sweep, test_envs=[1], seed=846366325, hparams_seed=0, trial_seed=1
+[37m[36mINFO[0m[0m 11/28 22:26:17 | Testenv name escaping te_Clipart -> te_Clipart
+[37m[36mINFO[0m[0m 11/28 22:26:17 | Test envs = [1], name = te_Clipart
+[37m[36mINFO[0m[0m 11/28 22:26:17 | Source sampling: domain_balanced
+[37m[36mINFO[0m[0m 11/28 22:26:17 | Batch sizes for each domain: [32, 0, 32, 32] (total=96)
+[37m[36mINFO[0m[0m 11/28 22:26:17 | steps-per-epoch for each domain: 60.69, 111.00, 108.94 -> min = 60.69
+[37m[36mINFO[0m[0m 11/28 22:26:17 | DataLoader workers: train=8 per source domain (24 total), eval=0 per loader
+[37m[36mINFO[0m[0m 11/28 22:40:11 | # of params = 151202305
+[37m[36mINFO[0m[0m 11/28 22:47:11 | test_in     test_out    train_in    train_out   tr_outloss  env0_in     env0_out    env1_in     env1_out    env2_in     env2_out    env3_in     env3_out    step        epoch       entropy_se  env_loss    env_mcc_lo  env_rd_los  env_center  env_mean_t  env_loss_w  env_topk    env_all_te  env_anchor  random_sel  env_rd_sel  env_loss_t  e_feature_  e_feature_  e_feature_  s_feature_  s_feature_  s_feature_  condcov_va  loss_condc  loss_contr  tr_loss     weight_e_c  weighted_e  weight_s_u  weighted_s  weight_con  weighted_c  weight_rd   weighted_r  weight_con  weighted_c  nbr_check   nbr_pur_v   nbr_pur_e   nbr_gap     nbr_cover   nbr_drop    cg_contras  cg_valid_a  cg_cross_d  cg_teacher  cg_teacher  cg_teacher  cg_active   nbr_wmean   nbr_wmax    prompt_sel  prompt_cou  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  total_loss  loss_total  loss_e_cls  loss_s_uni  loss_rd     loss_clip_  ind_weight  cipt_base_  cipt_cls_l  cipt_de_lo  cipt_de_or  cipt_de_au  cipt_ind_l  causal_con  dccl_contr  contrastiv  contrastiv  pre_cl_los  reg_loss    mean_e_nor  mean_s_nor  mean_es_co  ablation_d  ablation_i  ablation_t  ablation_c  class_text  class_text  e_cls_loss  fused_cls_  s_uni_loss  env_kl_los  e_cls_w     fused_cls_  s_uni_w     env_kl_w    e_cls_term  fused_cls_  s_uni_term  env_kl_ter  env_shift   env_spread  env_l2_shi  env_spread  env_pred_a  sigm_activ  inference_  env_active  env_kl_act  fused_cls_  e_only_inf  step_time   actual_lr   optimizer_  scheduler_  eval_time   eval_visua  eval_visua 
+[37m[36mINFO[0m[0m 11/28 22:47:11 | 0.573310    0.571592    0.740296    0.764312    0.943476    0.666838    0.764948    0.573310    0.571592    0.781532    0.757610    0.772519    0.770379    0           0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.001492    0.044169    0.000894    0.001492    0.044169    0.000894    26.000000   0.053411    0.000000    0.950358    1.000000    0.950358    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.950358    0.950358    0.950358    0.000000    0.000000    0.000000    0.000000    0.950358    0.950358    0.950358    0.950358    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.000000    1.000000    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.950358    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    0.000000    0.950358    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    1.627322    0.000010    1           0           418.344644  0           32048928   
