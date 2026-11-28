@@ -22,7 +22,7 @@ SECRET = re.compile(rb"gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|-
 
 
 def git(*args, capture=False):
-    return subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "-C", str(WORK), *args],
+    return subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "-c", "http.lowSpeedLimit=1024", "-c", "http.lowSpeedTime=20", "-C", str(WORK), *args],
                           env=dict(os.environ, GIT_TERMINAL_PROMPT="0"), check=True,
                           timeout=150, stdout=subprocess.PIPE if capture else None).stdout
 
@@ -52,7 +52,12 @@ def publish():
     if git("diff", "--cached", "--name-only", capture=True):
         git("-c", "user.name=CIPT automation", "-c", "user.email=cipt-automation@users.noreply.github.com",
             "commit", "-m", "Update multiobjective source-validation study records")
-    git("push", "origin", f"HEAD:refs/heads/{BRANCH}")
+    try:
+        git("push", "origin", f"HEAD:refs/heads/{BRANCH}")
+    except subprocess.SubprocessError:
+        from github_transport import publish as api_publish
+        files = {str(path.relative_to(WORK)): path for path in (WORK / NAME).rglob("*") if path.is_file()}
+        api_publish(BRANCH, files)
 
 
 def main():
@@ -67,7 +72,7 @@ def main():
             if marker != previous or time.monotonic() >= next_sync:
                 try:
                     publish()
-                except (OSError, subprocess.SubprocessError) as exc:
+                except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
                     print(f"GitHub sync failed ({type(exc).__name__}); retrying in 60 seconds", flush=True)
                     time.sleep(60)
                     continue
