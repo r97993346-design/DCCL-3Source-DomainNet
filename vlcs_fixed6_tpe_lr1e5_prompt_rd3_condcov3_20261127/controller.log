@@ -347,3 +347,6 @@ Registry claimed VLCS T6 d31bd082f696ca9b7a560d9b18c6c84915eb80edf4855603edcecb6
  create mode 100644 vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_006/result.json
 fatal: unable to access 'https://github.com/r97993346-design/DCCL-3Source-DomainNet.git/': Failed to connect to github.com port 443 after 130968 ms: Connection timed out
 Registry operation delayed: CalledProcessError: Command '['git', '-c', 'core.hooksPath=/dev/null', '-C', '/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/.github-sync', 'push', 'origin', 'HEAD:refs/heads/results/vlcs-fixed6-tpe-lr1e5-prompt-rd3-condcov3-20261127']' returned non-zero exit status 128.
+[results/vlcs-fixed6-tpe-lr1e5-prompt-rd3-condcov3-20261127 259c3bc] Update VLCS fixed-six study records
+ 1 file changed, 35 insertions(+)
+Registry operation delayed: TimeoutExpired: Command '['git', '-c', 'core.hooksPath=/dev/null', '-C', '/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/.github-sync', 'push', 'origin', 'HEAD:refs/heads/results/vlcs-fixed6-tpe-lr1e5-prompt-rd3-condcov3-20261127']' timed out after 149.99999137222767 seconds
