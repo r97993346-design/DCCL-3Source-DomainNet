@@ -1,0 +1,7 @@
+{
+  "state": "PASS",
+  "actual_hparams": true,
+  "effective_loss_sum": true,
+  "constant_lr": 1e-05,
+  "optimizer_steps_observed": 1102
+}
