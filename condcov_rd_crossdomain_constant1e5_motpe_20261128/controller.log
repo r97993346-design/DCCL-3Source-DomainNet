@@ -14,3 +14,4 @@
 {"time": "2026-11-28T19:46:38.137350+08:00", "event": "fold_started", "dataset": "TerraIncognita", "trial": 2, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 115257384, "pid": 636270}
 {"time": "2026-11-28T20:33:57.555349+08:00", "event": "fold_failed", "dataset": "TerraIncognita", "trial": 2, "fold": 0, "error": "Completed attempt failed protocol validation", "log": "/root/autodl-tmp/outputs/condcov_rd_crossdomain_constant1e5_motpe_20261128/TerraIncognita/TerraIncognita/trials/trial_002/env0/attempt_001"}
 {"time": "2026-11-28T20:34:57.616656+08:00", "event": "fold_started", "dataset": "TerraIncognita", "trial": 2, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 115226812, "pid": 652074}
+[I 2026-11-28 20:48:52,770] Using an existing study with name 'condcov_rd_crossdomain_constant1e5_motpe_20261128_TerraIncognita' instead of creating a new one.

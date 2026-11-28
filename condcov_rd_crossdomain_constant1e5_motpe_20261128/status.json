@@ -1,23 +1,13 @@
 {
-  "state": "running",
-  "dataset": "TerraIncognita",
-  "complete_trials": 0,
-  "searched_combinations": 0,
-  "remaining_combinations": 81,
-  "directions": [
-    "maximize",
-    "maximize"
-  ],
-  "gpu": 0,
-  "active": {
-    "trial_id": 2,
-    "params": {
-      "s_weight": 1.0,
-      "condcov_weight": 1.0,
-      "rd_weight": 1.0,
-      "contrastive_weight": 0.01
-    },
-    "target": "L100",
-    "completed_folds": 0
+  "state": "running_preserved_worker",
+  "trial": 2,
+  "fold": 0,
+  "worker_pid": 652078,
+  "controller_pid": 659183,
+  "params": {
+    "s_weight": 1.0,
+    "condcov_weight": 1.0,
+    "rd_weight": 1.0,
+    "contrastive_weight": 0.01
   }
 }
