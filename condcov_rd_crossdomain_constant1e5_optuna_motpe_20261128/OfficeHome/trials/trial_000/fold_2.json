@@ -1,0 +1,12 @@
+{
+  "fold": 2,
+  "domain": "Product",
+  "seed": 1343141770,
+  "selected_step": 5000,
+  "source_val": 0.8701830524880225,
+  "iid": 0.9222972972972973,
+  "test_in": 0.9222972972972973,
+  "test_out": 0.9120631341600902,
+  "updates": 5001,
+  "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/OfficeHome/trials/trial_000/env2/attempt_001/raw/OfficeHome/261128_18-00-55_OfficeHome_trial0_fold2/results.jsonl"
+}
