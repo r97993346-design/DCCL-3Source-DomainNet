@@ -92,6 +92,7 @@ def run(ds,gpu):
         study=optuna.create_study(study_name=NAME+'_'+ds,storage='sqlite:///'+str(root/'study.sqlite3'),load_if_exists=True,directions=['maximize','maximize'],sampler=sampler,pruner=optuna.pruners.NopPruner())
         assert study.directions==[optuna.study.StudyDirection.MAXIMIZE]*2
         assert isinstance(study.sampler,optuna.samplers.TPESampler)
+        study.set_metric_names(['source_val_mean','target_iid_mean'])
         first={'s_weight':1.,'condcov_weight':2. if ds=='PACS' else 1.,'rd_weight':1.,'contrastive_weight':.025 if ds=='PACS' else .05}
         if not study.trials:study.enqueue_trial(first)
         reports(study,root,ds)
