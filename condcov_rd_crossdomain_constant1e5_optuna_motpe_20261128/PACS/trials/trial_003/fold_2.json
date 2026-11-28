@@ -1,0 +1,12 @@
+{
+  "fold": 2,
+  "domain": "Photo",
+  "seed": 683537036,
+  "selected_step": 5000,
+  "source_val": 0.9838162857473589,
+  "iid": 0.9985029940119761,
+  "test_in": 0.9985029940119761,
+  "test_out": 1.0,
+  "updates": 5001,
+  "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/PACS/trials/trial_003/env2/attempt_001/raw/PACS/261128_21-02-44_PACS_trial3_fold2/results.jsonl"
+}
