@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_006/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 1800,
-              "test_in": 0.7110538373424972,
-              "test_out": 0.7124856815578465,
-              "train_out": 0.924640223252116,
-              "eval_time": 7.619080066680908,
+              "step": 2100,
+              "test_in": 0.7207903780068728,
+              "test_out": 0.709049255441008,
+              "train_out": 0.9260652990128673,
+              "eval_time": 9.173907279968262,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -67,11 +67,11 @@
             "path": "PACS/trials/trial_016/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 3600,
+              "step": 3900,
               "test_in": 0.9893390191897654,
               "test_out": 0.9871794871794872,
-              "train_out": 0.9843915302716479,
-              "eval_time": 1.4916448593139648,
+              "train_out": 0.9848161587217541,
+              "eval_time": 1.4079742431640625,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -106,11 +106,11 @@
             "path": "VLCS/trials/trial_002/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 4200,
+              "step": 4500,
               "test_in": 0.9964664310954063,
               "test_out": 1.0,
-              "train_out": 0.8444168082923768,
-              "eval_time": 2.417436122894287,
+              "train_out": 0.845313452145821,
+              "eval_time": 2.449612855911255,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -121,5 +121,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T09:10:34+08:00"
+  "synced_at": "2026-11-28T09:12:10+08:00"
 }
