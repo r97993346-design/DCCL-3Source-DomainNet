@@ -115,3 +115,35 @@ def read_attempt(attempt,dataset,fold,params,*,updates=p.STEPS):
     return dict(result,last_adam_lr=trace[-1]["lr_used"],log=str(logs[0]),learning_rates=str(attempt/"learning_rates.jsonl"),
                 elapsed_seconds=float((attempt/"elapsed_seconds").read_text()))
 runner.read_attempt = read_attempt
+
+
+# This independent study has no dependency on the obsolete handoff protocol.
+def start_attempt(attempt, dataset, fold, number, config, gpu, env, lock_fd):
+    import shlex
+    import subprocess
+    import time
+    attempt.mkdir()
+    args = command(dataset, fold, number, config, attempt/"raw", attempt/"learning_rates.jsonl")
+    wrapper = attempt/"command.sh"
+    p.write_text(wrapper, "\n".join([
+        "#!/bin/bash", "start=$(date +%s)", "rc=0",
+        shlex.join(args) + " || rc=$?", "end=$(date +%s)",
+        'printf "%s\\n" "$((end-start))" > elapsed_seconds.tmp',
+        "mv elapsed_seconds.tmp elapsed_seconds",
+        'printf "%s\\n" "$rc" > exit_code.tmp',
+        "mv exit_code.tmp exit_code", 'exit "$rc"']) + "\n")
+    while runner.available_ram_kib() <= 10 * 1024**2:
+        p.write_json(ROOT/"status.json",dict(state="waiting_for_ram",trial=number,fold=fold,gpu=gpu))
+        time.sleep(15)
+    # Run relative training entrypoints from CODE while emitting exit markers in attempt.
+    shell = wrapper.read_text().replace(shlex.join(args), "(cd " + shlex.quote(str(CODE)) + " && " + shlex.join(args) + ")")
+    p.write_text(wrapper,shell)
+    with (attempt/"console.log").open("wb") as stream:
+        child=subprocess.Popen(["bash",str(wrapper)],cwd=attempt,env=env,
+                               stdout=stream,stderr=subprocess.STDOUT,pass_fds=(lock_fd,))
+        p.write_json(ROOT/"status.json",dict(state="running",dataset=dataset,trial=number,fold=fold,
+                     domain=p.DATASETS[dataset][0][fold],gpu=gpu,pid=child.pid,controller_pid=__import__("os").getpid()))
+        runner.emit("fold_started",dataset=dataset,trial=number,fold=fold,gpu=gpu,pid=child.pid)
+        child.wait()
+
+runner.start_attempt = start_attempt
