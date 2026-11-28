@@ -596,3 +596,6 @@
 {"step": 595, "lr_used": 1e-05, "optimizer_updates": 596, "scheduler_updates": 0}
 {"step": 596, "lr_used": 1e-05, "optimizer_updates": 597, "scheduler_updates": 0}
 {"step": 597, "lr_used": 1e-05, "optimizer_updates": 598, "scheduler_updates": 0}
+{"step": 598, "lr_used": 1e-05, "optimizer_updates": 599, "scheduler_updates": 0}
+{"step": 599, "lr_used": 1e-05, "optimizer_updates": 600, "scheduler_updates": 0}
+{"step": 600, "lr_used": 1e-05, "optimizer_updates": 601, "scheduler_updates": 0}
