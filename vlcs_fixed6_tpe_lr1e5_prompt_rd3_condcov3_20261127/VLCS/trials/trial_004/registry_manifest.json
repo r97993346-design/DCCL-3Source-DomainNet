@@ -1,0 +1,122 @@
+{
+  "config_hash": "d8afbf469d4d8ad2c511305918a5724670083da8f4df77214c1f5bfc542e7e00",
+  "dataset": "VLCS",
+  "folds": [
+    {
+      "fold": 0,
+      "domain": "Caltech",
+      "seed": 1141299501,
+      "selected_step": 4500,
+      "iid": 0.9973498233215548,
+      "test_in": 0.9973498233215548,
+      "test_out": 1.0,
+      "source_val": 0.8424139528118446,
+      "final_step": 5000,
+      "updates": 5001,
+      "scheduler_updates": 5001,
+      "evaluations": 18,
+      "final_iid": 0.9973498233215548,
+      "final_test_out": 1.0,
+      "final_source_val": 0.8412923792608924,
+      "log": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env0/attempt_001/raw/VLCS/261128_05-55-22_VLCS_trial4_fold0/results.jsonl",
+      "learning_rates": {
+        "path": "vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env0/attempt_001/learning_rates.jsonl",
+        "sha256": "c3f6884b386cc40c8fd8e51eac9e53a09471b7014595805da308c759663e39fe"
+      },
+      "actual_prompt_length": 4,
+      "elapsed_seconds": 2703.0,
+      "results": {
+        "path": "vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env0/attempt_001/raw/VLCS/261128_05-55-22_VLCS_trial4_fold0/results.jsonl",
+        "sha256": "3711bf2e7ae46b64c0a2ea28021515e60a70868b3d19881374954a10d7b498f4"
+      }
+    },
+    {
+      "fold": 1,
+      "domain": "LabelMe",
+      "seed": 592449405,
+      "selected_step": 3300,
+      "iid": 0.6423529411764706,
+      "test_in": 0.6423529411764706,
+      "test_out": 0.615819209039548,
+      "source_val": 0.9251753989762119,
+      "final_step": 5000,
+      "updates": 5001,
+      "scheduler_updates": 5001,
+      "evaluations": 18,
+      "final_iid": 0.6503529411764706,
+      "final_test_out": 0.623352165725047,
+      "final_source_val": 0.9226204456489009,
+      "log": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env1/attempt_001/raw/VLCS/261128_06-40-31_VLCS_trial4_fold1/results.jsonl",
+      "learning_rates": {
+        "path": "vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env1/attempt_001/learning_rates.jsonl",
+        "sha256": "c3f6884b386cc40c8fd8e51eac9e53a09471b7014595805da308c759663e39fe"
+      },
+      "actual_prompt_length": 4,
+      "elapsed_seconds": 2653.0,
+      "results": {
+        "path": "vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env1/attempt_001/raw/VLCS/261128_06-40-31_VLCS_trial4_fold1/results.jsonl",
+        "sha256": "3fd7beba381b8e66c3d06a2e4c13338b224eeb0504c7909b32a10986dd2bde31"
+      }
+    },
+    {
+      "fold": 2,
+      "domain": "Pascal",
+      "seed": 374236774,
+      "selected_step": 4800,
+      "iid": 0.8674564975934839,
+      "test_in": 0.8674564975934839,
+      "test_out": 0.8651851851851852,
+      "source_val": 0.8825262581721862,
+      "final_step": 5000,
+      "updates": 5001,
+      "scheduler_updates": 5001,
+      "evaluations": 18,
+      "final_iid": 0.8674564975934839,
+      "final_test_out": 0.8651851851851852,
+      "final_source_val": 0.8825262581721862,
+      "log": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env2/attempt_001/raw/VLCS/261128_07-24-57_VLCS_trial4_fold2/results.jsonl",
+      "learning_rates": {
+        "path": "vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env2/attempt_001/learning_rates.jsonl",
+        "sha256": "c3f6884b386cc40c8fd8e51eac9e53a09471b7014595805da308c759663e39fe"
+      },
+      "actual_prompt_length": 4,
+      "elapsed_seconds": 2469.0,
+      "results": {
+        "path": "vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env2/attempt_001/raw/VLCS/261128_07-24-57_VLCS_trial4_fold2/results.jsonl",
+        "sha256": "33002b950a5babc854e0ea42f4ee7b62258e4488350052d1da4ae36c66f3ba7c"
+      }
+    },
+    {
+      "fold": 3,
+      "domain": "SUN",
+      "seed": 733132323,
+      "selected_step": 4800,
+      "iid": 0.7981721249047982,
+      "test_in": 0.7981721249047982,
+      "test_out": 0.7972560975609756,
+      "source_val": 0.9014019669386901,
+      "final_step": 5000,
+      "updates": 5001,
+      "scheduler_updates": 5001,
+      "evaluations": 18,
+      "final_iid": 0.7985529322162985,
+      "final_test_out": 0.7972560975609756,
+      "final_source_val": 0.9014019669386901,
+      "log": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env3/attempt_001/raw/VLCS/261128_08-06-19_VLCS_trial4_fold3/results.jsonl",
+      "learning_rates": {
+        "path": "vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env3/attempt_001/learning_rates.jsonl",
+        "sha256": "c3f6884b386cc40c8fd8e51eac9e53a09471b7014595805da308c759663e39fe"
+      },
+      "actual_prompt_length": 4,
+      "elapsed_seconds": 2649.0,
+      "results": {
+        "path": "vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_004/env3/attempt_001/raw/VLCS/261128_08-06-19_VLCS_trial4_fold3/results.jsonl",
+        "sha256": "79eee08297bf5c1f1a6666144b5e89592310b21d55d7f6653919b85c88c905c8"
+      }
+    }
+  ],
+  "dataloader_workers": {
+    "train_per_source": 8,
+    "eval_per_loader": 0
+  }
+}
