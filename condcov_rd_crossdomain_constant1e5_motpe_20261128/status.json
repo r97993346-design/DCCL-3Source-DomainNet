@@ -1,5 +1,5 @@
 {
-  "state": "running",
+  "state": "stopped_for_final_motpe",
   "dataset": "VLCS",
   "complete_trials": 0,
   "searched_combinations": 0,
@@ -19,5 +19,6 @@
     },
     "target": "SUN",
     "completed_folds": 3
-  }
+  },
+  "stop_reason": "requested protocol cutover"
 }
