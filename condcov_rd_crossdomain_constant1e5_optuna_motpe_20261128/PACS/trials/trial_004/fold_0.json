@@ -1,0 +1,12 @@
+{
+  "fold": 0,
+  "domain": "Art Painting",
+  "seed": 280998037,
+  "selected_step": 3000,
+  "source_val": 0.9845627597219953,
+  "iid": 0.9792556436851739,
+  "test_in": 0.9792556436851739,
+  "test_out": 0.9779951100244498,
+  "updates": 5001,
+  "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/PACS/trials/trial_004/env0/attempt_001/raw/PACS/261128_21-49-05_PACS_trial4_fold0/results.jsonl"
+}
