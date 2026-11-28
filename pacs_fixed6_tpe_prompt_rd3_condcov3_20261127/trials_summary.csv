@@ -57,4 +57,5 @@ trial,state,condcov_weight,rd_weight,contrastive_weight,contrastive_mix,prompt_l
 55,FAIL,1.0,3.0,0.05,0.25,8,2e-05,duplicate,,,,,,
 56,FAIL,1.0,3.0,0.05,0.25,8,2e-05,duplicate,,,,,,
 57,FAIL,1.0,3.0,0.05,0.25,8,2e-05,duplicate,,,,,,
-58,RUNNING,2.0,1.0,0.05,0.5,8,2e-05,fallback,,,,,,
+58,COMPLETE,2.0,1.0,0.05,0.5,8,2e-05,fallback,0.9873690827664322,0.9679085387763678,0.9679085387763678,0.9680709373890661,9261.0,
+59,RUNNING,1.0,3.0,0.05,0.25,16,2e-05,tpe,,,,,,

@@ -1,0 +1,21 @@
+{
+  "fold": 3,
+  "domain": "Sketch",
+  "seed": 990940125,
+  "selected_step": 3900,
+  "iid": 0.9064885496183206,
+  "test_in": 0.9064885496183206,
+  "test_out": 0.913375796178344,
+  "source_val": 0.9960277655876677,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.9048982188295165,
+  "final_test_out": 0.9121019108280255,
+  "final_source_val": 0.9953155148754169,
+  "log": "/root/autodl-tmp/outputs/pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_059/env3/attempt_001/raw/PACS/261128_16-02-39_PACS_trial59_fold3/results.jsonl",
+  "learning_rates": "/root/autodl-tmp/outputs/pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/PACS/trials/trial_059/env3/attempt_001/learning_rates.jsonl",
+  "actual_prompt_length": 16,
+  "elapsed_seconds": 3098.0
+}
