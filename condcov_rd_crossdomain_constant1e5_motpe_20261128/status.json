@@ -10,7 +10,7 @@
   ],
   "gpu": 0,
   "active": {
-    "trial_id": 1,
+    "trial_id": 2,
     "params": {
       "s_weight": 1.0,
       "condcov_weight": 3.0,
