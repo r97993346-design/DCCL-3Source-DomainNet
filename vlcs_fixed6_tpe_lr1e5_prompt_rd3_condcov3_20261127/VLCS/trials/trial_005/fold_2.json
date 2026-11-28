@@ -1,0 +1,21 @@
+{
+  "fold": 2,
+  "domain": "Pascal",
+  "seed": 374236774,
+  "selected_step": 3900,
+  "iid": 0.8582006664198445,
+  "test_in": 0.8582006664198445,
+  "test_out": 0.8488888888888889,
+  "source_val": 0.8835005385050158,
+  "final_step": 5000,
+  "updates": 5001,
+  "scheduler_updates": 5001,
+  "evaluations": 18,
+  "final_iid": 0.8582006664198445,
+  "final_test_out": 0.8488888888888889,
+  "final_source_val": 0.882992408423715,
+  "log": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_005/env2/attempt_001/raw/VLCS/261128_10-20-22_VLCS_trial5_fold2/results.jsonl",
+  "learning_rates": "/root/autodl-tmp/outputs/vlcs_fixed6_tpe_lr1e5_prompt_rd3_condcov3_20261127/VLCS/trials/trial_005/env2/attempt_001/learning_rates.jsonl",
+  "actual_prompt_length": 8,
+  "elapsed_seconds": 2629.0
+}

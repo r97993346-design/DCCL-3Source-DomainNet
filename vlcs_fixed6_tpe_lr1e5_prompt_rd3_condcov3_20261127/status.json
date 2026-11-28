@@ -2,13 +2,13 @@
   "state": "running",
   "gpu": 0,
   "active": {
-    "trial_id": 4,
+    "trial_id": 5,
     "params": {
-      "condcov_weight": 2.0,
-      "rd_weight": 2.0,
-      "contrastive_weight": 0.025,
-      "contrastive_mix": 0.75,
-      "prompt_length": 4,
+      "condcov_weight": 3.0,
+      "rd_weight": 3.0,
+      "contrastive_weight": 0.05,
+      "contrastive_mix": 0.25,
+      "prompt_length": 8,
       "initial_lr": 1e-05
     },
     "target": "SUN",
