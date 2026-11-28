@@ -53,3 +53,5 @@
 {"event": "registry_claim_confirmed", "trial": 18, "config_hash": "88b2e892d8d56de009f8bc568ff703e195ea5772d56362b9d2fd7088cab66c33"}
 {"event": "registry_retry_scheduled", "reason": "published result artifact not yet available", "retry_in_seconds": 40}
 {"event": "registry_claim_confirmed", "trial": 18, "config_hash": "88b2e892d8d56de009f8bc568ff703e195ea5772d56362b9d2fd7088cab66c33"}
+{"event": "registry_result_published", "trial": 18, "config_hash": "88b2e892d8d56de009f8bc568ff703e195ea5772d56362b9d2fd7088cab66c33", "branch": "results/cipt-clip-supcon-cosine-optuna-mincl-space-v2-20261127", "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/PACS/trials/trial_018/registry_manifest.json"}
+{"event": "registry_claim_confirmed", "trial": 19, "config_hash": "27dbd2be230127afbb32e52910a9d72b50f7677d4bc488d760ac178ae23f8277"}
