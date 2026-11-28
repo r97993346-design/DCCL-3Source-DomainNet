@@ -183,6 +183,7 @@ def ensure_cases(new):
 
 def main():
     global cases
+    ROOT.mkdir(parents=True, exist_ok=True)
     protocol=dict(name=NAME,dataset=DATASET,base_training=core.hp(params(0,0)),fixed_args=p.FIXED_ARGS,
                   evaluation_cache=True,iid_reference=.86,seed_strategy="DomainBed per-target hash",fold_seeds=[p.seed_for(DATASET,i) for i in range(4)],
                   updates=5001,final_update_index=5000,check=300,lr=1e-5,lr_schedule="constant",

@@ -14,7 +14,6 @@ spec.loader.exec_module(runner)
 NAME = "oh_stagewise_grid_crossdomain_constant1e5_20261128"
 DATASET = "OfficeHome"
 ROOT = Path("/root/autodl-tmp/outputs") / NAME
-ROOT.mkdir(parents=True, exist_ok=True)
 p.DATASETS["TerraIncognita"] = (("L100","L38","L43","L46"), .58, "terra_incognita_fixed")
 p.FIXED_ARGS.update(num_workers=8, eval_num_workers=0)
 p.PROTOCOL_ARGS.update(num_workers=8, eval_num_workers=0, cipt_cache_eval_visual=True)

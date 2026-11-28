@@ -61,6 +61,7 @@ def publish():
 
 
 def main():
+    ROOT.mkdir(parents=True, exist_ok=True)
     with (ROOT / "sync.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         previous = None
