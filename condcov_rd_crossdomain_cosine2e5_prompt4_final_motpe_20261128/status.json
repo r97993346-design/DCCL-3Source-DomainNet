@@ -2,9 +2,9 @@
   "state": "running",
   "dataset": "OfficeHome",
   "trial": 0,
-  "fold": 0,
-  "domain": "Art",
+  "fold": 1,
+  "domain": "Clipart",
   "gpu": 0,
-  "pid": 1796890,
+  "pid": 1955132,
   "controller_pid": 1796740
 }
