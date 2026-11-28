@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_007/env1/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 600,
-              "test_in": 0.7093356242840779,
-              "test_out": 0.699885452462772,
-              "train_out": 0.9109041682861296,
-              "eval_time": 4.316527366638184,
+              "step": 900,
+              "test_in": 0.7110538373424972,
+              "test_out": 0.713631156930126,
+              "train_out": 0.9197272286034706,
+              "eval_time": 4.385144472122192,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -62,7 +62,7 @@
             "prompt_length": 8
           },
           "completed_folds": 3,
-          "current_target": "Photo",
+          "current_target": "Art Painting",
           "latest_attempt": null
         }
       ],
@@ -110,5 +110,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T14:08:17+08:00"
+  "synced_at": "2026-11-28T14:09:47+08:00"
 }
