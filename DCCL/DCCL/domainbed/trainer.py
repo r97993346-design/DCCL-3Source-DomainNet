@@ -343,7 +343,7 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
         # for the next step. In CIPTDCCL, optimizer.step() runs in update().
         used_lr = (
             float(algorithm.optimizer.param_groups[0]["lr"])
-            if lr_scheduler is not None else None
+            if is_cipt else None
         )
         step_vals = algorithm.update(**inputs)
         if lr_scheduler is not None:
@@ -386,9 +386,9 @@ def train(test_envs, args, hparams, n_steps, checkpoint_freq, logger, writer, ta
 
             for key, val in checkpoint_vals.items():
                 results[key] = np.mean(val)
-            if is_cipt and hparams.get("cipt_contrastive_type") == "clip_guided_supcon" and lr_scheduler is not None:
+            if is_cipt:
                 results.update(actual_lr=used_lr, optimizer_updates=step + 1,
-                               scheduler_updates=lr_scheduler.last_epoch)
+                               scheduler_updates=lr_scheduler.last_epoch if lr_scheduler is not None else 0)
 
             eval_start_time = time.time()
             with preserve_training_rng() if is_cipt else nullcontext():
