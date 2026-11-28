@@ -67,11 +67,11 @@
             "path": "PACS/trials/trial_018/env3/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 2700,
-              "test_in": 0.8979007633587787,
-              "test_out": 0.9057324840764331,
+              "step": 3000,
+              "test_in": 0.9007633587786259,
+              "test_out": 0.9095541401273886,
               "train_out": 0.9968427615126882,
-              "eval_time": 1.296379566192627,
+              "eval_time": 1.226560354232788,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -82,7 +82,7 @@
       "stop_reason": null
     },
     "VLCS": {
-      "state": "running",
+      "state": "waiting_for_registry",
       "completed_trials": 2,
       "completed_folds": 12,
       "trial_states": {
@@ -101,14 +101,14 @@
             "prompt_length": 16
           },
           "completed_folds": 4,
-          "current_target": "SUN",
+          "current_target": null,
           "latest_attempt": null
         }
       ],
       "gpu": 0,
       "budget": 648,
-      "stop_reason": null
+      "stop_reason": "reservation update unconfirmed"
     }
   },
-  "synced_at": "2026-11-28T14:27:00+08:00"
+  "synced_at": "2026-11-28T14:28:16+08:00"
 }

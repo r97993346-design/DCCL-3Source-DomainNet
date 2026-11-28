@@ -9,3 +9,6 @@
 {"event": "registry_claim_confirmed", "trial": 1, "config_hash": "96f24f0292e598e3e4e2433441db8062c88203ec1763ed7d1a4162d7da3f4dd7"}
 {"event": "registry_result_published", "trial": 1, "config_hash": "96f24f0292e598e3e4e2433441db8062c88203ec1763ed7d1a4162d7da3f4dd7", "branch": "results/cipt-clip-supcon-cosine-optuna-mincl-space-v2-20261127", "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/VLCS/trials/trial_001/registry_manifest.json"}
 {"event": "registry_claim_confirmed", "trial": 2, "config_hash": "76710d3c903aea2fd0a87c658bbd1c9a8d18679d6bbcf85d036d34fb701da904"}
+{"event": "registry_retry_scheduled", "reason": "published result artifact not yet available", "retry_in_seconds": 20}
+{"event": "registry_claim_confirmed", "trial": 2, "config_hash": "76710d3c903aea2fd0a87c658bbd1c9a8d18679d6bbcf85d036d34fb701da904"}
+{"event": "registry_retry_scheduled", "reason": "reservation update unconfirmed", "retry_in_seconds": 40}
