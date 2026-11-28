@@ -2,7 +2,7 @@
 
 | 数据集 | 已完成 Trial | 已完成目标域 | 运行状态 |
 | --- | ---: | ---: | --- |
-| OfficeHome | 6 | 28 | waiting_for_registry |
+| OfficeHome | 7 | 28 | waiting_for_registry |
 | PACS | 17 | 70 | running |
 | VLCS | 2 | 10 | running |
 

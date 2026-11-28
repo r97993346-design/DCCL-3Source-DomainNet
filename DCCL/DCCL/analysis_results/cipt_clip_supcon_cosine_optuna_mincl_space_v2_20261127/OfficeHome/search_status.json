@@ -48,24 +48,24 @@
     "elapsed_seconds": 14692.0,
     "error": null
   },
-  "completed_trials": 6,
+  "completed_trials": 7,
   "completed_folds": 28,
   "trial_states": {
-    "COMPLETE": 6,
+    "COMPLETE": 7,
     "RUNNING": 1
   },
   "running_trials": [
     {
-      "trial_id": 6,
+      "trial_id": 7,
       "params": {
         "initial_lr": 3e-05,
         "condcov_weight": 1.0,
-        "rd_weight": 2.0,
+        "rd_weight": 1.0,
         "contrastive_weight": 0.001,
         "contrastive_mix": 0.0,
         "prompt_length": 16
       },
-      "completed_folds": 4,
+      "completed_folds": 0,
       "current_target": null,
       "latest_attempt": null
     }
