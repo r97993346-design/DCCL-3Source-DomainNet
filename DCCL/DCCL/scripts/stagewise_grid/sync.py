@@ -75,7 +75,7 @@ def main():
                     continue
                 previous, next_sync = marker, time.monotonic() + 1800
                 status = ROOT / "status.json"
-                if status.exists() and json.loads(status.read_text()).get("state") in {"stopped"}:
+                if status.exists() and json.loads(status.read_text()).get("state") in {"stopped","complete"}:
                     return
             time.sleep(5)
 

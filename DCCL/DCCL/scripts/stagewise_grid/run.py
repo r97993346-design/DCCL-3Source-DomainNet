@@ -1,4 +1,4 @@
-"""Twenty-five serial OfficeHome configurations with deterministic Pareto stage selection."""
+"""Thirty-one serial configurations with deterministic Pareto stage selection."""
 import fcntl
 import json
 import os
@@ -10,7 +10,11 @@ from statistics import mean
 import core
 p, runner = core.p, core.runner
 ROOT, NAME, DATASET = core.ROOT, core.NAME, core.DATASET
-VLCS_REPORT = ROOT.parent / "vlcs_stagewise_grid_crossdomain_constant1e5_20261128" / "cases.json"
+S_VALUES=(.5,1.,2.)
+COV_VALUES=(1.,2.,3.,5.)
+RD_VALUES=(.5,1.,2.,3.)
+CL_VALUES=(.01,.025,.05)
+N_CASES=31
 KEYS = ("s_weight","condcov_weight","rd_weight","contrastive_weight")
 CODE = core.CODE
 
@@ -25,7 +29,7 @@ def decision(message):
         f.write(time.strftime("%Y-%m-%d %H:%M:%S ")+message+"\n")
 
 def write_status(state, **extra):
-    p.write_json(ROOT/"status.json",dict(state=state,dataset=DATASET,planned_configurations=25,
+    p.write_json(ROOT/"status.json",dict(state=state,dataset=DATASET,planned_configurations=N_CASES,
                  complete_configurations=sum(c["state"]=="complete" for c in cases),
                  **active,**extra))
     (ROOT/"sync.request").touch()
@@ -42,6 +46,12 @@ def save():
                     **{k:r.get(k) for k in ("source_val","worst_fold_source_val","iid","test_in","test_out","elapsed_seconds")},
                     reused=bool(c.get("reused_from")),folds_json=json.dumps(r.get("folds",[]))))
     p.write_csv(ROOT/"trials_summary.csv",rows,["id","stage","state","parent",*KEYS,"source_val","worst_fold_source_val","iid","test_in","test_out","elapsed_seconds","reused","folds_json"])
+    folds=[]
+    for c in cases:
+        for fold in c.get("result",{}).get("folds",[]):
+            folds.append(dict(case_id=c["id"],**{k:fold.get(k) for k in ("fold","domain","seed","selected_step","source_val","iid","test_in","test_out","updates","scheduler_updates","actual_lr","elapsed_seconds","learning_rates")},
+                              losses_json=json.dumps(fold.get("losses",{}))))
+    p.write_csv(ROOT/"folds_summary.csv",folds,["case_id","fold","domain","seed","selected_step","source_val","iid","test_in","test_out","updates","scheduler_updates","actual_lr","elapsed_seconds","learning_rates","losses_json"])
     (ROOT/"sync.request").touch()
 
 def dominates(a,b):
@@ -66,21 +76,10 @@ def select(pool,count):
     return [c for _,c in rank(pool)[:count]]
 
 def resources():
-    while True:
-        free=int(subprocess.check_output(["nvidia-smi","-i","0","--query-gpu=memory.free","--format=csv,noheader,nounits"],text=True))
-        shm=os.statvfs("/dev/shm")
-        disk=os.statvfs(ROOT)
-        obs=dict(time=time.strftime("%Y-%m-%d %H:%M:%S"),free_vram_mib=free,
-                 available_ram_kib=runner.available_ram_kib(),
-                 free_shm_bytes=shm.f_bavail*shm.f_frsize,
-                 cpu_pressure=Path("/sys/fs/cgroup/cpu.pressure").read_text(),
-                 memory_current=int(Path("/sys/fs/cgroup/memory.current").read_text()),
-                 memory_events=Path("/sys/fs/cgroup/memory.events").read_text())
-        with (ROOT/"resource_observations.jsonl").open("a") as f: f.write(json.dumps(obs)+"\n")
-        if obs["available_ram_kib"]>10*1024**2 and free>=4096 and obs["free_shm_bytes"]>4*1024**3 and disk.f_bavail*disk.f_frsize>2*1024**3:
-            return
-        write_status("waiting_for_resources",resources=obs)
+    while runner.available_ram_kib() <= 10*1024**2:
+        write_status("waiting_for_ram", available_ram_kib=runner.available_ram_kib())
         time.sleep(30)
+
 
 def refresh(dataset,study,root,state,**kwargs):
     write_status(state,fold=kwargs.get("active"))
@@ -90,23 +89,43 @@ runner.refresh=refresh
 def retry_fold(root,dataset,fold,number,config,gpu,env,lock_fd,*,updates=p.STEPS):
     out=root/f"env{fold}"
     out.mkdir(exist_ok=True)
-    while True:
-        attempts=sorted(out.glob("attempt_*"))
-        for attempt in attempts:
-            if not (attempt/"exit_code").exists(): continue
-            try: return core.read_attempt(attempt,dataset,fold,config,updates=updates)
-            except (ValueError,KeyError,OSError):
-                pass
+    attempts = sorted(out.glob("attempt_*"))
+
+    def inspect(attempt):
+        try:
+            return core.read_attempt(attempt,dataset,fold,config,updates=updates)
+        except (ValueError, KeyError, OSError) as exc:
+            error = f"{attempt}: {type(exc).__name__}: {exc}"
+            p.write_json(attempt/"failure.json",dict(error=error))
+            decision(error)
+            raise core.ProtocolError(error) from exc
+
+    failures=0
+    for attempt in attempts:
+        exit_code=attempt/"exit_code"
+        if not exit_code.exists(): continue
+        if exit_code.read_text().strip()=="0":
+            return inspect(attempt)
+        failures+=1
+    while failures<2:
         resources()
-        index=max([int(a.name.split("_")[-1]) for a in attempts],default=0)+1
-        attempt=out/f"attempt_{index:03d}"
+        attempt=out/f"attempt_{len(attempts)+1:03d}"
         runner.start_attempt(attempt,dataset,fold,number,root/"config.json",gpu,env,lock_fd,updates=updates)
-        try: return core.read_attempt(attempt,dataset,fold,config,updates=updates)
-        except (ValueError,KeyError,OSError) as exc:
-            p.write_json(attempt/"failure.json",dict(error=str(exc)))
-            decision(f"Retry {active.get('case_id')} fold {fold} after validation or training failure; retained {attempt}.")
-            write_status("retry_wait",error=str(exc))
+        if (attempt/"exit_code").read_text().strip()=="0":
+            return inspect(attempt)
+        failures+=1
+        attempts.append(attempt)
+        tail=(attempt/"console.log").read_text(errors="replace").splitlines()[-12:]
+        error=f"Process exit code actual={(attempt/'exit_code').read_text().strip()}, expected=0; console tail: {tail}"
+        p.write_json(attempt/"failure.json",dict(error=error))
+        decision(error)
+        if any("actual=" in line and "expected=" in line for line in tail):
+            raise core.ProtocolError(error)
+        if failures<2:
+            write_status("retry_wait",error=error)
             time.sleep(60)
+    raise core.ProtocolError(f"Fold {fold}: two nonzero training exits; see {out}/attempt_*/failure.json")
+
 runner.run_fold=retry_fold
 
 def execute(c,lock):
@@ -159,18 +178,13 @@ def stage_report(stage,pool,selected):
 def final_comparison():
     pool=[c for c in cases if c["stage"]==3 or c["id"] in p.read_json(ROOT/"stage_selections.json")["2"]]
     stage_report(3,pool,select(pool,len(pool)))
-    text=["# OfficeHome and VLCS stagewise grids", "",
-          "The two datasets have separate source-validation rankings. Compare selected weights and stage-to-stage changes within each dataset.", ""]
     best=select(pool,1)[0]
-    r=best["result"]
-    text.append(f"OfficeHome leader {best['id']} {best['params']}, source mean {r['source_val']:.6f}, source minimum {r['worst_fold_source_val']:.6f}.")
-    if VLCS_REPORT.is_file():
-        vlcs=[c for c in p.read_json(VLCS_REPORT) if c["state"]=="complete"]
-        if vlcs:
-            leader=select(vlcs,1)[0]
-            r=leader["result"]
-            text.append(f"VLCS leader among {len(vlcs)} completed cases {leader['id']} {leader['params']}, source mean {r['source_val']:.6f}, source minimum {r['worst_fold_source_val']:.6f}.")
-    text.append("School OfficeHome MOTPE is a follow-up comparison once its four-fold results and training protocol are available.")
+    baseline=cases[0]
+    text=[f"# {DATASET} stagewise grid", "", f"Completed {N_CASES} configurations across four folds each.", ""]
+    for label,c in (("Stage 0 independent reference",baseline),("Final source-validation leader",best)):
+        r=c["result"]
+        text.append(f"{label} {c['id']} {c['params']}, source mean {r['source_val']:.6f}, source minimum {r['worst_fold_source_val']:.6f}, IID {r['iid']:.6f}, test_out {r['test_out']:.6f}.")
+    text.append(f"Final leader versus A00, mean source change {best['result']['source_val']-baseline['result']['source_val']:+.6f}.")
     p.write_text(ROOT/"final_comparison.md","\n".join(text)+"\n")
 
 def ensure_cases(new):
@@ -185,16 +199,16 @@ def main():
     global cases
     ROOT.mkdir(parents=True, exist_ok=True)
     protocol=dict(name=NAME,dataset=DATASET,base_training=core.hp(params(0,0)),fixed_args=p.FIXED_ARGS,
-                  evaluation_cache=True,iid_reference=.86,seed_strategy="DomainBed per-target hash",fold_seeds=[p.seed_for(DATASET,i) for i in range(4)],
-                  updates=5001,final_update_index=5000,check=300,lr=1e-5,lr_schedule="constant",
+                  evaluation_cache=True,seed_strategy="DomainBed per-target hash",fold_seeds=[p.seed_for(DATASET,i) for i in range(4)],
+                  updates=5001,final_update_index=5000,check=300,lr=2e-5,lr_schedule=core.p.LR_POLICY,prompt_length=4,
                   model_implementation_reference="condcov_rd_crossdomain_constant1e5_motpe_20261128",
-                  stages={"0":1,"1":9,"2":9,"3":6},planned_configurations=25,planned_folds=100,
+                  stages={"0":1,"1":12,"2":12,"3":6},planned_configurations=N_CASES,planned_folds=124,
                   selection=["Pareto layer","descending mean source_val","descending minimum source_val","candidate ID for exact ties"],
                   inheritance="hyperparameters only; fresh model and fixed fold seeds for every configuration",
-                  reuse="complete four-fold result with identical implementation, effective configuration, seeds and verified protocol",
+                  reuse="only previously validated results from this exact protocol and output directory",
                   code_commit=p.git("rev-parse","HEAD"))
-    for name,value in (("protocol",protocol),("search_space",dict(stage0=[params(0,0)],stage1=[params(s,c) for s in (.5,.75,1) for c in (1,2,3)],
-                                   stage2=dict(top=3,rd=[1,2,3],include_previous_rd_zero=True),stage3=dict(top=2,cl=[.01,.025,.05],include_previous_cl_zero=True)))):
+    for name,value in (("protocol",protocol),("search_space",dict(stage0=[params(0,0)],stage1=[params(s,c) for s in S_VALUES for c in COV_VALUES],
+                                   stage2=dict(top=3,rd=list(RD_VALUES),include_previous_rd_zero=True),stage3=dict(top=2,cl=list(CL_VALUES),include_previous_cl_zero=True)))):
         path=ROOT/(name+".json")
         if path.exists():
             old=p.read_json(path)
@@ -207,24 +221,27 @@ def main():
         ensure_cases([case("A00",0,0,params(0,0))])
         execute(cases[0],lock)
         stage_report(0,[cases[0]],[cases[0]])
-        ensure_cases([case(f"A{i:02}",i,1,params(s,c),"A00") for i,(s,c) in enumerate(((s,c) for s in (.5,.75,1) for c in (1,2,3)),1)])
+        ensure_cases([case(f"A{i:02}",i,1,params(s,c),"A00") for i,(s,c) in enumerate(((s,c) for s in S_VALUES for c in COV_VALUES),1)])
         stage1=[c for c in cases if c["stage"]==1]
         for c in stage1: execute(c,lock)
         top3=select(stage1,3);stage_report(1,stage1,top3)
-        ensure_cases([case(f"B{i:02}",9+i,2,dict(parent["params"],rd_weight=float(rd)),parent["id"])
-                      for i,(parent,rd) in enumerate(((c,r) for c in top3 for r in (1,2,3)),1)])
+        ensure_cases([case(f"B{i:02}",12+i,2,dict(parent["params"],rd_weight=float(rd)),parent["id"])
+                      for i,(parent,rd) in enumerate(((c,r) for c in top3 for r in RD_VALUES),1)])
         stage2=[c for c in cases if c["stage"]==2]
         for c in stage2: execute(c,lock)
         top2=select([*top3,*stage2],2);stage_report(2,[*top3,*stage2],top2)
-        ensure_cases([case(f"C{i:02}",18+i,3,dict(parent["params"],contrastive_weight=cl),parent["id"])
-                      for i,(parent,cl) in enumerate(((c,v) for c in top2 for v in (.01,.025,.05)),1)])
+        ensure_cases([case(f"C{i:02}",24+i,3,dict(parent["params"],contrastive_weight=cl),parent["id"])
+                      for i,(parent,cl) in enumerate(((c,v) for c in top2 for v in CL_VALUES),1)])
         for c in cases:
             if c["stage"]==3: execute(c,lock)
-        assert len(cases)==25 and all(c["state"]=="complete" for c in cases)
+        assert len(cases)==N_CASES and all(c["state"]=="complete" for c in cases)
         active.clear()
-        while True:
-            final_comparison();save();write_status("complete")
-            time.sleep(1800)
+        final_comparison();save();write_status("complete")
 
 if __name__=="__main__":
-    main()
+    try:
+        main()
+    except (core.ProtocolError, KeyError) as exc:
+        decision(f"Stopped for protocol or parsing diagnosis: {exc}")
+        write_status("validation_failed", error=str(exc))
+        raise
