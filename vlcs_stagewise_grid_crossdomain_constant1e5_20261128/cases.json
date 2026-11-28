@@ -222,7 +222,13 @@
       "contrastive_weight": 0.0
     },
     "parent": "A00",
-    "state": "running"
+    "state": "INTERRUPTED",
+    "interruption": {
+      "state": "INTERRUPTED",
+      "time": "2026-11-28T22:50:11.294091+08:00",
+      "reason": "operator requested immediate replacement",
+      "controller_group": 573781
+    }
   },
   {
     "id": "A02",
