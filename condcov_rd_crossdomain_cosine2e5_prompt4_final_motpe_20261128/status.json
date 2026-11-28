@@ -1,15 +1,14 @@
 {
-  "state": "running",
+  "state": "PAUSED_VALIDATION_ERROR",
   "dataset": "OfficeHome",
   "gpu": 0,
   "controller_pid": 1794432,
   "trial": 0,
-  "fold": 0,
-  "domain": "Art",
-  "params": {
-    "s_weight": 1.0,
-    "condcov_weight": 2.0,
-    "rd_weight": 1.0,
-    "contrastive_weight": 0.025
-  }
+  "error": "FileNotFoundError: [Errno 2] No such file or directory: '/media/hooasia/cipt_clip_supcon_cosine_optuna_mincl_20261126/code/DCCL/DCCL/train_output/cipt_clip_supcon_cosine_optuna_mincl_20261126/PACS/search_status.json'",
+  "completed": 0,
+  "space_size": 144,
+  "coverage": 0.0,
+  "best_iid": null,
+  "target": 0.86,
+  "gap_to_target": null
 }
