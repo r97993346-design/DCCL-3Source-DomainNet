@@ -1,0 +1,12 @@
+{
+  "fold": 1,
+  "domain": "Clipart",
+  "seed": 846366325,
+  "selected_step": 5000,
+  "source_val": 0.9286799002189783,
+  "iid": 0.7156357388316151,
+  "test_in": 0.7156357388316151,
+  "test_out": 0.7193585337915235,
+  "updates": 5001,
+  "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/OfficeHome/trials/trial_001/env1/attempt_001/raw/OfficeHome/261128_20-37-36_OfficeHome_trial1_fold1/results.jsonl"
+}
