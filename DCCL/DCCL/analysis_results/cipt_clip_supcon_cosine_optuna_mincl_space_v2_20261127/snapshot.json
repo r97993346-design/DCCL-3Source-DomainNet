@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_007/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 1200,
-              "test_in": 0.8341915550978373,
-              "test_out": 0.8865979381443299,
-              "train_out": 0.8784367529834052,
-              "eval_time": 4.356761932373047,
+              "step": 1500,
+              "test_in": 0.8367662203913491,
+              "test_out": 0.8845360824742268,
+              "train_out": 0.8780919639232244,
+              "eval_time": 4.364571571350098,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -67,11 +67,11 @@
             "path": "PACS/trials/trial_018/env0/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 1200,
-              "test_in": 0.9780353874313605,
-              "test_out": 0.9755501222493888,
+              "step": 1500,
+              "test_in": 0.9774252593044539,
+              "test_out": 0.9731051344743277,
               "train_out": 0.9841381312718891,
-              "eval_time": 1.535895824432373,
+              "eval_time": 1.4088795185089111,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -106,11 +106,11 @@
             "path": "VLCS/trials/trial_002/env3/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 300,
-              "test_in": 0.7216298552932217,
-              "test_out": 0.7103658536585366,
-              "train_out": 0.8805858966310943,
-              "eval_time": 2.9406445026397705,
+              "step": 600,
+              "test_in": 0.7692307692307693,
+              "test_out": 0.7621951219512195,
+              "train_out": 0.887047499476878,
+              "eval_time": 2.9387948513031006,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -121,5 +121,5 @@
       "stop_reason": null
     }
   },
-  "synced_at": "2026-11-28T12:57:25+08:00"
+  "synced_at": "2026-11-28T12:58:39+08:00"
 }
