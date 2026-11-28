@@ -11,7 +11,7 @@
       "prompt_length": 8,
       "initial_lr": 2e-05
     },
-    "target": "L100",
-    "completed_folds": 0
+    "target": "L38",
+    "completed_folds": 1
   }
 }
