@@ -2,3 +2,4 @@
   optuna_warn(
 [I 2026-11-28 23:01:03,471] A new study created in RDB with name: condcov_rd_crossdomain_cosine2e5_prompt4_final_motpe_20261128_VLCS
 {"time": "2026-11-28T23:01:03.619068+08:00", "event": "fold_started", "dataset": "VLCS", "trial": 0, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 113404008, "pid": 714504}
+{"time": "2026-11-29T00:04:18.502639+08:00", "event": "fold_started", "dataset": "VLCS", "trial": 0, "fold": 1, "updates": 5001, "gpu": 0, "mem_available_kib": 113168444, "pid": 734539}
