@@ -9,35 +9,9 @@
       "completed_folds": 30,
       "trial_states": {
         "COMPLETE": 7,
-        "RUNNING": 1
+        "FAIL": 1
       },
-      "running_trials": [
-        {
-          "trial_id": 7,
-          "params": {
-            "initial_lr": 3e-05,
-            "condcov_weight": 1.0,
-            "rd_weight": 1.0,
-            "contrastive_weight": 0.001,
-            "contrastive_mix": 0.0,
-            "prompt_length": 16
-          },
-          "completed_folds": 2,
-          "current_target": "Product",
-          "latest_attempt": {
-            "path": "OfficeHome/trials/trial_007/env2/attempt_001",
-            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {
-              "step": 1800,
-              "test_in": 0.9225788288288288,
-              "test_out": 0.9075535512965051,
-              "train_out": 0.873855587688485,
-              "eval_time": 8.060748815536499,
-              "eval_visual_cache_hit_splits": 8
-            }
-          }
-        }
-      ],
+      "running_trials": [],
       "gpu": 1,
       "budget": 648,
       "stop_reason": null
@@ -61,7 +35,7 @@
       "completed_folds": 12,
       "trial_states": {
         "COMPLETE": 3,
-        "INCOMPLETE": 1
+        "FAIL": 1
       },
       "running_trials": [],
       "gpu": 0,
@@ -69,5 +43,5 @@
       "stop_reason": "completed_trial_budget"
     }
   },
-  "synced_at": "2026-11-28T15:36:27+08:00"
+  "synced_at": "2026-11-28T15:41:53+08:00"
 }

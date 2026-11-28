@@ -52,7 +52,7 @@
   "completed_folds": 12,
   "trial_states": {
     "COMPLETE": 3,
-    "INCOMPLETE": 1
+    "FAIL": 1
   },
   "running_trials": []
 }
