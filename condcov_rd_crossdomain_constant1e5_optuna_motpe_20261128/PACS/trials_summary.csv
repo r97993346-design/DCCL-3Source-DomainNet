@@ -1,0 +1,2 @@
+trial,s_weight,condcov_weight,rd_weight,contrastive_weight,source_val,iid,test_out
+0,1.0,2.0,1.0,0.025,0.9875899622352833,0.9680657167441031,0.9688979010294398
