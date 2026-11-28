@@ -168,3 +168,24 @@ HParams:
 	cipt_causal_contrastive_weight: 0.05
 	cipt_contrastive_warmup_steps: 0
 	cipt_env_inference: e_only
+Dataset:
+	[VLCS] #envs=4, #classes=5
+	env0: CALTECH (#1415)
+	env1: LABELME (#2656)
+	env2: PASCAL (#3376)
+	env3: SUN (#3282)
+
+[37m[36mINFO[0m[0m 11/28 15:49:26 | checkpoint_freq = 300
+[37m[36mINFO[0m[0m 11/28 15:49:26 | Training budget: 5001 updates, including evaluation at the final step
+[37m[36mINFO[0m[0m 11/28 15:49:26 | Target test envs = [[0]]
+[37m[36mINFO[0m[0m 11/28 15:49:26 | 
+[37m[36mINFO[0m[0m 11/28 15:49:26 | Fold RNG: strategy=domainbed_sweep, test_envs=[0], seed=1141299501, hparams_seed=0, trial_seed=1
+[37m[36mINFO[0m[0m 11/28 15:51:09 | Testenv name escaping te_CALTECH -> te_CALTECH
+[37m[36mINFO[0m[0m 11/28 15:51:09 | Test envs = [0], name = te_CALTECH
+[37m[36mINFO[0m[0m 11/28 15:51:09 | Source sampling: domain_balanced
+[37m[36mINFO[0m[0m 11/28 15:51:09 | Batch sizes for each domain: [0, 32, 32, 32] (total=96)
+[37m[36mINFO[0m[0m 11/28 15:51:09 | steps-per-epoch for each domain: 66.41, 84.41, 82.06 -> min = 66.41
+[37m[36mINFO[0m[0m 11/28 15:51:09 | DataLoader workers: train=8 per source domain (24 total), eval=0 per loader
+[37m[36mINFO[0m[0m 11/28 15:52:16 | # of params = 151202305
+[37m[36mINFO[0m[0m 11/28 15:57:02 | test_in     test_out    train_in    train_out   tr_outloss  env0_in     env0_out    env1_in     env1_out    env2_in     env2_out    env3_in     env3_out    step        epoch       entropy_se  env_loss    env_mcc_lo  env_rd_los  env_center  env_mean_t  env_loss_w  env_topk    env_all_te  env_anchor  random_sel  env_rd_sel  env_loss_t  e_feature_  e_feature_  e_feature_  s_feature_  s_feature_  s_feature_  condcov_va  loss_condc  nbr_check   nbr_pur_v   nbr_pur_e   nbr_gap     nbr_cover   nbr_drop    cg_contras  cg_valid_a  cg_cross_d  cg_teacher  cg_teacher  cg_teacher  cg_active   nbr_wmean   nbr_wmax    prompt_sel  prompt_cou  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  prompt_sel  total_loss  loss_total  loss_e_cls  loss_s_uni  loss_rd     loss_clip_  ind_weight  cipt_base_  cipt_cls_l  cipt_de_lo  cipt_de_or  cipt_de_au  cipt_ind_l  causal_con  dccl_contr  contrastiv  contrastiv  pre_cl_los  reg_loss    mean_e_nor  mean_s_nor  mean_es_co  ablation_d  ablation_i  ablation_t  ablation_c  class_text  class_text  e_cls_loss  fused_cls_  s_uni_loss  env_kl_los  e_cls_w     fused_cls_  s_uni_w     env_kl_w    e_cls_term  fused_cls_  s_uni_term  env_kl_ter  env_shift   env_spread  env_l2_shi  env_spread  env_pred_a  sigm_activ  inference_  env_active  env_kl_act  fused_cls_  e_only_inf  step_time   actual_lr   optimizer_  scheduler_  eval_time   eval_visua  eval_visua 
+[37m[36mINFO[0m[0m 11/28 15:57:02 | 0.999117    0.996466    0.712052    0.713014    0.761330    0.999117    0.996466    0.646588    0.623352    0.818586    0.826667    0.670982    0.689024    0           0.000000    0.000000    0.501358    0.000000    0.501358    0.000000    0.000000    3.000000    80.000000   1.000000    1.000000    0.000000    0.000000    1.504073    0.001216    0.044177    0.000930    0.001216    0.044177    0.000930    5.000000    0.015184    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    4.921041    0.947917    21.670330   0.499102    2.975519    0.168028    1.000000    1.000000    1.000000    0.000000    80.000000   0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    4.034645    4.034645    0.729627    1.509342    0.501358    4.921041    3.000000    2.284520    0.729627    2.238969    2.238969    0.000000    0.000000    0.501358    4.921041    0.050000    0.947917    0.000000    0.000000    1.000000    1.000000    1.000000    1.000000    1.000000    0.000000    1.000000    0.000000    1.000000    0.729627    0.000000    1.509342    0.000000    1.000000    0.000000    1.000000    0.000000    0.729627    0.000000    1.509342    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    0.000000    1.000000    0.000000    0.000000    1.000000    1.930115    0.000010    1           0           283.902436  0           22058824   
