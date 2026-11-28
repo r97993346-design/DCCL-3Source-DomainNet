@@ -2,9 +2,9 @@
   "state": "running",
   "dataset": "PACS",
   "trial": 0,
-  "fold": 1,
-  "domain": "Cartoon",
+  "fold": 2,
+  "domain": "Photo",
   "gpu": 1,
-  "pid": 1865158,
+  "pid": 1932634,
   "controller_pid": 1796737
 }

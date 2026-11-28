@@ -4,3 +4,4 @@
 [I 2026-11-28 23:01:42,090] Using an existing study with name 'condcov_rd_crossdomain_cosine2e5_prompt4_final_motpe_20261128_PACS' instead of creating a new one.
 {"time": "2026-11-28T23:01:42.917484+08:00", "event": "fold_started", "dataset": "PACS", "trial": 0, "fold": 0, "gpu": 1, "pid": 1796886}
 {"time": "2026-11-28T23:24:06.378652+08:00", "event": "fold_started", "dataset": "PACS", "trial": 0, "fold": 1, "gpu": 1, "pid": 1865158}
+{"time": "2026-11-28T23:47:14.547818+08:00", "event": "fold_started", "dataset": "PACS", "trial": 0, "fold": 2, "gpu": 1, "pid": 1932634}
