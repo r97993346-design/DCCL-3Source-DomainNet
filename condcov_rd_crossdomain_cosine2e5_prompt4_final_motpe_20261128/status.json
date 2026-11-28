@@ -1,0 +1,15 @@
+{
+  "state": "running",
+  "dataset": "VLCS",
+  "gpu": 0,
+  "controller_pid": 714154,
+  "trial": 0,
+  "fold": 0,
+  "domain": "Caltech",
+  "params": {
+    "s_weight": 1.0,
+    "condcov_weight": 2.0,
+    "rd_weight": 1.0,
+    "contrastive_weight": 0.025
+  }
+}

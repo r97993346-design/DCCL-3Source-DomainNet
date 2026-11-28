@@ -1,0 +1,4 @@
+/root/miniconda3/envs/cipt/lib/python3.10/site-packages/optuna/_experimental.py:33: ExperimentalWarning: Argument ``multivariate`` is an experimental feature. The interface can change in the future.
+  optuna_warn(
+[I 2026-11-28 23:01:03,471] A new study created in RDB with name: condcov_rd_crossdomain_cosine2e5_prompt4_final_motpe_20261128_VLCS
+{"time": "2026-11-28T23:01:03.619068+08:00", "event": "fold_started", "dataset": "VLCS", "trial": 0, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 113404008, "pid": 714504}

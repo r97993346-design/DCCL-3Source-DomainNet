@@ -1,0 +1,8 @@
+{
+  "state": "PASS",
+  "workers": 8,
+  "gpu": 0,
+  "combinations": 144,
+  "last_adam_lr": 1.973131483756774e-12,
+  "final_scheduler_lr": 0.0
+}
