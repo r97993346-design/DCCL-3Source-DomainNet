@@ -83,12 +83,12 @@
         "path": "PACS/trials/trial_016/env0/attempt_001",
         "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
         "last_evaluation": {
-          "step": 0,
-          "test_in": 0.9341061622940817,
-          "test_out": 0.9364303178484108,
-          "train_out": 0.9545121852761351,
-          "eval_time": 83.42908096313477,
-          "eval_visual_cache_hit_splits": 0
+          "step": 300,
+          "test_in": 0.9701037217815741,
+          "test_out": 0.9657701711491442,
+          "train_out": 0.9810287259331845,
+          "eval_time": 1.4835188388824463,
+          "eval_visual_cache_hit_splits": 8
         }
       }
     }
