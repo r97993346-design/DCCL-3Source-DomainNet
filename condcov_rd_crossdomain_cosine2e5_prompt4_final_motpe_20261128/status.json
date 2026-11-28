@@ -2,9 +2,9 @@
   "state": "running",
   "dataset": "OfficeHome",
   "trial": 0,
-  "fold": 2,
-  "domain": "Product",
+  "fold": 3,
+  "domain": "Real World",
   "gpu": 0,
-  "pid": 2113119,
+  "pid": 2267649,
   "controller_pid": 1796740
 }

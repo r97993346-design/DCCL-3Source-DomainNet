@@ -5,3 +5,4 @@
 {"time": "2026-11-28T23:01:42.963479+08:00", "event": "fold_started", "dataset": "OfficeHome", "trial": 0, "fold": 0, "gpu": 0, "pid": 1796890}
 {"time": "2026-11-28T23:54:42.176583+08:00", "event": "fold_started", "dataset": "OfficeHome", "trial": 0, "fold": 1, "gpu": 0, "pid": 1955132}
 {"time": "2026-11-29T00:48:23.765077+08:00", "event": "fold_started", "dataset": "OfficeHome", "trial": 0, "fold": 2, "gpu": 0, "pid": 2113119}
+{"time": "2026-11-29T01:41:05.498837+08:00", "event": "fold_started", "dataset": "OfficeHome", "trial": 0, "fold": 3, "gpu": 0, "pid": 2267649}
