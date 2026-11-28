@@ -1,0 +1,25 @@
+{
+  "state": "running",
+  "dataset": "VLCS",
+  "planned_configurations": 31,
+  "complete_configurations": 0,
+  "case_id": "A00",
+  "stage": 0,
+  "params": {
+    "s_weight": 0.0,
+    "condcov_weight": 0.0,
+    "rd_weight": 0.0,
+    "contrastive_weight": 0.0
+  },
+  "fold": {
+    "trial_id": 0,
+    "params": {
+      "s_weight": 0.0,
+      "condcov_weight": 0.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    },
+    "target": "Caltech",
+    "completed_folds": 0
+  }
+}

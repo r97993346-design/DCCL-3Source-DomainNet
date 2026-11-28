@@ -1,0 +1,15 @@
+[
+  {
+    "id": "A00",
+    "number": 0,
+    "stage": 0,
+    "params": {
+      "s_weight": 0.0,
+      "condcov_weight": 0.0,
+      "rd_weight": 0.0,
+      "contrastive_weight": 0.0
+    },
+    "parent": null,
+    "state": "running"
+  }
+]
