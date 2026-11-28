@@ -1,13 +1,23 @@
 {
-  "state": "running_preserved_worker",
-  "trial": 2,
-  "fold": 0,
-  "worker_pid": 648248,
-  "controller_pid": 659181,
-  "params": {
-    "s_weight": 1.0,
-    "condcov_weight": 3.0,
-    "rd_weight": 3.0,
-    "contrastive_weight": 0.05
+  "state": "running",
+  "dataset": "VLCS",
+  "complete_trials": 0,
+  "searched_combinations": 0,
+  "remaining_combinations": 81,
+  "directions": [
+    "maximize",
+    "maximize"
+  ],
+  "gpu": 0,
+  "active": {
+    "trial_id": 2,
+    "params": {
+      "s_weight": 1.0,
+      "condcov_weight": 3.0,
+      "rd_weight": 3.0,
+      "contrastive_weight": 0.05
+    },
+    "target": "LabelMe",
+    "completed_folds": 1
   }
 }
