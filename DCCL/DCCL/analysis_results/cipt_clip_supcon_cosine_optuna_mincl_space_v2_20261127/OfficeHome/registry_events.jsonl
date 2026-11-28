@@ -6,3 +6,5 @@
 {"event": "registry_claim_confirmed", "trial": 5, "config_hash": "f5069aff302ef84138c18fe77e41d819b1fcb3111ccec756c4f6707a88411d24"}
 {"event": "registry_result_published", "trial": 5, "config_hash": "f5069aff302ef84138c18fe77e41d819b1fcb3111ccec756c4f6707a88411d24", "branch": "results/cipt-clip-supcon-cosine-optuna-mincl-space-v2-20261127", "path": "DCCL/DCCL/analysis_results/cipt_clip_supcon_cosine_optuna_mincl_space_v2_20261127/OfficeHome/trials/trial_005/registry_manifest.json"}
 {"event": "registry_claim_confirmed", "trial": 6, "config_hash": "a8bea0086e6835d62eb18eb8621141f21c4742081d4ca856132637525ff12db8"}
+{"event": "registry_retry_scheduled", "reason": "published result artifact not yet available", "retry_in_seconds": 20}
+{"event": "registry_claim_confirmed", "trial": 6, "config_hash": "a8bea0086e6835d62eb18eb8621141f21c4742081d4ca856132637525ff12db8"}
