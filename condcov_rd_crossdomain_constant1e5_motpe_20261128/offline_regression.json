@@ -1,0 +1,42 @@
+[
+  {
+    "attempt": "/root/autodl-tmp/outputs/condcov_rd_crossdomain_constant1e5_motpe_20261128/VLCS/VLCS/trials/trial_000/env0/attempt_003",
+    "status": "PASS",
+    "fold": 0,
+    "selected_step": 3900,
+    "source_val": 0.8455240789225218,
+    "iid": 0.9982332155477032
+  },
+  {
+    "attempt": "/root/autodl-tmp/outputs/condcov_rd_crossdomain_constant1e5_motpe_20261128/VLCS/VLCS/trials/trial_000/env0/attempt_004",
+    "status": "PASS",
+    "fold": 0,
+    "selected_step": 3900,
+    "source_val": 0.8455240789225218,
+    "iid": 0.9982332155477032
+  },
+  {
+    "attempt": "/root/autodl-tmp/outputs/condcov_rd_crossdomain_constant1e5_motpe_20261128/VLCS/VLCS/trials/trial_001/env0/attempt_001",
+    "status": "PASS",
+    "fold": 0,
+    "selected_step": 3900,
+    "source_val": 0.8455240789225218,
+    "iid": 0.9982332155477032
+  },
+  {
+    "attempt": "/root/autodl-tmp/outputs/condcov_rd_crossdomain_constant1e5_motpe_20261128/VLCS/VLCS/trials/trial_001/env0/attempt_002",
+    "status": "PASS",
+    "fold": 0,
+    "selected_step": 3900,
+    "source_val": 0.8455240789225218,
+    "iid": 0.9982332155477032
+  },
+  {
+    "attempt": "/root/autodl-tmp/outputs/condcov_rd_crossdomain_constant1e5_motpe_20261128/VLCS/VLCS/trials/trial_002/env0/attempt_001",
+    "status": "PASS",
+    "fold": 0,
+    "selected_step": 3900,
+    "source_val": 0.8455240789225218,
+    "iid": 0.9982332155477032
+  }
+]
