@@ -1,0 +1,18 @@
+{
+  "Art": {
+    "files": 2427,
+    "sha256": "4fc23705471eb9ce259fccae5b70cac9bb814571b1cdf3173b3502541aaff921"
+  },
+  "Clipart": {
+    "files": 4365,
+    "sha256": "c974098b8aa68303e7a3eedbd1d18eaa926359cf14490a201de18bc6f07eb479"
+  },
+  "Product": {
+    "files": 4439,
+    "sha256": "d0e85ff7e43cc553bacbb4c14425271df2674846fce9556efc1457dbc95274ba"
+  },
+  "RealWorld": {
+    "files": 4357,
+    "sha256": "fa24b0066c5286906f707984c4c5b7994a8434496558ae3c760b8fb7792d120d"
+  }
+}

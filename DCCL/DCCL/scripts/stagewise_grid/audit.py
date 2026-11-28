@@ -16,13 +16,13 @@ with tempfile.TemporaryDirectory() as temp:
         visited.append(c["id"])
         v=.65+.03*c["params"]["s_weight"]+.005*c["params"]["condcov_weight"]-.01*c["params"]["rd_weight"]-.2*c["params"]["contrastive_weight"]
         folds=[dict(fold=i,domain=n,source_val=v-i*.01,iid=.99,test_in=.99,test_out=.99)
-               for i,n in enumerate(("Caltech","LabelMe","Pascal","SUN"))]
+               for i,n in enumerate(("Art","Clipart","Product","Real World"))]
         c.update(state="complete",result=dict(source_val=sum(f["source_val"] for f in folds)/4,
                  worst_fold_source_val=min(f["source_val"] for f in folds),
                  iid=.99,test_in=.99,test_out=.99,elapsed_seconds=0,folds=folds))
         grid.save()
     grid.execute=simulate
-    grid.completed_motpe=lambda:[]
+    grid.VLCS_REPORT=Path(temp)/"vlcs_reference.json"
     class Finished(Exception):pass
     grid.time.sleep=lambda _:(_ for _ in ()).throw(Finished())
     for _ in range(2):

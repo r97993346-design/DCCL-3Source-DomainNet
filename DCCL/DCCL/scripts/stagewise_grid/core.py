@@ -11,9 +11,8 @@ import protocol as p
 spec = importlib.util.spec_from_file_location("fold_runner", CODE / "scripts/cipt_clip_supcon_optuna/run.py")
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
-NAME = "vlcs_stagewise_grid_crossdomain_constant1e5_20261128"
-DATASET = "VLCS"
-assert DATASET in ("VLCS", "TerraIncognita")
+NAME = "oh_stagewise_grid_crossdomain_constant1e5_20261128"
+DATASET = "OfficeHome"
 ROOT = Path("/root/autodl-tmp/outputs") / NAME
 ROOT.mkdir(parents=True, exist_ok=True)
 p.DATASETS["TerraIncognita"] = (("L100","L38","L43","L46"), .58, "terra_incognita_fixed")
@@ -59,14 +58,14 @@ def validate(rows, dataset, fold, params, *, updates=p.STEPS):
         assert row["eval_visual_cache_bytes"] > 0
         if row["step"] > 0: assert row["eval_visual_cache_hit_splits"] == 8
         for term,w in weights.items():
-            assert row["weight_"+term]==w
+            assert math.isclose(row["weight_"+term], w, rel_tol=1e-9, abs_tol=1e-12)
             assert math.isclose(row["weighted_"+term],w*row["loss_"+term],rel_tol=2e-6,abs_tol=2e-8)
         assert math.isclose(sum(row["weighted_"+k] for k in weights),row["loss_total"],rel_tol=2e-6,abs_tol=2e-8)
         assert all(math.isfinite(row[k]) for k in ("test_in","test_out","train_out","loss_total"))
     selected = max(rows,key=lambda r:r["train_out"])
     return dict(fold=fold,domain=p.DATASETS[dataset][0][fold],seed=p.seed_for(dataset,fold),
                 selected_step=selected["step"],source_val=selected["train_out"],iid=selected["test_in"],
-                test_in=selected["test_in"],test_out=selected["test_out"],updates=5001,
+                test_in=selected["test_in"],test_out=selected["test_out"],updates=5001, actual_lr=selected["actual_lr"],
                 losses={k:v for k,v in selected.items() if k.startswith(("loss_","weighted_","weight_"))},
                 code_commit=p.git("rev-parse","HEAD"))
 

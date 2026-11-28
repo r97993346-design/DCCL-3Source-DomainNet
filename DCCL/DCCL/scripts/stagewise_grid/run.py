@@ -1,10 +1,7 @@
-"""Twenty-five serial VLCS configurations with deterministic Pareto stage selection."""
+"""Twenty-five serial OfficeHome configurations with deterministic Pareto stage selection."""
 import fcntl
-import hashlib
 import json
-import math
 import os
-import sqlite3
 import subprocess
 import time
 from pathlib import Path
@@ -13,7 +10,7 @@ from statistics import mean
 import core
 p, runner = core.p, core.runner
 ROOT, NAME, DATASET = core.ROOT, core.NAME, core.DATASET
-MOTPE = Path("/root/autodl-tmp/outputs/condcov_rd_crossdomain_constant1e5_motpe_20261128/VLCS")
+VLCS_REPORT = ROOT.parent / "vlcs_stagewise_grid_crossdomain_constant1e5_20261128" / "cases.json"
 KEYS = ("s_weight","condcov_weight","rd_weight","contrastive_weight")
 CODE = core.CODE
 
@@ -112,44 +109,12 @@ def retry_fold(root,dataset,fold,number,config,gpu,env,lock_fd,*,updates=p.STEPS
             time.sleep(60)
 runner.run_fold=retry_fold
 
-def completed_motpe():
-    db=MOTPE/"optuna.db"
-    if not db.exists(): return []
-    with sqlite3.connect(f"file:{db}?mode=ro",uri=True) as con:
-        rows=con.execute("""SELECT t.number, a.value_json, h.value_json
-           FROM trials t
-           JOIN trial_user_attributes a ON a.trial_id=t.trial_id AND a.key='result'
-           JOIN trial_user_attributes h ON h.trial_id=t.trial_id AND h.key='effective_hparams'
-           WHERE t.state='COMPLETE'""").fetchall()
-    return [dict(trial=n,result=json.loads(r),hparams=json.loads(h)) for n,r,h in rows]
-
-def same_training_implementation():
-    original=Path("/root/autodl-tmp/motpe-code/DCCL/DCCL")
-    files=[Path("train_all.py"),*sorted(Path("domainbed").rglob("*.py"))]
-    return all((CODE/f).read_bytes()==(original/f).read_bytes() for f in files)
-
-def reuse(c):
-    if not same_training_implementation(): return None
-    for old in completed_motpe():
-        if old["hparams"]!=core.hp(c["params"]): continue
-        result=old["result"]
-        folds=result.get("folds",[])
-        if len(folds)!=4: continue
-        for f in folds:
-            core.read_attempt(Path(f["log"]).parents[3],DATASET,f["fold"],c["params"])
-        c["reused_from"]=dict(experiment=str(MOTPE),trial=old["trial"])
-        decision(f"Reused exact matching completed MOTPE trial {old['trial']} for {c['id']}.")
-        return result
-    return None
-
 def execute(c,lock):
     if c["state"]=="complete": return
     active.update(case_id=c["id"],stage=c["stage"],params=c["params"])
     c["state"]="running";save();resources()
-    result=reuse(c)
-    if result is None:
-        result=runner.finish_trial(ROOT/DATASET,DATASET,None,c["number"],c["params"],0,
-                                  runner.environment_for("GPU-97473323-921d-3883-586d-1a0230891c12"),lock.fileno())
+    result=runner.finish_trial(ROOT/DATASET,DATASET,None,c["number"],c["params"],0,
+                              runner.environment_for("GPU-97473323-921d-3883-586d-1a0230891c12"),lock.fileno())
     assert "error" not in result and [f["fold"] for f in result["folds"]]==list(range(4))
     result["worst_fold_source_val"]=min(f["source_val"] for f in result["folds"])
     result["full_hparams"]=core.hp(c["params"])
@@ -194,17 +159,18 @@ def stage_report(stage,pool,selected):
 def final_comparison():
     pool=[c for c in cases if c["stage"]==3 or c["id"] in p.read_json(ROOT/"stage_selections.json")["2"]]
     stage_report(3,pool,select(pool,len(pool)))
-    old=completed_motpe()
-    text=["# Stagewise grid and joint MOTPE comparison","",f"The full grid completed {len(cases)} configurations across four target domains each.",
-          f"The joint MOTPE has {len(old)} completed configurations at this snapshot.",""]
+    text=["# OfficeHome and VLCS stagewise grids", "",
+          "The two datasets have separate source-validation rankings. Compare selected weights and stage-to-stage changes within each dataset.", ""]
     best=select(pool,1)[0]
-    text.append(f"Grid source-validation leader {best['id']}, mean source_val={best['result']['source_val']:.6f}, minimum source_val={best['result']['worst_fold_source_val']:.6f}.")
-    if old:
-        leader=max(old,key=lambda x:(x["result"]["source_val"],x["result"]["worst_fold_source_val"]))
-        text.append(f"MOTPE source-validation leader T{leader['trial']}, mean source_val={leader['result']['source_val']:.6f}, minimum source_val={leader['result']['worst_fold_source_val']:.6f}.")
-        text.append("The joint MOTPE search uses positive RD and CL coefficients. The grid also includes zero-weight controls, so compare the matched configurations alongside each search's source-validation Pareto front.")
-    else:
-        text.append("MOTPE has no complete four-fold result yet. This report refreshes while its independent search continues.")
+    r=best["result"]
+    text.append(f"OfficeHome leader {best['id']} {best['params']}, source mean {r['source_val']:.6f}, source minimum {r['worst_fold_source_val']:.6f}.")
+    if VLCS_REPORT.is_file():
+        vlcs=[c for c in p.read_json(VLCS_REPORT) if c["state"]=="complete"]
+        if vlcs:
+            leader=select(vlcs,1)[0]
+            r=leader["result"]
+            text.append(f"VLCS leader among {len(vlcs)} completed cases {leader['id']} {leader['params']}, source mean {r['source_val']:.6f}, source minimum {r['worst_fold_source_val']:.6f}.")
+    text.append("School OfficeHome MOTPE is a follow-up comparison once its four-fold results and training protocol are available.")
     p.write_text(ROOT/"final_comparison.md","\n".join(text)+"\n")
 
 def ensure_cases(new):
@@ -218,7 +184,7 @@ def ensure_cases(new):
 def main():
     global cases
     protocol=dict(name=NAME,dataset=DATASET,base_training=core.hp(params(0,0)),fixed_args=p.FIXED_ARGS,
-                  evaluation_cache=True,seed_strategy="DomainBed per-target hash",fold_seeds=[p.seed_for(DATASET,i) for i in range(4)],
+                  evaluation_cache=True,iid_reference=.86,seed_strategy="DomainBed per-target hash",fold_seeds=[p.seed_for(DATASET,i) for i in range(4)],
                   updates=5001,final_update_index=5000,check=300,lr=1e-5,lr_schedule="constant",
                   model_implementation_reference="condcov_rd_crossdomain_constant1e5_motpe_20261128",
                   stages={"0":1,"1":9,"2":9,"3":6},planned_configurations=25,planned_folds=100,
