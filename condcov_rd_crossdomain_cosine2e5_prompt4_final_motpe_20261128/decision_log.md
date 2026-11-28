@@ -1,0 +1,1 @@
+Trial 0 complete with objectives [0.8887062714671403, 0.8243501465158122].
