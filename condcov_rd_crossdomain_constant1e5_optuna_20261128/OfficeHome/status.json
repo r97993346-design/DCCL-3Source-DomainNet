@@ -1,0 +1,14 @@
+{
+  "state": "RUNNING",
+  "gpu": 0,
+  "trial": 0,
+  "params": {
+    "s_weight": 1.0,
+    "condcov_weight": 1.0,
+    "rd_weight": 1.0,
+    "contrastive_weight": 0.05
+  },
+  "fold": 0,
+  "completed_folds": 0,
+  "pid": 422464
+}
