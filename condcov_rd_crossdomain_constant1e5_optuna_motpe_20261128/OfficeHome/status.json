@@ -1,5 +1,5 @@
 {
-  "state": "RUNNING",
+  "state": "stopped_for_final_motpe",
   "gpu": 0,
   "trial": 1,
   "params": {
@@ -10,5 +10,6 @@
   },
   "fold": 3,
   "completed_folds": 3,
-  "pid": 1679545
+  "pid": 1679545,
+  "stop_reason": "requested protocol cutover"
 }
