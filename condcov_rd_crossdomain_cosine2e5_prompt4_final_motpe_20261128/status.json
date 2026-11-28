@@ -4,8 +4,8 @@
   "gpu": 0,
   "controller_pid": 714357,
   "trial": 0,
-  "fold": 1,
-  "domain": "L38",
+  "fold": 2,
+  "domain": "L43",
   "params": {
     "s_weight": 1.0,
     "condcov_weight": 2.0,
