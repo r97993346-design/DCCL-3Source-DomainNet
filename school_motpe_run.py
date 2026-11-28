@@ -96,7 +96,7 @@ def run(ds,gpu):
         first={'s_weight':1.,'condcov_weight':2. if ds=='PACS' else 1.,'rd_weight':1.,'contrastive_weight':.025 if ds=='PACS' else .05}
         if not study.trials:study.enqueue_trial(first)
         reports(study,root,ds)
-        write(root/'protocol.json',dict(name=NAME,dataset=ds,space=SPACE,combinations=81,gpu=gpu,fixed_hparams=hp(first),steps=5001,checkpoint_freq=300,trial_seed=1,source_selection='earliest_max_source_val',objective=['mean_four_fold_source_val','mean_four_fold_target_iid_at_source_selected_checkpoint'],evaluation_mode='MOTPE / Oracle Exploration',directions=['maximize','maximize'],num_workers=2,eval_num_workers=0,registry=False,target_iid=p.DATASETS[ds][1],target_policy='stop_on_completed_four_fold_mean_iid_user_authorized',sampler=dict(type='TPESampler',seed=42,n_startup_trials=5,n_ei_candidates=24,multivariate=False),training_commit=p.git('rev-parse','HEAD',cwd=CODE)))
+        write(root/'protocol.json',dict(name=NAME,dataset=ds,space=SPACE,combinations=81,gpu=gpu,fixed_hparams=hp(first),steps=5001,checkpoint_freq=300,trial_seed=1,source_selection='earliest_max_source_val',objective=['mean_four_fold_source_val','mean_four_fold_target_iid_at_source_selected_checkpoint'],evaluation_mode='MOTPE / Oracle Exploration',directions=['maximize','maximize'],num_workers=(4 if ds=="OfficeHome" else 2),eval_num_workers=0,registry=False,target_iid=p.DATASETS[ds][1],target_policy='stop_on_completed_four_fold_mean_iid_user_authorized',sampler=dict(type='TPESampler',seed=42,n_startup_trials=5,n_ei_candidates=24,multivariate=False),training_commit=p.git('rev-parse','HEAD',cwd=CODE)))
         threading.Thread(target=pulse,daemon=True).start()
         while True:
             reached=[t for t in study.trials if t.state==TrialState.COMPLETE and t.user_attrs.get('result',{}).get('iid',0)>=p.DATASETS[ds][1]]
@@ -135,6 +135,7 @@ def run(ds,gpu):
                     args=p.command(ds,fold,trial.number,folder/'config.json',attempt/'raw',attempt/'learning_rates.jsonl')
                     args[3]=str(BASE/'school_constant_instrument.py')
                     args+=['--cipt_cache_eval_visual']
+                    if ds=="OfficeHome":args[args.index("--num_workers")+1]="4"
                     wrapper=attempt/'command.sh'
                     wrapper.write_text('#!/bin/bash\ncd '+shlex.quote(str(CODE))+'\n'+shlex.join(args)+'\nrc=$?\necho "$rc" > '+shlex.quote(str(attempt/'exit_code'))+'\nexit "$rc"\n')
                     with (attempt/'console.log').open('wb') as log:
