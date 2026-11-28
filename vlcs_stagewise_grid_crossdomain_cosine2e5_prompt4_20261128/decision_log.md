@@ -1,0 +1,1 @@
+2026-11-29 02:14:02 Completed A00, mean source_val=0.8897173929131005, minimum source_val=0.8485861033280766.
