@@ -28,11 +28,11 @@
             "path": "OfficeHome/trials/trial_007/env2/attempt_001",
             "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
             "last_evaluation": {
-              "step": 900,
-              "test_in": 0.9239864864864865,
-              "test_out": 0.915445321307779,
-              "train_out": 0.869041960871473,
-              "eval_time": 7.761118173599243,
+              "step": 1200,
+              "test_in": 0.923704954954955,
+              "test_out": 0.9143179255918827,
+              "train_out": 0.8730182026689182,
+              "eval_time": 8.017215967178345,
               "eval_visual_cache_hit_splits": 8
             }
           }
@@ -56,37 +56,18 @@
       "stop_reason": "completed_trial_budget"
     },
     "VLCS": {
-      "state": "waiting_for_registry",
+      "state": "complete",
       "completed_trials": 3,
       "completed_folds": 12,
       "trial_states": {
         "COMPLETE": 3,
-        "RUNNING": 1
+        "INCOMPLETE": 1
       },
-      "running_trials": [
-        {
-          "trial_id": 3,
-          "params": {
-            "initial_lr": 7.5e-06,
-            "condcov_weight": 0.5,
-            "rd_weight": 3.0,
-            "contrastive_weight": 0.001,
-            "contrastive_mix": 0.0,
-            "prompt_length": 8
-          },
-          "completed_folds": 0,
-          "current_target": null,
-          "latest_attempt": {
-            "path": "VLCS/trials/trial_003/env0/attempt_002",
-            "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
-            "last_evaluation": {}
-          }
-        }
-      ],
+      "running_trials": [],
       "gpu": 0,
       "budget": 3,
-      "stop_reason": "reservation update unconfirmed"
+      "stop_reason": "completed_trial_budget"
     }
   },
-  "synced_at": "2026-11-28T15:29:26+08:00"
+  "synced_at": "2026-11-28T15:31:11+08:00"
 }
