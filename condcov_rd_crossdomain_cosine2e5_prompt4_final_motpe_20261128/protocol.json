@@ -110,5 +110,5 @@
     "timing": "Adam then scheduler"
   },
   "eval_cache": true,
-  "training_commit": "c914f4b90e305071dfa9d734f92c3a2b6275a0bb"
+  "training_commit": "5ca97abf3fc89bce0d24db493007e9cc2281a38b"
 }
