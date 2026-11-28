@@ -487,7 +487,7 @@ class CIPTDCCL(_BaseCIPTDCCL):
             name = "original_ind" if self.ind_mode == "original" else self.ind_mode
             ind_metrics[f"loss_{name}"] = ind_value
         supcon_metrics = {}
-        if self.contrastive_type == "clip_guided_supcon" and anchor_mode:
+        if self.contrastive_type in ("clip_guided_supcon", "clip_guided_cross_domain") and anchor_mode:
             components = {
                 "e_cls": (e_value, self.e_cls_weight), "s_uniform": (s_value, self.s_uniform_weight),
                 "condcov": (ind_value, self.ind_weight), "rd": (anchor_metrics.get("env_rd_loss", 0.0), self.env_loss_weight),
