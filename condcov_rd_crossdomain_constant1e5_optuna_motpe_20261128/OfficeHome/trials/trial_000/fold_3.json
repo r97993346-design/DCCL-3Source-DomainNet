@@ -1,0 +1,12 @@
+{
+  "fold": 3,
+  "domain": "Real World",
+  "seed": 728627790,
+  "selected_step": 4800,
+  "source_val": 0.8849901401302509,
+  "iid": 0.9185312679288583,
+  "test_in": 0.9185312679288583,
+  "test_out": 0.8955223880597015,
+  "updates": 5001,
+  "log": "/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/outputs/OfficeHome/trials/trial_000/env3/attempt_001/raw/OfficeHome/261128_18-55-42_OfficeHome_trial0_fold3/results.jsonl"
+}
