@@ -12,3 +12,5 @@
 {"time": "2026-11-28T18:50:21.483891+08:00", "event": "fold_started", "dataset": "VLCS", "trial": 1, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 115207468, "pid": 616589}
 {"time": "2026-11-28T19:34:05.104256+08:00", "event": "fold_failed", "dataset": "VLCS", "trial": 1, "fold": 0, "error": "Completed attempt failed protocol validation", "log": "/root/autodl-tmp/outputs/condcov_rd_crossdomain_constant1e5_motpe_20261128/VLCS/VLCS/trials/trial_001/env0/attempt_002"}
 {"time": "2026-11-28T19:35:05.342207+08:00", "event": "fold_started", "dataset": "VLCS", "trial": 2, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 115116264, "pid": 631415}
+{"time": "2026-11-28T20:22:33.840303+08:00", "event": "fold_failed", "dataset": "VLCS", "trial": 2, "fold": 0, "error": "Completed attempt failed protocol validation", "log": "/root/autodl-tmp/outputs/condcov_rd_crossdomain_constant1e5_motpe_20261128/VLCS/VLCS/trials/trial_002/env0/attempt_001"}
+{"time": "2026-11-28T20:23:33.844994+08:00", "event": "fold_started", "dataset": "VLCS", "trial": 2, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 115121048, "pid": 648246}
