@@ -94,6 +94,12 @@ def read_attempt(attempt,dataset,fold,params,*,updates=p.STEPS):
     assert "ADAM_UPDATES 5001 CONSTANT_LR 1e-5 SCHEDULER_UPDATES 0" in (attempt/"console.log").read_text()
     return dict(result,log=str(logs[0]),learning_rates=str(attempt/"learning_rates.jsonl"),
                 elapsed_seconds=float((attempt/"elapsed_seconds").read_text()))
+verified_read_attempt = read_attempt
+def read_attempt(*args, **kwargs):
+    try:
+        return verified_read_attempt(*args, **kwargs)
+    except AssertionError as exc:
+        raise ValueError("Completed attempt failed protocol validation") from exc
 runner.read_attempt = read_attempt
 
 def key(params):
@@ -166,6 +172,18 @@ def main():
             complete={key(t.params) for t in study.trials if t.state==TrialState.COMPLETE}
             if len(complete)==81:
                 summaries(study,"space_exhausted")
+                sensitivity = []
+                for name, choices in SPACE.items():
+                    for value in choices:
+                        trials = [t for t in study.trials if t.state == TrialState.COMPLETE and t.params[name] == value]
+                        sensitivity.append(dict(parameter=name, value=value, complete=len(trials),
+                            mean_source_val=mean(t.values[0] for t in trials),
+                            mean_worst_fold_source_val=mean(t.values[1] for t in trials)))
+                p.write_json(ROOT/"parameter_sensitivity.json", sensitivity)
+                p.write_text(ROOT/"next_stage_analysis.md",
+                    "All 81 combinations are complete. Review parameter_sensitivity.json and the selected-fold raw and weighted losses in trials_summary.csv. "
+                    "Compare source-validation responses to S, CondCov, RD and CL, and identify weak source-validation folds. "
+                    "Any wider range or architectural change requires approval. Target IID is a research reference only.\n")
                 log("All 81 legal combinations complete. Inspect loss and parameter sensitivity before proposing a new approved space.")
                 return
             active=study.get_trials(states=(TrialState.RUNNING,))

@@ -15,7 +15,7 @@ REMOTE = "https://github.com/r97993346-design/DCCL-3Source-DomainNet.git"
 WORK = ROOT / ".github-sync"
 TOP = {"protocol.json", "snapshot.json", "fixed_trials.json", "search_space.json",
        "trials_summary.csv", "folds_summary.csv", "best_source_val.json", "best_iid.json",
-       "best_test_out.json", "target_reached.json", "status.json", "controller.log", "pareto_front.csv", "pareto_front.json", "best_worst_fold_source_val.json", "decision_log.md"}
+       "best_test_out.json", "target_reached.json", "status.json", "controller.log", "pareto_front.csv", "pareto_front.json", "best_worst_fold_source_val.json", "decision_log.md", "parameter_sensitivity.json", "next_stage_analysis.md"}
 TRIAL = {"config.json", "result.json", "results.jsonl", "learning_rates.jsonl",
          "console.log", "log.txt", "elapsed_seconds", "exit_code", "failure.json"}
 SECRET = re.compile(rb"gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|-----BEGIN [A-Z ]*PRIVATE KEY-----")
