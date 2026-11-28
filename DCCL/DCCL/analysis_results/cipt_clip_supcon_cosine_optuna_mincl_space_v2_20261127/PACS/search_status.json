@@ -16,8 +16,8 @@
       "contrastive_mix": 0.75,
       "prompt_length": 8
     },
-    "target": "Art Painting",
-    "completed_folds": 0
+    "target": "Photo",
+    "completed_folds": 2
   },
   "stop_reason": null,
   "iid_reference_target": 0.975,
@@ -78,7 +78,7 @@
         "prompt_length": 8
       },
       "completed_folds": 3,
-      "current_target": "Art Painting",
+      "current_target": "Photo",
       "latest_attempt": null
     }
   ]
