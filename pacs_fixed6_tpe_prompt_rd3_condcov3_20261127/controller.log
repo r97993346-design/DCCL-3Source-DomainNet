@@ -296,3 +296,7 @@ Registry operation delayed: CalledProcessError: Command '['git', '-c', 'core.hoo
  1 file changed, 35 insertions(+)
 fatal: unable to access 'https://github.com/r97993346-design/DCCL-3Source-DomainNet.git/': GnuTLS recv error (-110): The TLS connection was non-properly terminated.
 Registry operation delayed: CalledProcessError: Command '['git', '-c', 'core.hooksPath=/dev/null', '-C', '/root/autodl-tmp/outputs/pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/.github-sync', 'push', 'origin', 'HEAD:refs/heads/results/pacs-fixed6-tpe-prompt-rd3-condcov3-20261127']' returned non-zero exit status 128.
+[results/pacs-fixed6-tpe-prompt-rd3-condcov3-20261127 550ed67] Update PACS fixed-six study records
+ 1 file changed, 4 insertions(+)
+fatal: unable to access 'https://github.com/r97993346-design/DCCL-3Source-DomainNet.git/': Failed to connect to github.com port 443 after 130418 ms: Connection timed out
+Registry operation delayed: CalledProcessError: Command '['git', '-c', 'core.hooksPath=/dev/null', '-C', '/root/autodl-tmp/outputs/pacs_fixed6_tpe_prompt_rd3_condcov3_20261127/.github-sync', 'push', 'origin', 'HEAD:refs/heads/results/pacs-fixed6-tpe-prompt-rd3-condcov3-20261127']' returned non-zero exit status 128.
