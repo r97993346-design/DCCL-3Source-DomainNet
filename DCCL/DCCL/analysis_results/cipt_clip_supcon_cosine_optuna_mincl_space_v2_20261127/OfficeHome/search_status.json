@@ -16,8 +16,8 @@
       "contrastive_mix": 0.0,
       "prompt_length": 16
     },
-    "target": "Clipart",
-    "completed_folds": 1
+    "target": "Product",
+    "completed_folds": 2
   },
   "stop_reason": null,
   "iid_reference_target": 0.86,
@@ -78,7 +78,7 @@
         "prompt_length": 16
       },
       "completed_folds": 2,
-      "current_target": "Clipart",
+      "current_target": "Product",
       "latest_attempt": {
         "path": "OfficeHome/trials/trial_007/env2/attempt_001",
         "training_code_commit": "64de616d5c08d0b9ea5731d1eaf59b4dd52be5c1",
