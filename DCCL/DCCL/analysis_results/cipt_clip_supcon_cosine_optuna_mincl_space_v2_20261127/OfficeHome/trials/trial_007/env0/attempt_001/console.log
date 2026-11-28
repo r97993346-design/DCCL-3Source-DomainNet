@@ -188,3 +188,4 @@ Dataset:
 [36mINFO[0m 11/28 12:19:08 | Batch sizes for each domain: [0, 32, 32, 32] (total=96)
 [36mINFO[0m 11/28 12:19:08 | steps-per-epoch for each domain: 109.12, 111.00, 108.94 -> min = 108.94
 [36mINFO[0m 11/28 12:19:08 | DataLoader workers: train=2 per source domain (6 total), eval=0 per loader
+PROMPT_CONTEXT_LENGTH 16
