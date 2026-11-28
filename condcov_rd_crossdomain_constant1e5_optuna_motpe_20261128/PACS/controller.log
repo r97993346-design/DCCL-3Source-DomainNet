@@ -1,3 +1,4 @@
 [I 2026-11-28 15:40:10,830] A new study created in RDB with name: condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128_PACS
 /media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/school_motpe_run.py:95: ExperimentalWarning: optuna.study.study.Study.set_metric_names is experimental (supported from v3.2.0). The interface can change in the future.
   study.set_metric_names(['source_val_mean','target_iid_mean'])
+RESULT_SYNC_RETRY Command '['git', '-C', '/media/hooasia/data/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128/publication', 'push', 'git@github.com:r97993346-design/DCCL-3Source-DomainNet.git', 'HEAD:refs/heads/results/condcov_rd_crossdomain_constant1e5_optuna_motpe_20261128']' timed out after 60 seconds
