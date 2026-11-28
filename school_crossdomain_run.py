@@ -51,7 +51,7 @@ def validate(attempt,ds,fold,v):
     for x in data:
         assert all(x['hparams'].get(k)==a for k,a in hp(v).items())
         assert x['args']['seed']==p.seed_for(ds,fold) and x['e_only_infer']==1
-        assert x['contrastive_weight_eff']==v['contrastive_weight'] and x['ind_weight']==v['condcov_weight']
+        assert math.isclose(x['contrastive_weight_eff'],v['contrastive_weight'],abs_tol=1e-12) and math.isclose(x['ind_weight'],v['condcov_weight'],abs_tol=1e-12)
         expected=x['loss_e_cls']+v['s_weight']*x['loss_s_uniform']+v['condcov_weight']*x['loss_condcov']+v['rd_weight']*x['loss_rd']+v['contrastive_weight']*x['loss_clip_contrast']
         assert math.isclose(x['loss_total'],expected,rel_tol=2e-6,abs_tol=2e-7)
     best=max(data,key=lambda x:x['train_out'])
