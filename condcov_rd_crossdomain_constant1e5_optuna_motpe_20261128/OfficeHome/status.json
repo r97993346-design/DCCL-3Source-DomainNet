@@ -8,7 +8,7 @@
     "rd_weight": 2.0,
     "contrastive_weight": 0.05
   },
-  "fold": 2,
-  "completed_folds": 2,
-  "pid": 1521983
+  "fold": 3,
+  "completed_folds": 3,
+  "pid": 1679545
 }
