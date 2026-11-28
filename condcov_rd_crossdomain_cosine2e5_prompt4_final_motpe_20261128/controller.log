@@ -8,3 +8,4 @@
 {"time": "2026-11-29T01:41:05.498837+08:00", "event": "fold_started", "dataset": "OfficeHome", "trial": 0, "fold": 3, "gpu": 0, "pid": 2267649}
 {"time": "2026-11-29T02:27:48.707772+08:00", "event": "fold_started", "dataset": "OfficeHome", "trial": 1, "fold": 0, "gpu": 0, "pid": 2409378}
 {"time": "2026-11-29T03:18:53.337314+08:00", "event": "fold_started", "dataset": "OfficeHome", "trial": 1, "fold": 1, "gpu": 0, "pid": 2560734}
+{"time": "2026-11-29T04:10:51.693569+08:00", "event": "fold_started", "dataset": "OfficeHome", "trial": 1, "fold": 2, "gpu": 0, "pid": 2713610}
