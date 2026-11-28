@@ -2,3 +2,5 @@
 {"time": "2026-11-28T15:46:19.009970+08:00", "event": "fold_started", "dataset": "TerraIncognita", "trial": 0, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 114263088, "pid": 547631}
 [I 2026-11-28 15:47:43,700] Using an existing study with name 'condcov_rd_crossdomain_constant1e5_motpe_20261128_TerraIncognita' instead of creating a new one.
 {"time": "2026-11-28T15:47:43.835500+08:00", "event": "fold_started", "dataset": "TerraIncognita", "trial": 0, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 114373324, "pid": 548381}
+[I 2026-11-28 15:59:11,743] Using an existing study with name 'condcov_rd_crossdomain_constant1e5_motpe_20261128_TerraIncognita' instead of creating a new one.
+{"time": "2026-11-28T15:59:11.880424+08:00", "event": "fold_started", "dataset": "TerraIncognita", "trial": 0, "fold": 0, "updates": 5001, "gpu": 0, "mem_available_kib": 114493816, "pid": 557172}
