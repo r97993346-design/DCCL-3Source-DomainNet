@@ -15,7 +15,7 @@ REMOTE = "https://github.com/r97993346-design/DCCL-3Source-DomainNet.git"
 WORK = ROOT / ".github-sync"
 TOP = {"protocol.json", "snapshot.json", "fixed_trials.json", "search_space.json",
        "trials_summary.csv", "folds_summary.csv", "best_source_val.json", "best_iid.json",
-       "best_test_out.json", "target_reached.json", "status.json", "controller.log", "pareto_front.csv", "pareto_front.json", "best_worst_fold_source_val.json", "decision_log.md", "parameter_sensitivity.json", "next_stage_analysis.md", "cases.json", "stage_selections.json", "final_comparison.md", "resource_observations.jsonl"}
+       "best_test_out.json", "target_reached.json", "status.json", "controller.log", "dataset_verification.log", "pareto_front.csv", "pareto_front.json", "best_worst_fold_source_val.json", "decision_log.md", "parameter_sensitivity.json", "next_stage_analysis.md", "cases.json", "stage_selections.json", "final_comparison.md", "resource_observations.jsonl"}
 TRIAL = {"config.json", "result.json", "results.jsonl", "learning_rates.jsonl",
          "console.log", "log.txt", "elapsed_seconds", "exit_code", "failure.json"}
 SECRET = re.compile(rb"gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|-----BEGIN [A-Z ]*PRIVATE KEY-----")
@@ -30,12 +30,8 @@ def git(*args, capture=False):
 def publish():
     WORK.mkdir(exist_ok=True)
     if not (WORK / ".git").exists():
-        ref = git("ls-remote", REMOTE, f"refs/heads/{BRANCH}", capture=True)
         git("init", "-b", BRANCH)
         git("remote", "add", "origin", REMOTE)
-        if ref:
-            git("fetch", "origin", BRANCH)
-            git("reset", "--hard", "FETCH_HEAD")
     for src in [*(ROOT / name for name in TOP), *ROOT.glob("stage_*_report.md"), *(ROOT / DATASET / "trials").rglob("*")]:
         if not src.is_file() or src.is_symlink():
             continue
