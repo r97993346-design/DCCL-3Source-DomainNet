@@ -1,0 +1,18 @@
+{
+  "trial": 0,
+  "origin": "requested_first_candidate",
+  "s_weight": 1.0,
+  "condcov_weight": 2.0,
+  "rd_weight": 1.0,
+  "contrastive_weight": 0.025,
+  "full_hparams": "{\"batch_size\": 32, \"cipt_causal_contrastive_weight\": 0.025, \"cipt_class_text_mode\": \"learnable\", \"cipt_clip_backbone\": \"ViT-B/16\", \"cipt_clip_teacher_mix\": 0.25, \"cipt_clip_teacher_temperature\": 0.2, \"cipt_clip_teacher_topk\": 0, \"cipt_condcov_weight\": 2.0, \"cipt_contrastive_temperature\": 0.07, \"cipt_contrastive_type\": \"clip_guided_cross_domain\", \"cipt_contrastive_warmup_steps\": 0, \"cipt_contrastive_weight\": 0.025, \"cipt_e_cls_weight\": 1.0, \"cipt_enabled\": true, \"cipt_env_constraint\": \"relative_distance\", \"cipt_env_inference\": \"e_only\", \"cipt_env_kl_weight\": 0.0, \"cipt_env_loss_weight\": 1.0, \"cipt_env_selection\": \"all\", \"cipt_env_topk\": 80, \"cipt_fused_cls_weight\": 0.0, \"cipt_gamma\": 0.0, \"cipt_lr_min\": 0.0, \"cipt_lr_schedule\": \"cosine\", \"cipt_neighbor_diagnostics\": false, \"cipt_objective\": \"env_anchor\", \"cipt_prompt_init\": \"a photo of a\", \"cipt_prompt_length\": 4, \"cipt_pure\": false, \"cipt_rd_anchor_mode\": \"full\", \"cipt_s_uniform_weight\": 1.0, \"cipt_selector_mode\": \"random\", \"cipt_template_mode\": \"b5b\", \"cipt_use_aug_view\": false, \"cipt_use_contrastive\": true, \"cipt_use_de\": true, \"cipt_use_ind\": false, \"cipt_use_tda\": false, \"class_balanced\": false, \"data_augmentation\": true, \"ind_grad_steps\": [], \"ind_mode\": \"condcov\", \"indomain_test\": false, \"label_ratio\": 1.0, \"lr\": 2e-05, \"optimizer\": \"adam\", \"swad\": null, \"test_batchsize\": 64, \"val_augment\": false, \"weight_decay\": 0.0}",
+  "source_val": 0.743432450781958,
+  "iid": 0.501282476754817,
+  "test_in": 0.501282476754817,
+  "test_out": 0.4989318547561488,
+  "elapsed_seconds": 15877.0,
+  "worst_fold_source_val": 0.70646863570764,
+  "pareto": true,
+  "target": 0.58,
+  "gap_to_target": 0.078717523245183
+}

@@ -3,13 +3,13 @@
   "dataset": "TerraIncognita",
   "gpu": 0,
   "controller_pid": 714357,
-  "trial": 0,
-  "fold": 3,
-  "domain": "L46",
+  "trial": 1,
+  "fold": 0,
+  "domain": "L100",
   "params": {
     "s_weight": 1.0,
-    "condcov_weight": 2.0,
-    "rd_weight": 1.0,
-    "contrastive_weight": 0.025
+    "condcov_weight": 1.0,
+    "rd_weight": 0.5,
+    "contrastive_weight": 0.01
   }
 }
